@@ -2,11 +2,9 @@
 local DataStoreManager = {}
 local DataStoreService = game:GetService("DataStoreService")
 local DS               = DataStoreService:GetDataStore("BrainRotIdleV1")
-local CollectSystem    = require(game.ReplicatedStorage.Modules.CollectSystem)
-
 local function DefaultData()
     return {
-        coins=0, tier=0, prestige=0, coinsParMinute=1,
+        coins=0, tier=0, prestige=0,
         inventory={}, hasVIP=false, hasOfflineVault=false, hasAutoCollect=false,
         derniereConnexion=os.time(), totalCollecte=0,
         stats={ sessionsCount=0, totalHeuresJeu=0 }
@@ -16,12 +14,6 @@ end
 function DataStoreManager.Load(player)
     local ok, data = pcall(function() return DS:GetAsync("player_"..player.UserId) end)
     if not ok or not data then data = DefaultData() end
-    local income = CollectSystem.CalculerOfflineIncome(data, data.derniereConnexion)
-    if income > 0 then
-        data.coins = data.coins + income
-        local notif = game.ReplicatedStorage:FindFirstChild("OfflineIncomeNotif")
-        if notif then task.delay(2, function() notif:FireClient(player, income) end) end
-    end
     data.derniereConnexion = os.time()
     data.stats.sessionsCount = (data.stats.sessionsCount or 0) + 1
     return data

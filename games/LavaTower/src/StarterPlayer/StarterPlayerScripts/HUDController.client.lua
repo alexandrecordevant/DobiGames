@@ -44,7 +44,8 @@ local eventFrame, eventLabel = NouveauLabel(gui,
 eventFrame.Visible = false
 
 -- Mise à jour HUD
-local UpdateHUD = ReplicatedStorage:WaitForChild("UpdateHUD")
+local UpdateHUD = ReplicatedStorage:WaitForChild("UpdateHUD", 15)
+if not UpdateHUD then warn("[HUD] UpdateHUD introuvable — Main.server.lua a crashé ?") return end
 UpdateHUD.OnClientEvent:Connect(function(data)
     coinsLabel.Text = "💰 " .. tostring(math.floor(data.coins))
     local tier = "Tier " .. data.tier .. " / " .. Config.TotalTiers
@@ -52,51 +53,4 @@ UpdateHUD.OnClientEvent:Connect(function(data)
     tierLabel.Text = tier
 end)
 
--- Event démarré
-local EventStarted = ReplicatedStorage:WaitForChild("EventStarted")
-EventStarted.OnClientEvent:Connect(function(_, duree)
-    eventFrame.Visible = true
-    local t = duree
-    task.spawn(function()
-        while t > 0 do
-            eventLabel.Text = "🔥 EVENT  " .. math.ceil(t) .. "s"
-            task.wait(1) ; t = t - 1
-        end
-        eventFrame.Visible = false
-    end)
-end)
 
--- Offline income
-local OIN = ReplicatedStorage:WaitForChild("OfflineIncomeNotif")
-OIN.OnClientEvent:Connect(function(montant)
-    local notif = Instance.new("TextLabel", gui)
-    notif.Size                   = UDim2.new(0,320,0,60)
-    notif.Position               = UDim2.new(0.5,-160,0.5,-30)
-    notif.BackgroundColor3       = Color3.fromRGB(0,150,0)
-    notif.BackgroundTransparency = 0.1
-    notif.TextColor3             = Color3.fromRGB(255,255,255)
-    notif.TextScaled             = true
-    notif.Font                   = Enum.Font.GothamBold
-    notif.Text                   = "💤 Offline : +" .. montant .. " coins !"
-    TweenService:Create(notif, TweenInfo.new(3),
-        { Position = UDim2.new(0.5,-160,0.3,0) }):Play()
-    task.delay(4, function() notif:Destroy() end)
-end)
-
--- Collect VFX
-local CollectVFX = ReplicatedStorage:WaitForChild("CollectVFX")
-CollectVFX.OnClientEvent:Connect(function(montant, rarete)
-    local popup = Instance.new("TextLabel", gui)
-    popup.Size                   = UDim2.new(0,150,0,40)
-    popup.Position               = UDim2.new(math.random(30,70)/100,-75, math.random(30,70)/100,-20)
-    popup.BackgroundTransparency = 1
-    popup.TextColor3             = rarete and rarete.couleur or Color3.fromRGB(255,255,255)
-    popup.TextStrokeTransparency = 0
-    popup.TextScaled             = true
-    popup.Font                   = Enum.Font.GothamBold
-    popup.Text                   = "+" .. montant
-    TweenService:Create(popup, TweenInfo.new(1.5),
-        { Position = UDim2.new(popup.Position.X.Scale, -75, popup.Position.Y.Scale - 0.1, -20),
-          TextTransparency = 1 }):Play()
-    task.delay(1.5, function() popup:Destroy() end)
-end)
