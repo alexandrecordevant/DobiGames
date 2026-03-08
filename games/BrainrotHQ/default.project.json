@@ -7,6 +7,9 @@
         "$className": "Folder",
         "Config": {
           "$path": "src/ReplicatedStorage/Modules/Config.lua"
+        },
+        "CarryConfig": {
+          "$path": "src/ReplicatedStorage/Modules/CarryConfig.lua"
         }
       }
     },
@@ -28,12 +31,18 @@
       },
       "ScreenUpdater": {
         "$path": "src/ServerScriptService/ScreenUpdater.server.lua"
+      },
+      "CarryServer": {
+        "$path": "src/ServerScriptService/CarryServer.lua"
       }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "HubController": {
           "$path": "src/StarterPlayerScripts/HubController.client.lua"
+        },
+        "CarryClient": {
+          "$path": "src/StarterPlayerScripts/CarryClient.lua"
         }
       }
     }
