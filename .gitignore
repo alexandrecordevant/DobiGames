@@ -1,0 +1,5 @@
+.DS_Store
+*.rbxl
+*.rbxlx
+node_modules/
+.rojo-cache/
