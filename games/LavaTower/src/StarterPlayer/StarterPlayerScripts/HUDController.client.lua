@@ -53,4 +53,24 @@ UpdateHUD.OnClientEvent:Connect(function(data)
     tierLabel.Text = tier
 end)
 
+-- Inventaire brainrot
+local brainrotFrame, brainrotLabel = NouveauLabel(gui,
+    UDim2.new(0, 280, 0, 50), UDim2.new(0, 10, 0, 112),
+    Color3.fromRGB(80, 0, 120), Color3.fromRGB(255, 200, 255), "")
+brainrotFrame.Visible = false
 
+local evtPickedUp = ReplicatedStorage:WaitForChild("BrainrotPickedUp", 15)
+local evtDropped  = ReplicatedStorage:WaitForChild("BrainrotDropped",  15)
+
+if evtPickedUp then
+    evtPickedUp.OnClientEvent:Connect(function(nom, rarete)
+        brainrotLabel.Text    = "Brainrot : " .. nom .. " (" .. rarete .. ")"
+        brainrotFrame.Visible = true
+    end)
+end
+
+if evtDropped then
+    evtDropped.OnClientEvent:Connect(function()
+        brainrotFrame.Visible = false
+    end)
+end

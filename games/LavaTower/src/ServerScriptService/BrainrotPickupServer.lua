@@ -1,27 +1,48 @@
 -- BrainrotPickupServer.lua
 -- Script -> ServerScriptService
+-- Gère le ramassage des brainrots (inventaire serveur) depuis le dossier
+-- workspace/Brainrots/<Rarete>/<NomBrainrot>
 
-local Players = game:GetService("Players")
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage     = game:GetService("ServerStorage")
 
-local HAUTEUR = 4
+-- Stockage temporaire côté serveur (invisible côté client)
+local stockage = ServerStorage:FindFirstChild("BrainrotStockage")
+    or Instance.new("Folder", ServerStorage)
+stockage.Name = "BrainrotStockage"
 
 -- RemoteEvents
-local evtPorter = Instance.new("RemoteEvent")
-evtPorter.Name = "BrainrotPorter"
-evtPorter.Parent = ReplicatedStorage
+local evtPickedUp = Instance.new("RemoteEvent")
+evtPickedUp.Name   = "BrainrotPickedUp"
+evtPickedUp.Parent = ReplicatedStorage
 
-local evtDeposer = Instance.new("RemoteEvent")
-evtDeposer.Name = "BrainrotDeposer"
-evtDeposer.Parent = ReplicatedStorage
+local evtDropped = Instance.new("RemoteEvent")
+evtDropped.Name   = "BrainrotDropped"
+evtDropped.Parent = ReplicatedStorage
+
+-- ── DEBUG : liste tout ce qui est dans Workspace au démarrage ──
+print("[BrainrotServer] Enfants de Workspace :")
+for _, v in ipairs(workspace:GetChildren()) do
+    print("  •", v.Name, "(" .. v.ClassName .. ")")
+end
 
 local folderBrainrot = workspace:WaitForChild("Brainrots", 10)
 if not folderBrainrot then
-    warn("[BrainrotServer] Folder 'Brainrot' introuvable !")
+    warn("[BrainrotServer] Dossier 'Brainrots' introuvable dans Workspace !")
     return
 end
+print("[BrainrotServer] Dossier Brainrots trouvé ! Contenu :")
+for _, v in ipairs(folderBrainrot:GetChildren()) do
+    print("  •", v.Name, "(" .. v.ClassName .. ") —", #v:GetChildren(), "enfant(s)")
+end
 
-local brainrotsPortes = {}
+-- inventaire : joueur -> brainrot (Instance)
+local inventaire = {}
+
+-- ──────────────────────────────────────────────
+-- Utilitaires
+-- ──────────────────────────────────────────────
 
 local function getRootPart(obj)
     if obj:IsA("Model") then
@@ -32,198 +53,151 @@ local function getRootPart(obj)
     return nil
 end
 
-local function setGhost(brainrot, actif)
-    local liste = brainrot:IsA("Model") and brainrot:GetDescendants() or {brainrot}
-    for _, part in ipairs(liste) do
-        if part:IsA("BasePart") then
-            part.CanCollide = not actif
-            part.CanTouch   = not actif
-            part.Massless   = actif
-            part.Anchored   = not actif
-        end
-    end
-end
+-- ──────────────────────────────────────────────
+-- Ramasser
+-- ──────────────────────────────────────────────
 
-local function attacherBrainrot(joueur, brainrot)
-    local character = joueur.Character
-    if not character then return end
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+local function ramasserBrainrot(joueur, brainrot)
+    if inventaire[joueur] then return end
 
+    -- Mémoriser la rareté (nom du sous-dossier parent)
     local dossierParent = brainrot.Parent
-    if dossierParent and dossierParent.Parent == folderBrainrot then
-        brainrot:SetAttribute("DossierOrigine", dossierParent.Name)
-    else
-        brainrot:SetAttribute("DossierOrigine", nil)
+    local nomRarete = (dossierParent and dossierParent:IsA("Folder")) and dossierParent.Name or "Inconnue"
+    brainrot:SetAttribute("DossierOrigine", nomRarete)
+
+    -- Désactiver le prompt
+    local rootPart = getRootPart(brainrot)
+    if rootPart then
+        local prompt = rootPart:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then prompt.Enabled = false end
     end
 
-    local rootPart = getRootPart(brainrot)
-    if not rootPart then return end
+    -- Cacher dans ServerStorage
+    brainrot.Parent = stockage
+    inventaire[joueur] = brainrot
 
-    local prompt = rootPart:FindFirstChildOfClass("ProximityPrompt")
-    if prompt then prompt.Enabled = false end
-
-    setGhost(brainrot, true)
-
-    rootPart.CFrame = hrp.CFrame * CFrame.new(0, HAUTEUR, 0)
-
-    local weld = Instance.new("WeldConstraint")
-    weld.Name   = "BrainrotWeld"
-    weld.Part0  = hrp
-    weld.Part1  = rootPart
-    weld.Parent = hrp
-
-    brainrot.Parent = character
-    brainrotsPortes[joueur] = brainrot
-
-    -- Signaler au client de lever les bras
-    evtPorter:FireClient(joueur)
-
-    local rarete = brainrot:GetAttribute("DossierOrigine") or "Sans rarete"
-    print("[BrainrotServer] " .. joueur.Name .. " porte [" .. rarete .. "] " .. brainrot.Name)
+    evtPickedUp:FireClient(joueur, brainrot.Name, nomRarete)
+    print("[BrainrotServer] " .. joueur.Name .. " a ramassé [" .. nomRarete .. "] " .. brainrot.Name)
 end
 
-local function deposerBrainrot(joueur, positionDepot)
-    local brainrot = brainrotsPortes[joueur]
+-- ──────────────────────────────────────────────
+-- Remettre en place (mort / déco)
+-- ──────────────────────────────────────────────
+
+local function remettreEnPlace(joueur)
+    local brainrot = inventaire[joueur]
     if not brainrot then return end
 
-    local character = joueur.Character
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
-
-    if hrp then
-        local weld = hrp:FindFirstChild("BrainrotWeld")
-        if weld then weld:Destroy() end
-    end
-
-    setGhost(brainrot, false)
+    local nomRarete = brainrot:GetAttribute("DossierOrigine") or ""
+    local dossierCible = folderBrainrot:FindFirstChild(nomRarete) or folderBrainrot
+    brainrot.Parent = dossierCible
 
     local rootPart = getRootPart(brainrot)
     if rootPart then
-        rootPart.Anchored = true
-        if positionDepot then
-            rootPart.CFrame = CFrame.new(positionDepot)
-        elseif hrp then
-            rootPart.CFrame = hrp.CFrame * CFrame.new(0, 0, -4)
-        end
         local prompt = rootPart:FindFirstChildOfClass("ProximityPrompt")
         if prompt then prompt.Enabled = true end
     end
 
-    local nomDossier = brainrot:GetAttribute("DossierOrigine")
-    local dossierCible = (nomDossier and folderBrainrot:FindFirstChild(nomDossier)) or folderBrainrot
-    brainrot.Parent = dossierCible
-
-    -- Signaler au client de baisser les bras
-    evtDeposer:FireClient(joueur)
-
-    brainrotsPortes[joueur] = nil
-    print("[BrainrotServer] " .. joueur.Name .. " a depose " .. brainrot.Name)
+    inventaire[joueur] = nil
+    evtDropped:FireClient(joueur)
+    print("[BrainrotServer] " .. joueur.Name .. " a perdu " .. brainrot.Name .. " → remis en place")
 end
 
-local function setupZoneDepot(zone)
-    if not zone:IsA("BasePart") then return end
-    zone.Transparency = 0.6
-    zone.CanCollide   = false
-    zone.Anchored     = true
-    zone.BrickColor   = BrickColor.new("Bright green")
-    zone.Material     = Enum.Material.Neon
+-- ──────────────────────────────────────────────
+-- Setup ProximityPrompt sur un brainrot
+-- ──────────────────────────────────────────────
 
-    local bg = Instance.new("BillboardGui")
-    bg.Size        = UDim2.new(0, 200, 0, 50)
-    bg.StudsOffset = Vector3.new(0, 3, 0)
-    bg.Parent      = zone
+local function ajouterPrompt(brainrot)
+    if not (brainrot:IsA("Model") or brainrot:IsA("BasePart")) then
+        print("[BrainrotServer] Ignoré (pas Model/BasePart) :", brainrot.Name, brainrot.ClassName)
+        return
+    end
 
-    local label = Instance.new("TextLabel")
-    label.Size                   = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text                   = "DEPOSER ICI"
-    label.TextColor3             = Color3.fromRGB(255, 255, 255)
-    label.TextScaled             = true
-    label.Font                   = Enum.Font.GothamBold
-    label.Parent                 = bg
-
-    zone.Touched:Connect(function(hit)
-        local joueur = Players:GetPlayerFromCharacter(hit.Parent)
-        if not joueur or not brainrotsPortes[joueur] then return end
-        local posDepot = zone.Position + Vector3.new(0, zone.Size.Y / 2 + 1, 0)
-        deposerBrainrot(joueur, posDepot)
-    end)
-end
-
-local function ajouterEtSetupPrompt(brainrot)
     local rootPart = getRootPart(brainrot)
-    if not rootPart then return end
+    if not rootPart then
+        warn("[BrainrotServer] ❌ Pas de rootPart (PrimaryPart non défini ?) pour : " .. brainrot.Name)
+        return
+    end
+    print("[BrainrotServer] ✓ Prompt ajouté sur :", brainrot.Name, "→ rootPart =", rootPart.Name)
     if rootPart:FindFirstChildOfClass("ProximityPrompt") then return end
 
     local prompt = Instance.new("ProximityPrompt")
     prompt.ObjectText            = brainrot.Name
-    prompt.ActionText            = "Porter"
+    prompt.ActionText            = "Ramasser"
     prompt.KeyboardKeyCode       = Enum.KeyCode.E
-    prompt.HoldDuration          = 3
+    prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 10
     prompt.RequiresLineOfSight   = false
     prompt.Parent                = rootPart
 
     prompt.Triggered:Connect(function(joueur)
-        if brainrotsPortes[joueur] then return end
-        for autreJoueur, brainrotPorte in pairs(brainrotsPortes) do
-            if brainrotPorte == brainrot then
-                deposerBrainrot(autreJoueur, nil)
-                break
-            end
+        -- Vérifier que personne n'a déjà ce brainrot
+        for _, br in pairs(inventaire) do
+            if br == brainrot then return end
         end
-        attacherBrainrot(joueur, brainrot)
+        ramasserBrainrot(joueur, brainrot)
     end)
 end
 
-local function initialiserDossier(dossier)
-    local count = 0
-    for _, obj in ipairs(dossier:GetDescendants()) do
-        if (obj:IsA("Model") or obj:IsA("BasePart")) and obj.Parent ~= nil then
-            local root = getRootPart(obj)
-            if root and not root:FindFirstChildOfClass("ProximityPrompt") then
-                ajouterEtSetupPrompt(obj)
-                count = count + 1
-            end
-        end
+-- ──────────────────────────────────────────────
+-- Initialisation : itère UNIQUEMENT les enfants
+-- directs de chaque sous-dossier de rareté
+-- ──────────────────────────────────────────────
+
+local function setupDossierRarete(dossierRarete)
+    -- Prompts sur les brainrots déjà présents
+    for _, brainrot in ipairs(dossierRarete:GetChildren()) do
+        ajouterPrompt(brainrot)
     end
-    print("[BrainrotServer] " .. count .. " prompt(s) ajouté(s)")
-end
-
-initialiserDossier(folderBrainrot)
-
-folderBrainrot.DescendantAdded:Connect(function(descendant)
-    if (descendant:IsA("Model") or descendant:IsA("BasePart"))
-        and descendant:IsDescendantOf(folderBrainrot) then
+    -- Prompts sur les brainrots ajoutés plus tard (respawn, etc.)
+    dossierRarete.ChildAdded:Connect(function(brainrot)
         task.wait()
-        ajouterEtSetupPrompt(descendant)
-    end
-end)
-
-for _, obj in ipairs(workspace:GetDescendants()) do
-    if obj.Name == "ZoneDepot" and obj:IsA("BasePart") then
-        setupZoneDepot(obj)
-    end
+        ajouterPrompt(brainrot)
+    end)
 end
 
-workspace.DescendantAdded:Connect(function(obj)
-    if obj.Name == "ZoneDepot" and obj:IsA("BasePart") then
-        setupZoneDepot(obj)
+local count = 0
+for _, enfant in ipairs(folderBrainrot:GetChildren()) do
+    if enfant:IsA("Folder") then
+        -- Sous-dossier de rareté (Common, Rare, Epic…)
+        setupDossierRarete(enfant)
+        count = count + #enfant:GetChildren()
+    elseif enfant:IsA("Model") or enfant:IsA("BasePart") then
+        -- Brainrot posé directement dans Brainrots/ (sans sous-dossier)
+        ajouterPrompt(enfant)
+        count = count + 1
+    end
+end
+print("[BrainrotServer] " .. count .. " brainrot(s) initialisé(s)")
+
+-- Nouveaux sous-dossiers ajoutés à la volée
+folderBrainrot.ChildAdded:Connect(function(enfant)
+    if enfant:IsA("Folder") then
+        task.wait()
+        setupDossierRarete(enfant)
+    elseif enfant:IsA("Model") or enfant:IsA("BasePart") then
+        task.wait()
+        ajouterPrompt(enfant)
     end
 end)
+
+-- ──────────────────────────────────────────────
+-- Mort / déconnexion
+-- ──────────────────────────────────────────────
 
 Players.PlayerAdded:Connect(function(joueur)
     joueur.CharacterRemoving:Connect(function()
-        if brainrotsPortes[joueur] then deposerBrainrot(joueur, nil) end
+        remettreEnPlace(joueur)
     end)
 end)
 
 for _, joueur in ipairs(Players:GetPlayers()) do
     joueur.CharacterRemoving:Connect(function()
-        if brainrotsPortes[joueur] then deposerBrainrot(joueur, nil) end
+        remettreEnPlace(joueur)
     end)
 end
 
 Players.PlayerRemoving:Connect(function(joueur)
-    if brainrotsPortes[joueur] then deposerBrainrot(joueur, nil) end
+    remettreEnPlace(joueur)
+    inventaire[joueur] = nil
 end)

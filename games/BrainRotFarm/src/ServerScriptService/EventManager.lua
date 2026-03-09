@@ -35,11 +35,11 @@ local function DemarrerEvent(typeEvent)
     local cfg = configs[typeEvent]
     if not cfg then return end
     NotifierTous(cfg.msg, Color3.fromRGB(255,200,0))
-    CollectSystem.SetEventMultiplier(cfg.mult)
+    BrainRotSpawner.SetEventMultiplier(cfg.mult)
     local es = game.ReplicatedStorage:FindFirstChild("EventStarted")
     if es then es:FireAllClients(typeEvent, cfg.duree) end
     task.delay(cfg.duree, function()
-        CollectSystem.SetEventMultiplier(1)
+        BrainRotSpawner.SetEventMultiplier(1)
         local ee = game.ReplicatedStorage:FindFirstChild("EventEnded")
         if ee then ee:FireAllClients() end
     end)

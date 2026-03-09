@@ -16,7 +16,6 @@ local CollectSystem      = require(ReplicatedStorage.Modules.CollectSystem)
 local UpgradeSystem      = require(ReplicatedStorage.Modules.UpgradeSystem)
 
 local DataStoreManager   = require(ServerScriptService.DataStoreManager)
-local SpawnManager       = require(ServerScriptService.SpawnManager)
 local EventManager       = require(ServerScriptService.EventManager)
 local MonetizationHandler = require(ServerScriptService.MonetizationHandler)
 
@@ -96,11 +95,6 @@ local function OnPlayerAdded(player)
     DataStoreManager.StartAutoSave(player, function()
         return GetData(player)
     end)
-    
-    -- Lancer collecte automatique si Auto Collect Pass
-    if data.hasAutoCollect then
-        SpawnManager.StartAutoCollect(player, data)
-    end
     
     print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " connecté (Tier " .. data.tier .. ", Prestige " .. data.prestige .. ")")
 end
@@ -219,7 +213,8 @@ end
 -- ═══════════════════════════════════════════════
 
 -- Spawn des collectibles sur la map
-SpawnManager.Init()
+local BrainRotSpawner = require(ServerScriptService.BrainRotSpawner)
+BrainRotSpawner.Init()
 
 -- Démarrer les events automatiques (Admin Abuse, Lucky Hour...)
 EventManager.Init()
