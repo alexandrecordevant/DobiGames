@@ -15,11 +15,11 @@ local Config            = require(ReplicatedStorage.Modules.GameConfig)
 -- ═══════════════════════════════════════════
 
 local CHAMP = {
-    X_MIN  = -39.00,
-    X_MAX  =  18.80,
-    Z_MIN  = -151.09,
-    Z_MAX  =  -84.23,
-    Y      =   8.542,  -- hauteur fixe
+    X_MIN  = -316,
+    X_MAX  =  -30,
+    Z_MIN  = -396,
+    Z_MAX  = -220,
+    Y      =  3.731,  -- hauteur fixe
 }
 
 local MAX_BRAINROTS_MAP  = 40   -- max simultanés sur le champ
@@ -101,61 +101,62 @@ local function SpawnerUnBrainRot()
     local id    = GenererID()
     clone.Name  = id
 
-    -- Positionner dans le champ
+    -- Positionner dans le champ, au ras du sol
     local position = PositionAleatoire()
-    clone:PivotTo(CFrame.new(position))
 
-    -- ══ CACHÉ AU DÉPART (sauvegarde transparences originales) ══
-    local transparencesOriginales = {}
+    -- Désactiver collisions dès le départ
     for _, part in ipairs(clone:GetDescendants()) do
         if part:IsA("BasePart") then
-            transparencesOriginales[part] = part.Transparency
-            part.Transparency = 1
-            part.CanCollide   = false
+            part.CanCollide = false
         end
     end
 
+    -- Partir d'une taille microscopique (sort de terre)
+    clone:ScaleTo(0.01)
+    clone:PivotTo(CFrame.new(position.X, CHAMP.Y, position.Z))
     clone.Parent = workspace
 
-    -- ══ APPARITION PROGRESSIVE (restaure transparences originales) ══
-    task.delay(0.1, function()
-        for _, part in ipairs(clone:GetDescendants()) do
-            if part:IsA("BasePart") then
-                local cible = transparencesOriginales[part] or 0
-                TweenService:Create(part,
-                    TweenInfo.new(0.5, Enum.EasingStyle.Quad),
-                    { Transparency = cible }
-                ):Play()
-            end
+    -- ══ ANIMATION "POUSSE DE TERRE" (scale 0.01 → 1) ══
+    local Y_FINAL = CHAMP.Y - 30  -- 30 studs sous le niveau de référence
+    task.spawn(function()
+        local DUREE  = 1.1
+        local ETAPES = 30
+        for i = 1, ETAPES do
+            if not clone or not clone.Parent then return end
+            local t     = i / ETAPES
+            -- Ease out cubic : démarre vite, ralentit en fin
+            local scale = 1 - math.pow(1 - t, 3)
+            -- Le modèle monte en sortant du sol
+            local yPos  = Y_FINAL - (1 - scale) * 1.2
+            clone:ScaleTo(math.max(scale, 0.001))
+            clone:PivotTo(CFrame.new(position.X, yPos, position.Z))
+            task.wait(DUREE / ETAPES)
         end
-        -- Activer collision après apparition
-        task.delay(0.5, function()
-            for _, part in ipairs(clone:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false  -- pas de collision physique
-                end
-            end
-        end)
+        clone:ScaleTo(1)
+        clone:PivotTo(CFrame.new(position.X, Y_FINAL, position.Z))
     end)
 
-    -- Billboard avec nom + rareté
-    local anchorPart = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart", true)
-    if anchorPart then
-        local billboard = Instance.new("BillboardGui")
-        billboard.Size         = UDim2.new(0, 120, 0, 40)
-        billboard.StudsOffset  = Vector3.new(0, 3, 0)
-        billboard.AlwaysOnTop  = false
-        billboard.Parent       = anchorPart
+    -- Billboard avec nom + rareté (affiché après la pousse)
+    task.delay(1.1, function()
+        if not clone or not clone.Parent then return end
+        local anchorPart = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart", true)
+        if anchorPart then
+            local billboard = Instance.new("BillboardGui")
+            billboard.Size         = UDim2.new(0, 120, 0, 40)
+            billboard.StudsOffset  = Vector3.new(0, 3, 0)
+            billboard.AlwaysOnTop  = false
+            billboard.Parent       = anchorPart
 
-        local label = Instance.new("TextLabel", billboard)
-        label.Size                    = UDim2.new(1,0,1,0)
-        label.BackgroundTransparency  = 1
-        label.TextColor3              = Color3.fromRGB(255,255,255)
-        label.TextStrokeTransparency  = 0
-        label.TextScaled              = true
-        label.Font                    = Enum.Font.GothamBold
-        label.Text                    = "⭐ " .. rarete.nom .. " · " .. modele.Name
-    end
+            local label = Instance.new("TextLabel", billboard)
+            label.Size                    = UDim2.new(1,0,1,0)
+            label.BackgroundTransparency  = 1
+            label.TextColor3              = Color3.fromRGB(255,255,255)
+            label.TextStrokeTransparency  = 0
+            label.TextScaled              = true
+            label.Font                    = Enum.Font.GothamBold
+            label.Text                    = "⭐ " .. rarete.nom .. " · " .. modele.Name
+        end
+    end)
 
     -- Touch detection → collecte
     local touched = false
