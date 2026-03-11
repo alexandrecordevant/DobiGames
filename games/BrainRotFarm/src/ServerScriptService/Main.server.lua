@@ -216,6 +216,19 @@ end
 local BrainRotSpawner = require(ServerScriptService.BrainRotSpawner)
 BrainRotSpawner.Init()
 
+-- Connexion récompenses Brainrot (champs individuel + commun)
+local BrainrotReward = ServerScriptService:WaitForChild("_BrainrotReward")
+BrainrotReward.Event:Connect(function(player, montant, rarete)
+    local data = GetData(player)
+    if not data then return end
+    local multiplier   = CollectSystem.GetMultiplier(data)
+    local coinsGagnes  = math.floor(montant * multiplier)
+    data.coins         = data.coins + coinsGagnes
+    data.totalCollecte = (data.totalCollecte or 0) + 1
+    UpdateHUD:FireClient(player, data)
+    CollectVFX:FireClient(player, coinsGagnes, rarete)
+end)
+
 -- Démarrer les events automatiques (Admin Abuse, Lucky Hour...)
 EventManager.Init()
 

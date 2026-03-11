@@ -17,9 +17,9 @@ local Config            = require(ReplicatedStorage.Modules.GameConfig)
 local CHAMP = {
     X_MIN  = -316,
     X_MAX  =  -30,
-    Z_MIN  = -396,
-    Z_MAX  = -220,
-    Y      =  3.731,  -- hauteur fixe
+    Z_MIN  = -538,
+    Z_MAX  = -362,
+    Y      =  0.731,  -- hauteur fixe
 }
 
 local MAX_BRAINROTS_MAP  = 40   -- max simultanés sur le champ
@@ -111,29 +111,27 @@ local function SpawnerUnBrainRot()
         end
     end
 
-    -- Partir d'une taille microscopique (sort de terre)
+    -- Partir d'une taille microscopique, 2 studs sous la surface
+    local Y_DEPART = CHAMP.Y - 2
     clone:ScaleTo(0.01)
-    clone:PivotTo(CFrame.new(position.X, CHAMP.Y, position.Z))
+    clone:PivotTo(CFrame.new(position.X, Y_DEPART, position.Z))
     clone.Parent = workspace
 
-    -- ══ ANIMATION "POUSSE DE TERRE" (scale 0.01 → 1) ══
-    local Y_FINAL = CHAMP.Y - 30  -- 30 studs sous le niveau de référence
+    -- ══ ANIMATION "POUSSE DE TERRE" (monte de sous terre → surface) ══
     task.spawn(function()
         local DUREE  = 1.1
         local ETAPES = 30
         for i = 1, ETAPES do
             if not clone or not clone.Parent then return end
             local t     = i / ETAPES
-            -- Ease out cubic : démarre vite, ralentit en fin
             local scale = 1 - math.pow(1 - t, 3)
-            -- Le modèle monte en sortant du sol
-            local yPos  = Y_FINAL - (1 - scale) * 1.2
+            local yPos  = Y_DEPART + scale * 2
             clone:ScaleTo(math.max(scale, 0.001))
             clone:PivotTo(CFrame.new(position.X, yPos, position.Z))
             task.wait(DUREE / ETAPES)
         end
         clone:ScaleTo(1)
-        clone:PivotTo(CFrame.new(position.X, Y_FINAL, position.Z))
+        clone:PivotTo(CFrame.new(position.X, CHAMP.Y, position.Z))
     end)
 
     -- Billboard avec nom + rareté (affiché après la pousse)
@@ -281,12 +279,63 @@ end
 -- INIT
 -- ═══════════════════════════════════════════
 
+-- ═══════════════════════════════════════════
+-- MIGRATION WORKSPACE → SERVERSTORAGE
+-- Déplace les modèles Brainrot stockés dans
+-- Workspace vers le bon dossier ServerStorage
+-- ═══════════════════════════════════════════
+
+local function MigrerDepuisWorkspace()
+    -- Préfixe → nom de dossier cible dans ServerStorage.Brainrots
+    local PREFIXES = {
+        { prefix = "COMMON_",      dossier = "COMMON"      },
+        { prefix = "OG_",          dossier = "OG"          },
+        { prefix = "RARE_",        dossier = "RARE"        },
+        { prefix = "EPIC_",        dossier = "EPIC"        },
+        { prefix = "LEGENDARY_",   dossier = "LEGENDARY"   },
+        { prefix = "MYTHIC_",      dossier = "MYTHIC"      },
+        { prefix = "SECRET_",      dossier = "SECRET"      },
+        { prefix = "BRAINROT_GOD", dossier = "BRAINROT_GOD"},
+    }
+
+    -- Cherche dans Workspace racine + Workspace.BrainrotModels
+    local sources = { workspace }
+    local bmFolder = workspace:FindFirstChild("BrainrotModels")
+    if bmFolder then table.insert(sources, bmFolder) end
+
+    local migres = 0
+    for _, source in ipairs(sources) do
+        for _, obj in ipairs(source:GetChildren()) do
+            for _, entry in ipairs(PREFIXES) do
+                if string.find(obj.Name, entry.prefix, 1, true) then
+                    local dossierCible = BRAINROTS_FOLDER:FindFirstChild(entry.dossier)
+                    if not dossierCible then
+                        dossierCible = Instance.new("Folder")
+                        dossierCible.Name = entry.dossier
+                        dossierCible.Parent = BRAINROTS_FOLDER
+                    end
+                    obj.Parent = dossierCible
+                    migres = migres + 1
+                    break
+                end
+            end
+        end
+    end
+
+    if migres > 0 then
+        print("[BrainRotSpawner] Migration : " .. migres .. " modèles déplacés de Workspace → ServerStorage")
+    end
+end
+
 function BrainRotSpawner.Init()
     -- S'assurer que le dossier Brainrots existe
     if not BRAINROTS_FOLDER then
         error("[BrainRotSpawner] Dossier 'Brainrots' introuvable dans ServerStorage !")
         return
     end
+
+    -- Déplacer les modèles encore dans Workspace
+    MigrerDepuisWorkspace()
 
     -- Compter les modèles disponibles
     local total = 0

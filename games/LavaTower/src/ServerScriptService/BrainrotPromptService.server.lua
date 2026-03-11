@@ -45,9 +45,9 @@ local function GetBrainrotId(instance)
     return instance.Name .. "_" .. tostring(instance:GetDebugId())
 end
 
--- Retourne la rareté de l'instance (Attribute "Rarity" ou "Common" par défaut)
+-- Retourne la rareté de l'instance (Attribute "Rarete" ou "Common" par défaut)
 local function GetRarity(instance)
-    return instance:GetAttribute("Rarity") or "Common"
+    return instance:GetAttribute("Rarete")
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
