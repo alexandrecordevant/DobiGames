@@ -15,9 +15,11 @@ local Config             = require(ReplicatedStorage.Modules.GameConfig)
 local CollectSystem      = require(ReplicatedStorage.Modules.CollectSystem)
 local UpgradeSystem      = require(ReplicatedStorage.Modules.UpgradeSystem)
 
-local DataStoreManager   = require(ServerScriptService.DataStoreManager)
-local EventManager       = require(ServerScriptService.EventManager)
-local MonetizationHandler = require(ServerScriptService.MonetizationHandler)
+local DataStoreManager      = require(ServerScriptService.DataStoreManager)
+local EventManager          = require(ServerScriptService.EventManager)
+local MonetizationHandler   = require(ServerScriptService.MonetizationHandler)
+local BrainRotSpawner       = require(ServerScriptService.BrainRotSpawner)
+local BaseProgressionSystem = require(ServerScriptService.BaseProgressionSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -90,7 +92,14 @@ local function OnPlayerAdded(player)
     -- Envoyer HUD initial
     task.wait(1)  -- laisser le client charger
     UpdateHUD:FireClient(player, data)
-    
+
+    -- Assigner une base et initialiser la progression visuelle
+    local baseIndex = BrainRotSpawner.AssignerBase(player)
+    if baseIndex then
+        BaseProgressionSystem.Init(player, baseIndex, data)
+        BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+    end
+
     -- Lancer auto-save
     DataStoreManager.StartAutoSave(player, function()
         return GetData(player)
@@ -104,6 +113,7 @@ local function OnPlayerRemoving(player)
     if data then
         DataStoreManager.Save(player, data)
         playerDataCache[player.UserId] = nil
+        BaseProgressionSystem.Reset(player)
         print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " sauvegardé et déconnecté")
     end
 end
@@ -159,6 +169,7 @@ DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
     -- Notifier le client (VFX + HUD)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
     UpdateHUD:FireClient(player, data)
+    BaseProgressionSystem.VerifierDeblocages(player, data.coins)
 end)
 
 -- Upgrade
@@ -213,8 +224,24 @@ end
 -- ═══════════════════════════════════════════════
 
 -- Spawn des collectibles sur la map
-local BrainRotSpawner = require(ServerScriptService.BrainRotSpawner)
 BrainRotSpawner.Init()
+
+-- ChampCommun (MYTHIC + SECRET)
+local ChampCommunSpawner = require(ServerScriptService.ChampCommunSpawner)
+ChampCommunSpawner.OnCollecte = function(player, typeNom)
+    local data = GetData(player)
+    if not data then return end
+    local cfg = { MYTHIC = { valeur = 300 }, SECRET = { valeur = 1000 } }
+    local valeur = cfg[typeNom] and cfg[typeNom].valeur or 100
+    local multiplier  = CollectSystem.GetMultiplier(data)
+    local coinsGagnes = math.floor(valeur * multiplier)
+    data.coins         = data.coins + coinsGagnes
+    data.totalCollecte = (data.totalCollecte or 0) + 1
+    UpdateHUD:FireClient(player, data)
+    CollectVFX:FireClient(player, coinsGagnes, { nom = typeNom, valeur = valeur })
+    BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+end
+ChampCommunSpawner.Init()
 
 -- Connexion récompenses Brainrot (champs individuel + commun)
 local BrainrotReward = ServerScriptService:WaitForChild("_BrainrotReward")
@@ -227,6 +254,7 @@ BrainrotReward.Event:Connect(function(player, montant, rarete)
     data.totalCollecte = (data.totalCollecte or 0) + 1
     UpdateHUD:FireClient(player, data)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
+    BaseProgressionSystem.VerifierDeblocages(player, data.coins)
 end)
 
 -- Démarrer les events automatiques (Admin Abuse, Lucky Hour...)
