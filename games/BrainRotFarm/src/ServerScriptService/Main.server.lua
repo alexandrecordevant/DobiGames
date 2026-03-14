@@ -78,6 +78,57 @@ local function SetData(player, data)
     playerDataCache[player.UserId] = data
 end
 
+local function TrouverSpawnBase(baseIndex)
+    local bases = workspace:FindFirstChild("Bases")
+    if not bases then return nil end
+    local baseModel = bases:FindFirstChild("Base_" .. tostring(baseIndex))
+    if not baseModel then return nil end
+
+    local function estNomSpawn(nom)
+        local n = string.lower(nom or "")
+        return n == "spawnpoint" or n == "spawnlocation" or n == "playerspawn" or n == "spawn"
+    end
+
+    for _, d in ipairs(baseModel:GetDescendants()) do
+        if d:IsA("BasePart") and estNomSpawn(d.Name) then
+            return d.CFrame + Vector3.new(0, 4, 0)
+        end
+    end
+
+    local spawnZone = baseModel:FindFirstChild("SpawnZone")
+    if spawnZone and spawnZone:IsA("BasePart") then
+        return spawnZone.CFrame + Vector3.new(0, 4, 0)
+    end
+
+    if spawnZone then
+        local wallTop    = spawnZone:FindFirstChild("Wall_Top")
+        local wallBottom = spawnZone:FindFirstChild("Wall_Bottom")
+        local wallLeft   = spawnZone:FindFirstChild("Wall_Left")
+        local wallRight  = spawnZone:FindFirstChild("Wall_Right")
+        if wallTop and wallBottom and wallLeft and wallRight then
+            local x = (wallLeft.Position.X + wallRight.Position.X) / 2
+            local z = (wallTop.Position.Z + wallBottom.Position.Z) / 2
+            local y = math.max(wallTop.Position.Y, wallBottom.Position.Y, wallLeft.Position.Y, wallRight.Position.Y) + 4
+            return CFrame.new(x, y, z)
+        end
+    end
+
+    return baseModel:GetPivot() + Vector3.new(0, 5, 0)
+end
+
+local function TeleporterVersBaseAssignee(player, baseIndex, character)
+    if not player or not character or not baseIndex then return end
+    task.spawn(function()
+        local hrp = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
+        if not hrp then return end
+        local cframeSpawn = TrouverSpawnBase(baseIndex)
+        if not cframeSpawn then return end
+        pcall(function()
+            character:PivotTo(cframeSpawn)
+        end)
+    end)
+end
+
 -- ═══════════════════════════════════════════════
 -- 4. CONNEXION JOUEUR
 -- ═══════════════════════════════════════════════
@@ -102,6 +153,14 @@ local function OnPlayerAdded(player)
         -- Créer les ProximityPrompts de dépôt sur les spots actifs
         local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
         CarrySystem.InitDepotSpotsBase(player, spotsActifs)
+
+        -- Toujours respawn devant la base assignée (spawn initial + respawns)
+        if player.Character then
+            TeleporterVersBaseAssignee(player, baseIndex, player.Character)
+        end
+        player.CharacterAdded:Connect(function(character)
+            TeleporterVersBaseAssignee(player, baseIndex, character)
+        end)
     end
 
     -- Lancer auto-save
@@ -235,11 +294,13 @@ BrainRotSpawner.OnBRSpawned = function(brModel, baseIndex, rarete)
     CarrySystem.OnBRSpawned(brModel, baseIndex, rarete)
 end
 
--- Collecte Touched (COMMON/OG/RARE) → ramassage carry
-BrainRotSpawner.OnCollecte = function(player, baseIndex, rarete)
-    CarrySystem.RamasserBR(player, rarete)
+-- Collecte Touched (COMMON/OG/RARE) → ramassage carry avec le modèle monde
+BrainRotSpawner.OnCollecte = function(player, baseIndex, rarete, brModel)
+    return CarrySystem.RamasserBR(player, rarete, brModel)
 end
 
+-- Bug 1 : permettre à CarrySystem de vérifier la base du joueur pour bloquer la capture chez l'adversaire
+CarrySystem.GetBaseJoueur = function(player) return BrainRotSpawner.GetBase(player) end
 CarrySystem.Init()
 
 -- ChampCommun (MYTHIC + SECRET)
@@ -256,6 +317,11 @@ ChampCommunSpawner.OnCollecte = function(player, typeNom)
     UpdateHUD:FireClient(player, data)
     CollectVFX:FireClient(player, coinsGagnes, { nom = typeNom, valeur = valeur })
     BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+end
+-- Bug 3 : MYTHIC/SECRET utilisent ProximityPrompt sans restriction de base (nil = ChampCommun)
+ChampCommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture)
+    local rarete = { nom = typeNom, dossier = typeNom }
+    CarrySystem.OnBRSpawned(clone, nil, rarete, onCapture)
 end
 ChampCommunSpawner.Init()
 

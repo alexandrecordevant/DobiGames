@@ -129,6 +129,82 @@ local function retirerSpotActif(spotsActifs, touchPart)
 	end
 end
 
+-- Normalise un nom pour comparaison tolérante (espaces/underscore/casse ignorés)
+local function normaliserNom(nom)
+	if type(nom) ~= "string" then return "" end
+	return string.lower((nom:gsub("[%s_%-]", "")))
+end
+
+-- Recherche d'un floor avec fallback tolérant (exact, direct child, descendants)
+local function trouverFloor(baseFolder, floorNum)
+	if not baseFolder then return nil end
+
+	local nomExact = FLOOR_NOMS[floorNum]
+	if nomExact then
+		local direct = baseFolder:FindFirstChild(nomExact)
+		if direct then return direct end
+	end
+
+	-- Compatibilité: "Floor1", "Floor_1", "floor 1", etc.
+	local cible = "floor" .. tostring(floorNum)
+	for _, child in ipairs(baseFolder:GetChildren()) do
+		if normaliserNom(child.Name) == cible then
+			return child
+		end
+	end
+	for _, desc in ipairs(baseFolder:GetDescendants()) do
+		if normaliserNom(desc.Name) == cible then
+			return desc
+		end
+	end
+	return nil
+end
+
+-- Recherche d'un spot avec fallback tolérant (spot_1, Spot 1, spot-1, etc.)
+local function trouverSpot(floorObj, spotNum)
+	if not floorObj then return nil end
+
+	local nomExact = "spot_" .. tostring(spotNum)
+	local direct = floorObj:FindFirstChild(nomExact)
+	if direct then return direct end
+
+	local cible = "spot" .. tostring(spotNum)
+	for _, child in ipairs(floorObj:GetChildren()) do
+		if normaliserNom(child.Name) == cible then
+			return child
+		end
+	end
+	for _, desc in ipairs(floorObj:GetDescendants()) do
+		if normaliserNom(desc.Name) == cible then
+			return desc
+		end
+	end
+	return nil
+end
+
+-- Score un conteneur de base selon le nombre de floors/spots détectés.
+-- Permet de choisir automatiquement la bonne racine visuelle (Base_1 ou Base_1/Base).
+local function scorerConteneurBase(container)
+	if not container then
+		return -1, 0, 0
+	end
+	local floorsTrouves = 0
+	local spotsTrouves = 0
+	for floorNum = 1, 4 do
+		local floorObj = trouverFloor(container, floorNum)
+		if floorObj then
+			floorsTrouves += 1
+			for spotNum = 1, 10 do
+				if trouverSpot(floorObj, spotNum) then
+					spotsTrouves += 1
+				end
+			end
+		end
+	end
+	-- Priorité au nombre de spots, puis floors
+	return (spotsTrouves * 100 + floorsTrouves), floorsTrouves, spotsTrouves
+end
+
 -- Notifications
 local function notifierJoueur(player, typeNotif, message)
 	local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
@@ -222,7 +298,7 @@ end
 local function appliquerEtatDebloque(spotModel, spotsActifs)
 	local parts = obtenirPartsSpot(spotModel)
 	for _, part in ipairs(parts) do
-		pcall(function() part.Transparency = 0 end)
+		pcall(function() part.Transparency = 0; part.CanCollide = true end)
 	end
 	local touchPart = spotModel:FindFirstChild("TouchPart")
 	if touchPart then
@@ -239,21 +315,16 @@ end
 -- ============================================================
 
 -- Cache tout un étage (floors 2-4 non encore débloqués)
+-- Tous les BaseParts → invisible + non-collidable (évite l'interaction avec parties invisibles)
 local function cacherEtage(floorObj)
-	local partsStructure = obtenirPartsStructure(floorObj)
-	for _, part in ipairs(partsStructure) do
-		pcall(function() part.Transparency = 1 end)
+	if floorObj:IsA("BasePart") then
+		pcall(function() floorObj.Transparency = 1; floorObj.CanCollide = false end)
 	end
-	for _, child in ipairs(floorObj:GetChildren()) do
-		if child.Name:match("^spot_") then
-			local parts = obtenirPartsSpot(child)
-			for _, part in ipairs(parts) do
-				pcall(function() part.Transparency = 1 end)
-			end
-			local touchPart = child:FindFirstChild("TouchPart")
-			if touchPart then
-				pcall(function() touchPart.CanTouch = false end)
-			end
+	for _, v in ipairs(floorObj:GetDescendants()) do
+		if v:IsA("BasePart") then
+			pcall(function() v.Transparency = 1; v.CanCollide = false end)
+		elseif v:IsA("ProximityPrompt") or v:IsA("ClickDetector") then
+			pcall(function() v.Enabled = false end)
 		end
 	end
 end
@@ -262,7 +333,15 @@ end
 local function afficherStructure(floorObj)
 	local partsStructure = obtenirPartsStructure(floorObj)
 	for _, part in ipairs(partsStructure) do
-		pcall(function() part.Transparency = 0 end)
+		pcall(function() part.Transparency = 0; part.CanCollide = true end)
+	end
+	-- Réactiver les ProximityPrompts/ClickDetectors de la structure
+	for _, v in ipairs(floorObj:GetDescendants()) do
+		if not v.Name:match("^spot_") then
+			if v:IsA("ProximityPrompt") or v:IsA("ClickDetector") then
+				pcall(function() v.Enabled = true end)
+			end
+		end
 	end
 end
 
@@ -272,6 +351,18 @@ local function fadeInStructure(floorObj, onFin)
 	if #parts == 0 then
 		if onFin then task.spawn(onFin) end
 		return
+	end
+	-- Restaurer la collision immédiatement (avant le fade pour éviter le fantôme)
+	for _, part in ipairs(parts) do
+		pcall(function() part.CanCollide = true end)
+	end
+	-- Réactiver les ProximityPrompts/ClickDetectors de la structure
+	for _, v in ipairs(floorObj:GetDescendants()) do
+		if not v.Name:match("^spot_") then
+			if v:IsA("ProximityPrompt") or v:IsA("ClickDetector") then
+				pcall(function() v.Enabled = true end)
+			end
+		end
 	end
 	local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local termine   = 0
@@ -341,13 +432,13 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 	end
 
 	-- spot_1 → débloqué
-	local spot1 = floorObj:FindFirstChild("spot_1")
+	local spot1 = trouverSpot(floorObj, 1)
 	if spot1 then appliquerEtatDebloque(spot1, dd.spotsActifs) end
 
 	-- spot_2 à spot_10 → verrouillés (maintenant visibles à 0.7)
 	for _, seuil in ipairs(SEUILS) do
 		if seuil.floor == floorNum and seuil.spot > 1 then
-			local spotObj = floorObj:FindFirstChild("spot_" .. seuil.spot)
+			local spotObj = trouverSpot(floorObj, seuil.spot)
 			if spotObj then
 				local cle = seuil.floor .. "_" .. seuil.spot
 				if dd.progression[cle] then
@@ -370,7 +461,7 @@ end
 -- ============================================================
 
 local function debloquerSpotIndividuel(dd, floorObj, seuil)
-	local spotObj = floorObj:FindFirstChild("spot_" .. seuil.spot)
+	local spotObj = trouverSpot(floorObj, seuil.spot)
 	if not spotObj then return end
 	appliquerEtatDebloque(spotObj, dd.spotsActifs)
 end
@@ -388,7 +479,7 @@ function BaseProgressionSystem.VerifierDeblocages(player, coinsActuels)
 		if not dd.progression[cle] and coinsActuels >= seuil.coins then
 			dd.progression[cle] = true
 
-			local floorObj = dd.baseFolder:FindFirstChild(FLOOR_NOMS[seuil.floor])
+			local floorObj = trouverFloor(dd.baseFolder, seuil.floor)
 			if not floorObj then continue end
 
 			if seuil.spot == 1 and seuil.floor > 1 then
@@ -433,9 +524,19 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 		warn("[BaseProgressionSystem] Base_" .. baseIndex .. " introuvable")
 		return
 	end
-	local baseFolder = baseRoot:FindFirstChild("Base")
-	if not baseFolder then
-		warn("[BaseProgressionSystem] Base_" .. baseIndex .. "/Base introuvable")
+	local candidatBase = baseRoot:FindFirstChild("Base")
+	local scoreRoot, floorsRoot, spotsRoot = scorerConteneurBase(baseRoot)
+	local scoreBase, floorsBase, spotsBase = scorerConteneurBase(candidatBase)
+
+	local baseFolder = nil
+	if scoreBase >= scoreRoot then
+		baseFolder = candidatBase
+	else
+		baseFolder = baseRoot
+	end
+
+	if not baseFolder or math.max(scoreBase, scoreRoot) <= 0 then
+		warn("[BaseProgressionSystem] Aucun conteneur valide trouvé pour Base_" .. baseIndex .. " (floors/spots introuvables)")
 		return
 	end
 
@@ -450,7 +551,7 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 
 	-- Appliquer l'état visuel pour chaque étage
 	for floorNum = 1, 4 do
-		local floorObj = baseFolder:FindFirstChild(FLOOR_NOMS[floorNum])
+		local floorObj = trouverFloor(baseFolder, floorNum)
 		if not floorObj then continue end
 
 		local cleEtage = floorNum .. "_1"
@@ -465,7 +566,7 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 
 			for _, seuil in ipairs(SEUILS) do
 				if seuil.floor == floorNum then
-					local spotObj = floorObj:FindFirstChild("spot_" .. seuil.spot)
+					local spotObj = trouverSpot(floorObj, seuil.spot)
 					if spotObj then
 						local cle = seuil.floor .. "_" .. seuil.spot
 						if dd.progression[cle] then
@@ -480,8 +581,13 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 	end
 
 	print(string.format(
-		"[BaseProgressionSystem] %s → Base_%d initialisée (%d spots actifs)",
-		player.Name, baseIndex, #dd.spotsActifs
+		"[BaseProgressionSystem] %s → Base_%d initialisée (%d spots actifs) [root=%dF/%dS, base=%dF/%dS, cible=%s]",
+		player.Name,
+		baseIndex,
+		#dd.spotsActifs,
+		floorsRoot, spotsRoot,
+		floorsBase, spotsBase,
+		baseFolder.Name
 	))
 end
 

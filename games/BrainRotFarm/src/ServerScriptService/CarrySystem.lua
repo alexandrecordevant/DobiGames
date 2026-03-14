@@ -6,6 +6,10 @@
 
 local CarrySystem = {}
 
+-- API publique — assignée depuis Main.server.lua
+-- function(player) → baseIndex ou nil
+CarrySystem.GetBaseJoueur = nil
+
 -- ============================================================
 -- Services
 -- ============================================================
@@ -20,13 +24,13 @@ local Debris            = game:GetService("Debris")
 -- Configuration capture hybride
 -- ============================================================
 local CAPTURE_CONFIG = {
-	COMMON       = { mode = "touched", holdDuration = 0                               },
-	OG           = { mode = "touched", holdDuration = 0                               },
-	RARE         = { mode = "touched", holdDuration = 0                               },
-	EPIC         = { mode = "prompt",  holdDuration = 0.5, actionText = "Capturer"          },
-	LEGENDARY    = { mode = "prompt",  holdDuration = 1.5, actionText = "Saisir !"          },
-	MYTHIC       = { mode = "prompt",  holdDuration = 3.0, actionText = "⚡ Attraper !!"    },
-	SECRET       = { mode = "prompt",  holdDuration = 5.0, actionText = "🔴 Capturer !!!"  },
+	COMMON       = { mode = "prompt",  holdDuration = 0,   actionText = "Ramasser"           },
+	OG           = { mode = "prompt",  holdDuration = 0,   actionText = "Ramasser !"         },
+	RARE         = { mode = "prompt",  holdDuration = 0,   actionText = "🌟 Saisir !"        },
+	EPIC         = { mode = "prompt",  holdDuration = 0.5, actionText = "Capturer"           },
+	LEGENDARY    = { mode = "prompt",  holdDuration = 1.5, actionText = "Saisir !"           },
+	MYTHIC       = { mode = "prompt",  holdDuration = 3.0, actionText = "⚡ Attraper !!"     },
+	SECRET       = { mode = "prompt",  holdDuration = 5.0, actionText = "🔴 Capturer !!!"   },
 	BRAINROT_GOD = { mode = "prompt",  holdDuration = 8.0, actionText = "👑 LÉGENDAIRE !!!" },
 }
 
@@ -54,23 +58,23 @@ local CARRY_CONFIG = {
 		[2] = 5000,
 		[3] = 0,    -- VIP
 	},
-	-- Offsets {x, y, z} par slot — spirale autour du joueur
+	-- Offsets {x, y, z} par slot — spirale étagée autour du joueur
 	slotOffsets = {
 		[1]  = { x =  0.0, y =  5.5, z =  0.0 },
-		[2]  = { x =  0.0, y =  6.0, z =  2.0 },
-		[3]  = { x =  0.0, y =  6.0, z = -2.0 },
-		[4]  = { x =  2.0, y =  7.0, z =  0.0 },
-		[5]  = { x = -2.0, y =  7.0, z =  0.0 },
-		[6]  = { x =  1.5, y =  8.5, z =  1.5 },
-		[7]  = { x = -1.5, y =  8.5, z =  1.5 },
-		[8]  = { x =  0.0, y =  9.5, z =  0.0 },
-		[9]  = { x =  1.5, y = 10.5, z = -1.5 },
-		[10] = { x = -1.5, y = 10.5, z = -1.5 },
-		[11] = { x =  2.0, y = 11.5, z =  0.0 },
-		[12] = { x = -2.0, y = 11.5, z =  0.0 },
-		[13] = { x =  0.0, y = 12.5, z =  2.0 },
-		[14] = { x =  0.0, y = 12.5, z = -2.0 },
-		[15] = { x =  0.0, y = 14.0, z =  0.0 },
+		[2]  = { x =  0.0, y =  7.0, z =  3.5 },
+		[3]  = { x =  0.0, y =  7.0, z = -3.5 },
+		[4]  = { x =  3.5, y =  8.5, z =  0.0 },
+		[5]  = { x = -3.5, y =  8.5, z =  0.0 },
+		[6]  = { x =  3.0, y = 10.5, z =  3.0 },
+		[7]  = { x = -3.0, y = 10.5, z =  3.0 },
+		[8]  = { x =  0.0, y = 12.0, z =  0.0 },
+		[9]  = { x =  3.0, y = 13.5, z = -3.0 },
+		[10] = { x = -3.0, y = 13.5, z = -3.0 },
+		[11] = { x =  3.5, y = 15.0, z =  0.0 },
+		[12] = { x = -3.5, y = 15.0, z =  0.0 },
+		[13] = { x =  0.0, y = 16.5, z =  3.5 },
+		[14] = { x =  0.0, y = 16.5, z = -3.5 },
+		[15] = { x =  0.0, y = 18.5, z =  0.0 },
 	},
 	rayonDrop         = 3,
 	dureeDropSecondes = 15,
@@ -254,13 +258,14 @@ local function messageSacPlein(player, pData)
 
 	if niveauMax then
 		notifierJoueur(player, "INFO",
-			"Sac plein ! (" .. max .. "/" .. max .. ") — Dépose tes Brain Rots à la base")
+			"🎒 Sac plein ! (" .. max .. "/" .. max .. ") — Dépose tes Brain Rots à la base d'abord.")
 	else
-		local prochainMax  = CARRY_CONFIG.niveaux[niveau + 1]
-		local prix         = CARRY_CONFIG.prixUpgrade[niveau + 1] or 0
+		local prochainMax = CARRY_CONFIG.niveaux[niveau + 1]
+		local prix        = CARRY_CONFIG.prixUpgrade[niveau + 1] or 0
 		notifierJoueur(player, "INFO",
-			"Sac plein ! (" .. max .. "/" .. max .. ") — Upgrade disponible : "
-			.. prochainMax .. " slots pour " .. prix .. " coins")
+			"🎒 Sac plein ! (" .. max .. "/" .. max .. ") — "
+			.. "💡 Option : augmente ta capacité à " .. prochainMax .. " slots pour "
+			.. prix .. " coins au Shop !")
 	end
 end
 
@@ -275,8 +280,8 @@ local function detacherModele(entree)
 	end
 end
 
--- Logique commune : cloner depuis ServerStorage et attacher au joueur
-local function effectuerRamassage(player, rarete)
+-- Logique commune : utilise modeleExistant s'il est fourni, sinon clone depuis ServerStorage
+local function effectuerRamassage(player, rarete, modeleExistant)
 	local data = donneesJoueurs[player.UserId]
 	if not data then return false end
 
@@ -286,13 +291,24 @@ local function effectuerRamassage(player, rarete)
 		return false
 	end
 
-	local nomDossier   = rarete and rarete.dossier or "COMMON"
-	local modeleSource = choisirModele(nomDossier)
-	if not modeleSource then return false end
-
 	local clone
-	local ok = pcall(function() clone = modeleSource:Clone() end)
-	if not ok or not clone then return false end
+	if modeleExistant and modeleExistant.Parent then
+		clone = modeleExistant
+		-- Supprimer le billboard du monde et le ProximityPrompt s'ils existent encore
+		pcall(function()
+			for _, child in ipairs(clone:GetDescendants()) do
+				if child:IsA("BillboardGui") or child:IsA("ProximityPrompt") then
+					child:Destroy()
+				end
+			end
+		end)
+	else
+		local nomDossier   = rarete and rarete.dossier or "COMMON"
+		local modeleSource = choisirModele(nomDossier)
+		if not modeleSource then return false end
+		local ok = pcall(function() clone = modeleSource:Clone() end)
+		if not ok or not clone then return false end
+	end
 
 	local slotIndex = #data.portes + 1
 	local entree    = attacherModele(player, clone, slotIndex)
@@ -314,30 +330,44 @@ end
 --      → Appeler pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
 --        à la fin de spawnerUnBrainRot(), après l'animation de pousse de terre.
 
-local function creerPromptCapture(brModel, rarete)
+local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 	local cfg = CAPTURE_CONFIG[rarete.nom]
 	if not cfg or cfg.mode ~= "prompt" then
-		print("[CarrySystem][DEBUG] creerPromptCapture ignoré — mode:", rarete and rarete.nom)
 		return
 	end
 
 	local racine = obtenirRacine(brModel)
 	if not racine then
-		warn("[CarrySystem][DEBUG] creerPromptCapture — racine introuvable sur", brModel and brModel.Name)
+		warn("[CarrySystem] creerPromptCapture : racine introuvable sur", brModel and brModel.Name)
 		return
 	end
 
-	print("[CarrySystem][DEBUG] ProximityPrompt créé sur", brModel.Name, "racine=", racine.Name, "parent=", racine.Parent and racine.Parent.Name)
+	-- Ancre au centre du bounding box (Bug 2 : gros modèles comme LEGENDARY elephant)
+	local ancre = racine
+	if brModel:IsA("Model") then
+		local ok, cf = pcall(function() local c, _ = brModel:GetBoundingBox(); return c end)
+		if ok and cf then
+			local p = Instance.new("Part")
+			p.Name         = "PromptAnchor"
+			p.Size         = Vector3.new(0.1, 0.1, 0.1)
+			p.CFrame       = cf
+			p.Anchored     = true
+			p.CanCollide   = false
+			p.Transparency = 1
+			p.Parent       = brModel
+			ancre = p
+		end
+	end
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText            = cfg.actionText or "Capturer"
 	prompt.ObjectText            = brModel.Name or rarete.nom
 	prompt.HoldDuration          = cfg.holdDuration
-	prompt.MaxActivationDistance = 10
+	prompt.MaxActivationDistance = 20  -- Bug 2 : distance augmentée (était 10)
 	prompt.KeyboardKeyCode       = Enum.KeyCode.E
 	prompt.RequiresLineOfSight   = false
 	prompt.Style                 = Enum.ProximityPromptStyle.Default
-	prompt.Parent                = racine
+	prompt.Parent                = ancre
 
 	local holdingPlayer = nil  -- joueur en train de tenir le prompt
 	local nomModele     = brModel.Name
@@ -356,6 +386,18 @@ local function creerPromptCapture(brModel, rarete)
 
 	-- Début de hold
 	prompt.PromptButtonHoldBegan:Connect(function(player)
+		-- Bug 1 : vérification base (nil = ChampCommun, tout le monde peut capturer)
+		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
+			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
+				notifierJoueur(player, "INFO", "❌ Ce Brain Rot n'est pas dans ton champ !")
+				prompt.Enabled = false
+				task.delay(0.1, function()
+					if prompt and prompt.Parent then prompt.Enabled = true end
+				end)
+				return
+			end
+		end
+
 		-- Sac plein → interrompre immédiatement
 		local pData = donneesJoueurs[player.UserId]
 		local max   = pData and (CARRY_CONFIG.niveaux[pData.niveauCarry] or 1) or 1
@@ -402,6 +444,14 @@ local function creerPromptCapture(brModel, rarete)
 	prompt.Triggered:Connect(function(player)
 		if not brModel or not brModel.Parent then return end
 
+		-- Bug 1 : vérification base dans Triggered aussi
+		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
+			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
+				notifierJoueur(player, "INFO", "❌ Ce Brain Rot n'est pas dans ton champ !")
+				return
+			end
+		end
+
 		-- Double-check sac plein (cas rare où la capacité change pendant le hold)
 		local pData = donneesJoueurs[player.UserId]
 		local max   = pData and (CARRY_CONFIG.niveaux[pData.niveauCarry] or 1) or 1
@@ -413,13 +463,20 @@ local function creerPromptCapture(brModel, rarete)
 		prompt.Enabled = false
 		holdingPlayer  = nil
 
+		-- Marquer comme capturé pour que le despawn timer de BrainRotSpawner l'ignore
+		pcall(function() brModel:SetAttribute("Captured", true) end)
+
 		notifierTous("🏆 " .. player.Name .. " a attrapé [" .. nomModele .. "] " .. rarete.nom .. " !")
 
-		-- Détruire le modèle monde
-		pcall(function() brModel:Destroy() end)
-
-		-- Ramasser via la logique commune
-		effectuerRamassage(player, rarete)
+		-- Passer le modèle monde directement (pas de clone depuis ServerStorage)
+		local success = effectuerRamassage(player, rarete, brModel)
+		if success then
+			if onCapture then pcall(onCapture, player) end
+		else
+			-- Échec ramassage : re-permettre capture
+			pcall(function() brModel:SetAttribute("Captured", false) end)
+			if prompt and prompt.Parent then prompt.Enabled = true end
+		end
 	end)
 end
 
@@ -747,12 +804,12 @@ end
 
 -- Appelé depuis Main.server.lua via BrainRotSpawner.OnCollecte
 -- Pour les BRs en mode "touched" (COMMON / OG / RARE)
-function CarrySystem.RamasserBR(player, rarete)
+function CarrySystem.RamasserBR(player, rarete, brModel)
 	local cfg = CAPTURE_CONFIG[rarete and rarete.nom or "COMMON"]
 	if cfg and cfg.mode == "prompt" then
 		return false  -- géré par OnBRSpawned → ProximityPrompt
 	end
-	return effectuerRamassage(player, rarete)
+	return effectuerRamassage(player, rarete, brModel)
 end
 
 -- Appelé depuis Main.server.lua, connecté à BrainRotSpawner.OnBRSpawned.
@@ -765,15 +822,14 @@ end
 --        pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
 --    end
 --
-function CarrySystem.OnBRSpawned(brModel, baseIndex, rarete)
+function CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, onCapture)
 	if not rarete then
-		warn("[CarrySystem][DEBUG] OnBRSpawned — rarete nil")
+		warn("[CarrySystem] OnBRSpawned : rarete nil")
 		return
 	end
-	print("[CarrySystem][DEBUG] OnBRSpawned", brModel and brModel.Name, "rareté:", rarete.nom)
 	local cfg = CAPTURE_CONFIG[rarete.nom]
 	if cfg and cfg.mode == "prompt" then
-		creerPromptCapture(brModel, rarete)
+		creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 	end
 	-- mode "touched" : BrainRotSpawner gère via Touched + OnCollecte
 end

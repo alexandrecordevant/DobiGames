@@ -41,8 +41,9 @@ local RARITES = {
 }
 -- MYTHIC et SECRET exclus de ce script
 
--- Raretés collectées uniquement par ProximityPrompt (pas par Touched)
-local RARITES_PROMPT = { EPIC = true, LEGENDARY = true, BRAINROT_GOD = true }
+-- Toutes les raretés utilisent ProximityPrompt
+-- COMMON/OG/RARE → HoldDuration=0 (instantané), EPIC+ → hold progressif
+local RARITES_PROMPT = { COMMON = true, OG = true, RARE = true, EPIC = true, LEGENDARY = true, BRAINROT_GOD = true }
 
 local POIDS_TOTAL = 0
 for _, r in ipairs(RARITES) do
@@ -261,25 +262,28 @@ local function configurerCollecte(clone, baseIndex, rarete, id, parts)
 		actifs[baseIndex][id]    = nil
 		compteurs[baseIndex]     = math.max(0, compteurs[baseIndex] - 1)
 
-		-- Fade out + Size × 1.2
-		local info = TweenInfo.new(CONFIG.DUREE_FADE_OUT, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		for _, part in ipairs(parts) do
-			if part and part.Parent then
-				TweenService:Create(part, info, {
-					Transparency = 1,
-					Size         = part.Size * 1.2,
-				}):Play()
-			end
+		-- Callback global de collecte — AVANT le fade pour que CarrySystem puisse
+		-- récupérer le modèle monde directement. Retourne true si modèle pris en charge.
+		local modelePrisEnCharge = false
+		if BrainRotSpawner.OnCollecte then
+			local ok, res = pcall(BrainRotSpawner.OnCollecte, player, baseIndex, rarete, clone)
+			modelePrisEnCharge = ok and res == true
 		end
 
-		-- Destroy après le fade out
-		task.delay(CONFIG.DUREE_FADE_OUT + 0.1, function()
-			if clone and clone.Parent then clone:Destroy() end
-		end)
-
-		-- Callback global de collecte
-		if BrainRotSpawner.OnCollecte then
-			pcall(BrainRotSpawner.OnCollecte, player, baseIndex, rarete.nom)
+		-- Fade + destroy uniquement si le modèle n'est pas porté
+		if not modelePrisEnCharge then
+			local info = TweenInfo.new(CONFIG.DUREE_FADE_OUT, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			for _, part in ipairs(parts) do
+				if part and part.Parent then
+					TweenService:Create(part, info, {
+						Transparency = 1,
+						Size         = part.Size * 1.2,
+					}):Play()
+				end
+			end
+			task.delay(CONFIG.DUREE_FADE_OUT + 0.1, function()
+				if clone and clone.Parent then clone:Destroy() end
+			end)
 		end
 	end
 
@@ -353,16 +357,9 @@ local function spawnerUnBrainRot(baseIndex)
 	actifs[baseIndex][id]    = clone
 	compteurs[baseIndex]     = compteurs[baseIndex] + 1
 
-	-- Configurer la collecte par Touch (COMMON/OG/RARE uniquement)
-	-- EPIC+ utilisent un ProximityPrompt via OnBRSpawned → CarrySystem
-	local forceCollected
-	if RARITES_PROMPT[rarete.nom] then
-		-- Mode prompt : pas de Touched, juste un flag pour le despawn
-		local _c = false
-		forceCollected = function() _c = true end
-	else
-		forceCollected = configurerCollecte(clone, baseIndex, rarete, id, parts)
-	end
+	-- forceCollected sera assigné après l'animation (pour COMMON/OG/RARE)
+	-- afin d'éviter que le Touched fire pendant l'animation et crée un conflit Motor6D
+	local forceCollected = function() end  -- placeholder no-op
 
 	-- ══ ANIMATION "POUSSE DE TERRE" ══
 	-- Partir d'une taille microscopique, 2 studs sous la surface
@@ -413,10 +410,16 @@ local function spawnerUnBrainRot(baseIndex)
 			pcall(ajouterBillboard, racine, rarete.nom, modeleSource.Name)
 		end
 
-		-- Hook CarrySystem pour ProximityPrompt (EPIC+)
-		print("[BrainRotSpawner][DEBUG] OnBRSpawned hook ?", BrainRotSpawner.OnBRSpawned ~= nil, "| rareté:", rarete.nom)
-		if clone and clone.Parent and BrainRotSpawner.OnBRSpawned then
-			pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
+		-- Tous les BRs utilisent ProximityPrompt (COMMON HoldDuration=0, EPIC+ hold progressif)
+		-- Ancrer les parts pour qu'elles ne tombent pas (CanCollide=false + Anchored=false = chute)
+		-- attacherModele() remettra Anchored=false au moment du ramassage
+		if clone and clone.Parent then
+			for _, part in ipairs(parts) do
+				part.Anchored = true
+			end
+			if BrainRotSpawner.OnBRSpawned then
+				pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
+			end
 		end
 	end)
 
@@ -424,6 +427,11 @@ local function spawnerUnBrainRot(baseIndex)
 	task.delay(CONFIG.DUREE_DESPAWN, function()
 		if not clone or not clone.Parent then return end
 		if actifs[baseIndex][id] == nil then return end -- déjà collecté
+		if clone:GetAttribute("Captured") then          -- capturé via ProximityPrompt
+			actifs[baseIndex][id] = nil
+			compteurs[baseIndex]  = math.max(0, compteurs[baseIndex] - 1)
+			return
+		end
 
 		forceCollected()
 		actifs[baseIndex][id] = nil

@@ -33,8 +33,8 @@ local SPAWN_POINTS = {
 -- ============================================================
 local CONFIG = {
 	MYTHIC = {
-		intervalleSecondes   = 480,
-		compteurVisibleAvant = 180,
+		intervalleSecondes   = 20,
+		compteurVisibleAvant = 10,
 		valeur               = 300,
 		despawnSecondes      = 60,
 		couleur              = Color3.fromRGB(148, 0, 211),
@@ -43,8 +43,8 @@ local CONFIG = {
 		dossier              = "MYTHIC",
 	},
 	SECRET = {
-		intervalleSecondes   = 1200,
-		compteurVisibleAvant = 300,
+		intervalleSecondes   = 20,
+		compteurVisibleAvant = 10,
 		valeur               = 1000,
 		despawnSecondes      = 60,
 		couleur              = Color3.fromRGB(255, 30, 30),
@@ -155,7 +155,7 @@ local function creerBillboardPermanent(part, couleur)
 	local bb = Instance.new("BillboardGui")
 	bb.Name        = "ZoneBillboard"
 	bb.Size        = UDim2.new(0, 160, 0, 40)
-	bb.StudsOffset = Vector3.new(0, 6, 0)
+	bb.StudsOffset = Vector3.new(0, 10, 0)
 	bb.AlwaysOnTop = false
 	bb.Adornee     = part
 	bb.Parent      = part
@@ -276,7 +276,7 @@ local function creerCompteurBillboard(part, typeConfig, typeNom)
 	local bb = Instance.new("BillboardGui")
 	bb.Name        = "CompteurBillboard"
 	bb.Size        = UDim2.new(0, 200, 0, 80)
-	bb.StudsOffset = Vector3.new(0, 5, 0)
+	bb.StudsOffset = Vector3.new(0, 10, 0)
 	bb.AlwaysOnTop = false
 	bb.Adornee     = part
 	bb.Parent      = part
@@ -404,8 +404,8 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	-- ── Billboard sur le Brain Rot ────────────────────────────
 	local brBB = Instance.new("BillboardGui")
 	brBB.Name        = "BR_Label"
-	brBB.Size        = UDim2.new(0, 220, 0, 55)
-	brBB.StudsOffset = Vector3.new(0, 4, 0)
+	brBB.Size        = UDim2.new(0, 220, 0, 75)
+	brBB.StudsOffset = Vector3.new(0, 10, 0)
 	brBB.AlwaysOnTop = false
 	brBB.Adornee     = racine
 	brBB.Parent      = racine
@@ -420,7 +420,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	Instance.new("UICorner", brCadre).CornerRadius = UDim.new(0, 8)
 
 	local brLabel = Instance.new("TextLabel")
-	brLabel.Size                   = UDim2.new(1, 0, 1, 0)
+	brLabel.Size                   = UDim2.new(1, 0, 0.6, 0)
 	brLabel.BackgroundTransparency = 1
 	brLabel.Text                   = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
 	brLabel.Font                   = Enum.Font.GothamBold
@@ -433,30 +433,48 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	stroke.Thickness = 1.5
 	stroke.Parent    = brLabel
 
-	-- ── Touch detection (premier à toucher gagne) ─────────────
+	-- Timer "avant disparition"
+	local labelTimer = Instance.new("TextLabel")
+	labelTimer.Size                   = UDim2.new(1, 0, 0.4, 0)
+	labelTimer.Position               = UDim2.new(0, 0, 0.6, 0)
+	labelTimer.BackgroundTransparency = 1
+	labelTimer.Font                   = Enum.Font.GothamBold
+	labelTimer.TextColor3             = Color3.new(1, 1, 0)
+	labelTimer.TextScaled             = true
+	labelTimer.Text                   = "⏳ " .. typeConfig.despawnSecondes .. "s"
+	labelTimer.Parent                 = brCadre
+
+	local strokeTimer = Instance.new("UIStroke")
+	strokeTimer.Color     = Color3.new(0, 0, 0)
+	strokeTimer.Thickness = 1.5
+	strokeTimer.Parent    = labelTimer
+
+	-- ── ProximityPrompt via CarrySystem (Bug 3) ───────────────
 	local collected = false
 
-	local function onTouched(hit)
-		if collected then return end
-
-		local character = hit.Parent
-		local player    = Players:GetPlayerFromCharacter(character)
-		if not player then
-			character = hit.Parent and hit.Parent.Parent
-			player    = character and Players:GetPlayerFromCharacter(character)
+	-- Countdown "avant disparition" — mis à jour chaque seconde
+	task.spawn(function()
+		local restant = typeConfig.despawnSecondes
+		while not collected and restant > 0 and labelTimer and labelTimer.Parent do
+			task.wait(1)
+			restant = restant - 1
+			if labelTimer and labelTimer.Parent then
+				if restant <= 10 then
+					labelTimer.TextColor3 = Color3.new(1, 0.2, 0.2) -- rouge urgent
+				end
+				labelTimer.Text = "⏳ " .. restant .. "s"
+			end
 		end
-		if not player then return end
+	end)
 
-		collected = true
-		fadeOut(parts, 0.3, function()
-			if clone and clone.Parent then clone:Destroy() end
+	-- Appeler le hook OnBRSpawned pour créer le ProximityPrompt via CarrySystem
+	-- Le callback est appelé quand un joueur capture le BR
+	if ChampCommunSpawner.OnBRSpawned then
+		pcall(ChampCommunSpawner.OnBRSpawned, clone, typeNom, function(player)
+			if collected then return end
+			collected = true
+			onFin(player, true, modeleSource.Name)
 		end)
-
-		onFin(player, true, modeleSource.Name)
-	end
-
-	for _, part in ipairs(parts) do
-		part.Touched:Connect(onTouched)
 	end
 
 	-- ── Despawn automatique ───────────────────────────────────
@@ -639,6 +657,10 @@ end
 -- Callback collecte — à assigner depuis Main.server.lua :
 -- ChampCommunSpawner.OnCollecte = function(player, rarete) end
 ChampCommunSpawner.OnCollecte = nil
+
+-- Hook ProximityPrompt — à assigner depuis Main.server.lua :
+-- ChampCommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture) end
+ChampCommunSpawner.OnBRSpawned = nil
 
 function ChampCommunSpawner.Init()
 	initialiserEffetsPermanents()
