@@ -20,6 +20,7 @@ local EventManager          = require(ServerScriptService.EventManager)
 local MonetizationHandler   = require(ServerScriptService.MonetizationHandler)
 local BrainRotSpawner       = require(ServerScriptService.BrainRotSpawner)
 local BaseProgressionSystem = require(ServerScriptService.BaseProgressionSystem)
+local CarrySystem           = require(ServerScriptService.CarrySystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -98,6 +99,9 @@ local function OnPlayerAdded(player)
     if baseIndex then
         BaseProgressionSystem.Init(player, baseIndex, data)
         BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+        -- Créer les ProximityPrompts de dépôt sur les spots actifs
+        local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
+        CarrySystem.InitDepotSpotsBase(player, spotsActifs)
     end
 
     -- Lancer auto-save
@@ -225,6 +229,18 @@ end
 
 -- Spawn des collectibles sur la map
 BrainRotSpawner.Init()
+
+-- Hook CarrySystem → ProximityPrompt pour les BRs EPIC+
+BrainRotSpawner.OnBRSpawned = function(brModel, baseIndex, rarete)
+    CarrySystem.OnBRSpawned(brModel, baseIndex, rarete)
+end
+
+-- Collecte Touched (COMMON/OG/RARE) → ramassage carry
+BrainRotSpawner.OnCollecte = function(player, baseIndex, rarete)
+    CarrySystem.RamasserBR(player, rarete)
+end
+
+CarrySystem.Init()
 
 -- ChampCommun (MYTHIC + SECRET)
 local ChampCommunSpawner = require(ServerScriptService.ChampCommunSpawner)

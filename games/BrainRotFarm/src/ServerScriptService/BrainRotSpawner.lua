@@ -32,14 +32,17 @@ local CONFIG = {
 -- Constantes — Raretés (champs individuels uniquement)
 -- ============================================================
 local RARITES = {
-	{ nom = "COMMON",       poids = 55.0,  dossier = "COMMON"       },
-	{ nom = "OG",           poids = 22.0,  dossier = "OG"           },
-	{ nom = "RARE",         poids = 13.0,  dossier = "RARE"         },
-	{ nom = "EPIC",         poids = 7.0,   dossier = "EPIC"         },
-	{ nom = "LEGENDARY",    poids = 2.8,   dossier = "LEGENDARY"    },
-	{ nom = "BRAINROT_GOD", poids = 0.2,   dossier = "BRAINROT_GOD" },
+	{ nom = "COMMON",       poids = 5.0,   dossier = "COMMON"       },  -- DEBUG réduit
+	{ nom = "OG",           poids = 2.0,   dossier = "OG"           },  -- DEBUG réduit
+	{ nom = "RARE",         poids = 1.0,   dossier = "RARE"         },  -- DEBUG réduit
+	{ nom = "EPIC",         poids = 70.0,  dossier = "EPIC"         },  -- DEBUG boosté
+	{ nom = "LEGENDARY",    poids = 14.0,  dossier = "LEGENDARY"    },  -- DEBUG boosté
+	{ nom = "BRAINROT_GOD", poids = 8.0,   dossier = "BRAINROT_GOD" },  -- DEBUG boosté
 }
 -- MYTHIC et SECRET exclus de ce script
+
+-- Raretés collectées uniquement par ProximityPrompt (pas par Touched)
+local RARITES_PROMPT = { EPIC = true, LEGENDARY = true, BRAINROT_GOD = true }
 
 local POIDS_TOTAL = 0
 for _, r in ipairs(RARITES) do
@@ -350,8 +353,16 @@ local function spawnerUnBrainRot(baseIndex)
 	actifs[baseIndex][id]    = clone
 	compteurs[baseIndex]     = compteurs[baseIndex] + 1
 
-	-- Configurer la collecte par Touch (dès maintenant, avant l'animation)
-	local forceCollected = configurerCollecte(clone, baseIndex, rarete, id, parts)
+	-- Configurer la collecte par Touch (COMMON/OG/RARE uniquement)
+	-- EPIC+ utilisent un ProximityPrompt via OnBRSpawned → CarrySystem
+	local forceCollected
+	if RARITES_PROMPT[rarete.nom] then
+		-- Mode prompt : pas de Touched, juste un flag pour le despawn
+		local _c = false
+		forceCollected = function() _c = true end
+	else
+		forceCollected = configurerCollecte(clone, baseIndex, rarete, id, parts)
+	end
 
 	-- ══ ANIMATION "POUSSE DE TERRE" ══
 	-- Partir d'une taille microscopique, 2 studs sous la surface
@@ -400,6 +411,12 @@ local function spawnerUnBrainRot(baseIndex)
 		-- Billboard affiché uniquement après que le BR soit sorti de terre
 		if clone and clone.Parent then
 			pcall(ajouterBillboard, racine, rarete.nom, modeleSource.Name)
+		end
+
+		-- Hook CarrySystem pour ProximityPrompt (EPIC+)
+		print("[BrainRotSpawner][DEBUG] OnBRSpawned hook ?", BrainRotSpawner.OnBRSpawned ~= nil, "| rareté:", rarete.nom)
+		if clone and clone.Parent and BrainRotSpawner.OnBRSpawned then
+			pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
 		end
 	end)
 
@@ -521,7 +538,8 @@ end
 
 -- Callback collecte — à assigner depuis Main.server.lua :
 -- BrainRotSpawner.OnCollecte = function(player, baseIndex, rarete) end
-BrainRotSpawner.OnCollecte = nil
+BrainRotSpawner.OnCollecte  = nil
+BrainRotSpawner.OnBRSpawned = nil  -- hook CarrySystem (ProximityPrompt EPIC+)
 
 -- Libération automatique à la déconnexion
 Players.PlayerRemoving:Connect(function(player)
