@@ -9,6 +9,9 @@
             },
             "Specialized": {
                 "$path": "src/ReplicatedStorage/Specialized"
+            },
+            "Test": {
+                "$path": "src/ReplicatedStorage/Test"
             }
         },
         "ServerScriptService": {

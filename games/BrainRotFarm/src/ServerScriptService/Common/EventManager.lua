@@ -2,6 +2,18 @@
 local EventManager = {}
 local Config        = require(game.ReplicatedStorage.Specialized.GameConfig)
 local CollectSystem = require(game.ReplicatedStorage.Common.CollectSystem)
+
+-- TEST_MODE : intervalles réduits pour valider le flow en studio
+local _TestConfig = Config.TEST_MODE
+    and require(game.ReplicatedStorage.Test.TestConfig)
+    or nil
+
+local function GetConfig(nomValeur, valeurNormale)
+    if _TestConfig and _TestConfig[nomValeur] ~= nil then
+        return _TestConfig[nomValeur]
+    end
+    return valeurNormale
+end
 local Players       = game:GetService("Players")
 local HttpService   = game:GetService("HttpService")
 
@@ -26,11 +38,13 @@ local function EnvoyerDiscord(titre, message)
 end
 
 local function DemarrerEvent(typeEvent)
+    -- En TEST_MODE : durée de l'event réduite (EventDureeMinutes = 0.1 → 6s)
+    local dureeEvent = GetConfig("EventDureeMinutes", 5) * 60
     local configs = {
-        LuckyHour   = { mult=10, duree=300, msg="⭐ LUCKY HOUR ! Spawn ×10 pendant 5 min !"   },
-        MeteorDrop  = { mult=20, duree=120, msg="☄️ METEOR DROP ! Rares tombent du ciel !"     },
-        DoubleCoins = { mult=5,  duree=180, msg="💰 DOUBLE COINS ! ×5 pendant 3 min !"         },
-        SecretSpawn = { mult=1,  duree=60,  msg="🔴 SECRET SPAWN ! " .. Config.CollectibleName .. " ultra-rare !" },
+        LuckyHour   = { mult=10, duree=dureeEvent, msg="⭐ LUCKY HOUR ! Spawn ×10 !"                                },
+        MeteorDrop  = { mult=20, duree=dureeEvent, msg="☄️ METEOR DROP ! Rares tombent du ciel !"                   },
+        DoubleCoins = { mult=5,  duree=dureeEvent, msg="💰 DOUBLE COINS ! ×5 !"                                     },
+        SecretSpawn = { mult=1,  duree=dureeEvent, msg="🔴 SECRET SPAWN ! " .. Config.CollectibleName .. " rare !" },
     }
     local cfg = configs[typeEvent]
     if not cfg then return end
@@ -46,8 +60,9 @@ local function DemarrerEvent(typeEvent)
 end
 
 local function BoucleAuto()
-    local intervalle   = Config.EventIntervalleMinutes * 60
-    local earlyBird    = Config.EarlyBirdBonusMinutes * 60
+    local intervalle   = GetConfig("EventIntervalleMinutes", Config.EventIntervalleMinutes) * 60
+    -- En test l'earlyBird est ignoré (intervalle trop court pour avoir un pre-avis)
+    local earlyBird    = Config.TEST_MODE and 0 or (Config.EarlyBirdBonusMinutes * 60)
     local types        = { "LuckyHour", "MeteorDrop", "DoubleCoins", "SecretSpawn" }
     while true do
         task.wait(intervalle - earlyBird)

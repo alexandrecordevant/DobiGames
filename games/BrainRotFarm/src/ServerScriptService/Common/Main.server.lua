@@ -396,4 +396,13 @@ EventManager.Init()
 -- Initialiser AssignationSystem (connecte PlayerRemoving, assigne joueurs déjà présents)
 AssignationSystem.Init()
 
+-- Démarrer TestRunner si TEST_MODE actif (aucun overhead si false)
+if Config.TEST_MODE then
+    local ok, TestRunner = pcall(require, ReplicatedStorage.Test.TestRunner)
+    if ok and TestRunner then
+        task.spawn(TestRunner.Init)
+    end
+    warn("⚠️  TEST_MODE ACTIVÉ — Désactiver GameConfig.TEST_MODE avant publish !")
+end
+
 print("[" .. Config.NomDuJeu .. "] 🚀 Serveur démarré · " .. os.date("%d/%m/%Y %H:%M"))

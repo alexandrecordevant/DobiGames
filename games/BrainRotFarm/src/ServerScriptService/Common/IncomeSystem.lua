@@ -12,18 +12,27 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 -- ============================================================
+-- TEST_MODE — multiplicateur income ×100 pour accélérer la progression
+-- ============================================================
+local _GameConfig  = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _TestConfig  = _GameConfig.TEST_MODE
+    and require(game.ReplicatedStorage.Test.TestConfig)
+    or nil
+local _testIncomeMult = (_TestConfig and _TestConfig.IncomeMultiplier) or 1
+
+-- ============================================================
 -- Valeur de base par rareté (coins/sec par Brain Rot déposé)
--- Décision : valeurs ajustées pour une économie saine sur 2-4h de jeu
+-- Multipliée par _testIncomeMult en TEST_MODE (×100)
 -- ============================================================
 local INCOME_PAR_RARETE = {
-    COMMON       = 1,
-    OG           = 3,
-    RARE         = 8,
-    EPIC         = 20,
-    LEGENDARY    = 60,
-    MYTHIC       = 200,
-    SECRET       = 500,
-    BRAINROT_GOD = 2000,
+    COMMON       = 1    * _testIncomeMult,
+    OG           = 3    * _testIncomeMult,
+    RARE         = 8    * _testIncomeMult,
+    EPIC         = 20   * _testIncomeMult,
+    LEGENDARY    = 60   * _testIncomeMult,
+    MYTHIC       = 200  * _testIncomeMult,
+    SECRET       = 500  * _testIncomeMult,
+    BRAINROT_GOD = 2000 * _testIncomeMult,
 }
 
 -- ============================================================

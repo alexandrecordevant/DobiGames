@@ -19,6 +19,22 @@ local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 -- ============================================================
 local DiscordWebhook = require(ServerScriptService:WaitForChild("Common"):WaitForChild("DiscordWebhook"))
 
+-- Configuration TEST_MODE
+local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _TestConfig = _GameConfig.TEST_MODE
+    and require(game.ReplicatedStorage.Test.TestConfig)
+    or nil
+
+-- Retourne la config ChampCommun (TestConfig ou valeur par défaut)
+local function GetChampCommunCfg(typeNom, champKey, valeurNormale)
+    if _TestConfig and _TestConfig.ChampCommun
+        and _TestConfig.ChampCommun[typeNom]
+        and _TestConfig.ChampCommun[typeNom][champKey] ~= nil then
+        return _TestConfig.ChampCommun[typeNom][champKey]
+    end
+    return valeurNormale
+end
+
 -- ============================================================
 -- Points de spawn fixes
 -- ============================================================
@@ -33,8 +49,8 @@ local SPAWN_POINTS = {
 -- ============================================================
 local CONFIG = {
 	MYTHIC = {
-		intervalleSecondes   = 20,
-		compteurVisibleAvant = 10,
+		intervalleSecondes   = GetChampCommunCfg("MYTHIC", "intervalleSecondes",   8 * 60),
+		compteurVisibleAvant = GetChampCommunCfg("MYTHIC", "compteurVisibleAvant", 3 * 60),
 		valeur               = 300,
 		despawnSecondes      = 60,
 		couleur              = Color3.fromRGB(148, 0, 211),
@@ -43,8 +59,8 @@ local CONFIG = {
 		dossier              = "MYTHIC",
 	},
 	SECRET = {
-		intervalleSecondes   = 20,
-		compteurVisibleAvant = 10,
+		intervalleSecondes   = GetChampCommunCfg("SECRET", "intervalleSecondes",   20 * 60),
+		compteurVisibleAvant = GetChampCommunCfg("SECRET", "compteurVisibleAvant",  5 * 60),
 		valeur               = 1000,
 		despawnSecondes      = 60,
 		couleur              = Color3.fromRGB(255, 30, 30),

@@ -11,6 +11,21 @@ local CarrySystem = {}
 CarrySystem.GetBaseJoueur = nil
 
 -- ============================================================
+-- TEST_MODE — capacité et prix upgrades réduits
+-- ============================================================
+local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _TestConfig = _GameConfig.TEST_MODE
+    and require(game.ReplicatedStorage.Test.TestConfig)
+    or nil
+
+local function GetConfig(nomValeur, valeurNormale)
+    if _TestConfig and _TestConfig[nomValeur] ~= nil then
+        return _TestConfig[nomValeur]
+    end
+    return valeurNormale
+end
+
+-- ============================================================
 -- Services
 -- ============================================================
 local Players           = game:GetService("Players")
@@ -23,15 +38,24 @@ local Debris            = game:GetService("Debris")
 -- ============================================================
 -- Configuration capture hybride
 -- ============================================================
+-- HoldDuration réduit en TEST_MODE pour accélérer les captures
+local function getHold(rarete, holdNormal)
+    if _TestConfig and _TestConfig.CaptureConfig
+        and _TestConfig.CaptureConfig[rarete] then
+        return _TestConfig.CaptureConfig[rarete].holdDuration
+    end
+    return holdNormal
+end
+
 local CAPTURE_CONFIG = {
-	COMMON       = { mode = "prompt",  holdDuration = 0,   actionText = "Ramasser"           },
-	OG           = { mode = "prompt",  holdDuration = 0,   actionText = "Ramasser !"         },
-	RARE         = { mode = "prompt",  holdDuration = 0,   actionText = "🌟 Saisir !"        },
-	EPIC         = { mode = "prompt",  holdDuration = 0.5, actionText = "Capturer"           },
-	LEGENDARY    = { mode = "prompt",  holdDuration = 1.5, actionText = "Saisir !"           },
-	MYTHIC       = { mode = "prompt",  holdDuration = 3.0, actionText = "⚡ Attraper !!"     },
-	SECRET       = { mode = "prompt",  holdDuration = 5.0, actionText = "🔴 Capturer !!!"   },
-	BRAINROT_GOD = { mode = "prompt",  holdDuration = 8.0, actionText = "👑 LÉGENDAIRE !!!" },
+	COMMON       = { mode = "prompt",  holdDuration = getHold("COMMON",       0  ), actionText = "Ramasser"           },
+	OG           = { mode = "prompt",  holdDuration = getHold("OG",           0  ), actionText = "Ramasser !"         },
+	RARE         = { mode = "prompt",  holdDuration = getHold("RARE",         0  ), actionText = "🌟 Saisir !"        },
+	EPIC         = { mode = "prompt",  holdDuration = getHold("EPIC",         0.5), actionText = "Capturer"           },
+	LEGENDARY    = { mode = "prompt",  holdDuration = getHold("LEGENDARY",    1.5), actionText = "Saisir !"           },
+	MYTHIC       = { mode = "prompt",  holdDuration = getHold("MYTHIC",       3.0), actionText = "⚡ Attraper !!"     },
+	SECRET       = { mode = "prompt",  holdDuration = getHold("SECRET",       5.0), actionText = "🔴 Capturer !!!"   },
+	BRAINROT_GOD = { mode = "prompt",  holdDuration = getHold("BRAINROT_GOD", 8.0), actionText = "👑 LÉGENDAIRE !!!" },
 }
 
 -- Valeur estimée par rareté (pour l'affichage du texte de dépôt)
@@ -46,17 +70,19 @@ local VALEURS_PAR_RARETE = {
 	BRAINROT_GOD = 500,
 }
 
+local _carryPrix = GetConfig("CarryPrixUpgrade", { [1]=1000, [2]=5000, [3]=0 })
+
 local CARRY_CONFIG = {
 	niveaux = {
-		[0] = 3,  -- défaut : 3 BR
+		[0] = GetConfig("CarryCapaciteDefaut", 3),  -- défaut : 3 BR (5 en test)
 		[1] = 5,
 		[2] = 8,
-		[3] = 15, -- VIP uniquement
+		[3] = 15,  -- VIP uniquement
 	},
 	prixUpgrade = {
-		[1] = 1000,
-		[2] = 5000,
-		[3] = 0,    -- VIP
+		[1] = _carryPrix[1],  -- 1 coin en test, 1000 en prod
+		[2] = _carryPrix[2],
+		[3] = _carryPrix[3],
 	},
 	-- Offsets {x, y, z} par slot — spirale étagée autour du joueur
 	slotOffsets = {

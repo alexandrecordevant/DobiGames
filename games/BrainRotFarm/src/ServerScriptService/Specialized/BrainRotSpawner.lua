@@ -13,13 +13,25 @@ local ServerStorage  = game:GetService("ServerStorage")
 local Workspace      = game:GetService("Workspace")
 
 -- ============================================================
--- Configuration
+-- Configuration — TEST_MODE applique les valeurs de TestConfig
 -- ============================================================
+local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _TestConfig = _GameConfig.TEST_MODE
+    and require(game.ReplicatedStorage.Test.TestConfig)
+    or nil
+
+local function GetConfig(nomValeur, valeurNormale)
+    if _TestConfig and _TestConfig[nomValeur] ~= nil then
+        return _TestConfig[nomValeur]
+    end
+    return valeurNormale
+end
+
 local CONFIG = {
-	INTERVALLE_SPAWN_DEFAUT = 4,   -- secondes entre deux spawns par base
-	DUREE_FADE_OUT          = 0.3, -- durée du fade out collecte/despawn (s)
-	DUREE_DESPAWN           = 30,  -- durée de vie d'un BR non collecté (s)
-	MAX_PAR_BASE            = 15,  -- collectibles actifs max par base
+	INTERVALLE_SPAWN_DEFAUT = GetConfig("BaseSpawnRate", 4),    -- secondes entre spawns
+	DUREE_FADE_OUT          = 0.3,                              -- durée fade out (s)
+	DUREE_DESPAWN           = GetConfig("DESPAWN_SECONDES", 30), -- durée de vie BR (s)
+	MAX_PAR_BASE            = GetConfig("MAX_BRAINROTS_MAP", 15), -- max actifs par base
 	Y_OFFSET                = 2,   -- studs au-dessus de la moyenne Y des murs
 	NETTOYAGE_ITERATIONS    = 15,  -- nettoyage de la liste toutes les N itérations
 	-- Pousse de terre

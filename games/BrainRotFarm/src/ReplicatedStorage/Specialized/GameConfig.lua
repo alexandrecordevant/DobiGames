@@ -3,6 +3,12 @@
 
 local GameConfig = {}
 
+-- ═══════════════════════════════════════════
+-- MODE TEST
+-- ⚠️ METTRE À false AVANT PUBLISH
+-- ═══════════════════════════════════════════
+GameConfig.TEST_MODE = true
+
 -- === IDENTITÉ DU JEU ===
 GameConfig.NomDuJeu          = "Brain Rot Farm"
 GameConfig.Theme             = "farm"

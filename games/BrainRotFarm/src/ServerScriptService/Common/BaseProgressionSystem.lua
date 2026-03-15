@@ -17,7 +17,12 @@ local Workspace         = game:GetService("Workspace")
 local Config     = require(ReplicatedStorage.Specialized.GameConfig)
 local ProgConfig = Config.ProgressionConfig
 
-local SEUILS = ProgConfig.seuils
+-- En TEST_MODE : seuils réduits pour valider les 40 déblocages rapidement
+local _TestConfig = Config.TEST_MODE
+    and require(ReplicatedStorage.Test.TestConfig)
+    or nil
+
+local SEUILS = (_TestConfig and _TestConfig.SeuilsTest) or ProgConfig.seuils
 local FLOORS = ProgConfig.floors  -- { index, nom, type, spots }
 
 -- Retourne le nom Studio d'un floor à partir de son index
