@@ -106,4 +106,10 @@ TestConfig.CaptureConfig = {
     BRAINROT_GOD = { holdDuration = 1.0 },
 }
 
+-- === AUTO-RESET À LA CONNEXION ===
+-- Si true : efface le DataStore de chaque joueur qui se connecte (sans kick)
+-- Les données vides sont chargées immédiatement → parfait pour tester depuis zéro
+-- ⚠️ Remettre à false si tu veux tester la persistance (étape 14)
+TestConfig.AutoResetOnJoin = true
+
 return TestConfig

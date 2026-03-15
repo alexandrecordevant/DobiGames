@@ -412,11 +412,15 @@ LeaderboardSystem.Init()
 ShopSystem.GetPlayerData = GetData
 ShopSystem.Init()
 
--- Démarrer TestRunner si TEST_MODE actif (aucun overhead si false)
+-- Démarrer TestRunner + ResetSystem si TEST_MODE actif (aucun overhead si false)
 if Config.TEST_MODE then
     local ok, TestRunner = pcall(require, ReplicatedStorage.Test.TestRunner)
     if ok and TestRunner then
         task.spawn(TestRunner.Init)
+    end
+    local okRS, ResetSystem = pcall(require, ReplicatedStorage.Test.ResetSystem)
+    if okRS and ResetSystem then
+        pcall(ResetSystem.Init)
     end
     warn("⚠️  TEST_MODE ACTIVÉ — Désactiver GameConfig.TEST_MODE avant publish !")
 end

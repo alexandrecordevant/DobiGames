@@ -45,6 +45,32 @@ end
 local PLAN_DE_TEST = {
 
     {
+        numero  = 0,
+        titre   = "RESET PROGRESSION (avant tout test)",
+        attente = 0,
+        instructions = {
+            "▶ Exécuter dans la console Studio (barre en bas de l'Output) :",
+            "",
+            "  -- Reset complet : efface DataStore + kick le joueur",
+            "  game.ReplicatedStorage:WaitForChild('DEBUG_Reset'):FireServer('joueur')",
+            "",
+            "  -- Reset DataStore seulement (pas de kick — nouvelles données au prochain chargement)",
+            "  game.ReplicatedStorage:WaitForChild('DEBUG_Reset'):FireServer('data')",
+            "",
+            "  -- Reset tous les joueurs connectés",
+            "  game.ReplicatedStorage:WaitForChild('DEBUG_Reset'):FireServer('tous')",
+            "",
+            "  -- Reset visuel de la base seulement (sans toucher au DataStore)",
+            "  game.ReplicatedStorage:WaitForChild('DEBUG_Reset'):FireServer('visuel')",
+            "",
+            "▶ OU : TestConfig.AutoResetOnJoin = true → reset auto à chaque connexion",
+            "       (désactiver pour tester la persistance — étape 14)",
+            "",
+            "✅ OBJECTIF : partir de zéro pour chaque run de test",
+        },
+    },
+
+    {
         numero  = 1,
         titre   = "ASSIGNATION BASE",
         attente = 2,
