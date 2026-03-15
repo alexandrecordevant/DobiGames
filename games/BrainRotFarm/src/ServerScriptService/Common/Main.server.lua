@@ -22,6 +22,9 @@ local BrainRotSpawner       = require(ServerScriptService.Specialized.BrainRotSp
 local BaseProgressionSystem = require(ServerScriptService.Common.BaseProgressionSystem)
 local CarrySystem           = require(ServerScriptService.Common.CarrySystem)
 local RebirthSystem         = require(ServerScriptService.Common.RebirthSystem)
+local AssignationSystem     = require(ServerScriptService.Common.AssignationSystem)
+local DropSystem            = require(ServerScriptService.Common.DropSystem)
+local IncomeSystem          = require(ServerScriptService.Common.IncomeSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -138,22 +141,39 @@ local function OnPlayerAdded(player)
     -- Charger données (avec calcul offline income)
     local data = DataStoreManager.Load(player)
     SetData(player, data)
-    
+
     -- Vérifier Game Passes
     MonetizationHandler.CheckGamePasses(player, data)
-    
+
     -- Envoyer HUD initial
     task.wait(1)  -- laisser le client charger
     UpdateHUD:FireClient(player, data)
 
-    -- Assigner une base et initialiser la progression visuelle
-    local baseIndex = BrainRotSpawner.AssignerBase(player)
+    -- Assigner une base (AssignationSystem remplace BrainRotSpawner.AssignerBase)
+    local baseIndex = AssignationSystem.AssignerJoueur(player)
     if baseIndex then
+        -- Informer BrainRotSpawner de la base assignée (pour le spawn des BRs dans le bon champ)
+        if BrainRotSpawner.SetBase then
+            BrainRotSpawner.SetBase(player, baseIndex)
+        elseif BrainRotSpawner.AssignerBase then
+            -- Compatibilité ascendante : BrainRotSpawner.AssignerBase peut toujours être appelé
+            -- avec baseIndex si la signature l'accepte, sinon on ignore
+            pcall(BrainRotSpawner.AssignerBase, player, baseIndex)
+        end
+
+        -- Initialiser la progression visuelle de la base
         BaseProgressionSystem.Init(player, baseIndex, data)
         BaseProgressionSystem.VerifierDeblocages(player, data)
+
         -- Créer les ProximityPrompts de dépôt sur les spots actifs
         local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
         CarrySystem.InitDepotSpotsBase(player, spotsActifs)
+
+        -- Restaurer les BR déposés et initialiser le système de dépôt
+        DropSystem.Init(player, baseIndex, data)
+
+        -- Lancer la boucle de revenus passifs
+        IncomeSystem.Init(player, function() return GetData(player) end)
 
         -- Initialiser le système de Rebirth
         RebirthSystem.Init(player, data, baseIndex)
@@ -167,21 +187,30 @@ local function OnPlayerAdded(player)
         end)
     end
 
-    -- Lancer auto-save
+    -- Lancer auto-save (inclut spotsOccupes synchronisé par IncomeSystem)
     DataStoreManager.StartAutoSave(player, function()
         return GetData(player)
     end)
-    
+
     print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " connecté (Tier " .. data.tier .. ", Prestige " .. data.prestige .. ")")
 end
 
 local function OnPlayerRemoving(player)
+    -- Arrêter la boucle income avant la sauvegarde (évite les doublons de +coins)
+    IncomeSystem.Stop(player)
+
     local data = GetData(player)
     if data then
+        -- Synchroniser spotsOccupes une dernière fois avant sauvegarde
+        local spotsSerial = DropSystem.GetSpotsOccupesSerialisables(player)
+        data.spotsOccupes = spotsSerial
+
         DataStoreManager.Save(player, data)
         playerDataCache[player.UserId] = nil
         BaseProgressionSystem.Reset(player)
         RebirthSystem.Reset(player)
+        DropSystem.Stop(player)
+        AssignationSystem.LibererBase(player)
         print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " sauvegardé et déconnecté")
     end
 end
@@ -306,8 +335,8 @@ BrainRotSpawner.OnCollecte = function(player, baseIndex, rarete, brModel)
     return CarrySystem.RamasserBR(player, rarete, brModel)
 end
 
--- Bug 1 : permettre à CarrySystem de vérifier la base du joueur pour bloquer la capture chez l'adversaire
-CarrySystem.GetBaseJoueur = function(player) return BrainRotSpawner.GetBase(player) end
+-- CarrySystem utilise AssignationSystem comme source de vérité pour la base du joueur
+CarrySystem.GetBaseJoueur = function(player) return AssignationSystem.GetBaseIndex(player) end
 CarrySystem.Init()
 
 -- ChampCommun (MYTHIC + SECRET)
@@ -351,6 +380,20 @@ BrainrotReward.Event:Connect(function(player, montant, rarete)
 end)
 
 -- Démarrer les events automatiques (Admin Abuse, Lucky Hour...)
+-- Hook EventManager → IncomeSystem pour appliquer le multiplicateur event
+if EventManager.OnEventStart then
+    EventManager.OnEventStart = function(multiplier)
+        IncomeSystem.SetEventMultiplier(multiplier or Config.EventSpawnMultiplier)
+    end
+end
+if EventManager.OnEventEnd then
+    EventManager.OnEventEnd = function()
+        IncomeSystem.SetEventMultiplier(1)
+    end
+end
 EventManager.Init()
+
+-- Initialiser AssignationSystem (connecte PlayerRemoving, assigne joueurs déjà présents)
+AssignationSystem.Init()
 
 print("[" .. Config.NomDuJeu .. "] 🚀 Serveur démarré · " .. os.date("%d/%m/%Y %H:%M"))

@@ -13,6 +13,7 @@ local function DefaultData()
         stats={ sessionsCount=0, totalHeuresJeu=0 },
         -- Progression base
         progression={},
+        spotsOccupes={},
         -- Rebirth
         rebirthLevel=0,
         multiplicateurPermanent=1.0,
