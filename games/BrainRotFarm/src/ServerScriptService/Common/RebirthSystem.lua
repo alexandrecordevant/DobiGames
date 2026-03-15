@@ -18,7 +18,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- Dépendances
 -- ============================================================
 local DiscordWebhook         = require(ServerScriptService:WaitForChild("Common"):WaitForChild("DiscordWebhook"))
-local BaseProgressionSystem  = require(ServerScriptService:WaitForChild("Specialized"):WaitForChild("BaseProgressionSystem"))
+local BaseProgressionSystem  = require(ServerScriptService:WaitForChild("Common"):WaitForChild("BaseProgressionSystem"))
 
 -- ============================================================
 -- Configuration des Rebirths

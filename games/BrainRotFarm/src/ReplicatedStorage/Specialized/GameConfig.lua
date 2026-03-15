@@ -68,4 +68,71 @@ GameConfig.SonUpgrade  = 0
 -- === BADGE ===
 GameConfig.BadgePremierPrestige = 0
 
+-- === PROGRESSION BASE ===
+-- Lu par BaseProgressionSystem (Common) — ne pas modifier les clés
+GameConfig.ProgressionConfig = {
+
+    -- Structure des floors
+    -- ATTENTION : Floor 1 a un double espace dans son nom Studio
+    floors = {
+        { index = 1, nom = "Floor  1", type = "Part",  spots = 10 },
+        { index = 2, nom = "Floor 2",  type = "Model", spots = 10 },
+        { index = 3, nom = "Floor 3",  type = "Model", spots = 10 },
+        { index = 4, nom = "Floor 4",  type = "Model", spots = 10 },
+    },
+
+    -- Seuils de déblocage (coins TOTAUX gagnés, pas le solde actuel)
+    -- { floor=X, spot=Y, coins=Z, label="texte affiché" }
+    seuils = {
+        -- Floor 1
+        { floor=1, spot=1,  coins=0,      label="Départ"        },
+        { floor=1, spot=2,  coins=0,      label="Départ"        },
+        { floor=1, spot=3,  coins=50,     label="50 coins"      },
+        { floor=1, spot=4,  coins=100,    label="100 coins"     },
+        { floor=1, spot=5,  coins=200,    label="200 coins"     },
+        { floor=1, spot=6,  coins=350,    label="350 coins"     },
+        { floor=1, spot=7,  coins=500,    label="500 coins"     },
+        { floor=1, spot=8,  coins=750,    label="750 coins"     },
+        { floor=1, spot=9,  coins=1000,   label="1 000 coins"   },
+        { floor=1, spot=10, coins=1500,   label="1 500 coins"   },
+        -- Floor 2
+        { floor=2, spot=1,  coins=2000,   label="Étage 2"       },
+        { floor=2, spot=2,  coins=2500,   label="2 500 coins"   },
+        { floor=2, spot=3,  coins=3000,   label="3 000 coins"   },
+        { floor=2, spot=4,  coins=3500,   label="3 500 coins"   },
+        { floor=2, spot=5,  coins=4000,   label="4 000 coins"   },
+        { floor=2, spot=6,  coins=5000,   label="5 000 coins"   },
+        { floor=2, spot=7,  coins=6000,   label="6 000 coins"   },
+        { floor=2, spot=8,  coins=7000,   label="7 000 coins"   },
+        { floor=2, spot=9,  coins=8000,   label="8 000 coins"   },
+        { floor=2, spot=10, coins=10000,  label="10 000 coins"  },
+        -- Floor 3
+        { floor=3, spot=1,  coins=15000,  label="Étage 3"       },
+        { floor=3, spot=2,  coins=18000,  label="18 000 coins"  },
+        { floor=3, spot=3,  coins=21000,  label="21 000 coins"  },
+        { floor=3, spot=4,  coins=25000,  label="25 000 coins"  },
+        { floor=3, spot=5,  coins=30000,  label="30 000 coins"  },
+        { floor=3, spot=6,  coins=35000,  label="35 000 coins"  },
+        { floor=3, spot=7,  coins=40000,  label="40 000 coins"  },
+        { floor=3, spot=8,  coins=45000,  label="45 000 coins"  },
+        { floor=3, spot=9,  coins=50000,  label="50 000 coins"  },
+        { floor=3, spot=10, coins=60000,  label="60 000 coins"  },
+        -- Floor 4
+        { floor=4, spot=1,  coins=80000,  label="Étage 4"       },
+        { floor=4, spot=2,  coins=90000,  label="90 000 coins"  },
+        { floor=4, spot=3,  coins=100000, label="100 000 coins" },
+        { floor=4, spot=4,  coins=120000, label="120 000 coins" },
+        { floor=4, spot=5,  coins=140000, label="140 000 coins" },
+        { floor=4, spot=6,  coins=160000, label="160 000 coins" },
+        { floor=4, spot=7,  coins=180000, label="180 000 coins" },
+        { floor=4, spot=8,  coins=200000, label="200 000 coins" },
+        { floor=4, spot=9,  coins=250000, label="250 000 coins" },
+        { floor=4, spot=10, coins=300000, label="300 000 coins" },
+    },
+
+    -- true = progression basée sur les coins TOTAUX gagnés (jamais régressif)
+    -- false = progression basée sur le solde actuel (peut régresser si coins dépensés)
+    baseSurTotalGagne = true,
+}
+
 return GameConfig

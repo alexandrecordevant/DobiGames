@@ -19,7 +19,7 @@ local DataStoreManager      = require(ServerScriptService.Common.DataStoreManage
 local EventManager          = require(ServerScriptService.Common.EventManager)
 local MonetizationHandler   = require(ServerScriptService.Common.MonetizationHandler)
 local BrainRotSpawner       = require(ServerScriptService.Specialized.BrainRotSpawner)
-local BaseProgressionSystem = require(ServerScriptService.Specialized.BaseProgressionSystem)
+local BaseProgressionSystem = require(ServerScriptService.Common.BaseProgressionSystem)
 local CarrySystem           = require(ServerScriptService.Common.CarrySystem)
 local RebirthSystem         = require(ServerScriptService.Common.RebirthSystem)
 
@@ -150,7 +150,7 @@ local function OnPlayerAdded(player)
     local baseIndex = BrainRotSpawner.AssignerBase(player)
     if baseIndex then
         BaseProgressionSystem.Init(player, baseIndex, data)
-        BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+        BaseProgressionSystem.VerifierDeblocages(player, data)
         -- Créer les ProximityPrompts de dépôt sur les spots actifs
         local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
         CarrySystem.InitDepotSpotsBase(player, spotsActifs)
@@ -226,6 +226,7 @@ DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
     local coinsGagnes = math.floor(valeur * multiplier * RebirthSystem.GetMultiplicateur(player))
 
     data.coins = data.coins + coinsGagnes
+    data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coinsGagnes
     data.totalCollecte = (data.totalCollecte or 0) + 1
 
     -- Mettre à jour coinsParMinute (moyenne mobile)
@@ -237,7 +238,7 @@ DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
     -- Notifier le client (VFX + HUD)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
     UpdateHUD:FireClient(player, data)
-    BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+    BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
 end)
 
@@ -318,11 +319,12 @@ ChampCommunSpawner.OnCollecte = function(player, typeNom)
     local valeur = cfg[typeNom] and cfg[typeNom].valeur or 100
     local multiplier  = CollectSystem.GetMultiplier(data)
     local coinsGagnes = math.floor(valeur * multiplier * RebirthSystem.GetMultiplicateur(player))
-    data.coins         = data.coins + coinsGagnes
-    data.totalCollecte = (data.totalCollecte or 0) + 1
+    data.coins              = data.coins + coinsGagnes
+    data.totalCoinsGagnes   = (data.totalCoinsGagnes or 0) + coinsGagnes
+    data.totalCollecte      = (data.totalCollecte or 0) + 1
     UpdateHUD:FireClient(player, data)
     CollectVFX:FireClient(player, coinsGagnes, { nom = typeNom, valeur = valeur })
-    BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+    BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
 end
 -- Bug 3 : MYTHIC/SECRET utilisent ProximityPrompt sans restriction de base (nil = ChampCommun)
@@ -338,12 +340,13 @@ BrainrotReward.Event:Connect(function(player, montant, rarete)
     local data = GetData(player)
     if not data then return end
     local multiplier   = CollectSystem.GetMultiplier(data)
-    local coinsGagnes  = math.floor(montant * multiplier * RebirthSystem.GetMultiplicateur(player))
-    data.coins         = data.coins + coinsGagnes
-    data.totalCollecte = (data.totalCollecte or 0) + 1
+    local coinsGagnes       = math.floor(montant * multiplier * RebirthSystem.GetMultiplicateur(player))
+    data.coins              = data.coins + coinsGagnes
+    data.totalCoinsGagnes   = (data.totalCoinsGagnes or 0) + coinsGagnes
+    data.totalCollecte      = (data.totalCollecte or 0) + 1
     UpdateHUD:FireClient(player, data)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
-    BaseProgressionSystem.VerifierDeblocages(player, data.coins)
+    BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
 end)
 

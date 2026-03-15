@@ -68,4 +68,35 @@ GameConfig.SonUpgrade  = 0
 -- === BADGE ===
 GameConfig.BadgePremierPrestige = 0
 
+-- === PROGRESSION BASE ===
+-- Lu par BaseProgressionSystem (Common) — obligatoire, ne pas supprimer les clés
+-- Adapter les floors, spots et seuils à la structure Studio du jeu
+GameConfig.ProgressionConfig = {
+
+    -- Structure des floors Studio
+    -- type = "Part" si Floor 1 est une BasePart, "Model" sinon
+    floors = {
+        { index = 1, nom = "Floor 1", type = "Part",  spots = 10 },
+        { index = 2, nom = "Floor 2", type = "Model", spots = 10 },
+        { index = 3, nom = "Floor 3", type = "Model", spots = 10 },
+        { index = 4, nom = "Floor 4", type = "Model", spots = 10 },
+    },
+
+    -- Seuils de déblocage — { floor=X, spot=Y, coins=Z, label="texte" }
+    -- coins = 0 → débloqué dès le départ
+    seuils = {
+        { floor=1, spot=1,  coins=0,      label="Départ"        },
+        { floor=1, spot=2,  coins=0,      label="Départ"        },
+        -- ... (à compléter selon la progression du jeu)
+        { floor=2, spot=1,  coins=2000,   label="Étage 2"       },
+        { floor=3, spot=1,  coins=15000,  label="Étage 3"       },
+        { floor=4, spot=1,  coins=80000,  label="Étage 4"       },
+        { floor=4, spot=10, coins=300000, label="300 000 coins" },
+    },
+
+    -- true = utilise totalCoinsGagnes (jamais régressif même si coins dépensés)
+    -- false = utilise coins courants (peut régresser)
+    baseSurTotalGagne = true,
+}
+
 return GameConfig

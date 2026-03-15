@@ -1,6 +1,6 @@
 -- ServerScriptService/BaseProgressionSystem.lua
--- BrainRotFarm — Déblocage progressif des étages et spots
--- 4 étages × 10 spots par base = 40 paliers de progression par joueur
+-- Déblocage progressif des étages et spots — config lue depuis GameConfig
+-- Compatible multi-jeu : tous les paramètres viennent de GameConfig.ProgressionConfig
 
 local BaseProgressionSystem = {}
 
@@ -12,64 +12,21 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
 
 -- ============================================================
--- Noms des étages (ATTENTION : Floor 1 = double espace)
+-- Config depuis GameConfig
 -- ============================================================
-local FLOOR_NOMS = {
-	[1] = "Floor  1",  -- double espace
-	[2] = "Floor 2",
-	[3] = "Floor 3",
-	[4] = "Floor 4",
-}
+local Config     = require(ReplicatedStorage.Specialized.GameConfig)
+local ProgConfig = Config.ProgressionConfig
 
--- ============================================================
--- Seuils de déblocage
--- ============================================================
-local SEUILS = {
-	-- Floor 1 — spots 1 et 2 gratuits (départ)
-	{ floor=1, spot=1,  coins=0,      label="Départ"         },
-	{ floor=1, spot=2,  coins=0,      label="Départ"         },
-	{ floor=1, spot=3,  coins=50,     label="50 coins"       },
-	{ floor=1, spot=4,  coins=100,    label="100 coins"      },
-	{ floor=1, spot=5,  coins=200,    label="200 coins"      },
-	{ floor=1, spot=6,  coins=350,    label="350 coins"      },
-	{ floor=1, spot=7,  coins=500,    label="500 coins"      },
-	{ floor=1, spot=8,  coins=750,    label="750 coins"      },
-	{ floor=1, spot=9,  coins=1000,   label="1 000 coins"    },
-	{ floor=1, spot=10, coins=1500,   label="1 500 coins"    },
-	-- Floor 2
-	{ floor=2, spot=1,  coins=2000,   label="Étage 2"        },
-	{ floor=2, spot=2,  coins=2500,   label="2 500 coins"    },
-	{ floor=2, spot=3,  coins=3000,   label="3 000 coins"    },
-	{ floor=2, spot=4,  coins=3500,   label="3 500 coins"    },
-	{ floor=2, spot=5,  coins=4000,   label="4 000 coins"    },
-	{ floor=2, spot=6,  coins=5000,   label="5 000 coins"    },
-	{ floor=2, spot=7,  coins=6000,   label="6 000 coins"    },
-	{ floor=2, spot=8,  coins=7000,   label="7 000 coins"    },
-	{ floor=2, spot=9,  coins=8000,   label="8 000 coins"    },
-	{ floor=2, spot=10, coins=10000,  label="10 000 coins"   },
-	-- Floor 3
-	{ floor=3, spot=1,  coins=15000,  label="Étage 3"        },
-	{ floor=3, spot=2,  coins=18000,  label="18 000 coins"   },
-	{ floor=3, spot=3,  coins=21000,  label="21 000 coins"   },
-	{ floor=3, spot=4,  coins=25000,  label="25 000 coins"   },
-	{ floor=3, spot=5,  coins=30000,  label="30 000 coins"   },
-	{ floor=3, spot=6,  coins=35000,  label="35 000 coins"   },
-	{ floor=3, spot=7,  coins=40000,  label="40 000 coins"   },
-	{ floor=3, spot=8,  coins=45000,  label="45 000 coins"   },
-	{ floor=3, spot=9,  coins=50000,  label="50 000 coins"   },
-	{ floor=3, spot=10, coins=60000,  label="60 000 coins"   },
-	-- Floor 4
-	{ floor=4, spot=1,  coins=80000,  label="Étage 4"        },
-	{ floor=4, spot=2,  coins=90000,  label="90 000 coins"   },
-	{ floor=4, spot=3,  coins=100000, label="100 000 coins"  },
-	{ floor=4, spot=4,  coins=120000, label="120 000 coins"  },
-	{ floor=4, spot=5,  coins=140000, label="140 000 coins"  },
-	{ floor=4, spot=6,  coins=160000, label="160 000 coins"  },
-	{ floor=4, spot=7,  coins=180000, label="180 000 coins"  },
-	{ floor=4, spot=8,  coins=200000, label="200 000 coins"  },
-	{ floor=4, spot=9,  coins=250000, label="250 000 coins"  },
-	{ floor=4, spot=10, coins=300000, label="300 000 coins"  },
-}
+local SEUILS = ProgConfig.seuils
+local FLOORS = ProgConfig.floors  -- { index, nom, type, spots }
+
+-- Retourne le nom Studio d'un floor à partir de son index
+local function GetFloorNom(index)
+	for _, f in ipairs(FLOORS) do
+		if f.index == index then return f.nom end
+	end
+	return "Floor " .. tostring(index)
+end
 
 -- ============================================================
 -- État interne par joueur
@@ -139,7 +96,7 @@ end
 local function trouverFloor(baseFolder, floorNum)
 	if not baseFolder then return nil end
 
-	local nomExact = FLOOR_NOMS[floorNum]
+	local nomExact = GetFloorNom(floorNum)
 	if nomExact then
 		local direct = baseFolder:FindFirstChild(nomExact)
 		if direct then return direct end
@@ -190,11 +147,11 @@ local function scorerConteneurBase(container)
 	end
 	local floorsTrouves = 0
 	local spotsTrouves = 0
-	for floorNum = 1, 4 do
-		local floorObj = trouverFloor(container, floorNum)
+	for _, floorDef in ipairs(FLOORS) do
+		local floorObj = trouverFloor(container, floorDef.index)
 		if floorObj then
 			floorsTrouves += 1
-			for spotNum = 1, 10 do
+			for spotNum = 1, (floorDef.spots or 10) do
 				if trouverSpot(floorObj, spotNum) then
 					spotsTrouves += 1
 				end
@@ -470,13 +427,21 @@ end
 -- Vérification des déblocages (appelé à chaque changement de coins)
 -- ============================================================
 
-function BaseProgressionSystem.VerifierDeblocages(player, coinsActuels)
+function BaseProgressionSystem.VerifierDeblocages(player, playerData)
 	local dd = donneesJoueurs[player.UserId]
 	if not dd then return end
 
+	-- Utilise totalCoinsGagnes si baseSurTotalGagne=true, sinon coins courants
+	local coinsRef
+	if ProgConfig.baseSurTotalGagne then
+		coinsRef = playerData.totalCoinsGagnes or playerData.coins or 0
+	else
+		coinsRef = playerData.coins or 0
+	end
+
 	for _, seuil in ipairs(SEUILS) do
 		local cle = seuil.floor .. "_" .. seuil.spot
-		if not dd.progression[cle] and coinsActuels >= seuil.coins then
+		if not dd.progression[cle] and coinsRef >= seuil.coins then
 			dd.progression[cle] = true
 
 			local floorObj = trouverFloor(dd.baseFolder, seuil.floor)
@@ -550,7 +515,8 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 	local dd = donneesJoueurs[player.UserId]
 
 	-- Appliquer l'état visuel pour chaque étage
-	for floorNum = 1, 4 do
+	for _, floorDef in ipairs(FLOORS) do
+		local floorNum = floorDef.index
 		local floorObj = trouverFloor(baseFolder, floorNum)
 		if not floorObj then continue end
 

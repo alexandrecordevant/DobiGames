@@ -9,6 +9,7 @@ local function DefaultData()
         coins=0, tier=0, prestige=0, coinsParMinute=1,
         hasVIP=false, hasOfflineVault=false, hasAutoCollect=false,
         derniereConnexion=os.time(), totalCollecte=0,
+        totalCoinsGagnes=0,
         stats={ sessionsCount=0, totalHeuresJeu=0 },
         -- Progression base
         progression={},
