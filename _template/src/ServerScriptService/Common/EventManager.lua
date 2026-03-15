@@ -1,7 +1,7 @@
 -- ServerScriptService/EventManager.lua
 local EventManager = {}
-local Config        = require(game.ReplicatedStorage.Modules.GameConfig)
-local CollectSystem = require(game.ReplicatedStorage.Modules.CollectSystem)
+local Config        = require(game.ReplicatedStorage.Specialized.GameConfig)
+local CollectSystem = require(game.ReplicatedStorage.Common.CollectSystem)
 local Players       = game:GetService("Players")
 local HttpService   = game:GetService("HttpService")
 
@@ -35,11 +35,11 @@ local function DemarrerEvent(typeEvent)
     local cfg = configs[typeEvent]
     if not cfg then return end
     NotifierTous(cfg.msg, Color3.fromRGB(255,200,0))
-    BrainRotSpawner.SetEventMultiplier(cfg.mult)
+    CollectSystem.SetEventMultiplier(cfg.mult)
     local es = game.ReplicatedStorage:FindFirstChild("EventStarted")
     if es then es:FireAllClients(typeEvent, cfg.duree) end
     task.delay(cfg.duree, function()
-        BrainRotSpawner.SetEventMultiplier(1)
+        CollectSystem.SetEventMultiplier(1)
         local ee = game.ReplicatedStorage:FindFirstChild("EventEnded")
         if ee then ee:FireAllClients() end
     end)

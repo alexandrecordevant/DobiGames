@@ -2,14 +2,25 @@
 local DataStoreManager = {}
 local DataStoreService = game:GetService("DataStoreService")
 local DS               = DataStoreService:GetDataStore("BrainRotIdleV1")
-local CollectSystem    = require(game.ReplicatedStorage.Modules.CollectSystem)
+local CollectSystem    = require(game.ReplicatedStorage.Common.CollectSystem)
 
 local function DefaultData()
     return {
         coins=0, tier=0, prestige=0, coinsParMinute=1,
-        inventory={}, hasVIP=false, hasOfflineVault=false, hasAutoCollect=false,
+        hasVIP=false, hasOfflineVault=false, hasAutoCollect=false,
         derniereConnexion=os.time(), totalCollecte=0,
-        stats={ sessionsCount=0, totalHeuresJeu=0 }
+        stats={ sessionsCount=0, totalHeuresJeu=0 },
+        -- Progression base
+        progression={},
+        -- Rebirth
+        rebirthLevel=0,
+        multiplicateurPermanent=1.0,
+        slotsBonus=0,
+        -- Inventaire Brain Rots (pour conditions rebirth)
+        inventory={
+            COMMON=0, OG=0, RARE=0, EPIC=0,
+            LEGENDARY=0, MYTHIC=0, SECRET=0, BRAINROT_GOD=0,
+        },
     }
 end
 

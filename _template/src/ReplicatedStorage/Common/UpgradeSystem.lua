@@ -1,6 +1,6 @@
 -- ReplicatedStorage/Modules/UpgradeSystem.lua
 local UpgradeSystem = {}
-local Config = require(game.ReplicatedStorage.Modules.GameConfig)
+local Config = require(game.ReplicatedStorage.Specialized.GameConfig)
 
 function UpgradeSystem.GetCoutUpgrade(tier)
     return math.floor(Config.CoutUpgradeBase * (Config.CoutUpgradeMultiplier ^ tier))

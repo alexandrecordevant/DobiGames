@@ -1,7 +1,7 @@
 -- ServerScriptService/DiscordWebhook.lua
 local DiscordWebhook = {}
 local HttpService = game:GetService("HttpService")
-local Config      = require(game.ReplicatedStorage.Modules.GameConfig)
+local Config      = require(game.ReplicatedStorage.Specialized.GameConfig)
 
 function DiscordWebhook.Envoyer(titre, message, couleurHex)
     if Config.DiscordWebhookURL == "" then return end

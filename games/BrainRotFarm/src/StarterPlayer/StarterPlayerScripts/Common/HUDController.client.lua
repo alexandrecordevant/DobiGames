@@ -3,7 +3,7 @@ local Players          = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService     = game:GetService("TweenService")
 local player           = Players.LocalPlayer
-local Config           = require(ReplicatedStorage.Modules.GameConfig)
+local Config           = require(ReplicatedStorage.Specialized.GameConfig)
 
 local gui = Instance.new("ScreenGui")
 gui.Name          = "HUD"

@@ -17,7 +17,7 @@ local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Dépendances
 -- ============================================================
-local DiscordWebhook = require(ServerScriptService:WaitForChild("DiscordWebhook"))
+local DiscordWebhook = require(ServerScriptService:WaitForChild("Common"):WaitForChild("DiscordWebhook"))
 
 -- ============================================================
 -- Points de spawn fixes

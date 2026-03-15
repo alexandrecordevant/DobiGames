@@ -1,8 +1,8 @@
 -- ServerScriptService/MonetizationHandler.lua
 local MonetizationHandler = {}
 local MarketplaceService  = game:GetService("MarketplaceService")
-local Config              = require(game.ReplicatedStorage.Modules.GameConfig)
-local CollectSystem       = require(game.ReplicatedStorage.Modules.CollectSystem)
+local Config              = require(game.ReplicatedStorage.Specialized.GameConfig)
+local CollectSystem       = require(game.ReplicatedStorage.Common.CollectSystem)
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
     local player = game:GetService("Players"):GetPlayerByUserId(receiptInfo.PlayerId)
@@ -12,7 +12,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
         CollectSystem.SetEventMultiplier(5)
         task.delay(1800, function() CollectSystem.SetEventMultiplier(1) end)
     elseif pid == Config.ProduitSkipTier.Id then
-        local UpgradeSystem = require(game.ReplicatedStorage.Modules.UpgradeSystem)
+        local UpgradeSystem = require(game.ReplicatedStorage.Common.UpgradeSystem)
         local data = player:FindFirstChild("_data")  -- géré par Main
         if data and data.tier < Config.TotalTiers then data.tier = data.tier + 1 end
     end

@@ -508,7 +508,8 @@ local function creerPromptDepot(player, touchPart)
 
 		-- Appeler DropSystem si disponible
 		local SSS = game:GetService("ServerScriptService")
-		local dropChild = SSS:FindFirstChild("DropSystem")
+		local commonFolder = SSS:FindFirstChild("Common")
+		local dropChild = commonFolder and commonFolder:FindFirstChild("DropSystem")
 		if dropChild then
 			local ok, DropSystem = pcall(require, dropChild)
 			if ok and DropSystem and DropSystem.DeposerBrainRots then

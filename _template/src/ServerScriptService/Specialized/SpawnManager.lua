@@ -8,8 +8,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 local RunService        = game:GetService("RunService")
 
-local Config        = require(ReplicatedStorage.Modules.GameConfig)
-local CollectSystem = require(ReplicatedStorage.Modules.CollectSystem)
+local Config        = require(ReplicatedStorage.Specialized.GameConfig)
+local CollectSystem = require(ReplicatedStorage.Common.CollectSystem)
 
 -- ═══════════════════════════════════════════════
 -- CONFIGURATION SPAWN
