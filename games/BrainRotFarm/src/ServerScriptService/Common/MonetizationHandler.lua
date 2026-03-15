@@ -4,6 +4,16 @@ local MarketplaceService  = game:GetService("MarketplaceService")
 local Config              = require(game.ReplicatedStorage.Specialized.GameConfig)
 local CollectSystem       = require(game.ReplicatedStorage.Common.CollectSystem)
 
+-- Chargement différé — ShopSystem dépend de MonetizationHandler (via Main), évite la circularité
+local _ShopSystem = nil
+local function getShopSystem()
+    if not _ShopSystem then
+        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.ShopSystem)
+        if ok and m then _ShopSystem = m end
+    end
+    return _ShopSystem
+end
+
 MarketplaceService.ProcessReceipt = function(receiptInfo)
     local player = game:GetService("Players"):GetPlayerByUserId(receiptInfo.PlayerId)
     if not player then return Enum.ProductPurchaseDecision.NotProcessedYet end
@@ -27,9 +37,32 @@ function MonetizationHandler.CheckGamePasses(player, data)
             if ok and owns then data[field] = true end
         end
     end
+
+    -- Game Passes système (VIP, OfflineVault, AutoCollect)
     check(Config.GamePassVIP.Id,          "hasVIP")
     check(Config.GamePassOfflineVault.Id, "hasOfflineVault")
     check(Config.GamePassAutoCollect.Id,  "hasAutoCollect")
+
+    -- Game Passes shop — itère Config.ShopUpgrades pour ne hardcoder aucun ID
+    if Config.ShopUpgrades then
+        for _, upgradeConfig in pairs(Config.ShopUpgrades) do
+            for _, niveauConfig in pairs(upgradeConfig.niveaux) do
+                local gpId = niveauConfig.gamePassId
+                if type(gpId) == "number" and gpId > 0 then
+                    local ok, owns = pcall(function()
+                        return mps:UserOwnsGamePassAsync(player.UserId, gpId)
+                    end)
+                    if ok and owns then
+                        -- Déléguer à ShopSystem pour appliquer l'effet correctement
+                        local SS = getShopSystem()
+                        if SS then
+                            pcall(SS.ConfirmerAchatGamePass, player, gpId)
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 function MonetizationHandler.CheckPromptRules(data)

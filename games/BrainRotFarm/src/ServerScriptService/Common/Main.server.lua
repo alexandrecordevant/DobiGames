@@ -26,6 +26,7 @@ local AssignationSystem     = require(ServerScriptService.Common.AssignationSyst
 local DropSystem            = require(ServerScriptService.Common.DropSystem)
 local IncomeSystem          = require(ServerScriptService.Common.IncomeSystem)
 local LeaderboardSystem     = require(ServerScriptService.Common.LeaderboardSystem)
+local ShopSystem            = require(ServerScriptService.Common.ShopSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -175,6 +176,9 @@ local function OnPlayerAdded(player)
 
         -- Lancer la boucle de revenus passifs
         IncomeSystem.Init(player, function() return GetData(player) end)
+
+        -- Réappliquer tous les upgrades shop achetés (WalkSpeed, Carry, etc.)
+        ShopSystem.AppliquerTousUpgrades(player, data)
 
         -- Mettre à jour le leaderboard pour ce joueur
         LeaderboardSystem.MettreAJour(player, data)
@@ -403,6 +407,10 @@ AssignationSystem.Init()
 -- LeaderboardSystem : connecter la source de données et démarrer la boucle
 LeaderboardSystem.GetPlayerData = GetData
 LeaderboardSystem.Init()
+
+-- ShopSystem : connecter la source de données et démarrer les ProximityPrompts
+ShopSystem.GetPlayerData = GetData
+ShopSystem.Init()
 
 -- Démarrer TestRunner si TEST_MODE actif (aucun overhead si false)
 if Config.TEST_MODE then
