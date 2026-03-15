@@ -27,12 +27,13 @@ ShopSystem.GetPlayerData = nil
 -- ============================================================
 -- RemoteEvents (créés dans Init)
 -- ============================================================
-local OuvrirShop       = nil   -- FireClient(player, donneesShop)
-local FermerShop       = nil   -- FireClient(player)
-local AchatUpgrade     = nil   -- OnServerEvent(player, nomUpgrade, niveau)
-local ShopUpdate       = nil   -- FireClient(player, donneesShop)
-local DemandeAchatRobux = nil  -- OnServerEvent(player, nomUpgrade, niveau) → PromptGamePassPurchase
-local ConfirmerGamePass = nil  -- OnServerEvent(player, gamePassId) → vérification + application
+local OuvrirShop          = nil   -- FireClient(player, donneesShop)
+local FermerShop          = nil   -- FireClient(player)
+local AchatUpgrade        = nil   -- OnServerEvent(player, nomUpgrade, niveau)
+local ShopUpdate          = nil   -- FireClient(player, donneesShop)
+local DemandeAchatRobux   = nil   -- OnServerEvent(player, nomUpgrade, niveau) → PromptGamePassPurchase
+local ConfirmerGamePass   = nil   -- OnServerEvent(player, gamePassId) → vérification + application
+local ChangerSeuilTracteur = nil  -- OnServerEvent(player, seuilNom) → change tracteurSeuilMin
 
 local function creerRemoteEvent(nom)
     local existing = ReplicatedStorage:FindFirstChild(nom)
@@ -42,6 +43,14 @@ local function creerRemoteEvent(nom)
     re.Parent = ReplicatedStorage
     return re
 end
+
+-- ============================================================
+-- Ordre de rareté pour comparaisons Tracteur
+-- ============================================================
+local RARETE_ORDRE = {
+    COMMON=1, OG=2, RARE=3, EPIC=4,
+    LEGENDARY=5, MYTHIC=6, SECRET=7, BRAINROT_GOD=8,
+}
 
 -- ============================================================
 -- Chargement différé — évite les dépendances circulaires
@@ -62,6 +71,15 @@ local function getBrainRotSpawner()
         if ok and m then _BrainRotSpawner = m end
     end
     return _BrainRotSpawner
+end
+
+local _DropSystem = nil
+local function getDropSystem()
+    if not _DropSystem then
+        local ok, m = pcall(require, ServerScriptService.Common.DropSystem)
+        if ok and m then _DropSystem = m end
+    end
+    return _DropSystem
 end
 
 local _CollectSystem = nil
@@ -102,11 +120,12 @@ end
 local function construireDonneesShop(player, playerData)
     assurerUpgrades(playerData)
     return {
-        upgrades       = Config.ShopUpgrades,
-        playerCoins    = playerData.coins        or 0,
-        playerUpgrades = playerData.upgrades,
-        hasTracteur    = playerData.hasTracteur  or false,
-        hasLuckyCharm  = playerData.hasLuckyCharm or false,
+        upgrades          = Config.ShopUpgrades,
+        playerCoins       = playerData.coins           or 0,
+        playerUpgrades    = playerData.upgrades,
+        hasTracteur       = playerData.hasTracteur     or false,
+        hasLuckyCharm     = playerData.hasLuckyCharm   or false,
+        tracteurSeuilMin  = playerData.tracteurSeuilMin or "RARE",
     }
 end
 
@@ -165,21 +184,53 @@ local function appliquerEffet(player, playerData, niveauConfig)
 end
 
 -- ============================================================
--- Tracteur — boucle auto-collect (3s)
+-- Tracteur — boucle auto-collect
 -- ============================================================
 local tracteurThreads = {}  -- [userId] = task handle
+
+-- Vérifie si le tracteur peut déposer (spots libres > 0)
+local function TracteurPeutDeposer(player)
+    local DS = getDropSystem()
+    if not DS then return false end
+    local libres = DS.GetSpotsLibres(player)
+    return libres and #libres > 0
+end
 
 function ShopSystem.ActiverTracteur(player, playerData)
     local uid = player.UserId
     if tracteurThreads[uid] then return end  -- déjà actif
 
     tracteurThreads[uid] = task.spawn(function()
-        local BRS = getBrainRotSpawner()
         while player.Parent and playerData.hasTracteur do
             task.wait(3)
-            if player.Parent and BRS and BRS.AutoCollect then
-                pcall(BRS.AutoCollect, player)
-            end
+            if not player.Parent then break end
+
+            local BRS = getBrainRotSpawner()
+            local DS  = getDropSystem()
+            if not BRS or not DS then continue end
+
+            -- Vérifier qu'il y a des spots libres
+            if not TracteurPeutDeposer(player) then continue end
+
+            -- Trouver le seuil de rareté du joueur
+            local seuilNom   = playerData.tracteurSeuilMin or "RARE"
+            local seuilOrdre = RARETE_ORDRE[seuilNom] or RARETE_ORDRE["RARE"]
+
+            -- Trouver le BR éligible le plus proche (rareté ≥ seuil)
+            local cible = nil
+            local ok, res = pcall(BRS.GetPlusProcheEligible, player, seuilOrdre)
+            if ok then cible = res end
+            if not cible then continue end
+
+            -- Supprimer le BR du terrain
+            pcall(BRS.SupprimerCollectible, cible.id, cible.baseIndex)
+
+            -- Trouver un spot libre et y déposer directement
+            local libres = DS.GetSpotsLibres(player)
+            if #libres == 0 then continue end
+
+            local spot = libres[1]  -- prend le premier spot libre
+            pcall(DS.DeposerBRDirect, player, spot, cible.rarete)
         end
         tracteurThreads[uid] = nil
     end)
@@ -397,12 +448,13 @@ end
 -- ============================================================
 function ShopSystem.Init()
     -- Créer les RemoteEvents
-    OuvrirShop        = creerRemoteEvent("OuvrirShop")
-    FermerShop        = creerRemoteEvent("FermerShop")
-    AchatUpgrade      = creerRemoteEvent("AchatUpgrade")
-    ShopUpdate        = creerRemoteEvent("ShopUpdate")
-    DemandeAchatRobux = creerRemoteEvent("DemandeAchatRobux")
-    ConfirmerGamePass = creerRemoteEvent("ConfirmerGamePass")
+    OuvrirShop           = creerRemoteEvent("OuvrirShop")
+    FermerShop           = creerRemoteEvent("FermerShop")
+    AchatUpgrade         = creerRemoteEvent("AchatUpgrade")
+    ShopUpdate           = creerRemoteEvent("ShopUpdate")
+    DemandeAchatRobux    = creerRemoteEvent("DemandeAchatRobux")
+    ConfirmerGamePass    = creerRemoteEvent("ConfirmerGamePass")
+    ChangerSeuilTracteur = creerRemoteEvent("ChangerSeuilTracteur")
 
     -- Ajouter ProximityPrompts après un court délai (laisse le temps au Workspace de charger)
     task.spawn(function()
@@ -490,6 +542,61 @@ function ShopSystem.Init()
                 pcall(ShopSystem.AppliquerTousUpgrades, player, playerData)
             end
         end)
+    end)
+
+    -- Handler : changer le seuil de rareté du Tracteur
+    ChangerSeuilTracteur.OnServerEvent:Connect(function(player, seuilNom)
+        if type(seuilNom) ~= "string" then return end
+
+        local playerData = getData(player)
+        if not playerData then return end
+        if not playerData.hasTracteur then return end
+
+        -- Vérifier que le seuil est dans seuilsDisponibles
+        local tracteurConfig = Config.ShopUpgrades.Tracteur
+        if not tracteurConfig or not tracteurConfig.seuilsDisponibles then return end
+
+        local seuilValide = nil
+        for _, s in ipairs(tracteurConfig.seuilsDisponibles) do
+            if s.rareteMin == seuilNom then seuilValide = s break end
+        end
+        if not seuilValide then return end
+
+        -- Payer les coins si nécessaire (prix > 0 = seuil premium)
+        local prix = seuilValide.prix or 0
+        if prix > 0 then
+            if (playerData.coins or 0) < prix then
+                local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
+                if notif then
+                    pcall(function()
+                        notif:FireClient(player, "ERREUR",
+                            "❌ Coins insuffisants (" .. prix .. " requis)")
+                    end)
+                end
+                return
+            end
+            playerData.coins = playerData.coins - prix
+        end
+
+        playerData.tracteurSeuilMin = seuilNom
+
+        -- Notifier + mettre à jour HUD + shop
+        local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
+        if notif then
+            pcall(function()
+                notif:FireClient(player, "SUCCESS",
+                    "🚜 Tracteur : seuil changé à " .. seuilValide.label)
+            end)
+        end
+        if ShopUpdate then
+            pcall(function()
+                ShopUpdate:FireClient(player, construireDonneesShop(player, playerData))
+            end)
+        end
+        local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
+        if UpdateHUD then
+            pcall(function() UpdateHUD:FireClient(player, playerData) end)
+        end
     end)
 
     -- Nettoyer la boucle tracteur à la déconnexion

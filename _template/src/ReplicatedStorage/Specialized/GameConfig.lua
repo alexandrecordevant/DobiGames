@@ -68,6 +68,63 @@ GameConfig.SonUpgrade  = 0
 -- === BADGE ===
 GameConfig.BadgePremierPrestige = 0
 
+-- === EVENTS VISUELS ===
+-- ⚠️ À CONFIGURER PAR JEU — ajuster durées, couleurs et messages selon le thème
+-- Supprimer les events non utilisés, garder la structure des clés
+GameConfig.EventsVisuels = {
+
+    NightMode = {
+        duree          = 45,               -- secondes
+        brightnessMin  = 0,
+        ambientNuit    = Color3.fromRGB(0, 0, 20),
+        ambientJour    = Color3.fromRGB(70, 70, 70),  -- valeur originale Roblox
+        brightnessJour = 2,
+        fogEndNuit     = 200,
+        message        = "🌙 NIGHT MODE !",
+        messageFin     = "☀️ Le jour se lève !",
+    },
+
+    MeteorDrop = {
+        duree           = 60,
+        nbMeteores      = 5,
+        hauteurSpawn    = 200,
+        vitesseTombee   = 80,
+        rayonImpact     = 15,
+        intervalleSpawn = 12,
+        raretesMeteore  = { "LEGENDARY", "SECRET" },  -- ⚠️ adapter aux raretés du jeu
+        message         = "☄️ METEOR DROP !",
+        messageImpact   = "💥 Impact !",
+        messageFin      = "☄️ Les météores ont cessé.",
+    },
+
+    Rain = {
+        duree           = 90,
+        hauteurNuages   = 35,
+        tailleNuage     = Vector3.new(20, 5, 20),
+        spawnMultiplier = 3,
+        particleRate    = 50,
+        message         = "🌧️ RAIN EVENT !",
+        messageFin      = "☀️ La pluie s'arrête.",
+    },
+
+    Golden = {
+        duree          = 60,
+        multiplicateur = 5,
+        couleurGolden  = Color3.fromRGB(255, 215, 0),
+        ambientGolden  = Color3.fromRGB(255, 200, 50),
+        message        = "✨ GOLDEN EVENT ! ×5 !",
+        messageFin     = "✨ Golden Event terminé.",
+    },
+}
+
+-- Positions des spawn points ChampCommun
+-- ⚠️ À REMPLIR selon les coordonnées Studio du jeu
+GameConfig.ChampCommunPoints = {
+    -- { x = 0, y = 0, z = 0 },  -- Point A
+    -- { x = 0, y = 0, z = 0 },  -- Point B
+    -- { x = 0, y = 0, z = 0 },  -- Point C
+}
+
 -- === PROGRESSION BASE ===
 -- Lu par BaseProgressionSystem (Common) — obligatoire, ne pas supprimer les clés
 -- Adapter les floors, spots et seuils à la structure Studio du jeu

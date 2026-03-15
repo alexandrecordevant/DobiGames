@@ -65,13 +65,20 @@ end
 -- ============================================================
 -- État interne
 -- ============================================================
-local zones           = {}  -- { [baseIndex] = { xMin, xMax, zMin, zMax, yFixe } }
-local actifs          = {}  -- { [baseIndex] = { [id] = cloneModel } }
-local compteurs       = {}  -- { [baseIndex] = nombreActifsActuels }
-local intervalles     = {}  -- { [baseIndex] = intervalle en secondes }
-local multiplicateurs = {}  -- { [baseIndex] = multiplicateur event }
-local assignations    = {}  -- { [userId] = baseIndex }
-local idCounter       = 0   -- compteur global pour nommer les clones
+local zones            = {}  -- { [baseIndex] = { xMin, xMax, zMin, zMax, yFixe } }
+local actifs           = {}  -- { [baseIndex] = { [id] = cloneModel } }
+local compteurs        = {}  -- { [baseIndex] = nombreActifsActuels }
+local intervalles      = {}  -- { [baseIndex] = intervalle en secondes }
+local multiplicateurs  = {}  -- { [baseIndex] = multiplicateur event }
+local arroseurMults    = {}  -- { [baseIndex] = multiplicateur upgrade Arroseur }
+local assignations     = {}  -- { [userId] = baseIndex }
+local idCounter        = 0   -- compteur global pour nommer les clones
+
+-- Ordre croissant des raretés (utilisé par GetPlusProcheEligible + tracteur)
+local RARETE_ORDRE = {
+    COMMON=1, OG=2, RARE=3, EPIC=4,
+    LEGENDARY=5, MYTHIC=6, SECRET=7, BRAINROT_GOD=8,
+}
 
 local brainrotsFolder = ServerStorage:WaitForChild("Brainrots")
 
@@ -338,10 +345,13 @@ local function spawnerUnBrainRot(baseIndex)
 		return
 	end
 
-	-- Nommage unique
+	-- Nommage unique + attribut rareté (lu par GetPlusProcheEligible)
 	idCounter  = idCounter + 1
 	local id   = idCounter
 	clone.Name = string.format("BR_%d_%d", baseIndex, id)
+	pcall(function() clone:SetAttribute("Rarete",    rarete.nom) end)
+	pcall(function() clone:SetAttribute("BaseIndex", baseIndex)  end)
+	pcall(function() clone:SetAttribute("SpawnId",   id)         end)
 
 	-- Position aléatoire dans la SpawnZone
 	local x = math.random() * (zone.xMax - zone.xMin) + zone.xMin
@@ -465,7 +475,8 @@ local function lancerBoucleSpawn(baseIndex)
 		local iteration = 0
 
 		while true do
-			local mult       = multiplicateurs[baseIndex] or 1
+			-- Multiplicateur combiné : event × arroseur upgrade
+			local mult       = (multiplicateurs[baseIndex] or 1) * (arroseurMults[baseIndex] or 1)
 			local intervalle = (intervalles[baseIndex] or CONFIG.INTERVALLE_SPAWN_DEFAUT) / math.max(1, mult)
 
 			task.wait(intervalle)
@@ -565,6 +576,138 @@ BrainRotSpawner.OnBRSpawned = nil  -- hook CarrySystem (ProximityPrompt EPIC+)
 Players.PlayerRemoving:Connect(function(player)
 	BrainRotSpawner.LibererBase(player)
 end)
+
+-- Multiplicateur de spawn par joueur (upgrade Arroseur — distinct du multiplicateur event)
+function BrainRotSpawner.SetSpawnRateMultiplier(player, mult)
+	local baseIndex = assignations[player.UserId]
+	if not baseIndex then return end
+	arroseurMults[baseIndex] = math.max(1, mult or 1)
+end
+
+-- Trouve le BR éligible de plus haute rareté dans le champ du joueur
+-- seuilOrdre = entier (1=COMMON … 8=BRAINROT_GOD)
+-- Retourne { id, baseIndex, rarete, modele } ou nil
+function BrainRotSpawner.GetPlusProcheEligible(player, seuilOrdre)
+	local baseIndex = assignations[player.UserId]
+	if not baseIndex then return nil end
+
+	local meilleur      = nil
+	local meilleurOrdre = -1
+
+	for id, modele in pairs(actifs[baseIndex] or {}) do
+		if modele and modele.Parent and not modele:GetAttribute("Captured") then
+			local rareteNom = modele:GetAttribute("Rarete")
+			if rareteNom then
+				local ordre = RARETE_ORDRE[rareteNom] or 0
+				if ordre >= seuilOrdre and ordre > meilleurOrdre then
+					meilleur = {
+						id        = id,
+						baseIndex = baseIndex,
+						rarete    = rareteNom,
+						modele    = modele,
+					}
+					meilleurOrdre = ordre
+				end
+			end
+		end
+	end
+
+	return meilleur
+end
+
+-- Supprime un BR actif par id + baseIndex (appelé par le tracteur après aspiration)
+function BrainRotSpawner.SupprimerCollectible(id, baseIndex)
+	if not baseIndex or not actifs[baseIndex] then return end
+	local modele = actifs[baseIndex][id]
+	if not modele or not modele.Parent then return end
+
+	-- Marquer comme collecté pour éviter un double traitement du despawn timer
+	pcall(function() modele:SetAttribute("Captured", true) end)
+	actifs[baseIndex][id] = nil
+	compteurs[baseIndex]  = math.max(0, (compteurs[baseIndex] or 0) - 1)
+
+	-- Fade out + destroy
+	local info = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	for _, v in ipairs(modele:GetDescendants()) do
+		if v:IsA("BasePart") then
+			pcall(function() TweenService:Create(v, info, { Transparency = 1, Size = v.Size * 1.3 }):Play() end)
+		end
+	end
+	task.delay(0.4, function()
+		if modele and modele.Parent then modele:Destroy() end
+	end)
+end
+
+-- Spawne un BR d'une rareté précise à une position précise (utilisé par MeteorDrop)
+-- Tout joueur peut le collecter (baseIndex = nil → règles ChampCommun)
+function BrainRotSpawner.SpawnerBRSpecifique(position, rareteNom)
+    local dossier = brainrotsFolder:FindFirstChild(rareteNom)
+    if not dossier then
+        -- Fallback LEGENDARY si le dossier n'existe pas
+        dossier = brainrotsFolder:FindFirstChild("LEGENDARY")
+    end
+    if not dossier then
+        warn("[BrainRotSpawner] SpawnerBRSpecifique : dossier introuvable (" .. tostring(rareteNom) .. ")")
+        return
+    end
+
+    local modeles = dossier:GetChildren()
+    if #modeles == 0 then return end
+
+    local source = modeles[math.random(1, #modeles)]
+    local clone
+    local ok, err = pcall(function() clone = source:Clone() end)
+    if not ok or not clone then
+        warn("[BrainRotSpawner] SpawnerBRSpecifique : erreur clonage " .. tostring(err))
+        return
+    end
+
+    idCounter  = idCounter + 1
+    local id   = idCounter
+    clone.Name = string.format("BR_meteor_%d", id)
+    pcall(function() clone:SetAttribute("Rarete", rareteNom) end)
+    clone.Parent = Workspace
+
+    local racine = obtenirRacine(clone)
+    if not racine then
+        clone:Destroy()
+        return
+    end
+
+    local parts = obtenirBaseParts(clone)
+    for _, part in ipairs(parts) do
+        part.CanCollide = false
+        part.Anchored   = true
+    end
+
+    -- Positionner
+    pcall(function()
+        if clone:IsA("Model") then
+            clone:PivotTo(CFrame.new(position))
+        else
+            racine.CFrame = CFrame.new(position)
+        end
+    end)
+
+    -- Billboard
+    pcall(ajouterBillboard, racine, rareteNom, source.Name)
+
+    -- ProximityPrompt via hook OnBRSpawned (baseIndex = nil → tout le monde peut capturer)
+    local rareteObj = { nom = rareteNom, dossier = rareteNom }
+    if BrainRotSpawner.OnBRSpawned then
+        pcall(BrainRotSpawner.OnBRSpawned, clone, nil, rareteObj)
+    end
+
+    -- Despawn automatique après CONFIG.DUREE_DESPAWN secondes
+    task.delay(CONFIG.DUREE_DESPAWN, function()
+        if not clone or not clone.Parent then return end
+        if clone:GetAttribute("Captured") then return end
+        tweenTransparence(parts, 1, CONFIG.DUREE_FADE_OUT)
+        task.delay(CONFIG.DUREE_FADE_OUT + 0.1, function()
+            if clone and clone.Parent then clone:Destroy() end
+        end)
+    end)
+end
 
 -- ============================================================
 -- Init (appelé par Main.server.lua)

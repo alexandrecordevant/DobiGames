@@ -82,9 +82,10 @@ local BRAINROTS_FOLDER = ServerStorage:WaitForChild("Brainrots")
 -- ============================================================
 -- État interne
 -- ============================================================
-local actifMythic = false
-local actifSecret = false
-local idCounter   = 0
+local actifMythic     = false
+local actifSecret     = false
+local idCounter       = 0
+local spawnMultiplier = 1  -- modifié par SetMultiplier (Rain Event)
 
 -- Données permanentes par point de spawn
 -- { part, particle, light, bb, labelPermanent }
@@ -527,7 +528,12 @@ local function lancerScheduler(typeNom)
 
 		while true do
 			-- ── Phase 1 : attente silencieuse ──────────────────────
-			local attenteAvantCompteur = cfg.intervalleSecondes - cfg.compteurVisibleAvant
+			-- spawnMultiplier réduit l'intervalle (ex: Rain Event ×3 → 3× plus fréquent)
+			local intervalleEffectif   = math.max(
+				cfg.compteurVisibleAvant + 30,
+				cfg.intervalleSecondes / math.max(1, spawnMultiplier)
+			)
+			local attenteAvantCompteur = intervalleEffectif - cfg.compteurVisibleAvant
 			task.wait(math.max(1, attenteAvantCompteur))
 
 			-- Verrouiller le slot (garde-fou si latence)
@@ -677,6 +683,13 @@ ChampCommunSpawner.OnCollecte = nil
 -- Hook ProximityPrompt — à assigner depuis Main.server.lua :
 -- ChampCommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture) end
 ChampCommunSpawner.OnBRSpawned = nil
+
+-- Modifie le multiplicateur de spawn (appelé par Rain Event)
+-- mult = 1 → vitesse normale, mult = 3 → 3× plus fréquent
+function ChampCommunSpawner.SetMultiplier(mult)
+    spawnMultiplier = math.max(1, mult or 1)
+    print("[ChampCommunSpawner] Multiplicateur spawn : ×" .. spawnMultiplier)
+end
 
 function ChampCommunSpawner.Init()
 	initialiserEffetsPermanents()

@@ -1,0 +1,262 @@
+-- ServerScriptService/Common/EventVisuals.lua
+-- BrainRotFarm — Coordinateur des events visuels
+-- Orchestre NightMode, MeteorDrop, Rain, Golden et les events sans visuel
+
+local EventVisuals = {}
+
+-- ============================================================
+-- Services
+-- ============================================================
+local Players             = game:GetService("Players")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+-- ============================================================
+-- Config
+-- ============================================================
+local Config = require(ReplicatedStorage.Specialized.GameConfig)
+
+local _TestConfig = Config.TEST_MODE
+    and require(ReplicatedStorage.Test.TestConfig)
+    or nil
+
+local function GetConfig(nomValeur, valeurNormale)
+    if _TestConfig and _TestConfig[nomValeur] ~= nil then
+        return _TestConfig[nomValeur]
+    end
+    return valeurNormale
+end
+
+-- ============================================================
+-- Chargement différé des modules visuels
+-- ============================================================
+local modulesCache = {}
+
+local function chargerModule(nomEvent)
+    if modulesCache[nomEvent] ~= nil then return modulesCache[nomEvent] end
+
+    local Common = ServerScriptService:FindFirstChild("Common")
+    local Events = Common and Common:FindFirstChild("Events")
+    if not Events then
+        modulesCache[nomEvent] = false
+        return false
+    end
+
+    local moduleScript = Events:FindFirstChild("Event" .. nomEvent)
+    if not moduleScript then
+        modulesCache[nomEvent] = false
+        return false
+    end
+
+    local ok, m = pcall(require, moduleScript)
+    if ok and m then
+        modulesCache[nomEvent] = m
+        return m
+    end
+
+    warn("[EventVisuals] Erreur chargement module " .. nomEvent .. ": " .. tostring(m))
+    modulesCache[nomEvent] = false
+    return false
+end
+
+-- ============================================================
+-- Chargement différé des systèmes gameplay
+-- ============================================================
+local _BrainRotSpawner = nil
+local function getBrainRotSpawner()
+    if not _BrainRotSpawner then
+        local ok, m = pcall(require, ServerScriptService.Specialized.BrainRotSpawner)
+        if ok and m then _BrainRotSpawner = m end
+    end
+    return _BrainRotSpawner
+end
+
+local _IncomeSystem = nil
+local function getIncomeSystem()
+    if not _IncomeSystem then
+        local ok, m = pcall(require, ServerScriptService.Common.IncomeSystem)
+        if ok and m then _IncomeSystem = m end
+    end
+    return _IncomeSystem
+end
+
+local _CollectSystem = nil
+local function getCollectSystem()
+    if not _CollectSystem then
+        local ok, m = pcall(require, ReplicatedStorage.Common.CollectSystem)
+        if ok and m then _CollectSystem = m end
+    end
+    return _CollectSystem
+end
+
+-- ============================================================
+-- Config gameplay des events sans module visuel
+-- LuckyHour, DoubleCoins, SecretSpawn gardent leurs effets ici
+-- ============================================================
+local function getDureeEvent()
+    return GetConfig("EventDureeMinutes", Config.EventDureeMinutes) * 60
+end
+
+local CONFIGS_GAMEPLAY = {
+    LuckyHour = {
+        duree     = getDureeEvent,  -- fonction appelée au lancement
+        msg       = "⭐ LUCKY HOUR ! Spawn ×10 !",
+        msgFin    = "⭐ Lucky Hour terminé.",
+        appliquer = function()
+            local BRS = getBrainRotSpawner()
+            if BRS then pcall(BRS.SetEventMultiplier, 10) end
+        end,
+        terminer  = function()
+            local BRS = getBrainRotSpawner()
+            if BRS then pcall(BRS.SetEventMultiplier, 1) end
+        end,
+    },
+    DoubleCoins = {
+        duree     = getDureeEvent,
+        msg       = "💰 DOUBLE COINS ! ×5 !",
+        msgFin    = "💰 Double Coins terminé.",
+        appliquer = function()
+            local IS = getIncomeSystem()
+            local CS = getCollectSystem()
+            if IS then pcall(IS.SetEventMultiplier, 5) end
+            if CS then pcall(CS.SetEventMultiplier, 5) end
+        end,
+        terminer  = function()
+            local IS = getIncomeSystem()
+            local CS = getCollectSystem()
+            if IS then pcall(IS.SetEventMultiplier, 1) end
+            if CS then pcall(CS.SetEventMultiplier, 1) end
+        end,
+    },
+    SecretSpawn = {
+        duree     = getDureeEvent,
+        msg       = "🔴 SECRET SPAWN ! " .. Config.CollectibleName .. " rare !",
+        msgFin    = "🔴 Secret Spawn terminé.",
+        appliquer = function() end,  -- ChampCommunSpawner gère le SECRET de façon autonome
+        terminer  = function() end,
+    },
+}
+
+-- ============================================================
+-- Utilitaires RemoteEvents
+-- ============================================================
+local function creerRemoteEvent(nom)
+    local existing = ReplicatedStorage:FindFirstChild(nom)
+    if existing then return existing end
+    local re = Instance.new("RemoteEvent")
+    re.Name   = nom
+    re.Parent = ReplicatedStorage
+    return re
+end
+
+local function notifierTous(message)
+    local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
+    if ev then pcall(function() ev:FireAllClients("INFO", message) end) end
+end
+
+local function fireEventStarted(typeEvent, duree)
+    local ev = ReplicatedStorage:FindFirstChild("EventStarted")
+    if ev then pcall(function() ev:FireAllClients(typeEvent, duree) end) end
+end
+
+local function fireEventEnded()
+    local ev = ReplicatedStorage:FindFirstChild("EventEnded")
+    if ev then pcall(function() ev:FireAllClients() end) end
+end
+
+-- ============================================================
+-- État interne
+-- ============================================================
+local eventActif     = nil
+local terminerThread = nil
+
+-- ============================================================
+-- API publique
+-- ============================================================
+
+function EventVisuals.GetEventActif()
+    return eventActif
+end
+
+function EventVisuals.TerminerActif()
+    if not eventActif then return end
+    local nomEvent = eventActif
+    eventActif     = nil
+
+    -- Annuler le timer de terminaison automatique
+    if terminerThread then
+        pcall(task.cancel, terminerThread)
+        terminerThread = nil
+    end
+
+    -- Terminer le module visuel s'il existe
+    local module = chargerModule(nomEvent)
+    if module and module.Terminer then
+        pcall(module.Terminer)
+    end
+
+    -- Terminer les effets gameplay (events sans visuel)
+    local cfgGameplay = CONFIGS_GAMEPLAY[nomEvent]
+    if cfgGameplay and cfgGameplay.terminer then
+        pcall(cfgGameplay.terminer)
+    end
+
+    fireEventEnded()
+    print("[EventVisuals] ■ Event terminé : " .. nomEvent)
+end
+
+function EventVisuals.Lancer(nomEvent)
+    -- Terminer proprement l'event actif avant d'en lancer un nouveau
+    if eventActif then
+        EventVisuals.TerminerActif()
+        task.wait(2)
+    end
+
+    local module = chargerModule(nomEvent)
+    local duree  = nil
+
+    if module and module.Demarrer then
+        -- Event avec module visuel (NightMode, MeteorDrop, Rain, Golden)
+        local cfgVisuelle = Config.EventsVisuels and Config.EventsVisuels[nomEvent]
+        if not cfgVisuelle then
+            warn("[EventVisuals] Config.EventsVisuels." .. nomEvent .. " manquante")
+            return
+        end
+        duree      = cfgVisuelle.duree
+        eventActif = nomEvent
+        pcall(module.Demarrer, cfgVisuelle)
+    else
+        -- Event sans module visuel (LuckyHour, DoubleCoins, SecretSpawn)
+        local cfgGameplay = CONFIGS_GAMEPLAY[nomEvent]
+        if not cfgGameplay then
+            warn("[EventVisuals] Event inconnu : " .. tostring(nomEvent))
+            return
+        end
+        duree      = type(cfgGameplay.duree) == "function" and cfgGameplay.duree() or cfgGameplay.duree
+        eventActif = nomEvent
+        notifierTous(cfgGameplay.msg)
+        fireEventStarted(nomEvent, duree)
+        pcall(cfgGameplay.appliquer)
+    end
+
+    if not duree then duree = 60 end
+
+    -- Terminaison automatique après la durée
+    terminerThread = task.delay(duree, function()
+        if eventActif == nomEvent then
+            EventVisuals.TerminerActif()
+        end
+    end)
+
+    print("[EventVisuals] ▶ Event lancé : " .. nomEvent .. " (" .. tostring(duree) .. "s)")
+end
+
+function EventVisuals.Init()
+    -- Créer les RemoteEvents nécessaires aux effets client
+    creerRemoteEvent("NightModeStart")
+    creerRemoteEvent("MeteorImpact")
+    creerRemoteEvent("GoldenStart")
+    print("[EventVisuals] ✓ Coordinateur initialisé")
+end
+
+return EventVisuals

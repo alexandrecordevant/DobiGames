@@ -269,7 +269,6 @@ end
 
 -- Ajoute ou met à jour le prompt de récupération sur un spot occupé
 local function creerPromptRecuperer(touchPart, player)
-    -- Supprimer l'ancien si présent
     local ancien = touchPart:FindFirstChild("RecupererPrompt")
     if ancien then ancien:Destroy() end
 
@@ -288,22 +287,48 @@ local function creerPromptRecuperer(touchPart, player)
         DropSystem.RecupererBrainRot(player, touchPart)
     end)
 
-    -- Désactiver le DepotPrompt tant que le spot est occupé
     local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
-    if depotPrompt then
-        pcall(function() depotPrompt.Enabled = false end)
-    end
+    if depotPrompt then pcall(function() depotPrompt.Enabled = false end) end
+end
+
+-- Prompt "Remplacer" : éjecte le BR actuel et dépose le BR porté
+local function creerPromptRemplacer(touchPart, player, rarete)
+    local ancien = touchPart:FindFirstChild("RemplacerPrompt")
+    if ancien then ancien:Destroy() end
+
+    local prompt = Instance.new("ProximityPrompt")
+    prompt.Name                  = "RemplacerPrompt"
+    prompt.ActionText            = "Remplacer"
+    prompt.ObjectText            = rarete or "Brain Rot"
+    prompt.HoldDuration          = 0
+    prompt.MaxActivationDistance = 8
+    prompt.KeyboardKeyCode       = Enum.KeyCode.F
+    prompt.RequiresLineOfSight   = false
+    prompt.Enabled               = false  -- activé dynamiquement si carry > 0
+    prompt.Parent                = touchPart
+
+    prompt.Triggered:Connect(function(triggerPlayer)
+        if triggerPlayer ~= player then return end
+        local CS     = require(ServerScriptService.Common.CarrySystem)
+        local portes = CS.GetPortes(player)
+        if #portes == 0 then
+            notifierJoueur(player, "INFO", "🎒 Tu ne portes aucun Brain Rot !")
+            return
+        end
+        -- Éjecter le BR actuel dans le champ, puis déposer le BR porté
+        DropSystem.EjecterBR(player, touchPart)
+        DropSystem.DeposerBrainRots(player, touchPart)
+    end)
 end
 
 local function supprimerPromptRecuperer(touchPart)
-    local ancien = touchPart:FindFirstChild("RecupererPrompt")
-    if ancien then pcall(function() ancien:Destroy() end) end
+    local r = touchPart:FindFirstChild("RecupererPrompt")
+    if r then pcall(function() r:Destroy() end) end
+    local rp = touchPart:FindFirstChild("RemplacerPrompt")
+    if rp then pcall(function() rp:Destroy() end) end
 
-    -- Réactiver le DepotPrompt
     local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
-    if depotPrompt then
-        pcall(function() depotPrompt.Enabled = true end)
-    end
+    if depotPrompt then pcall(function() depotPrompt.Enabled = true end) end
 end
 
 -- ============================================================
@@ -366,6 +391,8 @@ local function restaurerDepots(player, playerData)
 
             mettreAJourGui(touchPart, valeur)
             creerPromptRecuperer(touchPart, player)
+            local infoSpot = spotsData[uid][touchPart]
+            creerPromptRemplacer(touchPart, player, infoSpot and infoSpot.rarete)
         end
     end
 end
@@ -494,8 +521,9 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Mettre à jour le SurfaceGui
     mettreAJourGui(touchPart, valeurSec)
 
-    -- Ajouter le prompt de récupération (désactive automatiquement le DepotPrompt)
+    -- Ajouter le prompt de récupération + remplacement
     creerPromptRecuperer(touchPart, player)
+    creerPromptRemplacer(touchPart, player, rarete)
 
     -- Informer le joueur
     notifierJoueur(player, "INFO",
@@ -582,12 +610,20 @@ function DropSystem.RecalculerPrompts(player)
     local nbPortes = #CarrySystem.GetPortes(player)
 
     for _, touchPart in pairs(index) do
-        local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
+        local estOccupe = spotsData[uid][touchPart] ~= nil
+
+        local depotPrompt     = touchPart:FindFirstChild("DepotPrompt")
+        local remplacerPrompt = touchPart:FindFirstChild("RemplacerPrompt")
+
         if depotPrompt then
-            -- Désactiver si spot occupé OU carry vide
-            local estOccupe = spotsData[uid][touchPart] ~= nil
             pcall(function()
                 depotPrompt.Enabled = (not estOccupe) and (nbPortes > 0)
+            end)
+        end
+        if remplacerPrompt then
+            -- "Remplacer" : spot occupé ET joueur porte au moins 1 BR
+            pcall(function()
+                remplacerPrompt.Enabled = estOccupe and (nbPortes > 0)
             end)
         end
     end
@@ -626,6 +662,137 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
         }
     end
     return result
+end
+
+-- Retourne la liste des touchParts libres (non occupés) du joueur
+function DropSystem.GetSpotsLibres(player)
+    local uid = player.UserId
+    if not spotIndex[uid] then return {} end
+    local occupes = spotsData[uid] or {}
+    local libres  = {}
+    for _, touchPart in pairs(spotIndex[uid]) do
+        if not occupes[touchPart] then
+            table.insert(libres, touchPart)
+        end
+    end
+    return libres
+end
+
+-- Dépose un BR directement sur un spot libre, sans passer par le carry
+-- Utilisé par le Tracteur pour déposer automatiquement
+function DropSystem.DeposerBRDirect(player, touchPart, rarete)
+    local uid = player.UserId
+    if not spotsData[uid] then return false end
+
+    local index = spotIndex[uid]
+    if not index then return false end
+
+    -- Trouver la clé du spot
+    local spotKey = nil
+    for cle, tp in pairs(index) do
+        if tp == touchPart then spotKey = cle break end
+    end
+    if not spotKey then return false end
+
+    -- Spot déjà occupé ?
+    if spotsData[uid][touchPart] then return false end
+
+    local valeurSec = VALEUR_PAR_RARETE[rarete] or 1
+    local miniModel = placerMiniModele(touchPart, rarete)
+
+    spotsData[uid][touchPart] = {
+        spotKey   = spotKey,
+        rarete    = rarete,
+        valeurSec = valeurSec,
+        miniModel = miniModel,
+    }
+
+    mettreAJourGui(touchPart, valeurSec)
+    creerPromptRecuperer(touchPart, player)
+    creerPromptRemplacer(touchPart, player, rarete)
+
+    local IS = getIncomeSystem()
+    if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
+
+    print("[DropSystem] Tracteur a déposé " .. rarete .. " sur spot " .. spotKey)
+    return true
+end
+
+-- Éjecte le BR d'un spot occupé vers le terrain (clone taille réelle, 15s lifetime)
+-- Le joueur peut ensuite le ramasser manuellement
+function DropSystem.EjecterBR(player, touchPart)
+    local uid = player.UserId
+    if not spotsData[uid] then return end
+
+    local entree = spotsData[uid][touchPart]
+    if not entree then return end
+
+    local rarete    = entree.rarete
+    local miniModel = entree.miniModel
+    spotsData[uid][touchPart] = nil
+
+    supprimerMiniModele(miniModel)
+    supprimerPromptRecuperer(touchPart)
+    viderGui(touchPart)
+
+    -- Cloner un modèle taille réelle dans le terrain près du spot
+    local brainrots = ServerStorage:FindFirstChild("Brainrots")
+    if brainrots then
+        local dossier = brainrots:FindFirstChild(rarete) or brainrots:FindFirstChild("COMMON")
+        if dossier then
+            local modeles = dossier:GetChildren()
+            if #modeles > 0 then
+                local source = modeles[math.random(1, #modeles)]
+                local clone  = nil
+                pcall(function() clone = source:Clone() end)
+                if clone then
+                    -- Position légèrement décalée du spot
+                    local offset = Vector3.new(math.random(-4, 4), 1, math.random(-4, 4))
+                    local pos    = touchPart.Position + offset
+                    clone.Parent = Workspace
+                    if clone:IsA("Model") then
+                        pcall(function()
+                            clone:PivotTo(CFrame.new(pos) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
+                        end)
+                    end
+                    -- Prompt de ramassage manuel
+                    local pickupPrompt = Instance.new("ProximityPrompt")
+                    pickupPrompt.Name                  = "PickupPrompt"
+                    pickupPrompt.ActionText            = "Ramasser"
+                    pickupPrompt.ObjectText            = rarete
+                    pickupPrompt.HoldDuration          = 0
+                    pickupPrompt.MaxActivationDistance = 8
+                    pickupPrompt.KeyboardKeyCode       = Enum.KeyCode.E
+                    pickupPrompt.RequiresLineOfSight   = false
+                    local primaryPart = clone:IsA("Model") and (clone.PrimaryPart or clone:FindFirstChildOfClass("BasePart"))
+                    if primaryPart then
+                        pickupPrompt.Parent = primaryPart
+                    else
+                        pickupPrompt.Parent = clone
+                    end
+                    pickupPrompt.Triggered:Connect(function(triggerPlayer)
+                        if triggerPlayer ~= player then return end
+                        local CS = require(ServerScriptService.Common.CarrySystem)
+                        local rareteObj = { nom = rarete, dossier = rarete }
+                        pcall(CS.RamasserBR, player, rareteObj, nil)
+                        pcall(function() clone:Destroy() end)
+                    end)
+                    -- Auto-destroy après 15s
+                    task.delay(15, function()
+                        if clone and clone.Parent then
+                            pcall(function() clone:Destroy() end)
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
+    -- Recalculer l'income
+    local IS = getIncomeSystem()
+    if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
+
+    print("[DropSystem] BR éjecté : " .. rarete .. " du spot " .. entree.spotKey)
 end
 
 -- Nettoie l'état du joueur (appelé à la déconnexion)

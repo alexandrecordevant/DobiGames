@@ -29,7 +29,8 @@ local function DefaultData()
             upgradeCarry=0,    upgradeAimant=0,
         },
         -- Game Passes shop
-        hasTracteur    = false,
+        hasTracteur      = false,
+        tracteurSeuilMin = "RARE",  -- seuil de rareté minimum collecté par le tracteur
         hasLuckyCharm  = false,
         -- Vitesse actuelle (modifiée par upgrade Speed)
         walkSpeedActuel = 16,

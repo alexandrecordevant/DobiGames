@@ -134,10 +134,16 @@ GameConfig.ShopUpgrades = {
     Tracteur = {
         nom         = "Tracteur",
         icone       = "🚜",
-        description = "Collecte automatiquement les BR dans ton champ",
+        description = "Collecte automatiquement les BR selon ton seuil de rareté",
         ordre       = 5,
         niveaux = {
             [1] = { type="robux", prix=299, gamePassId=0, label="Activer", effet={ tracteurActif=true }, isMax=true },
+        },
+        -- Seuils disponibles — le joueur choisit dans le Shop (RARE+ gratuit par défaut)
+        seuilsDisponibles = {
+            { label = "RARE+",      rareteMin = "RARE",      prix = 0    },  -- défaut, gratuit
+            { label = "EPIC+",      rareteMin = "EPIC",      prix = 500  },  -- coût coins
+            { label = "LEGENDARY+", rareteMin = "LEGENDARY", prix = 2000 },  -- coût coins
         },
         maxNiveau        = 1,
         isGamePass       = true,
@@ -178,6 +184,60 @@ GameConfig.SonUpgrade  = 0
 
 -- === BADGE ===
 GameConfig.BadgePremierPrestige = 0
+
+-- === EVENTS VISUELS ===
+GameConfig.EventsVisuels = {
+
+    NightMode = {
+        duree          = 45,
+        brightnessMin  = 0,
+        ambientNuit    = Color3.fromRGB(0, 0, 20),
+        ambientJour    = Color3.fromRGB(70, 70, 70),
+        brightnessJour = 2,
+        fogEndNuit     = 200,
+        message        = "🌙 NIGHT MODE ! Les Brain Rots brillent dans le noir !",
+        messageFin     = "☀️ Le jour se lève... jusqu'au prochain event !",
+    },
+
+    MeteorDrop = {
+        duree           = 60,
+        nbMeteores      = 5,
+        hauteurSpawn    = 200,
+        vitesseTombee   = 80,
+        rayonImpact     = 15,
+        intervalleSpawn = 12,
+        raretesMeteore  = { "LEGENDARY", "MYTHIC", "SECRET" },
+        message         = "☄️ METEOR DROP ! Des météores s'écrasent sur le ChampCommun !",
+        messageImpact   = "💥 Impact ! Un Brain Rot rare est apparu !",
+        messageFin      = "☄️ Les météores ont cessé de tomber.",
+    },
+
+    Rain = {
+        duree           = 90,
+        hauteurNuages   = 35,
+        tailleNuage     = Vector3.new(20, 5, 20),
+        spawnMultiplier = 3,
+        particleRate    = 50,
+        message         = "🌧️ RAIN EVENT ! La pluie booste le ChampCommun ×3 !",
+        messageFin      = "☀️ La pluie s'arrête... le champ reste fertilisé !",
+    },
+
+    Golden = {
+        duree          = 60,
+        multiplicateur = 5,
+        couleurGolden  = Color3.fromRGB(255, 215, 0),
+        ambientGolden  = Color3.fromRGB(255, 200, 50),
+        message        = "✨ GOLDEN EVENT ! Tous les gains ×5 pendant 60s !",
+        messageFin     = "✨ Le Golden Event est terminé. À bientôt !",
+    },
+}
+
+-- Positions spawn points ChampCommun (utilisées par Rain + MeteorDrop)
+GameConfig.ChampCommunPoints = {
+    { x = 190.92, y = 16.189, z =   66.30 },
+    { x = 250.93, y = 16.189, z =  -80.20 },
+    { x = 189.51, y = 16.189, z = -241.28 },
+}
 
 -- === PROGRESSION BASE ===
 -- Lu par BaseProgressionSystem (Common) — ne pas modifier les clés

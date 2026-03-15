@@ -83,6 +83,99 @@ OIN.OnClientEvent:Connect(function(montant)
     task.delay(4, function() notif:Destroy() end)
 end)
 
+-- ============================================================
+-- Effets visuels events
+-- ============================================================
+
+-- NightMode : flash noir
+task.spawn(function()
+    local NightModeStart = ReplicatedStorage:WaitForChild("NightModeStart", 15)
+    if not NightModeStart then return end
+    NightModeStart.OnClientEvent:Connect(function()
+        local flash = Instance.new("Frame", gui)
+        flash.Size                    = UDim2.new(1, 0, 1, 0)
+        flash.BackgroundColor3        = Color3.new(0, 0, 0)
+        flash.BackgroundTransparency  = 0
+        flash.BorderSizePixel         = 0
+        flash.ZIndex                  = 10
+        -- Fade in rapide (0.3s) puis fade out (0.5s)
+        TweenService:Create(flash, TweenInfo.new(0.3), { BackgroundTransparency = 0 }):Play()
+        task.wait(0.35)
+        TweenService:Create(flash, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+        task.delay(0.9, function() flash:Destroy() end)
+    end)
+end)
+
+-- MeteorImpact : shake caméra selon distance au joueur
+task.spawn(function()
+    local MeteorImpact = ReplicatedStorage:WaitForChild("MeteorImpact", 15)
+    if not MeteorImpact then return end
+    local camera = workspace.CurrentCamera
+    MeteorImpact.OnClientEvent:Connect(function(impactPos)
+        if not camera or not player.Character then return end
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        -- Intensité diminue avec la distance
+        local dist      = (hrp.Position - Vector3.new(impactPos.X, hrp.Position.Y, impactPos.Z)).Magnitude
+        local intensite = math.clamp(1 - dist / 200, 0, 1)
+        if intensite < 0.05 then return end
+
+        task.spawn(function()
+            local cameraOffset = Vector3.new(0, 0, 0)
+            local infoShake    = TweenInfo.new(0.05, Enum.EasingStyle.Quad)
+            for i = 1, 8 do
+                if not camera then break end
+                local amplitude = intensite * 0.5 * (1 - i / 10)
+                cameraOffset = Vector3.new(
+                    math.random(-100, 100) / 100 * amplitude,
+                    math.random(-100, 100) / 100 * amplitude,
+                    0
+                )
+                pcall(function()
+                    camera.CFrame = camera.CFrame * CFrame.new(cameraOffset)
+                end)
+                task.wait(0.05)
+            end
+        end)
+    end)
+end)
+
+-- GoldenStart : flash doré + texte ×5
+task.spawn(function()
+    local GoldenStart = ReplicatedStorage:WaitForChild("GoldenStart", 15)
+    if not GoldenStart then return end
+    GoldenStart.OnClientEvent:Connect(function()
+        -- Flash doré
+        local flash = Instance.new("Frame", gui)
+        flash.Size                   = UDim2.new(1, 0, 1, 0)
+        flash.BackgroundColor3       = Color3.fromRGB(255, 200, 0)
+        flash.BackgroundTransparency = 0.3
+        flash.BorderSizePixel        = 0
+        flash.ZIndex                 = 10
+        TweenService:Create(flash, TweenInfo.new(0.3),  { BackgroundTransparency = 0.3 }):Play()
+        task.wait(0.35)
+        TweenService:Create(flash, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+        task.delay(0.9, function() flash:Destroy() end)
+
+        -- Texte ×5 flottant au centre
+        local texte = Instance.new("TextLabel", gui)
+        texte.Size                   = UDim2.new(0, 300, 0, 70)
+        texte.Position               = UDim2.new(0.5, -150, 0.5, -35)
+        texte.BackgroundTransparency = 1
+        texte.TextColor3             = Color3.fromRGB(255, 215, 0)
+        texte.TextStrokeTransparency = 0
+        texte.TextStrokeColor3       = Color3.fromRGB(100, 60, 0)
+        texte.TextScaled             = true
+        texte.Font                   = Enum.Font.GothamBold
+        texte.Text                   = "✨ ×5 GOLDEN !"
+        texte.ZIndex                 = 11
+        TweenService:Create(texte, TweenInfo.new(2),
+            { Position = UDim2.new(0.5, -150, 0.35, -35), TextTransparency = 1 }
+        ):Play()
+        task.delay(2.1, function() texte:Destroy() end)
+    end)
+end)
+
 -- Collect VFX
 local CollectVFX = ReplicatedStorage:WaitForChild("CollectVFX")
 CollectVFX.OnClientEvent:Connect(function(montant, rarete)

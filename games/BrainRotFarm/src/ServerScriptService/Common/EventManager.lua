@@ -3,6 +3,17 @@ local EventManager = {}
 local Config        = require(game.ReplicatedStorage.Specialized.GameConfig)
 local CollectSystem = require(game.ReplicatedStorage.Common.CollectSystem)
 
+-- Chargement différé de EventVisuals (coordinateur visuel+gameplay)
+local _EventVisuals = nil
+local function getEventVisuals()
+    if not _EventVisuals then
+        local SSS = game:GetService("ServerScriptService")
+        local ok, m = pcall(require, SSS.Common.EventVisuals)
+        if ok and m then _EventVisuals = m end
+    end
+    return _EventVisuals
+end
+
 -- TEST_MODE : intervalles réduits pour valider le flow en studio
 local _TestConfig = Config.TEST_MODE
     and require(game.ReplicatedStorage.Test.TestConfig)
@@ -38,32 +49,20 @@ local function EnvoyerDiscord(titre, message)
 end
 
 local function DemarrerEvent(typeEvent)
-    -- En TEST_MODE : durée de l'event réduite (EventDureeMinutes = 0.1 → 6s)
-    local dureeEvent = GetConfig("EventDureeMinutes", 5) * 60
-    local configs = {
-        LuckyHour   = { mult=10, duree=dureeEvent, msg="⭐ LUCKY HOUR ! Spawn ×10 !"                                },
-        MeteorDrop  = { mult=20, duree=dureeEvent, msg="☄️ METEOR DROP ! Rares tombent du ciel !"                   },
-        DoubleCoins = { mult=5,  duree=dureeEvent, msg="💰 DOUBLE COINS ! ×5 !"                                     },
-        SecretSpawn = { mult=1,  duree=dureeEvent, msg="🔴 SECRET SPAWN ! " .. Config.CollectibleName .. " rare !" },
-    }
-    local cfg = configs[typeEvent]
-    if not cfg then return end
-    NotifierTous(cfg.msg, Color3.fromRGB(255,200,0))
-    BrainRotSpawner.SetEventMultiplier(cfg.mult)
-    local es = game.ReplicatedStorage:FindFirstChild("EventStarted")
-    if es then es:FireAllClients(typeEvent, cfg.duree) end
-    task.delay(cfg.duree, function()
-        BrainRotSpawner.SetEventMultiplier(1)
-        local ee = game.ReplicatedStorage:FindFirstChild("EventEnded")
-        if ee then ee:FireAllClients() end
-    end)
+    -- EventVisuals gère tout : visuel + gameplay + notifications
+    local EV = getEventVisuals()
+    if EV then
+        pcall(EV.Lancer, typeEvent)
+    else
+        warn("[EventManager] EventVisuals non disponible, event ignoré : " .. tostring(typeEvent))
+    end
 end
 
 local function BoucleAuto()
     local intervalle   = GetConfig("EventIntervalleMinutes", Config.EventIntervalleMinutes) * 60
     -- En test l'earlyBird est ignoré (intervalle trop court pour avoir un pre-avis)
     local earlyBird    = Config.TEST_MODE and 0 or (Config.EarlyBirdBonusMinutes * 60)
-    local types        = { "LuckyHour", "MeteorDrop", "DoubleCoins", "SecretSpawn" }
+    local types        = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
     while true do
         task.wait(intervalle - earlyBird)
         NotifierTous("⏰ Event dans 1h ! Reste connecté pour l'Early Bird 🎁", Color3.fromRGB(100,200,255))
@@ -94,6 +93,10 @@ local function BoucleAdminAbuseHebdo()
 end
 
 function EventManager.Init()
+    -- Initialiser EventVisuals en premier
+    local EV = getEventVisuals()
+    if EV then pcall(EV.Init) end
+
     task.spawn(BoucleAuto)
     task.spawn(BoucleAdminAbuseHebdo)
     print("[EventManager] Events automatiques démarrés ✓")

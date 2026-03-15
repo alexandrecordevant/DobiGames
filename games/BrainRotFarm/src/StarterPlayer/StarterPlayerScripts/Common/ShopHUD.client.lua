@@ -43,6 +43,7 @@ local SCROLL_TOP       = HEADER_H + COINS_H + 6
 local SCROLL_H         = PANEL_H - SCROLL_TOP - 10
 local UPGRADE_H        = 116   -- hauteur d'un bloc upgrade
 local UPGRADE_PAD      = 8     -- espacement entre blocs
+local SEUIL_H          = 96    -- hauteur du bloc seuil tracteur
 local BTN_H            = 38
 local BTN_CORNER       = UDim.new(0, 6)
 
@@ -215,8 +216,9 @@ end
 -- ============================================================
 -- Construction UI d'un bloc upgrade
 -- ============================================================
-local AchatUpgrade      = nil
-local DemandeAchatRobux = nil
+local AchatUpgrade         = nil
+local DemandeAchatRobux    = nil
+local ChangerSeuilTracteur = nil
 
 local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, cliquable)
     local btn = Instance.new(cliquable and "TextButton" or "TextLabel")
@@ -396,6 +398,99 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
 end
 
 -- ============================================================
+-- Bloc seuil Tracteur
+-- ============================================================
+local seuilFrame = nil
+
+local function construireSeuilTracteur(donnes, yPos)
+    -- Supprimer l'ancien bloc si présent
+    if seuilFrame and seuilFrame.Parent then seuilFrame:Destroy() end
+    seuilFrame = nil
+
+    if not donnes.hasTracteur then return yPos end
+
+    local tracteurConfig = donnes.upgrades and donnes.upgrades.Tracteur
+    local seuils = tracteurConfig and tracteurConfig.seuilsDisponibles
+    if not seuils then return yPos end
+
+    local frame = Instance.new("Frame")
+    frame.Name             = "SeuilTracteur"
+    frame.Size             = UDim2.new(1, -10, 0, SEUIL_H)
+    frame.Position         = UDim2.new(0, 5, 0, yPos)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 18, 6)
+    frame.BorderSizePixel  = 0
+    frame.Parent           = scrollFrame
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color     = Color3.fromRGB(80, 60, 10)
+    stroke.Thickness = 1.5
+    stroke.Parent    = frame
+
+    local titre = Instance.new("TextLabel")
+    titre.Size                = UDim2.new(1, -12, 0, 26)
+    titre.Position            = UDim2.new(0, 10, 0, 6)
+    titre.BackgroundTransparency = 1
+    titre.Text                = "🚜  SEUIL TRACTEUR"
+    titre.TextColor3          = C_GOLD_TXT
+    titre.Font                = Enum.Font.GothamBold
+    titre.TextScaled          = true
+    titre.TextXAlignment      = Enum.TextXAlignment.Left
+    titre.Parent              = frame
+
+    local seuilActuel = donnes.tracteurSeuilMin or "RARE"
+    local nbSeuils    = #seuils
+    local pad         = 6
+    local containerW  = PANEL_W - 16 - 10
+    local btnW        = math.floor((containerW - (nbSeuils - 1) * pad) / nbSeuils)
+
+    local btnContainer = Instance.new("Frame")
+    btnContainer.Size             = UDim2.new(1, -16, 0, BTN_H)
+    btnContainer.Position         = UDim2.new(0, 8, 0, 48)
+    btnContainer.BackgroundTransparency = 1
+    btnContainer.Parent           = frame
+
+    for i, s in ipairs(seuils) do
+        local estSelectionne = (s.rareteMin == seuilActuel)
+        local xPos = (i - 1) * (btnW + pad)
+
+        local bgCol  = estSelectionne and C_GREEN_BG  or C_GREY_BG
+        local txtCol = estSelectionne and C_GREEN_TXT or C_GREY_TXT
+
+        local texte = s.label
+        if s.prix and s.prix > 0 and not estSelectionne then
+            texte = s.label .. " · " .. FormatCoins(s.prix) .. "💰"
+        elseif estSelectionne then
+            texte = "✅ " .. s.label
+        end
+
+        local btn = Instance.new("TextButton")
+        btn.Size             = UDim2.new(0, btnW, 0, BTN_H)
+        btn.Position         = UDim2.new(0, xPos, 0, 0)
+        btn.BackgroundColor3 = bgCol
+        btn.Text             = texte
+        btn.TextColor3       = txtCol
+        btn.Font             = Enum.Font.GothamBold
+        btn.TextScaled       = true
+        btn.BorderSizePixel  = 0
+        btn.Parent           = btnContainer
+        Instance.new("UICorner", btn).CornerRadius = BTN_CORNER
+
+        local rareteMin = s.rareteMin  -- capture locale pour le Connect
+        if not estSelectionne then
+            btn.MouseButton1Click:Connect(function()
+                if ChangerSeuilTracteur then
+                    ChangerSeuilTracteur:FireServer(rareteMin)
+                end
+            end)
+        end
+    end
+
+    seuilFrame = frame
+    return yPos + SEUIL_H + UPGRADE_PAD
+end
+
+-- ============================================================
 -- Construction complète du shop depuis les données reçues
 -- ============================================================
 local function construireShop(donnes)
@@ -420,6 +515,9 @@ local function construireShop(donnes)
         y = y + UPGRADE_H + UPGRADE_PAD
     end
 
+    -- Bloc seuil Tracteur (visible seulement si hasTracteur)
+    y = construireSeuilTracteur(donnes, y)
+
     -- Ajuster le canvas de scroll
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
 
@@ -442,11 +540,16 @@ local function mettreAJourShop(donnes)
         return
     end
 
-    -- Sinon, juste mettre à jour les boutons et coins
+    -- Sinon, juste mettre à jour les boutons, coins, et seuil tracteur
     coinsLbl.Text = "💰 " .. FormatCoins(donnes.playerCoins) .. " coins"
     for _, entry in ipairs(upgradeOrdre) do
         mettreAJourBoutons(entry.nom, entry.cfg, donnes)
     end
+    -- Recalculer la position Y du bloc seuil
+    local y = 6 + #upgradeOrdre * (UPGRADE_H + UPGRADE_PAD)
+    construireSeuilTracteur(donnes, y)
+    local totalH = y + (donnes.hasTracteur and (SEUIL_H + UPGRADE_PAD) or 0)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalH + 4)
 end
 
 -- ============================================================
@@ -505,8 +608,9 @@ task.spawn(function()
     local ShopUpdateEvent = ReplicatedStorage:WaitForChild("ShopUpdate",  15)
     local FermerShopEvent = ReplicatedStorage:WaitForChild("FermerShop",  15)
 
-    AchatUpgrade      = ReplicatedStorage:WaitForChild("AchatUpgrade",      15)
-    DemandeAchatRobux = ReplicatedStorage:WaitForChild("DemandeAchatRobux", 15)
+    AchatUpgrade         = ReplicatedStorage:WaitForChild("AchatUpgrade",         15)
+    DemandeAchatRobux    = ReplicatedStorage:WaitForChild("DemandeAchatRobux",    15)
+    ChangerSeuilTracteur = ReplicatedStorage:WaitForChild("ChangerSeuilTracteur", 15)
 
     if OuvrirShopEvent then
         OuvrirShopEvent.OnClientEvent:Connect(function(donnes)

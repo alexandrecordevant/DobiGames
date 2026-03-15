@@ -115,6 +115,10 @@ local CARRY_CONFIG = {
 -- ============================================================
 -- { portes, niveauCarry, hasProtection, depotPrompts = {touchPart→prompt} }
 local donneesJoueurs = {}
+-- Bonus de slots carry par joueur (shopUpgrade Carry)
+local carryBonuses   = {}
+-- Rayon aimant par joueur (shopUpgrade Aimant)
+local rayonAimant    = {}
 
 local CarryUpdate      = nil
 local BRAINROTS_FOLDER = nil
@@ -311,7 +315,7 @@ local function effectuerRamassage(player, rarete, modeleExistant)
 	local data = donneesJoueurs[player.UserId]
 	if not data then return false end
 
-	local max = CARRY_CONFIG.niveaux[data.niveauCarry] or 1
+	local max = CarrySystem.GetCapaciteMax(player)
 	if #data.portes >= max then
 		messageSacPlein(player, data)
 		return false
@@ -775,6 +779,8 @@ local function nettoyerJoueur(player)
 		end
 	end
 	donneesJoueurs[player.UserId] = nil
+	carryBonuses[player.UserId]   = nil
+	rayonAimant[player.UserId]    = nil
 end
 
 -- ============================================================
@@ -789,7 +795,9 @@ end
 function CarrySystem.GetCapaciteMax(player)
 	local data = donneesJoueurs[player.UserId]
 	if not data then return 1 end
-	return CARRY_CONFIG.niveaux[data.niveauCarry] or 1
+	local base  = CARRY_CONFIG.niveaux[data.niveauCarry] or 1
+	local bonus = carryBonuses[player.UserId] or 0
+	return base + bonus
 end
 
 function CarrySystem.GetPrixUpgrade(player)
@@ -827,6 +835,24 @@ end
 function CarrySystem.SetProtection(player, valeur)
 	local data = donneesJoueurs[player.UserId]
 	if data then data.hasProtection = valeur == true end
+end
+
+-- Définit le bonus de slots carry (shopUpgrade Carry)
+-- bonusSlots = nombre de slots en plus de la capacité de base
+function CarrySystem.SetCapacite(player, bonusSlots)
+	carryBonuses[player.UserId] = math.max(0, bonusSlots or 0)
+	envoyerCarryUpdate(player)
+end
+
+-- Définit le rayon aimant du joueur (shopUpgrade Aimant)
+-- rayon = distance en studs (utilisé par BrainRotSpawner pour auto-capture)
+function CarrySystem.SetRayonAimant(player, rayon)
+	rayonAimant[player.UserId] = math.max(0, rayon or 0)
+end
+
+-- Retourne le rayon aimant actuel du joueur
+function CarrySystem.GetRayonAimant(player)
+	return rayonAimant[player.UserId] or 0
 end
 
 -- Appelé depuis Main.server.lua via BrainRotSpawner.OnCollecte
