@@ -60,6 +60,111 @@ GameConfig.Raretes = {
     { nom = "Secret",    chance = 0.1, valeur = 500, couleur = Color3.fromRGB(255, 50,  50 ) },
 }
 
+-- === LEADERBOARD ===
+-- Position du panneau 3D dans le Workspace (à ajuster selon la map)
+GameConfig.LeaderboardPosition = Vector3.new(0, 15, 0)
+
+-- === SHOP UPGRADES ===
+-- Lu par ShopSystem (Common) — seul fichier à modifier pour changer le shop
+GameConfig.ShopUpgrades = {
+
+    -- ═══ PAYABLES EN COINS ═══
+
+    Arroseur = {
+        nom         = "Arroseur",
+        icone       = "💧",
+        description = "Accélère le spawn des Brain Rots dans ton champ",
+        ordre       = 1,
+        niveaux = {
+            [1] = { type="coins", prix=500,   label="Niv.1",   effet={ spawnRateMultiplier=1.6 } },
+            [2] = { type="coins", prix=2000,  label="Niv.2",   effet={ spawnRateMultiplier=2.7 } },
+            [3] = { type="robux", prix=149,   gamePassId=0,    label="MAX 🔥", effet={ spawnRateMultiplier=5.0 }, isMax=true },
+        },
+        maxNiveau        = 3,
+        dataField        = "upgradeArroseur",
+        iconeLeaderboard = true,
+    },
+
+    Speed = {
+        nom         = "Speed",
+        icone       = "⚡",
+        description = "Augmente ta vitesse de déplacement",
+        ordre       = 2,
+        niveaux = {
+            [1] = { type="coins", prix=300,  label="Niv.1",  effet={ walkSpeed=22 } },
+            [2] = { type="coins", prix=1000, label="Niv.2",  effet={ walkSpeed=28 } },
+            [3] = { type="robux", prix=99,   gamePassId=0,   label="MAX 🔥", effet={ walkSpeed=36 }, isMax=true },
+        },
+        maxNiveau        = 3,
+        dataField        = "upgradeSpeed",
+        iconeLeaderboard = true,
+    },
+
+    Carry = {
+        nom         = "Carry+",
+        icone       = "🎒",
+        description = "Augmente ta capacité de transport de Brain Rots",
+        ordre       = 3,
+        niveaux = {
+            [1] = { type="coins", prix=500,  label="Niv.1",  effet={ carryCapacite=2 } },
+            [2] = { type="coins", prix=2000, label="Niv.2",  effet={ carryCapacite=3 } },
+            [3] = { type="robux", prix=149,  gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=5 }, isMax=true },
+        },
+        maxNiveau        = 3,
+        dataField        = "upgradeCarry",
+        iconeLeaderboard = true,
+    },
+
+    Aimant = {
+        nom         = "Aimant",
+        icone       = "🧲",
+        description = "Augmente le rayon de collecte des Brain Rots",
+        ordre       = 4,
+        niveaux = {
+            [1] = { type="coins", prix=800,  label="Niv.1",  effet={ rayonCollecte=8  } },
+            [2] = { type="coins", prix=3000, label="Niv.2",  effet={ rayonCollecte=14 }, isMax=true },
+        },
+        maxNiveau        = 2,
+        dataField        = "upgradeAimant",
+        iconeLeaderboard = true,
+    },
+
+    -- ═══ PAYABLES EN R$ UNIQUEMENT ═══
+
+    Tracteur = {
+        nom         = "Tracteur",
+        icone       = "🚜",
+        description = "Collecte automatiquement les BR dans ton champ",
+        ordre       = 5,
+        niveaux = {
+            [1] = { type="robux", prix=299, gamePassId=0, label="Activer", effet={ tracteurActif=true }, isMax=true },
+        },
+        maxNiveau        = 1,
+        isGamePass       = true,
+        dataField        = "hasTracteur",
+        iconeLeaderboard = true,
+    },
+
+    LuckyCharm = {
+        nom         = "Lucky Charm",
+        icone       = "🍀",
+        description = "+25% chances d'obtenir une rareté supérieure",
+        ordre       = 6,
+        niveaux = {
+            [1] = { type="robux", prix=99, gamePassId=0, label="Activer", effet={ luckyBonus=1.25 }, isMax=true },
+        },
+        maxNiveau        = 1,
+        isGamePass       = true,
+        dataField        = "hasLuckyCharm",
+        iconeLeaderboard = false,
+    },
+}
+
+-- Valeurs par défaut (utilisées par ShopSystem pour réinitialisation / defaults)
+GameConfig.WalkSpeedDefaut       = 16
+GameConfig.CarryCapaciteDefaut   = 1
+GameConfig.RayonCollecteDefaut   = 4
+
 -- === COULEURS THÈME ===
 GameConfig.CouleurPrimaire   = Color3.fromRGB(100, 200, 100)
 GameConfig.CouleurSecondaire = Color3.fromRGB(100, 100, 100)

@@ -54,6 +54,15 @@ local getDataFns   = {}
 -- ============================================================
 -- Chargement différé — évite dépendances circulaires
 -- ============================================================
+local _LeaderboardSystem = nil
+local function getLeaderboardSystem()
+    if not _LeaderboardSystem then
+        local ok, m = pcall(require, ServerScriptService.Common.LeaderboardSystem)
+        if ok and m then _LeaderboardSystem = m end
+    end
+    return _LeaderboardSystem
+end
+
 local _BaseProgressionSystem = nil
 local function getBPS()
     if not _BaseProgressionSystem then
@@ -236,6 +245,11 @@ function IncomeSystem.Init(player, getData)
                 local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
                 if UpdateHUD then
                     pcall(function() UpdateHUD:FireClient(player, playerData) end)
+                end
+                -- Notifier le leaderboard de la mise à jour
+                local LS = getLeaderboardSystem()
+                if LS then
+                    pcall(LS.MettreAJour, player, playerData)
                 end
             end
 
