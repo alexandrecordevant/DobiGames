@@ -333,9 +333,14 @@ end
 -- Spawn des collectibles sur la map
 BrainRotSpawner.Init()
 
--- Hook CarrySystem → ProximityPrompt pour les BRs EPIC+
-BrainRotSpawner.OnBRSpawned = function(brModel, baseIndex, rarete)
-    CarrySystem.OnBRSpawned(brModel, baseIndex, rarete)
+-- Hook CarrySystem → ProximityPrompt pour tous les BRs (onCapture forwarded pour RARE+)
+BrainRotSpawner.OnBRSpawned = function(brModel, baseIndex, rarete, onCapture)
+    CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, onCapture)
+end
+
+-- Hook LeaderboardSystem → notifié quand un joueur capture un RARE+ via ProximityPrompt
+BrainRotSpawner.OnRareCollecte = function(player, rareteNom)
+    LeaderboardSystem.EnregistrerRare(player, rareteNom)
 end
 
 -- Collecte Touched (COMMON/OG/RARE) → ramassage carry avec le modèle monde

@@ -440,7 +440,16 @@ local function spawnerUnBrainRot(baseIndex)
 				part.Anchored = true
 			end
 			if BrainRotSpawner.OnBRSpawned then
-				pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
+				-- Pour RARE+ : transmettre un callback de collecte (LeaderboardSystem)
+				local onCapture = nil
+				if (RARETE_ORDRE[rarete.nom] or 0) >= 3 then  -- RARE = 3, EPIC = 4, etc.
+					onCapture = function(player)
+						if BrainRotSpawner.OnRareCollecte then
+							pcall(BrainRotSpawner.OnRareCollecte, player, rarete.nom)
+						end
+					end
+				end
+				pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete, onCapture)
 			end
 		end
 	end)
@@ -530,6 +539,12 @@ function BrainRotSpawner.SetEventMultiplier(mult, baseIndex)
 	end
 end
 
+-- Forcer l'assignation d'un joueur à une base précise (appelé par Main via AssignationSystem)
+function BrainRotSpawner.SetBase(player, baseIndex)
+    assignations[player.UserId] = baseIndex
+    print(string.format("[BrainRotSpawner] %s → Base_%d (SetBase)", player.Name, baseIndex))
+end
+
 -- Assigner un joueur à la première base libre
 function BrainRotSpawner.AssignerBase(player)
 	if assignations[player.UserId] then
@@ -569,8 +584,9 @@ end
 
 -- Callback collecte — à assigner depuis Main.server.lua :
 -- BrainRotSpawner.OnCollecte = function(player, baseIndex, rarete) end
-BrainRotSpawner.OnCollecte  = nil
-BrainRotSpawner.OnBRSpawned = nil  -- hook CarrySystem (ProximityPrompt EPIC+)
+BrainRotSpawner.OnCollecte   = nil
+BrainRotSpawner.OnBRSpawned  = nil  -- hook CarrySystem (ProximityPrompt)
+BrainRotSpawner.OnRareCollecte = nil -- hook LeaderboardSystem (RARE+ capturé via ProximityPrompt)
 
 -- Libération automatique à la déconnexion
 Players.PlayerRemoving:Connect(function(player)

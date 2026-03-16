@@ -60,8 +60,21 @@ GameConfig.Raretes = {
     { nom = "Secret",    chance = 0.1, valeur = 500, couleur = Color3.fromRGB(255, 50,  50 ) },
 }
 
--- === LEADERBOARD ===
--- Position du panneau 3D dans le Workspace (à ajuster selon la map)
+-- === LEADERBOARDS 3D ===
+-- Chemins vers les TextLabels Studio (séparés par des ".")
+GameConfig.Leaderboards = {
+    Leaderboard1 = { chemin = "Workspace.Leaderboards.Leaderboard1.Gui.Texto" },  -- classement joueurs
+    Leaderboard2 = { chemin = "Workspace.Leaderboards.Leaderboard2.Gui.Texto" },  -- infos serveur
+
+    -- Noms des points de spawn du ChampCommun (index → lettre)
+    PointsNoms = { "A", "B", "C" },
+
+    -- Horaire Admin Abuse affiché dans Leaderboard2
+    -- nil → lire GameConfig.AdminAbuseHebdo automatiquement
+    AdminAbuseHoraire = nil,
+}
+
+-- (ancienne clé conservée pour compatibilité)
 GameConfig.LeaderboardPosition = Vector3.new(0, 15, 0)
 
 -- === SHOP UPGRADES ===

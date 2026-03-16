@@ -19,6 +19,16 @@ local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 -- ============================================================
 local DiscordWebhook = require(ServerScriptService:WaitForChild("Common"):WaitForChild("DiscordWebhook"))
 
+-- Chargement différé (évite les dépendances circulaires)
+local _LeaderboardSystem = nil
+local function getLeaderboardSystem()
+    if not _LeaderboardSystem then
+        local ok, m = pcall(require, ServerScriptService.Common.LeaderboardSystem)
+        if ok and m then _LeaderboardSystem = m end
+    end
+    return _LeaderboardSystem
+end
+
 -- Configuration TEST_MODE
 local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
 local _TestConfig = _GameConfig.TEST_MODE
@@ -86,6 +96,10 @@ local actifMythic     = false
 local actifSecret     = false
 local idCounter       = 0
 local spawnMultiplier = 1  -- modifié par SetMultiplier (Rain Event)
+
+-- Timers pour Leaderboard2 (lus via GetProchainSpawn)
+local prochainSpawnTime  = {}  -- { [typeNom] = os.time() du prochain spawn }
+local prochainSpawnPoint = {}  -- { [typeNom] = index point A/B/C }
 
 -- Données permanentes par point de spawn
 -- { part, particle, light, bb, labelPermanent }
@@ -533,6 +547,10 @@ local function lancerScheduler(typeNom)
 				cfg.compteurVisibleAvant + 30,
 				cfg.intervalleSecondes / math.max(1, spawnMultiplier)
 			)
+			-- Enregistrer le moment prévu du spawn (lu par GetProchainSpawn)
+			prochainSpawnTime[typeNom]  = os.time() + intervalleEffectif
+			prochainSpawnPoint[typeNom] = nil  -- point pas encore choisi
+
 			local attenteAvantCompteur = intervalleEffectif - cfg.compteurVisibleAvant
 			task.wait(math.max(1, attenteAvantCompteur))
 
@@ -542,6 +560,7 @@ local function lancerScheduler(typeNom)
 
 			-- Choisir un point de spawn aléatoire
 			local pointIdx = math.random(1, #SPAWN_POINTS)
+			prochainSpawnPoint[typeNom] = pointIdx
 			local pd       = pointsData[pointIdx]
 
 			-- ── Phase 2 : alerte + compteur ───────────────────────
@@ -660,6 +679,12 @@ local function lancerScheduler(typeNom)
 				if ChampCommunSpawner.OnCollecte then
 					pcall(ChampCommunSpawner.OnCollecte, playerCollecte, typeNom)
 				end
+
+				-- Notifier LeaderboardSystem (DernierRare affiché dans Leaderboard2)
+				local LBS = getLeaderboardSystem()
+				if LBS and LBS.EnregistrerRare then
+					pcall(LBS.EnregistrerRare, playerCollecte, typeNom)
+				end
 			else
 				-- BR expiré sans être collecté
 				notifierTous("INFO", string.format(
@@ -683,6 +708,20 @@ ChampCommunSpawner.OnCollecte = nil
 -- Hook ProximityPrompt — à assigner depuis Main.server.lua :
 -- ChampCommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture) end
 ChampCommunSpawner.OnBRSpawned = nil
+
+-- Retourne le temps restant avant le prochain spawn d'un type donné
+-- typeNom = "MYTHIC" | "SECRET"
+-- Retourne { tempsRestant = secondes (0 si spawn imminent/passé), point = "A"|"B"|"C"|nil }
+function ChampCommunSpawner.GetProchainSpawn(typeNom)
+    local t = prochainSpawnTime[typeNom]
+    if not t then
+        return { tempsRestant = -1, point = nil }
+    end
+    local restant = math.max(0, t - os.time())
+    local lettres = { "A", "B", "C" }
+    local pointLettre = prochainSpawnPoint[typeNom] and lettres[prochainSpawnPoint[typeNom]] or nil
+    return { tempsRestant = restant, point = pointLettre }
+end
 
 -- Modifie le multiplicateur de spawn (appelé par Rain Event)
 -- mult = 1 → vitesse normale, mult = 3 → 3× plus fréquent

@@ -156,4 +156,14 @@ GameConfig.ProgressionConfig = {
     baseSurTotalGagne = true,
 }
 
+-- === LEADERBOARDS 3D ===
+-- Adapter les chemins selon la structure Studio du jeu
+GameConfig.Leaderboards = {
+    Leaderboard1 = { chemin = "Workspace.Leaderboards.Leaderboard1.Gui.Texto" },  -- classement joueurs
+    Leaderboard2 = { chemin = "Workspace.Leaderboards.Leaderboard2.Gui.Texto" },  -- infos serveur
+    PointsNoms   = { "A", "B", "C" },  -- noms des points de spawn ChampCommun
+    AdminAbuseHoraire = nil,  -- nil → lire AdminAbuseHebdo automatiquement
+}
+GameConfig.LeaderboardPosition = Vector3.new(0, 15, 0)  -- fallback panneau 3D custom
+
 return GameConfig

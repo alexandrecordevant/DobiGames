@@ -81,28 +81,47 @@ end
 -- ═══════════════════════════════════════════════
 
 local function OnPlayerAdded(player)
-    -- Charger données (avec calcul offline income)
+    -- Charger données
     local data = DataStoreManager.Load(player)
     SetData(player, data)
-    
+
     -- Vérifier Game Passes
     MonetizationHandler.CheckGamePasses(player, data)
-    
+
+    -- Assigner une base au joueur
+    local baseIndex = AssignationSystem.AssignerBase(player)
+
+    -- Initialiser la progression de la base
+    if baseIndex then
+        BaseProgressionSystem.Init(player, baseIndex, data)
+        DropSystem.Init(player, baseIndex)
+        ShopSystem.AppliquerTousUpgrades(player, data)
+    end
+
+    -- Démarrer l'income
+    IncomeSystem.Init(player, data)
+
+    -- Créer leaderstats + mettre à jour leaderboard
+    LeaderboardSystem.MettreAJour(player, data)
+
     -- Envoyer HUD initial
-    task.wait(1)  -- laisser le client charger
+    task.wait(1)
     UpdateHUD:FireClient(player, data)
-    
+
     -- Lancer auto-save
     DataStoreManager.StartAutoSave(player, function()
         return GetData(player)
     end)
-    
-    -- Lancer collecte automatique si Auto Collect Pass
-    if data.hasAutoCollect then
-        SpawnManager.StartAutoCollect(player, data)
+
+    -- Tracteur si actif
+    if data.hasTracteur then
+        ShopSystem.ActiverTracteur(player)
     end
-    
-    print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " connecté (Tier " .. data.tier .. ", Prestige " .. data.prestige .. ")")
+
+    print("[" .. Config.NomDuJeu .. "] " .. player.Name .. 
+          " connecté → Base_" .. (baseIndex or "?") ..
+          " | Coins: " .. data.coins ..
+          " | Rebirth: " .. (data.rebirthLevel or 0))
 end
 
 local function OnPlayerRemoving(player)

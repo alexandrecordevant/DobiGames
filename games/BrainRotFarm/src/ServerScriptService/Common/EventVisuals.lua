@@ -169,6 +169,8 @@ end
 -- ============================================================
 local eventActif     = nil
 local terminerThread = nil
+local eventStartTime = nil  -- os.time() au lancement de l'event actif
+local eventDuree     = nil  -- durée totale en secondes
 
 -- ============================================================
 -- API publique
@@ -178,10 +180,23 @@ function EventVisuals.GetEventActif()
     return eventActif
 end
 
+-- Retourne le temps restant de l'event en cours
+-- { actif=bool, nom=string|nil, tempsRestant=secondes }
+function EventVisuals.GetTempsRestantEvent()
+    if not eventActif or not eventStartTime or not eventDuree then
+        return { actif = false, nom = nil, tempsRestant = 0 }
+    end
+    local ecoule  = os.time() - eventStartTime
+    local restant = math.max(0, eventDuree - ecoule)
+    return { actif = true, nom = eventActif, tempsRestant = restant }
+end
+
 function EventVisuals.TerminerActif()
     if not eventActif then return end
     local nomEvent = eventActif
     eventActif     = nil
+    eventStartTime = nil
+    eventDuree     = nil
 
     -- Annuler le timer de terminaison automatique
     if terminerThread then
@@ -240,6 +255,9 @@ function EventVisuals.Lancer(nomEvent)
     end
 
     if not duree then duree = 60 end
+
+    eventStartTime = os.time()
+    eventDuree     = duree
 
     -- Terminaison automatique après la durée
     terminerThread = task.delay(duree, function()
