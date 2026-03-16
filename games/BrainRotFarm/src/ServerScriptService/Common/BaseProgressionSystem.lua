@@ -17,7 +17,7 @@ local Workspace         = game:GetService("Workspace")
 local Config     = require(ReplicatedStorage.Specialized.GameConfig)
 local ProgConfig = Config.ProgressionConfig
 
--- En TEST_MODE : seuils réduits pour valider les 40 déblocages rapidement
+-- En TEST_MODE : utilise TestConfig.SeuilsTest si défini, sinon seuils réels de GameConfig
 local _TestConfig = Config.TEST_MODE
     and require(ReplicatedStorage.Test.TestConfig)
     or nil

@@ -20,10 +20,18 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local DiscordWebhook         = require(ServerScriptService:WaitForChild("Common"):WaitForChild("DiscordWebhook"))
 local BaseProgressionSystem  = require(ServerScriptService:WaitForChild("Common"):WaitForChild("BaseProgressionSystem"))
 
+-- Config Test (override des conditions si TestConfig.RebirthConfig défini)
+local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _TestConfig = _GameConfig.TEST_MODE
+    and require(game.ReplicatedStorage.Test.TestConfig)
+    or nil
+
 -- ============================================================
 -- Configuration des Rebirths
+-- Si TestConfig.RebirthConfig est défini il prend le dessus sur les valeurs réelles.
+-- TestConfig.RebirthConfig = nil → valeurs de production ci-dessous.
 -- ============================================================
-local REBIRTH_CONFIG = {
+local REBIRTH_CONFIG_REEL = {
     [1] = {
         coinsRequis    = 300000,
         brainRotRequis = { rarete = "LEGENDARY", quantite = 1 },
@@ -61,6 +69,9 @@ local REBIRTH_CONFIG = {
         couleurHex     = 16777215,                       -- 0xFFFFFF
     },
 }
+
+-- Sélection finale : TestConfig en priorité, sinon valeurs réelles
+local REBIRTH_CONFIG = (_TestConfig and _TestConfig.RebirthConfig) or REBIRTH_CONFIG_REEL
 
 -- Calcule la config d'un niveau de rebirth (5+ = exponentiel)
 local function obtenirConfig(niveau)

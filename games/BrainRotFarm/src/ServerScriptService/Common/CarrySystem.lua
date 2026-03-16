@@ -72,9 +72,15 @@ local VALEURS_PAR_RARETE = {
 
 local _carryPrix = GetConfig("CarryPrixUpgrade", { [1]=1000, [2]=5000, [3]=0 })
 
+-- Capacité par défaut : TestConfig.CarryCapaciteDefaut si défini,
+-- sinon GameConfig.CarryCapaciteDefaut, sinon 1 (valeur réelle)
+local _carryDefaut = (_TestConfig and _TestConfig.CarryCapaciteDefaut)
+    or _GameConfig.CarryCapaciteDefaut
+    or 1
+
 local CARRY_CONFIG = {
 	niveaux = {
-		[0] = GetConfig("CarryCapaciteDefaut", 3),  -- défaut : 3 BR (5 en test)
+		[0] = _carryDefaut,  -- défaut réel : 1 BR (surchargeable via TestConfig)
 		[1] = 5,
 		[2] = 8,
 		[3] = 15,  -- VIP uniquement
