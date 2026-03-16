@@ -301,16 +301,30 @@ end
 -- Billboard de compteur (affiché pendant le décompte)
 -- ============================================================
 
--- Crée le billboard countdown sur le point de spawn
--- Retourne (billboard, labelCompteur)
-local function creerCompteurBillboard(part, typeConfig, typeNom)
+-- Crée le billboard countdown sur une Part dédiée en hauteur
+-- Retourne (billboard, labelCompteur, partCompteur)  — détruire les 3 après usage
+local function creerCompteurBillboard(spawnPt, typeConfig, typeNom)
+	-- Part invisible dédiée : positionnée au-dessus du sol pour que le billboard soit visible
+	local hauteur      = (_GameConfig.AnimationConfig and _GameConfig.AnimationConfig.timerHauteurY) or 8
+	local studsOffset  = (_GameConfig.AnimationConfig and _GameConfig.AnimationConfig.timerStudsOffset) or 5
+
+	local partCompteur = Instance.new("Part")
+	partCompteur.Name         = "CompteurPart"
+	partCompteur.Size         = Vector3.new(1, 1, 1)
+	partCompteur.Position     = Vector3.new(spawnPt.x, spawnPt.y + hauteur, spawnPt.z)
+	partCompteur.Anchored     = true
+	partCompteur.CanCollide   = false
+	partCompteur.Transparency = 1
+	partCompteur.Parent       = Workspace
+
 	local bb = Instance.new("BillboardGui")
 	bb.Name        = "CompteurBillboard"
 	bb.Size        = UDim2.new(0, 200, 0, 80)
-	bb.StudsOffset = Vector3.new(0, 10, 0)
+	bb.StudsOffset = Vector3.new(0, studsOffset, 0)
 	bb.AlwaysOnTop = false
-	bb.Adornee     = part
-	bb.Parent      = part
+	bb.MaxDistance = 100
+	bb.Adornee     = partCompteur
+	bb.Parent      = partCompteur
 
 	local cadre = Instance.new("Frame")
 	cadre.Size                = UDim2.new(1, 0, 1, 0)
@@ -344,7 +358,7 @@ local function creerCompteurBillboard(part, typeConfig, typeNom)
 	labelCompteur.TextScaled             = true
 	labelCompteur.Parent                 = cadre
 
-	return bb, labelCompteur
+	return bb, labelCompteur, partCompteur
 end
 
 -- ============================================================
@@ -586,8 +600,9 @@ local function lancerScheduler(typeNom)
 				end)
 			end
 
-			-- Créer le billboard de compteur
-			local compteurBB, labelCompteur = creerCompteurBillboard(pd.part, cfg, typeNom)
+			-- Créer le billboard de compteur (Part dédiée en hauteur pour visibilité)
+			local pt = SPAWN_POINTS[pointIdx]
+			local compteurBB, labelCompteur, partCompteur = creerCompteurBillboard(pt, cfg, typeNom)
 
 			-- Décompte synchrone — mis à jour chaque seconde
 			for restant = cfg.compteurVisibleAvant, 1, -1 do
@@ -597,9 +612,12 @@ local function lancerScheduler(typeNom)
 				task.wait(1)
 			end
 
-			-- Supprimer le billboard compteur
+			-- Supprimer le billboard compteur ET la Part dédiée
 			if compteurBB and compteurBB.Parent then
 				compteurBB:Destroy()
+			end
+			if partCompteur and partCompteur.Parent then
+				partCompteur:Destroy()
 			end
 
 			-- ── Phase 3 : spawn du Brain Rot ──────────────────────

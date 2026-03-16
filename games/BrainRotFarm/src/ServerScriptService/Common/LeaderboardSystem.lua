@@ -717,6 +717,25 @@ function LeaderboardSystem.Init()
     -- Panneau 3D custom (fallback)
     pcall(creerPanneau)
 
+    -- Initialiser les panneaux Studio avec un texte de démarrage (efface "indisponible")
+    task.defer(function()
+        local lbCfg = Config.Leaderboards
+        if lbCfg and lbCfg.Leaderboard1 then
+            local t1 = trouverTexto(lbCfg.Leaderboard1.chemin)
+            if t1 then
+                configurerTexto(t1)
+                pcall(function() t1.Text = "🏆 CLASSEMENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nEn attente..." end)
+            end
+        end
+        if lbCfg and lbCfg.Leaderboard2 then
+            local t2 = trouverTexto(lbCfg.Leaderboard2.chemin)
+            if t2 then
+                configurerTexto(t2)
+                pcall(function() t2.Text = "📋 INFOS SERVEUR\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nChargement..." end)
+            end
+        end
+    end)
+
     -- Lancer la boucle
     task.spawn(boucleLeaderboard)
 

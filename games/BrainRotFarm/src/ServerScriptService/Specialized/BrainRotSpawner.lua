@@ -27,6 +27,9 @@ local function GetConfig(nomValeur, valeurNormale)
     return valeurNormale
 end
 
+-- Valeurs animation depuis AnimationConfig (fallback si absent)
+local _animCfg = _GameConfig.AnimationConfig or {}
+
 local CONFIG = {
 	INTERVALLE_SPAWN_DEFAUT = GetConfig("BaseSpawnRate", 4),    -- secondes entre spawns
 	DUREE_FADE_OUT          = 0.3,                              -- durée fade out (s)
@@ -34,9 +37,9 @@ local CONFIG = {
 	MAX_PAR_BASE            = GetConfig("MAX_BRAINROTS_MAP", 15), -- max actifs par base
 	Y_OFFSET                = 2,   -- studs au-dessus de la moyenne Y des murs
 	NETTOYAGE_ITERATIONS    = 15,  -- nettoyage de la liste toutes les N itérations
-	-- Pousse de terre
-	Y_DEPART_OFFSET         = -2,  -- studs sous la surface au départ
-	DUREE_POUSSE            = 1.1, -- durée totale de l'animation (s)
+	-- Pousse de terre — lus depuis GameConfig.AnimationConfig
+	Y_DEPART_OFFSET         = _animCfg.brSpawnOffsetY or -3,   -- studs sous la surface
+	DUREE_POUSSE            = _animCfg.brSpawnDuree    or 2.0, -- durée totale (s)
 	ETAPES_POUSSE           = 30,  -- nb d'étapes d'interpolation
 }
 

@@ -197,9 +197,31 @@ local function cloneMiniModele(rarete)
 end
 
 -- Place et anime le mini modèle sur un spot
--- Le modèle est ancré au centre du TouchPart + léger offset vertical
-local function placerMiniModele(touchPart, rarete)
-    local clone = cloneMiniModele(rarete)
+-- modeleSource (optionnel) = le modèle exact porté par le joueur (prioritaire sur ServerStorage)
+local function placerMiniModele(touchPart, rarete, modeleSource)
+    local clone
+
+    -- Priorité : cloner le modèle porté (évite les cubes gris si ServerStorage mal configuré)
+    if modeleSource and modeleSource.Parent then
+        pcall(function() clone = modeleSource:Clone() end)
+        -- Supprimer le modèle détaché flottant dans le Workspace
+        pcall(function() modeleSource:Destroy() end)
+        -- Nettoyer welds/motors résiduels de la session carry
+        if clone then
+            for _, w in ipairs(clone:GetDescendants()) do
+                if w:IsA("WeldConstraint") or w:IsA("Weld") or w:IsA("Motor6D") then
+                    pcall(function() w:Destroy() end)
+                end
+            end
+        end
+        print("[DropSystem] Mini modèle issu du carry (modèle exact)")
+    end
+
+    -- Fallback : clone aléatoire depuis ServerStorage
+    if not clone then
+        clone = cloneMiniModele(rarete)
+    end
+
     if not clone then return nil end
 
     -- Mise à l'échelle réduite
@@ -230,8 +252,9 @@ local function placerMiniModele(touchPart, rarete)
         end)
     end
 
-    -- Fade in en 0.3s
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    -- Fade in (durée depuis AnimationConfig)
+    local fadeInDuree = (Config.AnimationConfig and Config.AnimationConfig.brDepotDuree) or 0.3
+    local tweenInfo = TweenInfo.new(fadeInDuree, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     for _, v in ipairs(clone:GetDescendants()) do
         if v:IsA("BasePart") then
             pcall(function()
@@ -483,17 +506,13 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Retirer ce BR du carry (on utilise ViderCarry puis re-add les autres)
     -- Décision : ViderCarry vide tout, puis on remet les BR restants en mémoire.
-    -- Roblox ne permet pas de retirer un seul élément du carry proprement
-    -- sans reconstruire la liste. On adopte l'approche "tout vider, re-attach".
     -- En pratique le joueur dépose 1 BR par interaction — carry restant réattaché.
     local tous = CarrySystem.ViderCarry(player)
-    -- tous[1] = BR déposé, tous[2..n] = à conserver
-    -- Note : ViderCarry détache les modèles. Ils sont dans Workspace mais libres.
-    -- Les BR "à conserver" seront ré-attachés via RamasserBR en cascade.
+    -- tous[1] = { modele, rarete } à déposer, tous[2..n] = à conserver
+    local modeleDepose = tous[1] and tous[1].modele  -- vrai modèle porté (évite cube gris)
     for i = 2, #tous do
         local restant = tous[i]
         if restant and restant.rarete then
-            -- Ré-attacher au carry (RamasserBR accepte un modèle existant)
             pcall(CarrySystem.RamasserBR, player, restant.rarete, restant.modele)
         end
     end
@@ -501,8 +520,8 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Calculer la valeur par seconde
     local valeurSec = VALEUR_PAR_RARETE[rarete] or 1
 
-    -- Placer le mini modèle sur le spot
-    local miniModel = placerMiniModele(touchPart, rarete)
+    -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
+    local miniModel = placerMiniModele(touchPart, rarete, modeleDepose)
 
     -- Enregistrer en mémoire locale
     spotsData[uid][touchPart] = {

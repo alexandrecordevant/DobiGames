@@ -60,6 +60,16 @@ GameConfig.Raretes = {
     { nom = "Secret",    chance = 0.1, valeur = 500, couleur = Color3.fromRGB(255, 50,  50 ) },
 }
 
+-- === ANIMATION CONFIG ===
+-- Durées et offsets lus par BrainRotSpawner, ChampCommunSpawner, DropSystem
+GameConfig.AnimationConfig = {
+    brSpawnDuree     = 2.0,  -- durée animation pousse de terre (s)
+    brSpawnOffsetY   = -3,   -- départ sous la surface (studs négatifs)
+    brDepotDuree     = 0.3,  -- durée fade-in mini modèle sur spot (s)
+    timerHauteurY    = 8,    -- hauteur dédiée part compteur ChampCommun (studs)
+    timerStudsOffset = 5,    -- StudsOffset Y du BillboardGui compteur (studs)
+}
+
 -- === LEADERBOARDS 3D ===
 -- Chemins vers les TextLabels Studio (séparés par des ".")
 GameConfig.Leaderboards = {
