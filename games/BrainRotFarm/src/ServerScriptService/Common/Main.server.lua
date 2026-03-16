@@ -27,6 +27,8 @@ local DropSystem            = require(ServerScriptService.Common.DropSystem)
 local IncomeSystem          = require(ServerScriptService.Common.IncomeSystem)
 local LeaderboardSystem     = require(ServerScriptService.Common.LeaderboardSystem)
 local ShopSystem            = require(ServerScriptService.Common.ShopSystem)
+local SprinklerSystem       = require(ServerScriptService.Common.SprinklerSystem)
+local TracteurSystem        = require(ServerScriptService.Common.TracteurSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -206,6 +208,17 @@ local function OnPlayerAdded(player)
         -- Réappliquer tous les upgrades shop achetés (WalkSpeed, Carry, etc.)
         ShopSystem.AppliquerTousUpgrades(player, data)
 
+        -- Réactiver le sprinkler si upgrade Arroseur acheté
+        local niveauArroseur = data.upgrades and data.upgrades.upgradeArroseur or 0
+        if niveauArroseur > 0 then
+            pcall(SprinklerSystem.ActiverBase, baseIndex, niveauArroseur)
+        end
+
+        -- Réactiver l'animation tracteur si upgrade Tracteur acheté
+        if data.hasTracteur then
+            pcall(TracteurSystem.Activer, player, baseIndex)
+        end
+
         -- Initialiser le système de Rebirth
         RebirthSystem.Init(player, data, baseIndex)
 
@@ -244,6 +257,11 @@ local function OnPlayerRemoving(player)
         BaseProgressionSystem.Reset(player)
         RebirthSystem.Reset(player)
         DropSystem.Stop(player)
+        -- Arrêter l'animation tracteur (évite une boucle orpheline)
+        local baseIndexSortie = AssignationSystem.GetBaseIndex(player)
+        if baseIndexSortie then
+            pcall(TracteurSystem.Desactiver, baseIndexSortie)
+        end
         AssignationSystem.LibererBase(player)
         print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " sauvegardé et déconnecté")
     end
@@ -453,6 +471,12 @@ LeaderboardSystem.Init()
 -- ShopSystem : connecter la source de données et démarrer les ProximityPrompts
 ShopSystem.GetPlayerData = GetData
 ShopSystem.Init()
+
+-- SprinklerSystem : désactiver tous les sprinklers par défaut
+SprinklerSystem.Init()
+
+-- TracteurSystem : prêt (aucun tracteur actif au démarrage)
+TracteurSystem.Init()
 
 -- Démarrer TestRunner + ResetSystem si TEST_MODE actif (aucun overhead si false)
 if Config.TEST_MODE then

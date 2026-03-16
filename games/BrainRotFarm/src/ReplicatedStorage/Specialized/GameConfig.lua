@@ -70,6 +70,22 @@ GameConfig.AnimationConfig = {
     timerStudsOffset = 5,    -- StudsOffset Y du BillboardGui compteur (studs)
 }
 
+-- === SPRINKLER ===
+-- Vitesse de rotation (°/s) par niveau d'upgrade Arroseur
+-- Niveau 0 = désactivé (aucun upgrade acheté)
+GameConfig.SprinklerVitesses = {
+    [0] = 0,    -- désactivé (pas d'upgrade)
+    [1] = 30,   -- Arroseur Niv.1 — rotation lente
+    [2] = 60,   -- Arroseur Niv.2 — rotation normale
+    [3] = 120,  -- Arroseur MAX   — rotation rapide
+}
+
+-- === TRACTEUR ===
+-- Vitesse de déplacement du tracteur dans le champ (studs/seconde)
+GameConfig.TracteurVitesse    = 12
+-- Espacement entre les lignes de labourage (studs)
+GameConfig.TracteurEspacement = 8
+
 -- === LEADERBOARDS 3D ===
 -- Panneaux Studio dans Workspace.Leaderboards — chaque panneau doit contenir Gui.Texto
 GameConfig.Leaderboards = {

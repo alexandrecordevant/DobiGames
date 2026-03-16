@@ -64,6 +64,24 @@ local function getAssignationSystem()
     return _AssignationSystem
 end
 
+local _SprinklerSystem = nil
+local function getSprinklerSystem()
+    if not _SprinklerSystem then
+        local ok, m = pcall(require, ServerScriptService.Common.SprinklerSystem)
+        if ok and m then _SprinklerSystem = m end
+    end
+    return _SprinklerSystem
+end
+
+local _TracteurSystem = nil
+local function getTracteurSystem()
+    if not _TracteurSystem then
+        local ok, m = pcall(require, ServerScriptService.Common.TracteurSystem)
+        if ok and m then _TracteurSystem = m end
+    end
+    return _TracteurSystem
+end
+
 local _CarrySystem = nil
 local function getCarrySystem()
     if not _CarrySystem then
@@ -162,11 +180,23 @@ local function appliquerEffet(player, playerData, niveauConfig)
         end
     end
 
-    -- Multiplicateur spawn (Arroseur — délégué à BrainRotSpawner)
+    -- Multiplicateur spawn (Arroseur — délégué à BrainRotSpawner + SprinklerSystem)
     if effet.spawnRateMultiplier then
         local BRS = getBrainRotSpawner()
         if BRS and BRS.SetSpawnRateMultiplier then
             pcall(BRS.SetSpawnRateMultiplier, player, effet.spawnRateMultiplier)
+        end
+
+        -- Activer le sprinkler au niveau correspondant à l'upgrade Arroseur
+        local SS = getSprinklerSystem()
+        local AS = getAssignationSystem()
+        if SS and AS then
+            local baseIndex = AS.GetBaseIndex(player)
+            if baseIndex then
+                local niveauArroseur = playerData.upgrades
+                    and playerData.upgrades.upgradeArroseur or 0
+                pcall(SS.ActiverBase, baseIndex, niveauArroseur)
+            end
         end
     end
 
@@ -178,8 +208,18 @@ local function appliquerEffet(player, playerData, niveauConfig)
         end
     end
 
-    -- Tracteur (démarrer la boucle auto-collect)
+    -- Tracteur : animation allers-retours + boucle auto-collect
     if effet.tracteurActif then
+        -- Animation tracteur dans le champ (TracteurSystem)
+        local TS = getTracteurSystem()
+        local AS = getAssignationSystem()
+        if TS and AS then
+            local baseIndex = AS.GetBaseIndex(player)
+            if baseIndex then
+                pcall(TS.Activer, player, baseIndex)
+            end
+        end
+        -- Boucle de collecte automatique (logique existante ShopSystem)
         ShopSystem.ActiverTracteur(player, playerData)
     end
 
@@ -379,6 +419,50 @@ local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
 end
 
 -- ============================================================
+-- Achat gratuit TEST_MODE — uniquement si Config.TEST_MODE = true (vérification serveur)
+-- ============================================================
+local function traiterAchatTestGratuit(player, nomUpgrade, niveauDemande)
+    -- Double vérification serveur : jamais faire confiance au client
+    if not Config.TEST_MODE then
+        return false, "TEST_MODE inactif côté serveur"
+    end
+
+    local playerData = getData(player)
+    if not playerData then return false, "Données introuvables" end
+
+    local upgradeConfig = Config.ShopUpgrades[nomUpgrade]
+    if not upgradeConfig then return false, "Upgrade inconnu : " .. tostring(nomUpgrade) end
+
+    local niveauConfig = upgradeConfig.niveaux[niveauDemande]
+    if not niveauConfig then return false, "Niveau invalide : " .. tostring(niveauDemande) end
+
+    -- Uniquement pour les options R$ (robux)
+    if niveauConfig.type ~= "robux" then
+        return false, "Cet upgrade n'est pas R$ — utiliser l'achat coins normal"
+    end
+
+    -- Appliquer selon isGamePass ou upgrade à niveaux
+    assurerUpgrades(playerData)
+    if upgradeConfig.isGamePass then
+        playerData[upgradeConfig.dataField] = true
+    else
+        local niveauActuel = playerData.upgrades[upgradeConfig.dataField] or 0
+        if niveauDemande > niveauActuel then
+            playerData.upgrades[upgradeConfig.dataField] = niveauDemande
+        else
+            return false, "Niveau déjà atteint"
+        end
+    end
+
+    -- Appliquer l'effet immédiatement
+    pcall(appliquerEffet, player, playerData, niveauConfig)
+
+    return true,
+        upgradeConfig.icone .. " " .. upgradeConfig.nom ..
+        " activé gratuitement [TEST] !"
+end
+
+-- ============================================================
 -- ProximityPrompt — Shop dans chaque base
 -- ============================================================
 -- baseIndex : index de la base concernée (pour vérifier l'ownership)
@@ -515,20 +599,29 @@ function ShopSystem.Init()
     -- Ajouter ProximityPrompts (initialiserShopsBases attend jusqu'à 15s)
     task.spawn(initialiserShopsBases)
 
-    -- Handler : achat en coins
-    AchatUpgrade.OnServerEvent:Connect(function(player, nomUpgrade, niveauDemande)
+    -- Handler : achat (coins OU gratuit TEST_MODE)
+    AchatUpgrade.OnServerEvent:Connect(function(player, nomUpgrade, niveauDemande, isTestGratuit)
         -- Validation des types (jamais faire confiance au client)
         if type(nomUpgrade) ~= "string" then return end
         if type(niveauDemande) ~= "number" then return end
         niveauDemande = math.floor(niveauDemande)
 
-        local ok, message = traiterAchatCoins(player, nomUpgrade, niveauDemande)
-        local playerData  = getData(player)
-        local notif       = ReplicatedStorage:FindFirstChild("NotifEvent")
+        local ok, message
+
+        -- Route vers achat gratuit si demandé ET TEST_MODE vérifié côté serveur
+        if isTestGratuit == true and Config.TEST_MODE then
+            ok, message = traiterAchatTestGratuit(player, nomUpgrade, niveauDemande)
+        else
+            ok, message = traiterAchatCoins(player, nomUpgrade, niveauDemande)
+        end
+
+        local playerData = getData(player)
+        local notif      = ReplicatedStorage:FindFirstChild("NotifEvent")
 
         if ok then
+            local prefixe = (isTestGratuit and Config.TEST_MODE) and "🧪 " or "✅ "
             if notif then
-                pcall(function() notif:FireClient(player, "SUCCESS", "✅ " .. message) end)
+                pcall(function() notif:FireClient(player, "SUCCESS", prefixe .. message) end)
             end
             local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
             if UpdateHUD and playerData then

@@ -11,6 +11,9 @@ local UserInputService    = game:GetService("UserInputService")
 local localPlayer = Players.LocalPlayer
 local playerGui   = localPlayer:WaitForChild("PlayerGui")
 
+-- GameConfig — pour TEST_MODE (accessible depuis ReplicatedStorage côté client)
+local Config = require(ReplicatedStorage.Specialized.GameConfig)
+
 -- ============================================================
 -- Couleurs
 -- ============================================================
@@ -28,6 +31,8 @@ local C_GOLD_BG     = Color3.fromRGB(60, 40, 5)
 local C_GOLD_TXT    = Color3.fromRGB(255, 200, 50)
 local C_MAX_BG      = Color3.fromRGB(60, 10, 10)
 local C_MAX_TXT     = Color3.fromRGB(255, 80, 80)
+local C_TEST_BG     = Color3.fromRGB(60, 20, 100)  -- violet TEST_MODE
+local C_TEST_TXT    = Color3.fromRGB(200, 150, 255)
 local C_OVERLAY     = Color3.fromRGB(0, 0, 0)
 local C_COINS       = Color3.fromRGB(255, 220, 60)
 local C_SEP         = Color3.fromRGB(45, 45, 60)
@@ -358,10 +363,18 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
 
         elseif etat == "robux" then
             if niveauActuel >= niveauNum - 1 or niveauActuel == maxNiveau - 1 then
-                texte    = tostring(niveauConfig.prix) .. " R$ 🔥"
-                bgCol    = C_GOLD_BG
-                txtCol   = C_GOLD_TXT
-                cliquable = true
+                -- En TEST_MODE : bouton violet "gratuit" à la place du R$
+                if Config.TEST_MODE then
+                    texte     = "🧪 Gratuit (TEST)"
+                    bgCol     = C_TEST_BG
+                    txtCol    = C_TEST_TXT
+                    cliquable = true
+                else
+                    texte     = tostring(niveauConfig.prix) .. " R$ 🔥"
+                    bgCol     = C_GOLD_BG
+                    txtCol    = C_GOLD_TXT
+                    cliquable = true
+                end
             else
                 texte    = "🔒 " .. niveauConfig.label
                 bgCol    = C_GREY_BG
@@ -388,8 +401,16 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
                 end)
             elseif etat == "robux" then
                 btn.MouseButton1Click:Connect(function()
-                    if DemandeAchatRobux then
-                        DemandeAchatRobux:FireServer(nomUpgrade, niveauNum)
+                    if Config.TEST_MODE then
+                        -- Achat gratuit TEST_MODE — via AchatUpgrade avec flag true
+                        if AchatUpgrade then
+                            AchatUpgrade:FireServer(nomUpgrade, niveauNum, true)
+                        end
+                    else
+                        -- Achat R$ normal (prod) — prompt Roblox
+                        if DemandeAchatRobux then
+                            DemandeAchatRobux:FireServer(nomUpgrade, niveauNum)
+                        end
                     end
                 end)
             end
