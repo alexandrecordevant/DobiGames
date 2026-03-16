@@ -140,7 +140,26 @@ end
 -- ═══════════════════════════════════════════════
 
 local function OnPlayerAdded(player)
-    -- Charger données (avec calcul offline income)
+    -- ═══ RESET AUTOMATIQUE EN TEST_MODE ═══
+    if Config.TEST_MODE then
+        local okTC, TestConfig = pcall(require, ReplicatedStorage.Test.TestConfig)
+        if okTC and TestConfig and TestConfig.AutoResetOnJoin then
+            local DS = game:GetService("DataStoreService")
+                           :GetDataStore("BrainRotIdleV1")
+            local ok, err = pcall(function()
+                DS:RemoveAsync("player_" .. player.UserId)
+            end)
+            if ok then
+                print("[TEST] 🔄 Reset automatique : "
+                    .. player.Name .. " repart de zéro ✓")
+            else
+                warn("[TEST] Erreur reset DataStore : " .. tostring(err))
+            end
+        end
+    end
+    -- ═══════════════════════════════════════
+
+    -- Charger données (fraîches après reset)
     local data = DataStoreManager.Load(player)
     SetData(player, data)
 

@@ -514,6 +514,18 @@ function TestRunner.Init()
 
     task.wait(1)  -- laisser tous les systèmes démarrer
 
+    -- Afficher état AutoReset
+    local okTC, TestConfig = pcall(require, game.ReplicatedStorage.Test.TestConfig)
+    if okTC and TestConfig and TestConfig.AutoResetOnJoin then
+        print("")
+        print("╔══════════════════════════════════════════════════════╗")
+        print("║  🔄 AUTO-RESET ACTIVÉ                                ║")
+        print("║  Chaque joueur repart de 0 au Play                   ║")
+        print("║  Désactiver : TestConfig.AutoResetOnJoin = false     ║")
+        print("╚══════════════════════════════════════════════════════╝")
+        print("")
+    end
+
     print("")
     print("╔══════════════════════════════════════╗")
     print("║  🔍 Vérifications pré-test en cours  ║")
