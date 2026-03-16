@@ -24,6 +24,21 @@ local function FormatCoins(n)
 end
 
 -- ============================================================
+-- FormatTemps — 90s → "1m30" / 45s → "45s"
+-- ============================================================
+
+local function FormatTemps(secs)
+    secs = math.floor(secs or 0)
+    if secs <= 0 then return "0s" end
+    if secs >= 60 then
+        local m = math.floor(secs / 60)
+        local s = secs % 60
+        return s > 0 and (m .. "m" .. s) or (m .. "m")
+    end
+    return secs .. "s"
+end
+
+-- ============================================================
 -- Constantes UI
 -- ============================================================
 
@@ -31,6 +46,9 @@ local PANEL_SIZE     = UDim2.new(0, 220, 0, 310)
 local PANEL_POS      = UDim2.new(1, -235, 1, -325)
 local ROW_HEIGHT     = 40
 local MAX_ROWS       = 6
+
+local INFO_SIZE      = UDim2.new(0, 200, 0, 120)
+local INFO_POS       = UDim2.new(1, -220, 1, -460)
 
 local COLOR_BG       = Color3.fromRGB(15, 15, 20)
 local COLOR_BG_ALT   = Color3.fromRGB(22, 22, 30)
@@ -48,6 +66,12 @@ local COLOR_FLASH_DN = Color3.fromRGB(200, 60, 60)
 
 local RANG_COULEURS  = { COLOR_GOLD, COLOR_SILVER, COLOR_BRONZE }
 
+local COLOR_INFO_BG   = Color3.fromRGB(10, 12, 25)
+local COLOR_INFO_EDGE = Color3.fromRGB(80, 60, 120)
+local COLOR_MYTHIC    = Color3.fromRGB(255, 80, 220)
+local COLOR_SECRET    = Color3.fromRGB(255, 50, 50)
+local COLOR_EVENT     = Color3.fromRGB(255, 140, 30)
+
 -- ============================================================
 -- Création du ScreenGui
 -- ============================================================
@@ -58,6 +82,128 @@ screenGui.ResetOnSpawn    = false
 screenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder    = 5
 screenGui.Parent          = playerGui
+
+-- ============================================================
+-- InfoPanel — tension serveur (au-dessus du leaderboard)
+-- ============================================================
+
+local infoPanel = Instance.new("Frame")
+infoPanel.Name              = "InfoPanel"
+infoPanel.Size              = INFO_SIZE
+infoPanel.Position          = INFO_POS
+infoPanel.BackgroundColor3  = COLOR_INFO_BG
+infoPanel.BackgroundTransparency = 0.15
+infoPanel.BorderSizePixel   = 0
+infoPanel.ClipsDescendants  = true
+infoPanel.Parent            = screenGui
+
+local infoCorner = Instance.new("UICorner")
+infoCorner.CornerRadius = UDim.new(0, 8)
+infoCorner.Parent       = infoPanel
+
+local infoStroke = Instance.new("UIStroke")
+infoStroke.Color     = COLOR_INFO_EDGE
+infoStroke.Thickness = 1.5
+infoStroke.Parent    = infoPanel
+
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Name              = "InfoLabel"
+infoLabel.Size              = UDim2.new(1, -8, 1, -6)
+infoLabel.Position          = UDim2.new(0, 4, 0, 3)
+infoLabel.BackgroundTransparency = 1
+infoLabel.TextColor3        = COLOR_TEXT
+infoLabel.TextSize          = 13
+infoLabel.Font              = Enum.Font.Gotham
+infoLabel.RichText          = true
+infoLabel.TextWrapped       = true
+infoLabel.TextXAlignment    = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment    = Enum.TextYAlignment.Top
+infoLabel.Text              = "📡 <font color=\"#8888AA\">En attente…</font>"
+infoLabel.Parent            = infoPanel
+
+-- Tween de pulse (réutilisable — activé quand MYTHIC imminent)
+local pulseTween = TweenService:Create(
+    infoStroke,
+    TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    { Color = COLOR_MYTHIC }
+)
+local pulseActif = false
+
+local function activerPulse(actif)
+    if actif == pulseActif then return end
+    pulseActif = actif
+    if actif then
+        pulseTween:Play()
+    else
+        pulseTween:Cancel()
+        infoStroke.Color = COLOR_INFO_EDGE
+    end
+end
+
+-- ============================================================
+-- MettreAJourInfoPanel
+-- infos = { eventActif, eventTemps, mythicTemps, secretTemps,
+--           dernierRare = { rarete, joueur, age } }
+-- ============================================================
+
+local function MettreAJourInfoPanel(infos)
+    if type(infos) ~= "table" then return end
+
+    local lignes = {}
+
+    -- Ligne 1 : Event actif (priorité max)
+    if infos.eventActif and infos.eventTemps and infos.eventTemps > 0 then
+        local c = string.format("#%02X%02X%02X",
+            math.floor(COLOR_EVENT.R * 255),
+            math.floor(COLOR_EVENT.G * 255),
+            math.floor(COLOR_EVENT.B * 255))
+        table.insert(lignes,
+            '🔥 <font color="' .. c .. '"><b>' .. infos.eventActif .. '</b></font>'
+            .. '  <font color="#AAAAAA">' .. FormatTemps(infos.eventTemps) .. '</font>')
+    end
+
+    -- Ligne 2 : MYTHIC imminent (< 120s)
+    local mythicPulse = false
+    if infos.mythicTemps and infos.mythicTemps > 0 then
+        local cHex = string.format("#%02X%02X%02X",
+            math.floor(COLOR_MYTHIC.R * 255),
+            math.floor(COLOR_MYTHIC.G * 255),
+            math.floor(COLOR_MYTHIC.B * 255))
+        local label = infos.mythicTemps < 120 and "⚠ MYTHIC IMMINENT" or "✦ Prochain MYTHIC"
+        mythicPulse = infos.mythicTemps < 120
+        table.insert(lignes,
+            '<font color="' .. cHex .. '">' .. label .. '</font>'
+            .. '  <font color="#AAAAAA">' .. FormatTemps(infos.mythicTemps) .. '</font>')
+    end
+
+    -- Ligne 3 : SECRET imminent (< 300s) ou dernier rare (<3min)
+    if infos.secretTemps and infos.secretTemps > 0 and infos.secretTemps < 300 then
+        local cHex = string.format("#%02X%02X%02X",
+            math.floor(COLOR_SECRET.R * 255),
+            math.floor(COLOR_SECRET.G * 255),
+            math.floor(COLOR_SECRET.B * 255))
+        table.insert(lignes,
+            '<font color="' .. cHex .. '">⚡ SECRET bientôt</font>'
+            .. '  <font color="#AAAAAA">' .. FormatTemps(infos.secretTemps) .. '</font>')
+    elseif infos.dernierRare and infos.dernierRare.age and infos.dernierRare.age < 180 then
+        local dr = infos.dernierRare
+        table.insert(lignes,
+            '🌟 <font color="#DDDD44">' .. (dr.rarete or "RARE") .. '</font>'
+            .. ' par ' .. (dr.joueur or "?")
+            .. '  <font color="#888888">-' .. FormatTemps(dr.age) .. '</font>')
+    end
+
+    -- Fallback si rien à afficher
+    if #lignes == 0 then
+        table.insert(lignes, '<font color="#556677">📡 Serveur calme…</font>')
+    end
+
+    -- Limiter à 3 lignes
+    while #lignes > 3 do table.remove(lignes) end
+
+    infoLabel.Text = table.concat(lignes, "\n")
+    activerPulse(mythicPulse)
+end
 
 -- Panneau principal
 local panel = Instance.new("Frame")
@@ -333,8 +479,12 @@ local function onLeaderboardUpdate(payload)
     mettreAJourLignes(payload.classement)
     assurerJoueurLocal(payload.classement)
 
+    -- InfoPanel
+    if payload.infosServeur then
+        MettreAJourInfoPanel(payload.infosServeur)
+    end
+
     -- Footer timestamp
-    local elapsed = math.floor(os.clock())  -- approximation locale
     footer.Text = "⟳ " .. os.date("%H:%M:%S")
 end
 
@@ -354,9 +504,9 @@ end)
 -- Animation d'entrée (slide depuis la droite)
 -- ============================================================
 
-panel.Position = UDim2.new(1, 20, 1, -305)
+panel.Position     = UDim2.new(1, 20, 1, -305)
+infoPanel.Position = UDim2.new(1, 20, 1, -460)
 task.wait(0.5)
-TweenService:Create(panel,
-    TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-    { Position = PANEL_POS }
-):Play()
+local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+TweenService:Create(panel,     tweenInfo, { Position = PANEL_POS }):Play()
+TweenService:Create(infoPanel, tweenInfo, { Position = INFO_POS  }):Play()

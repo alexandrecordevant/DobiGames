@@ -1,6 +1,6 @@
 -- ServerScriptService/Common/LeaderboardSystem.lua
 -- BrainRotFarm — Leaderboard serveur
--- Panneau 3D custom + branchement panneaux Studio + leaderstats natifs Roblox
+-- 4 panneaux Studio : LB1+LB3 = classement, LB2+LB4 = infos serveur (tension)
 
 local LeaderboardSystem = {}
 
@@ -26,14 +26,19 @@ local CANVAS_H         = 400
 
 local MAX_JOUEURS = 6
 
+-- Intervalles de mise à jour (depuis GameConfig ou défauts)
+local LB_CFG            = Config.Leaderboards or {}
+local UPDATE_CLASSEMENT = LB_CFG.updateClassement or 5   -- secondes entre deux mises à jour classement
+local UPDATE_INFOS      = LB_CFG.updateInfos      or 5   -- secondes entre classement et infos (cycle 10s total)
+
 local COULEURS_TOP = {
-    [1] = { bg = Color3.fromRGB(255, 215,   0), transp = 0.75 },  -- 🥇 Doré
-    [2] = { bg = Color3.fromRGB(192, 192, 192), transp = 0.75 },  -- 🥈 Argent
-    [3] = { bg = Color3.fromRGB(205, 127,  50), transp = 0.75 },  -- 🥉 Bronze
+    [1] = { bg = Color3.fromRGB(255, 215,   0), transp = 0.75 },
+    [2] = { bg = Color3.fromRGB(192, 192, 192), transp = 0.75 },
+    [3] = { bg = Color3.fromRGB(205, 127,  50), transp = 0.75 },
 }
 local COULEURS_RICHTEXT = { [1] = "#FFD700", [2] = "#C0C0C0", [3] = "#CD7F32" }
-local COULEUR_NORMALE  = Color3.fromRGB( 20,  20,  20)
-local TRANSP_NORMALE   = 0.65
+local COULEUR_NORMALE   = Color3.fromRGB( 20,  20,  20)
+local TRANSP_NORMALE    = 0.65
 
 -- ============================================================
 -- État interne
@@ -51,9 +56,10 @@ local rowFrames        = {}
 local footerLabel      = nil
 local derniereMaj      = 0
 
--- Warn affiché une seule fois si Texto introuvable
-local _lb1Warn = false
-local _lb2Warn = false
+-- Cache des Texto Studio (rempli dans Init via task.defer)
+-- LB1 + LB3 = classement, LB2 + LB4 = infos
+local textosClassement = {}
+local textosInfos      = {}
 
 -- ============================================================
 -- Lazy-requires (évite les dépendances circulaires)
@@ -98,7 +104,7 @@ local function GetIconesJoueur(playerData)
         if upgradeConfig.isGamePass then
             estMax = playerData[upgradeConfig.dataField] == true
         else
-            local pu          = playerData.upgrades
+            local pu           = playerData.upgrades
             local niveauActuel = pu and (pu[upgradeConfig.dataField] or 0) or 0
             estMax = niveauActuel >= upgradeConfig.maxNiveau
         end
@@ -111,6 +117,7 @@ end
 -- Utilitaires — formatage
 -- ============================================================
 
+-- Séparateur espace comme milliers : 12 450 💰
 local function formatCoins(n)
     n = math.floor(n or 0)
     local s   = tostring(n)
@@ -138,7 +145,7 @@ end
 local function FormatTemps(secondes)
     if secondes <= 0 then return "Bientôt !" end
     local m = math.floor(secondes / 60)
-    local s  = secondes % 60
+    local s = secondes % 60
     if m > 0 then
         return m .. "m " .. string.format("%02d", s) .. "s"
     else
@@ -399,29 +406,21 @@ local function mettreAJourPanneau(classement)
 end
 
 -- ============================================================
--- Panneaux Studio — accès au TextLabel Texto
+-- Accès aux panneaux Studio
 -- ============================================================
 
--- Navigue le chemin "Workspace.Leaderboards.Leaderboard1.Gui.Texto"
--- et retourne l'instance finale, ou nil si introuvable
-local function trouverTexto(chemin)
-    if not chemin then return nil end
-    local parties = chemin:split(".")
-    local obj = game
-    for _, partie in ipairs(parties) do
-        if partie == "game" then
-            obj = game
-        elseif partie == "Workspace" then
-            obj = Workspace
-        else
-            obj = obj and obj:FindFirstChild(partie)
-        end
-        if not obj then return nil end
-    end
-    return obj
+-- Navigue : Workspace.Leaderboards.{nomPanneau}.Gui.Texto
+local function GetLeaderboardTexto(nomPanneau)
+    local lbFolder = Workspace:FindFirstChild("Leaderboards")
+    if not lbFolder then return nil end
+    local panneau = lbFolder:FindFirstChild(nomPanneau)
+    if not panneau then return nil end
+    local gui = panneau:FindFirstChild("Gui")
+    if not gui then return nil end
+    return gui:FindFirstChild("Texto")
 end
 
--- Applique les propriétés RichText sur un TextLabel (une seule fois suffit)
+-- Applique RichText + style sur un TextLabel Studio
 local function configurerTexto(texto)
     pcall(function()
         texto.RichText               = true
@@ -434,162 +433,188 @@ local function configurerTexto(texto)
 end
 
 -- ============================================================
--- Leaderboard1 — Texte classement (RichText)
+-- GetTopCollecteur
 -- ============================================================
 
-local function construireTexteLeaderboard1(classement)
-    local sep = "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    local lines = {
-        "🏆 CLASSEMENT  " .. Config.NomDuJeu,
-        sep,
-    }
-
-    for i = 1, MAX_JOUEURS do
-        local entree = classement[i]
-        if entree then
-            local rang   = rangLabel(i)
-            local nom    = tronquer(entree.name, 12)
-            -- Couleur RichText pour le top 3
-            if COULEURS_RICHTEXT[i] then
-                nom = '<font color="' .. COULEURS_RICHTEXT[i] .. '">' .. nom .. '</font>'
+local function GetTopCollecteur()
+    local top     = nil
+    local getData = LeaderboardSystem.GetPlayerData
+    for _, player in ipairs(Players:GetPlayers()) do
+        local data = getData and getData(player)
+        if data and data.totalCollecte then
+            if not top or data.totalCollecte > top.totalCollecte then
+                top = { nom = player.Name, totalCollecte = data.totalCollecte }
             end
-            local coins   = formatCoins(entree.coins)
-            local rebirth = "R" .. tostring(entree.rebirth)
-            local icones  = entree.icones or ""
-            local ligne   = rang .. " " .. nom .. "  " .. coins .. " 💰  " .. rebirth
-            if icones ~= "" then ligne = ligne .. "  " .. icones end
-            table.insert(lines, ligne)
-        else
-            table.insert(lines, tostring(i) .. "  —")
         end
     end
+    return top
+end
 
-    table.insert(lines, sep)
-    local elapsed = derniereMaj > 0 and (os.time() - derniereMaj) or 0
-    table.insert(lines, "⏱ MàJ il y a " .. elapsed .. "s")
+-- ============================================================
+-- Leaderboard Classement — LB1 + LB3
+-- Format : RichText, top3 coloré, ligne vide après rang 3
+-- ============================================================
+
+local function BuildTextoClassement()
+    local sep      = "━━━━━━━━━━━━━━━━━━━━━"
+    local MEDAILLES = { "🥇", "🥈", "🥉" }
+    local lines    = { "🏆 CLASSEMENT", sep }
+
+    for i = 1, MAX_JOUEURS do
+        local entree = classementActuel[i]
+        if entree then
+            local rang  = MEDAILLES[i] or tostring(i)
+            local nom   = tronquer(entree.name, 10)
+            local coins = formatCoins(entree.coins)
+
+            -- Top 3 en couleur RichText
+            if COULEURS_RICHTEXT[i] then
+                local c = COULEURS_RICHTEXT[i]
+                rang = '<font color="' .. c .. '">' .. rang .. '</font>'
+                nom  = '<font color="' .. c .. '">' .. nom  .. '</font>'
+            end
+
+            table.insert(lines, rang .. "  " .. nom .. "  " .. coins .. " 💰")
+
+            -- Ligne vide après le podium
+            if i == 3 then
+                table.insert(lines, "")
+            end
+        else
+            table.insert(lines, "· · ·")
+        end
+    end
 
     return table.concat(lines, "\n")
 end
 
-local function MettreAJourLeaderboard1()
-    local lbCfg = Config.Leaderboards and Config.Leaderboards.Leaderboard1
-    if not lbCfg then return end
-
-    local texto = trouverTexto(lbCfg.chemin)
-    if not texto then
-        if not _lb1Warn then
-            warn("[LeaderboardSystem] Leaderboard1.Gui.Texto introuvable : " .. tostring(lbCfg.chemin))
-            _lb1Warn = true
+local function MettreAJourClassement()
+    local texte = BuildTextoClassement()
+    for _, texto in ipairs(textosClassement) do
+        if texto and texto.Parent then
+            pcall(function() texto.Text = texte end)
         end
-        return
     end
-
-    configurerTexto(texto)
-    pcall(function() texto.Text = construireTexteLeaderboard1(classementActuel) end)
 end
 
 -- ============================================================
--- Leaderboard2 — Texte infos serveur (RichText)
+-- Leaderboard Infos — LB2 + LB4
+-- Format : tension + envie, max 6 blocs, peu de texte
 -- ============================================================
 
-local function construireTexteLeaderboard2()
-    local sep   = "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    local lbCfg = Config.Leaderboards
-    local lines = {
-        "📋 INFOS SERVEUR",
-        sep,
-    }
+local NOMS_EVENTS = {
+    NightMode   = "🌙 Night Mode",
+    MeteorDrop  = "☄️ Meteor Drop",
+    Rain        = "🌧️ Rain Event",
+    Golden      = "✨ Golden Event",
+    LuckyHour   = "⭐ Lucky Hour",
+    DoubleCoins = "💰 Double Coins",
+    SecretSpawn = "🔴 Secret Spawn",
+}
+
+local function BuildTextoInfos()
+    local lignes = {}
+    table.insert(lignes, "📡 SERVEUR LIVE")
+    table.insert(lignes, "")
 
     -- Prochain MYTHIC + SECRET
+    local avantSpawns = #lignes
     local CCS = getChampCommunSpawner()
     if CCS and CCS.GetProchainSpawn then
-        local types = { { nom = "MYTHIC", emoji = "⚠️" }, { nom = "SECRET", emoji = "🔴" } }
-        for _, t in ipairs(types) do
-            local ok, info = pcall(CCS.GetProchainSpawn, t.nom)
-            if ok and info and info.tempsRestant >= 0 then
-                local pointsNoms = lbCfg and lbCfg.PointsNoms
-                local nomPoint   = (pointsNoms and info.point and pointsNoms[info.point])
-                    or (info.point and ("Point " .. info.point) or "?")
-                table.insert(lines, t.emoji .. " PROCHAIN " .. t.nom)
-                table.insert(lines, "⏱ dans " .. FormatTemps(info.tempsRestant))
-                table.insert(lines, "📍 " .. nomPoint)
-            end
+        local ok, mythic = pcall(CCS.GetProchainSpawn, "MYTHIC")
+        if ok and mythic and mythic.tempsRestant >= 0 then
+            table.insert(lignes, "☄️  MYTHIC   dans  " .. FormatTemps(mythic.tempsRestant))
+        end
+        local ok2, secret = pcall(CCS.GetProchainSpawn, "SECRET")
+        if ok2 and secret and secret.tempsRestant >= 0 then
+            table.insert(lignes, "🔴  SECRET   dans " .. FormatTemps(secret.tempsRestant))
         end
     end
 
-    -- Event en cours
+    -- Séparateur si au moins un spawn affiché
+    if #lignes > avantSpawns then
+        table.insert(lignes, "")
+    end
+
+    -- Event actif
     local EV = getEventVisuals()
     if EV then
         local nomEvent = EV.GetEventActif and EV.GetEventActif()
         if nomEvent then
-            local infoEvent = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
+            local infoEvent    = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
             local tempsRestant = (infoEvent and infoEvent.tempsRestant) or 0
-            local cfgEv    = Config.EventsVisuels and Config.EventsVisuels[nomEvent]
-            local msg      = (cfgEv and cfgEv.message) or nomEvent
-            table.insert(lines, "⚡ EVENT EN COURS")
-            table.insert(lines, "✨ " .. msg)
-            table.insert(lines, "⏱ encore " .. FormatTemps(tempsRestant))
+            local nomAffiche   = NOMS_EVENTS[nomEvent] or nomEvent
+            table.insert(lignes, nomAffiche .. "   " .. FormatTemps(tempsRestant))
+            table.insert(lignes, "")
         end
     end
 
-    -- Dernier rare capturé
+    -- Dernier rare (< 3 min = 180s)
     local dr = LeaderboardSystem.DernierRare
-    if dr and dr.rarete then
-        local elapsed = os.time() - (dr.timestamp or 0)
-        local tempsStr
-        if elapsed < 60 then
-            tempsStr = elapsed .. "s"
-        elseif elapsed < 3600 then
-            tempsStr = math.floor(elapsed / 60) .. "m"
-        else
-            tempsStr = math.floor(elapsed / 3600) .. "h"
-        end
-        table.insert(lines, "🎯 DERNIER RARE CAPTURÉ")
-        table.insert(lines, "👑 " .. dr.rarete)
-        table.insert(lines, "par " .. (dr.joueur or "?") .. " · il y a " .. tempsStr)
+    if dr and (os.time() - (dr.timestamp or 0)) < 180 then
+        local nomCourt = dr.joueur:sub(1, 10)
+        table.insert(lignes, "👑  " .. nomCourt .. "  a chopé")
+        table.insert(lignes, "    " .. dr.rarete .. "  🔥")
+        table.insert(lignes, "")
     end
 
     -- Top collecteur
-    local top = classementActuel[1]
+    local top = GetTopCollecteur()
     if top then
-        table.insert(lines, "🏆 TOP COLLECTEUR")
-        table.insert(lines, top.name .. " · " .. top.totalCollecte .. " BR")
+        table.insert(lignes, "🏆  Top farmer")
+        table.insert(lignes, "    " .. top.nom:sub(1, 10) .. "  ·  " .. top.totalCollecte .. " BR")
     end
 
-    -- Admin Abuse Hebdo
-    local horaire = lbCfg and lbCfg.AdminAbuseHoraire
-    if not horaire then
-        -- Construire à partir de GameConfig.AdminAbuseHebdo
-        local aah = Config.AdminAbuseHebdo
-        if aah then
-            local jours = { "Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam" }
-            horaire = (jours[aah.jourSemaine] or "?") .. " " .. (aah.heureUTC or "?") .. "h UTC"
-        end
-    end
-    if horaire then
-        table.insert(lines, "📅 ADMIN ABUSE HEBDO")
-        table.insert(lines, horaire)
-    end
-
-    table.insert(lines, sep)
-    return table.concat(lines, "\n")
+    return table.concat(lignes, "\n")
 end
 
-local function MettreAJourLeaderboard2()
-    local lbCfg = Config.Leaderboards and Config.Leaderboards.Leaderboard2
-    if not lbCfg then return end
-
-    local texto = trouverTexto(lbCfg.chemin)
-    if not texto then
-        if not _lb2Warn then
-            warn("[LeaderboardSystem] Leaderboard2.Gui.Texto introuvable : " .. tostring(lbCfg.chemin))
-            _lb2Warn = true
+local function MettreAJourInfos()
+    local texte = BuildTextoInfos()
+    for _, texto in ipairs(textosInfos) do
+        if texto and texto.Parent then
+            pcall(function() texto.Text = texte end)
         end
-        return
+    end
+end
+
+-- ============================================================
+-- Construction de la table infosServeur pour FireAllClients
+-- Envoyée aux clients HUD (LeaderboardHUD + InfoPanel)
+-- ============================================================
+
+local function construireInfosServeur()
+    local infos = {}
+
+    -- Event actif
+    local EV = getEventVisuals()
+    if EV then
+        infos.eventActif = EV.GetEventActif and EV.GetEventActif()
+        if infos.eventActif then
+            local ie         = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
+            infos.eventTemps = (ie and ie.tempsRestant) or 0
+        end
     end
 
-    configurerTexto(texto)
-    pcall(function() texto.Text = construireTexteLeaderboard2() end)
+    -- Prochain MYTHIC/SECRET
+    local CCS = getChampCommunSpawner()
+    if CCS and CCS.GetProchainSpawn then
+        local ok,  m = pcall(CCS.GetProchainSpawn, "MYTHIC")
+        if ok  and m then infos.mythicTemps = m.tempsRestant end
+        local ok2, s = pcall(CCS.GetProchainSpawn, "SECRET")
+        if ok2 and s then infos.secretTemps = s.tempsRestant end
+    end
+
+    -- Dernier rare capturé (âge en secondes)
+    local dr = LeaderboardSystem.DernierRare
+    if dr then
+        infos.dernierRare = {
+            rarete = dr.rarete,
+            joueur = dr.joueur,
+            age    = os.time() - (dr.timestamp or 0),
+        }
+    end
+
+    return infos
 end
 
 -- ============================================================
@@ -597,7 +622,7 @@ end
 -- ============================================================
 
 local function collecterClassement()
-    local liste  = {}
+    local liste   = {}
     local getData = LeaderboardSystem.GetPlayerData
 
     for _, player in ipairs(Players:GetPlayers()) do
@@ -626,7 +651,7 @@ local function collecterClassement()
 end
 
 -- ============================================================
--- Broadcast complet (panneau custom + clients)
+-- Broadcast complet (panneau 3D custom + clients HUD)
 -- ============================================================
 
 local function broadcastClassement()
@@ -634,28 +659,32 @@ local function broadcastClassement()
     classementActuel = classement
     derniereMaj      = os.time()
 
-    -- Panneau 3D custom
+    -- Panneau 3D custom (fallback)
     pcall(mettreAJourPanneau, classement)
 
-    -- Envoi aux clients HUD
+    -- Envoi aux clients HUD avec infos serveur enrichies
     if leaderboardEvent then
+        local infosServeur = construireInfosServeur()
         pcall(function()
-            leaderboardEvent:FireAllClients({ classement = classement })
+            leaderboardEvent:FireAllClients({
+                classement   = classement,
+                infosServeur = infosServeur,
+            })
         end)
     end
 end
 
 -- ============================================================
--- Boucle serveur (5s → LB1 classement, 5s → LB2 infos)
+-- Boucle serveur : 5s classement → 5s infos (cycle 10s)
 -- ============================================================
 
 local function boucleLeaderboard()
     while true do
-        task.wait(5)
+        -- Cycle 1 : broadcast + mise à jour classement LB1+LB3
         pcall(broadcastClassement)
-        pcall(MettreAJourLeaderboard1)
+        pcall(MettreAJourClassement)
 
-        -- Footer elapsed (panneau custom)
+        -- Footer panneau 3D (compte elapsed en live)
         if footerLabel then
             task.spawn(function()
                 for _ = 1, 4 do
@@ -670,8 +699,12 @@ local function boucleLeaderboard()
             end)
         end
 
-        task.wait(5)
-        pcall(MettreAJourLeaderboard2)
+        task.wait(UPDATE_CLASSEMENT)
+
+        -- Cycle 2 : mise à jour infos LB2+LB4
+        pcall(MettreAJourInfos)
+
+        task.wait(UPDATE_INFOS)
     end
 end
 
@@ -679,15 +712,27 @@ end
 -- API publique
 -- ============================================================
 
--- Enregistre la capture d'un BR rare (appelé par BrainRotSpawner / ChampCommunSpawner)
+-- Enregistre la capture d'un BR rare — LEGENDARY+ uniquement
 function LeaderboardSystem.EnregistrerRare(player, rareteNom)
     if not player or not rareteNom then return end
+
+    local PRIORITES = {
+        BRAINROT_GOD = 5,
+        SECRET       = 4,
+        MYTHIC       = 3,
+        LEGENDARY    = 2,
+        EPIC         = 1,
+    }
+    local score = PRIORITES[rareteNom] or 0
+    if score < 2 then return end  -- ignorer en dessous de LEGENDARY
+
     LeaderboardSystem.DernierRare = {
         rarete    = rareteNom,
         joueur    = player.Name,
         timestamp = os.time(),
     }
-    print(string.format("[LeaderboardSystem] Rare enregistré : %s capturé par %s", rareteNom, player.Name))
+    print(string.format("[LeaderboardSystem] Rare enregistré : %s capturé par %s",
+        rareteNom, player.Name))
 end
 
 -- Initialise le système
@@ -708,7 +753,7 @@ function LeaderboardSystem.Init()
         pcall(CreerOuMettreAJourLeaderstats, player, playerData or {})
     end
 
-    -- Leaderstats pour les futurs joueurs (attendre que Main ait chargé les données)
+    -- Leaderstats pour les futurs joueurs (attend que Main ait chargé les données)
     Players.PlayerAdded:Connect(function(player)
         task.wait(0.5)
         local playerData = LeaderboardSystem.GetPlayerData and LeaderboardSystem.GetPlayerData(player)
@@ -718,57 +763,61 @@ function LeaderboardSystem.Init()
     -- Panneau 3D custom (fallback)
     pcall(creerPanneau)
 
-    -- Diagnostic : lister les panneaux disponibles dans Workspace.Leaderboards
+    -- Récupérer les 4 textos Studio + remplir les caches de listes
     task.defer(function()
+        -- Diagnostic : lister les panneaux présents dans Workspace.Leaderboards
         local lbFolder = Workspace:FindFirstChild("Leaderboards")
         if lbFolder then
             local enfants = {}
             for _, child in ipairs(lbFolder:GetChildren()) do
                 table.insert(enfants, child.Name .. " (" .. child.ClassName .. ")")
             end
-            print("[LeaderboardSystem] Workspace.Leaderboards contient : " .. table.concat(enfants, ", "))
+            print("[LeaderboardSystem] Workspace.Leaderboards : " .. table.concat(enfants, ", "))
         else
             warn("[LeaderboardSystem] Workspace.Leaderboards INTROUVABLE — panneaux Studio désactivés")
         end
 
-        -- Initialiser les panneaux Studio avec un texte de démarrage (efface "indisponible")
-        local lbCfg = Config.Leaderboards
-        if lbCfg and lbCfg.Leaderboard1 then
-            local t1 = trouverTexto(lbCfg.Leaderboard1.chemin)
-            if t1 then
-                configurerTexto(t1)
-                pcall(function() t1.Text = "🏆 CLASSEMENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nEn attente..." end)
-                print("[LeaderboardSystem] Leaderboard1 Texto trouvé ✓ (" .. lbCfg.Leaderboard1.chemin .. ")")
+        -- Récupérer les 4 textos
+        local noms   = { "Leaderboard1", "Leaderboard2", "Leaderboard3", "Leaderboard4" }
+        local textos = {}
+        for _, nom in ipairs(noms) do
+            local t = GetLeaderboardTexto(nom)
+            textos[nom] = t
+            if t then
+                pcall(configurerTexto, t)
+                print("[LeaderboardSystem] " .. nom .. " Texto ✓")
             else
-                warn("[LeaderboardSystem] Leaderboard1 Texto INTROUVABLE : " .. tostring(lbCfg.Leaderboard1.chemin))
+                warn("[LeaderboardSystem] " .. nom .. " Texto INTROUVABLE")
             end
         end
-        if lbCfg and lbCfg.Leaderboard2 then
-            local t2 = trouverTexto(lbCfg.Leaderboard2.chemin)
-            if t2 then
-                configurerTexto(t2)
-                pcall(function() t2.Text = "📋 INFOS SERVEUR\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nChargement..." end)
-                print("[LeaderboardSystem] Leaderboard2 Texto trouvé ✓ (" .. lbCfg.Leaderboard2.chemin .. ")")
-            else
-                warn("[LeaderboardSystem] Leaderboard2 Texto INTROUVABLE : " .. tostring(lbCfg.Leaderboard2.chemin))
-            end
-        end
+
+        -- Textes initiaux (efface "indisponible" Studio)
+        local initCls = "🏆 CLASSEMENT\n━━━━━━━━━━━━━━━━━━━━━\nEn attente..."
+        local initInf = "📡 SERVEUR LIVE\n\nChargement..."
+        if textos.Leaderboard1 then pcall(function() textos.Leaderboard1.Text = initCls end) end
+        if textos.Leaderboard3 then pcall(function() textos.Leaderboard3.Text = initCls end) end
+        if textos.Leaderboard2 then pcall(function() textos.Leaderboard2.Text = initInf end) end
+        if textos.Leaderboard4 then pcall(function() textos.Leaderboard4.Text = initInf end) end
+
+        -- Remplir les tables (utilisées par boucleLeaderboard)
+        textosClassement = { textos.Leaderboard1, textos.Leaderboard3 }
+        textosInfos      = { textos.Leaderboard2, textos.Leaderboard4 }
     end)
 
-    -- Lancer la boucle
+    -- Lancer la boucle (les textos seront nil pour les 2 premiers ticks, sans effet)
     task.spawn(boucleLeaderboard)
 
-    print("[LeaderboardSystem] ✓ Initialisé (panneau custom + Studio LB1/LB2)")
+    print("[LeaderboardSystem] ✓ Initialisé (LB1+LB3 classement · LB2+LB4 infos · cycle 10s)")
 end
 
--- Mise à jour immédiate (appeler après gain de coins, rebirth, etc.)
+-- Mise à jour immédiate (appelée après gain de coins, rebirth, etc.)
 function LeaderboardSystem.MettreAJour(player, playerData)
     if player and playerData then
         pcall(CreerOuMettreAJourLeaderstats, player, playerData)
     end
     task.spawn(function()
         pcall(broadcastClassement)
-        pcall(MettreAJourLeaderboard1)
+        pcall(MettreAJourClassement)
     end)
 end
 

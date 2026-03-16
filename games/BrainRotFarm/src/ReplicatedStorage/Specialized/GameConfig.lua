@@ -71,15 +71,22 @@ GameConfig.AnimationConfig = {
 }
 
 -- === LEADERBOARDS 3D ===
--- Chemins vers les TextLabels Studio (séparés par des ".")
+-- Panneaux Studio dans Workspace.Leaderboards — chaque panneau doit contenir Gui.Texto
 GameConfig.Leaderboards = {
-    Leaderboard1 = { chemin = "Workspace.Leaderboards.Leaderboard1.Gui.Texto" },  -- classement joueurs
-    Leaderboard2 = { chemin = "Workspace.Leaderboards.Leaderboard2.Gui.Texto" },  -- infos serveur
+    -- Panneaux affichant le classement joueurs (alternent chaque cycle)
+    classement = { "Leaderboard1", "Leaderboard3" },
+
+    -- Panneaux affichant les infos serveur en direct (alternent chaque cycle)
+    infos      = { "Leaderboard2", "Leaderboard4" },
+
+    -- Durée (s) de chaque phase dans la boucle 3D
+    updateClassement = 5,
+    updateInfos      = 5,
 
     -- Noms des points de spawn du ChampCommun (index → lettre)
     PointsNoms = { "A", "B", "C" },
 
-    -- Horaire Admin Abuse affiché dans Leaderboard2
+    -- Horaire Admin Abuse affiché dans les panneaux infos
     -- nil → lire GameConfig.AdminAbuseHebdo automatiquement
     AdminAbuseHoraire = nil,
 }
