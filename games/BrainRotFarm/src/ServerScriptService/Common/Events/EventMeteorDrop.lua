@@ -253,7 +253,7 @@ function EventMeteorDrop.Terminer()
     meteorActifsCount = 0
 
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
-    if ev then pcall(function() ev:FireAllClients("INFO", "☄️ Les météores ont cessé de tomber.") end) end
+    if ev then pcall(function() ev:FireAllClients("INFO", "☄️ The meteors have stopped falling.") end) end
 
     print("[EventMeteorDrop] ■ Meteor Drop terminé")
 end

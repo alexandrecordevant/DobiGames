@@ -143,7 +143,7 @@ local function rangLabel(rang)
 end
 
 local function FormatTemps(secondes)
-    if secondes <= 0 then return "Bientôt !" end
+    if secondes <= 0 then return "Soon!" end
     local m = math.floor(secondes / 60)
     local s = secondes % 60
     if m > 0 then
@@ -238,7 +238,7 @@ local function creerPanneau()
     local titreLbl             = Instance.new("TextLabel")
     titreLbl.Size              = UDim2.new(1, 0, 1, 0)
     titreLbl.BackgroundTransparency = 1
-    titreLbl.Text              = "🏆  CLASSEMENT  —  " .. Config.NomDuJeu
+    titreLbl.Text              = "🏆  LEADERBOARD  —  " .. Config.NomDuJeu
     titreLbl.Font              = Enum.Font.GothamBold
     titreLbl.TextColor3        = Color3.fromRGB(255, 215, 0)
     titreLbl.TextScaled        = true
@@ -343,7 +343,7 @@ local function creerPanneau()
     footer.Size                      = UDim2.new(1, -20, 0, 28)
     footer.Position                  = UDim2.new(0, 10, 1, -32)
     footer.BackgroundTransparency    = 1
-    footer.Text                      = "En attente de données..."
+    footer.Text                      = "Waiting for data..."
     footer.Font                      = Enum.Font.Gotham
     footer.TextColor3                = Color3.fromRGB(150, 150, 150)
     footer.TextScaled                = true
@@ -400,7 +400,7 @@ local function mettreAJourPanneau(classement)
     end
 
     if footerLabel then
-        pcall(function() footerLabel.Text = "🔄 Mis à jour maintenant" end)
+        pcall(function() footerLabel.Text = "🔄 Updated just now" end)
         derniereMaj = os.time()
     end
 end
@@ -458,7 +458,7 @@ end
 local function BuildTextoClassement()
     local sep      = "━━━━━━━━━━━━━━━━━━━━━"
     local MEDAILLES = { "🥇", "🥈", "🥉" }
-    local lines    = { "🏆 CLASSEMENT", sep }
+    local lines    = { "🏆 LEADERBOARD", sep }
 
     for i = 1, MAX_JOUEURS do
         local entree = classementActuel[i]
@@ -514,7 +514,7 @@ local NOMS_EVENTS = {
 
 local function BuildTextoInfos()
     local lignes = {}
-    table.insert(lignes, "📡 SERVEUR LIVE")
+    table.insert(lignes, "📡 LIVE")
     table.insert(lignes, "")
 
     -- Prochain MYTHIC + SECRET
@@ -523,11 +523,11 @@ local function BuildTextoInfos()
     if CCS and CCS.GetProchainSpawn then
         local ok, mythic = pcall(CCS.GetProchainSpawn, "MYTHIC")
         if ok and mythic and mythic.tempsRestant >= 0 then
-            table.insert(lignes, "☄️  MYTHIC   dans  " .. FormatTemps(mythic.tempsRestant))
+            table.insert(lignes, "☄️  MYTHIC   in  " .. FormatTemps(mythic.tempsRestant))
         end
         local ok2, secret = pcall(CCS.GetProchainSpawn, "SECRET")
         if ok2 and secret and secret.tempsRestant >= 0 then
-            table.insert(lignes, "🔴  SECRET   dans " .. FormatTemps(secret.tempsRestant))
+            table.insert(lignes, "🔴  SECRET   in " .. FormatTemps(secret.tempsRestant))
         end
     end
 
@@ -553,7 +553,7 @@ local function BuildTextoInfos()
     local dr = LeaderboardSystem.DernierRare
     if dr and (os.time() - (dr.timestamp or 0)) < 180 then
         local nomCourt = dr.joueur:sub(1, 10)
-        table.insert(lignes, "👑  " .. nomCourt .. "  a chopé")
+        table.insert(lignes, "👑  " .. nomCourt .. "  grabbed")
         table.insert(lignes, "    " .. dr.rarete .. "  🔥")
         table.insert(lignes, "")
     end
@@ -692,7 +692,7 @@ local function boucleLeaderboard()
                     if footerLabel and footerLabel.Parent then
                         local elapsed = os.time() - derniereMaj
                         pcall(function()
-                            footerLabel.Text = "🔄 MàJ il y a " .. elapsed .. "s"
+                            footerLabel.Text = "🔄 Updated " .. elapsed .. "s ago"
                         end)
                     end
                 end
@@ -792,8 +792,8 @@ function LeaderboardSystem.Init()
         end
 
         -- Textes initiaux (efface "indisponible" Studio)
-        local initCls = "🏆 CLASSEMENT\n━━━━━━━━━━━━━━━━━━━━━\nEn attente..."
-        local initInf = "📡 SERVEUR LIVE\n\nChargement..."
+        local initCls = "🏆 LEADERBOARD\n━━━━━━━━━━━━━━━━━━━━━\nWaiting..."
+        local initInf = "📡 LIVE\n\nLoading..."
         if textos.Leaderboard1 then pcall(function() textos.Leaderboard1.Text = initCls end) end
         if textos.Leaderboard3 then pcall(function() textos.Leaderboard3.Text = initCls end) end
         if textos.Leaderboard2 then pcall(function() textos.Leaderboard2.Text = initInf end) end

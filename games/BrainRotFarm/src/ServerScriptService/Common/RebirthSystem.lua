@@ -349,11 +349,11 @@ local function executerRebirth(player)
 
     -- ── Étape 4 : Notifications ───────────────────────────────
     local msgJoueur = string.format(
-        "🔥 %s ! Multiplicateur ×%.1f débloqué ! +%d slots bonus",
+        "🔥 %s! Multiplier ×%.1f unlocked! +%d bonus slots",
         cfg.label, cfg.multiplicateur, cfg.slotsBonus
     )
     local msgTous = string.format(
-        "⚡ %s vient d'effectuer son %s ! (×%.1f)",
+        "⚡ %s just performed their %s! (×%.1f)",
         player.Name, cfg.label, cfg.multiplicateur
     )
 
@@ -427,7 +427,7 @@ DemandeRebirth.OnServerEvent:Connect(function(player)
         if notif then
             pcall(function()
                 notif:FireClient(player, "ERREUR",
-                    "Tu dois atteindre Floor 4 - Spot 10 avant de faire un Rebirth !")
+                    "You must reach Floor 4 - Spot 10 before performing a Rebirth!")
             end)
         end
         return
@@ -438,12 +438,12 @@ DemandeRebirth.OnServerEvent:Connect(function(player)
     if not ok then
         local parties = {}
         if manques.manqueCoins and manques.manqueCoins > 0 then
-            table.insert(parties, "💰 " .. formaterCoins(manques.manqueCoins) .. " coins manquants")
+            table.insert(parties, "💰 " .. formaterCoins(manques.manqueCoins) .. " coins missing")
         end
         if manques.manqueBR then
-            table.insert(parties, "🧬 1 " .. manques.manqueBR .. " manquant dans ton inventaire")
+            table.insert(parties, "🧬 1 " .. manques.manqueBR .. " missing in your inventory")
         end
-        local msg = "Conditions non remplies : " .. table.concat(parties, " · ")
+        local msg = "Requirements not met: " .. table.concat(parties, " · ")
         local notif = getNotifEvent()
         if notif then
             pcall(function() notif:FireClient(player, "ERREUR", msg) end)

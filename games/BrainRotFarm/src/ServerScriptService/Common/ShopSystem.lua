@@ -337,7 +337,7 @@ function ShopSystem.ConfirmerAchatGamePass(player, gamePassId)
                 if notif then
                     pcall(function()
                         notif:FireClient(player, "SUCCESS",
-                            "✅ " .. upgradeConfig.icone .. " " .. upgradeConfig.nom .. " activé !")
+                            "✅ " .. upgradeConfig.icone .. " " .. upgradeConfig.nom .. " activated!")
                     end)
                 end
 
@@ -415,7 +415,7 @@ local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
 
     return true,
         upgradeConfig.icone .. " " .. upgradeConfig.nom ..
-        " Niv." .. niveauDemande .. " acheté !"
+        " Lv." .. niveauDemande .. " purchased!"
 end
 
 -- ============================================================
@@ -459,7 +459,7 @@ local function traiterAchatTestGratuit(player, nomUpgrade, niveauDemande)
 
     return true,
         upgradeConfig.icone .. " " .. upgradeConfig.nom ..
-        " activé gratuitement [TEST] !"
+        " activated for free [TEST]!"
 end
 
 -- ============================================================
@@ -472,7 +472,7 @@ local function ajouterPromptShop(shopPart, baseIndex)
     if ancien then ancien:Destroy() end
 
     local prompt = Instance.new("ProximityPrompt")
-    prompt.ActionText            = "Ouvrir"
+    prompt.ActionText            = "Open"
     prompt.ObjectText            = "🛒 Shop"
     prompt.KeyboardKeyCode       = Enum.KeyCode.E
     prompt.MaxActivationDistance = 8
@@ -490,7 +490,7 @@ local function ajouterPromptShop(shopPart, baseIndex)
                 if notif then
                     pcall(function()
                         notif:FireClient(player, "ERREUR",
-                            "❌ Ce shop appartient à un autre joueur !")
+                            "❌ This shop is not yours!")
                     end)
                 end
                 return
@@ -656,7 +656,7 @@ function ShopSystem.Init()
             local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
             if notif then
                 pcall(function()
-                    notif:FireClient(player, "INFO", "🔜 " .. upgradeConfig.nom .. " bientôt disponible !")
+                    notif:FireClient(player, "INFO", "🔜 " .. upgradeConfig.nom .. " coming soon!")
                 end)
             end
             return
@@ -731,7 +731,7 @@ function ShopSystem.Init()
         if notif then
             pcall(function()
                 notif:FireClient(player, "SUCCESS",
-                    "🚜 Tracteur : seuil changé à " .. seuilValide.label)
+                    "🚜 Tractor: threshold changed to " .. seuilValide.label)
             end)
         end
         if ShopUpdate then

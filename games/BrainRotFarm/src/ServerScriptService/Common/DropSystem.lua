@@ -332,7 +332,7 @@ local function creerPromptRecuperer(touchPart, player)
 
     local prompt = Instance.new("ProximityPrompt")
     prompt.Name                  = "RecupererPrompt"
-    prompt.ActionText            = "Récupérer"
+    prompt.ActionText            = "Retrieve"
     prompt.ObjectText            = "Brain Rot"
     prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 10
@@ -356,7 +356,7 @@ local function creerPromptRemplacer(touchPart, player, rarete)
 
     local prompt = Instance.new("ProximityPrompt")
     prompt.Name                  = "RemplacerPrompt"
-    prompt.ActionText            = "Remplacer"
+    prompt.ActionText            = "Replace"
     prompt.ObjectText            = rarete or "Brain Rot"
     prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 8
@@ -370,7 +370,7 @@ local function creerPromptRemplacer(touchPart, player, rarete)
         local CS     = require(ServerScriptService.Common.CarrySystem)
         local portes = CS.GetPortes(player)
         if #portes == 0 then
-            notifierJoueur(player, "INFO", "🎒 Tu ne portes aucun Brain Rot !")
+            notifierJoueur(player, "INFO", "🎒 You are not carrying any Brain Rot!")
             return
         end
         -- Éjecter le BR actuel dans le champ, puis déposer le BR porté
@@ -516,13 +516,13 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         if tp == touchPart then spotKey = cle break end
     end
     if not spotKey then
-        notifierJoueur(player, "INFO", "❌ Ce spot n'appartient pas à ta base !")
+        notifierJoueur(player, "INFO", "❌ This spot doesn't belong to your base!")
         return
     end
 
     -- Spot déjà occupé ?
     if spotsData[uid][touchPart] then
-        notifierJoueur(player, "INFO", "🔒 Ce spot est déjà occupé — récupère le Brain Rot d'abord.")
+        notifierJoueur(player, "INFO", "🔒 This spot is already occupied — retrieve the Brain Rot first.")
         return
     end
 
@@ -581,7 +581,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Informer le joueur
     notifierJoueur(player, "INFO",
-        "✅ Brain Rot [" .. rarete .. "] déposé ! +" .. valeurSec .. " coins/sec")
+        "✅ Brain Rot [" .. rarete .. "] deposited! +" .. valeurSec .. " coins/sec")
 
     -- Recalculer l'income total du joueur
     local IS = getIncomeSystem()
@@ -615,7 +615,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     local max    = CarrySystem.GetCapaciteMax(player)
 
     if #portes >= max then
-        notifierJoueur(player, "INFO", "🎒 Sac plein — vide ton carry avant de récupérer !")
+        notifierJoueur(player, "INFO", "🎒 Carry full — empty your carry before retrieving!")
         return
     end
 
@@ -643,7 +643,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
         IS.RecalculerIncome(player, construireSpotsTable(player))
     end
 
-    notifierJoueur(player, "INFO", "↩️ Brain Rot [" .. rarete .. "] récupéré dans ton sac !")
+    notifierJoueur(player, "INFO", "↩️ Brain Rot [" .. rarete .. "] retrieved to your carry!")
     print("[DropSystem] " .. player.Name .. " a récupéré " .. rarete .. " du spot " .. entree.spotKey)
 end
 
@@ -812,7 +812,7 @@ function DropSystem.EjecterBR(player, touchPart)
                     -- Prompt de ramassage manuel
                     local pickupPrompt = Instance.new("ProximityPrompt")
                     pickupPrompt.Name                  = "PickupPrompt"
-                    pickupPrompt.ActionText            = "Ramasser"
+                    pickupPrompt.ActionText            = "Pick up"
                     pickupPrompt.ObjectText            = rarete
                     pickupPrompt.HoldDuration          = 0
                     pickupPrompt.MaxActivationDistance = 8

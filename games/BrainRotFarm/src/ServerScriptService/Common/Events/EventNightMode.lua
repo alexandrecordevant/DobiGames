@@ -162,7 +162,7 @@ function EventNightMode.Terminer()
 
     local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
     if notif then
-        pcall(function() notif:FireAllClients("INFO", "☀️ Le jour se lève... jusqu'au prochain event !") end)
+        pcall(function() notif:FireAllClients("INFO", "☀️ Day breaks... until the next event!") end)
     end
 
     print("[EventNightMode] ■ Night Mode terminé")

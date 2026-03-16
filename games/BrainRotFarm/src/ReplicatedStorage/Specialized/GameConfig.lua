@@ -117,13 +117,13 @@ GameConfig.ShopUpgrades = {
     -- ═══ PAYABLES EN COINS ═══
 
     Arroseur = {
-        nom         = "Arroseur",
+        nom         = "Sprinkler",
         icone       = "💧",
-        description = "Accélère le spawn des Brain Rots dans ton champ",
+        description = "Speeds up Brain Rot spawns in your field",
         ordre       = 1,
         niveaux = {
-            [1] = { type="coins", prix=500,   label="Niv.1",   effet={ spawnRateMultiplier=1.6 } },
-            [2] = { type="coins", prix=2000,  label="Niv.2",   effet={ spawnRateMultiplier=2.7 } },
+            [1] = { type="coins", prix=500,   label="Lv.1",    effet={ spawnRateMultiplier=1.6 } },
+            [2] = { type="coins", prix=2000,  label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
             [3] = { type="robux", prix=149,   gamePassId=0,    label="MAX 🔥", effet={ spawnRateMultiplier=5.0 }, isMax=true },
         },
         maxNiveau        = 3,
@@ -134,11 +134,11 @@ GameConfig.ShopUpgrades = {
     Speed = {
         nom         = "Speed",
         icone       = "⚡",
-        description = "Augmente ta vitesse de déplacement",
+        description = "Increases your movement speed",
         ordre       = 2,
         niveaux = {
-            [1] = { type="coins", prix=300,  label="Niv.1",  effet={ walkSpeed=22 } },
-            [2] = { type="coins", prix=1000, label="Niv.2",  effet={ walkSpeed=28 } },
+            [1] = { type="coins", prix=300,  label="Lv.1",   effet={ walkSpeed=22 } },
+            [2] = { type="coins", prix=1000, label="Lv.2",   effet={ walkSpeed=28 } },
             [3] = { type="robux", prix=99,   gamePassId=0,   label="MAX 🔥", effet={ walkSpeed=36 }, isMax=true },
         },
         maxNiveau        = 3,
@@ -149,11 +149,11 @@ GameConfig.ShopUpgrades = {
     Carry = {
         nom         = "Carry+",
         icone       = "🎒",
-        description = "Augmente ta capacité de transport de Brain Rots",
+        description = "Increases your Brain Rot carry capacity",
         ordre       = 3,
         niveaux = {
-            [1] = { type="coins", prix=500,  label="Niv.1",  effet={ carryCapacite=2 } },
-            [2] = { type="coins", prix=2000, label="Niv.2",  effet={ carryCapacite=3 } },
+            [1] = { type="coins", prix=500,  label="Lv.1",   effet={ carryCapacite=2 } },
+            [2] = { type="coins", prix=2000, label="Lv.2",   effet={ carryCapacite=3 } },
             [3] = { type="robux", prix=149,  gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=5 }, isMax=true },
         },
         maxNiveau        = 3,
@@ -162,13 +162,13 @@ GameConfig.ShopUpgrades = {
     },
 
     Aimant = {
-        nom         = "Aimant",
+        nom         = "Magnet",
         icone       = "🧲",
-        description = "Augmente le rayon de collecte des Brain Rots",
+        description = "Increases Brain Rot collection radius",
         ordre       = 4,
         niveaux = {
-            [1] = { type="coins", prix=800,  label="Niv.1",  effet={ rayonCollecte=8  } },
-            [2] = { type="coins", prix=3000, label="Niv.2",  effet={ rayonCollecte=14 }, isMax=true },
+            [1] = { type="coins", prix=800,  label="Lv.1",   effet={ rayonCollecte=8  } },
+            [2] = { type="coins", prix=3000, label="Lv.2",   effet={ rayonCollecte=14 }, isMax=true },
         },
         maxNiveau        = 2,
         dataField        = "upgradeAimant",
@@ -178,12 +178,12 @@ GameConfig.ShopUpgrades = {
     -- ═══ PAYABLES EN R$ UNIQUEMENT ═══
 
     Tracteur = {
-        nom         = "Tracteur",
+        nom         = "Tractor",
         icone       = "🚜",
-        description = "Collecte automatiquement les BR selon ton seuil de rareté",
+        description = "Automatically collects BRs based on your rarity threshold",
         ordre       = 5,
         niveaux = {
-            [1] = { type="robux", prix=299, gamePassId=0, label="Activer", effet={ tracteurActif=true }, isMax=true },
+            [1] = { type="robux", prix=299, gamePassId=0, label="Activate", effet={ tracteurActif=true }, isMax=true },
         },
         -- Seuils disponibles — le joueur choisit dans le Shop (RARE+ gratuit par défaut)
         seuilsDisponibles = {
@@ -200,10 +200,10 @@ GameConfig.ShopUpgrades = {
     LuckyCharm = {
         nom         = "Lucky Charm",
         icone       = "🍀",
-        description = "+25% chances d'obtenir une rareté supérieure",
+        description = "+25% chance to get a higher rarity",
         ordre       = 6,
         niveaux = {
-            [1] = { type="robux", prix=99, gamePassId=0, label="Activer", effet={ luckyBonus=1.25 }, isMax=true },
+            [1] = { type="robux", prix=99, gamePassId=0, label="Activate", effet={ luckyBonus=1.25 }, isMax=true },
         },
         maxNiveau        = 1,
         isGamePass       = true,
@@ -241,8 +241,8 @@ GameConfig.EventsVisuels = {
         ambientJour    = Color3.fromRGB(70, 70, 70),
         brightnessJour = 2,
         fogEndNuit     = 200,
-        message        = "🌙 NIGHT MODE ! Les Brain Rots brillent dans le noir !",
-        messageFin     = "☀️ Le jour se lève... jusqu'au prochain event !",
+        message        = "🌙 NIGHT MODE! Brain Rots glow in the dark!",
+        messageFin     = "☀️ Day breaks... until the next event!",
     },
 
     MeteorDrop = {
@@ -253,9 +253,9 @@ GameConfig.EventsVisuels = {
         rayonImpact     = 15,
         intervalleSpawn = 12,
         raretesMeteore  = { "LEGENDARY", "MYTHIC", "SECRET" },
-        message         = "☄️ METEOR DROP ! Des météores s'écrasent sur le ChampCommun !",
-        messageImpact   = "💥 Impact ! Un Brain Rot rare est apparu !",
-        messageFin      = "☄️ Les météores ont cessé de tomber.",
+        message         = "☄️ METEOR DROP! Meteors are crashing into the Common Field!",
+        messageImpact   = "💥 Impact! A rare Brain Rot has appeared!",
+        messageFin      = "☄️ The meteors have stopped falling.",
     },
 
     Rain = {
@@ -264,8 +264,8 @@ GameConfig.EventsVisuels = {
         tailleNuage     = Vector3.new(20, 5, 20),
         spawnMultiplier = 3,
         particleRate    = 50,
-        message         = "🌧️ RAIN EVENT ! La pluie booste le ChampCommun ×3 !",
-        messageFin      = "☀️ La pluie s'arrête... le champ reste fertilisé !",
+        message         = "🌧️ RAIN EVENT! Rain boosts the Common Field ×3!",
+        messageFin      = "☀️ The rain stops... the field stays fertilized!",
     },
 
     Golden = {
@@ -273,8 +273,8 @@ GameConfig.EventsVisuels = {
         multiplicateur = 5,
         couleurGolden  = Color3.fromRGB(255, 215, 0),
         ambientGolden  = Color3.fromRGB(255, 200, 50),
-        message        = "✨ GOLDEN EVENT ! Tous les gains ×5 pendant 60s !",
-        messageFin     = "✨ Le Golden Event est terminé. À bientôt !",
+        message        = "✨ GOLDEN EVENT! All earnings ×5 for 60s!",
+        messageFin     = "✨ The Golden Event is over. See you soon!",
     },
 }
 
@@ -302,8 +302,8 @@ GameConfig.ProgressionConfig = {
     -- { floor=X, spot=Y, coins=Z, label="texte affiché" }
     seuils = {
         -- Floor 1
-        { floor=1, spot=1,  coins=0,      label="Départ"        },
-        { floor=1, spot=2,  coins=0,      label="Départ"        },
+        { floor=1, spot=1,  coins=0,      label="Start"        },
+        { floor=1, spot=2,  coins=0,      label="Start"        },
         { floor=1, spot=3,  coins=50,     label="50 coins"      },
         { floor=1, spot=4,  coins=100,    label="100 coins"     },
         { floor=1, spot=5,  coins=200,    label="200 coins"     },
@@ -313,7 +313,7 @@ GameConfig.ProgressionConfig = {
         { floor=1, spot=9,  coins=1000,   label="1 000 coins"   },
         { floor=1, spot=10, coins=1500,   label="1 500 coins"   },
         -- Floor 2
-        { floor=2, spot=1,  coins=2000,   label="Étage 2"       },
+        { floor=2, spot=1,  coins=2000,   label="Stage 2"       },
         { floor=2, spot=2,  coins=2500,   label="2 500 coins"   },
         { floor=2, spot=3,  coins=3000,   label="3 000 coins"   },
         { floor=2, spot=4,  coins=3500,   label="3 500 coins"   },
@@ -324,7 +324,7 @@ GameConfig.ProgressionConfig = {
         { floor=2, spot=9,  coins=8000,   label="8 000 coins"   },
         { floor=2, spot=10, coins=10000,  label="10 000 coins"  },
         -- Floor 3
-        { floor=3, spot=1,  coins=15000,  label="Étage 3"       },
+        { floor=3, spot=1,  coins=15000,  label="Stage 3"       },
         { floor=3, spot=2,  coins=18000,  label="18 000 coins"  },
         { floor=3, spot=3,  coins=21000,  label="21 000 coins"  },
         { floor=3, spot=4,  coins=25000,  label="25 000 coins"  },
@@ -335,7 +335,7 @@ GameConfig.ProgressionConfig = {
         { floor=3, spot=9,  coins=50000,  label="50 000 coins"  },
         { floor=3, spot=10, coins=60000,  label="60 000 coins"  },
         -- Floor 4
-        { floor=4, spot=1,  coins=80000,  label="Étage 4"       },
+        { floor=4, spot=1,  coins=80000,  label="Stage 4"       },
         { floor=4, spot=2,  coins=90000,  label="90 000 coins"  },
         { floor=4, spot=3,  coins=100000, label="100 000 coins" },
         { floor=4, spot=4,  coins=120000, label="120 000 coins" },

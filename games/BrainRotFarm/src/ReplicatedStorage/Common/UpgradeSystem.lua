@@ -8,14 +8,14 @@ end
 
 function UpgradeSystem.AppliquerUpgrade(data)
     local cout = UpgradeSystem.GetCoutUpgrade(data.tier)
-    if data.coins < cout then return false, "Pas assez de coins" end
+    if data.coins < cout then return false, "Not enough coins" end
     data.coins = data.coins - cout
     data.tier  = data.tier + 1
     return true, data
 end
 
 function UpgradeSystem.AppliquerPrestige(data)
-    if data.tier < Config.TotalTiers then return false, "Tier max non atteint" end
+    if data.tier < Config.TotalTiers then return false, "Max tier not reached" end
     data.prestige = data.prestige + 1
     data.tier     = 0
     data.coins    = 0

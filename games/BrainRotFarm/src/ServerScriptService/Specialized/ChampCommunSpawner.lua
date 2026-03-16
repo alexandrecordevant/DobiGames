@@ -205,7 +205,7 @@ local function creerBillboardPermanent(part, couleur)
 	local label = Instance.new("TextLabel")
 	label.Size                   = UDim2.new(1, 0, 1, 0)
 	label.BackgroundTransparency = 1
-	label.Text                   = "✨ Zone Mystérieuse"
+	label.Text                   = "✨ Mysterious Zone"
 	label.Font                   = Enum.Font.GothamBold
 	label.TextColor3             = Color3.new(1, 1, 1)
 	label.TextScaled             = true
@@ -582,7 +582,7 @@ local function lancerScheduler(typeNom)
 
 			-- Notification joueurs
 			notifierTous("ALERT", string.format(
-				"%s %s apparaît dans %s au ChampCommun !",
+				"%s %s spawns in %s in the Common Field!",
 				cfg.emoji, typeNom, formatTemps(cfg.compteurVisibleAvant)
 			))
 
@@ -632,7 +632,7 @@ local function lancerScheduler(typeNom)
 
 			-- Notifier l'apparition
 			notifierTous("RARE", string.format(
-				"%s %s [%s] est apparu ! Foncez au ChampCommun !",
+				"%s %s [%s] has appeared! Rush to the Common Field!",
 				cfg.emoji, typeNom, modeleSource.Name
 			))
 
@@ -675,7 +675,7 @@ local function lancerScheduler(typeNom)
 			if collecte and playerCollecte then
 				-- Notif victoire
 				notifierTous("RARE", string.format(
-					"🏆 %s a attrapé le %s [%s] !",
+					"🏆 %s grabbed the %s [%s]!",
 					playerCollecte.Name, nomModele, typeNom
 				))
 
@@ -706,7 +706,7 @@ local function lancerScheduler(typeNom)
 			else
 				-- BR expiré sans être collecté
 				notifierTous("INFO", string.format(
-					"Le %s a disparu...", nomModele
+					"%s disappeared...", nomModele
 				))
 			end
 

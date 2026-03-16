@@ -118,7 +118,7 @@ infoLabel.RichText          = true
 infoLabel.TextWrapped       = true
 infoLabel.TextXAlignment    = Enum.TextXAlignment.Left
 infoLabel.TextYAlignment    = Enum.TextYAlignment.Top
-infoLabel.Text              = "📡 <font color=\"#8888AA\">En attente…</font>"
+infoLabel.Text              = "📡 <font color=\"#8888AA\">Waiting...</font>"
 infoLabel.Parent            = infoPanel
 
 -- Tween de pulse (réutilisable — activé quand MYTHIC imminent)
@@ -169,7 +169,7 @@ local function MettreAJourInfoPanel(infos)
             math.floor(COLOR_MYTHIC.R * 255),
             math.floor(COLOR_MYTHIC.G * 255),
             math.floor(COLOR_MYTHIC.B * 255))
-        local label = infos.mythicTemps < 120 and "⚠ MYTHIC IMMINENT" or "✦ Prochain MYTHIC"
+        local label = infos.mythicTemps < 120 and "⚠ MYTHIC INCOMING" or "✦ Next MYTHIC"
         mythicPulse = infos.mythicTemps < 120
         table.insert(lignes,
             '<font color="' .. cHex .. '">' .. label .. '</font>'
@@ -183,19 +183,19 @@ local function MettreAJourInfoPanel(infos)
             math.floor(COLOR_SECRET.G * 255),
             math.floor(COLOR_SECRET.B * 255))
         table.insert(lignes,
-            '<font color="' .. cHex .. '">⚡ SECRET bientôt</font>'
+            '<font color="' .. cHex .. '">⚡ SECRET soon</font>'
             .. '  <font color="#AAAAAA">' .. FormatTemps(infos.secretTemps) .. '</font>')
     elseif infos.dernierRare and infos.dernierRare.age and infos.dernierRare.age < 180 then
         local dr = infos.dernierRare
         table.insert(lignes,
             '🌟 <font color="#DDDD44">' .. (dr.rarete or "RARE") .. '</font>'
-            .. ' par ' .. (dr.joueur or "?")
+            .. ' by ' .. (dr.joueur or "?")
             .. '  <font color="#888888">-' .. FormatTemps(dr.age) .. '</font>')
     end
 
     -- Fallback si rien à afficher
     if #lignes == 0 then
-        table.insert(lignes, '<font color="#556677">📡 Serveur calme…</font>')
+        table.insert(lignes, '<font color="#556677">📡 Server quiet…</font>')
     end
 
     -- Limiter à 3 lignes
@@ -348,7 +348,7 @@ footer.Name              = "Footer"
 footer.Size              = UDim2.new(1, 0, 0, 18)
 footer.Position          = UDim2.new(0, 0, 1, -18)
 footer.BackgroundTransparency = 1
-footer.Text              = "Mise à jour…"
+footer.Text              = "Updating..."
 footer.TextColor3        = COLOR_DIM
 footer.TextScaled        = true
 footer.Font              = Enum.Font.Gotham

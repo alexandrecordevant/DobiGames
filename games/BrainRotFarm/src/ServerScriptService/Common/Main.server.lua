@@ -191,6 +191,13 @@ local function OnPlayerAdded(player)
             pcall(BrainRotSpawner.AssignerBase, player, baseIndex)
         end
 
+        -- En TEST_MODE avec AutoReset : remettre la base visuellement à zéro
+        -- AVANT Init pour éviter les étages débloqués persistants entre sessions
+        if dataForcee then
+            pcall(BaseProgressionSystem.ResetVisuelBase, baseIndex)
+            print("[TEST] 🔄 Reset visuel Base_" .. baseIndex .. " ✓")
+        end
+
         -- Initialiser la progression visuelle de la base
         BaseProgressionSystem.Init(player, baseIndex, data)
         BaseProgressionSystem.VerifierDeblocages(player, data)
@@ -352,7 +359,7 @@ DemandePrestige.OnServerEvent:Connect(function(player)
     if success then
         SetData(player, result)
         UpdateHUD:FireClient(player, result)
-        NotifEvent:FireClient(player, "PRESTIGE", "Prestige " .. result.prestige .. " atteint ! Multiplicateur x" .. (result.prestige * (Config.PrestigeMultiplier - 1) + 1))
+        NotifEvent:FireClient(player, "PRESTIGE", "Prestige " .. result.prestige .. " reached! Multiplier x" .. (result.prestige * (Config.PrestigeMultiplier - 1) + 1))
     else
         NotifEvent:FireClient(player, "ERREUR", result)
     end

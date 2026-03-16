@@ -48,14 +48,14 @@ local function getHold(rarete, holdNormal)
 end
 
 local CAPTURE_CONFIG = {
-	COMMON       = { mode = "prompt",  holdDuration = getHold("COMMON",       0  ), actionText = "Ramasser"           },
-	OG           = { mode = "prompt",  holdDuration = getHold("OG",           0  ), actionText = "Ramasser !"         },
-	RARE         = { mode = "prompt",  holdDuration = getHold("RARE",         0  ), actionText = "🌟 Saisir !"        },
-	EPIC         = { mode = "prompt",  holdDuration = getHold("EPIC",         0.5), actionText = "Capturer"           },
-	LEGENDARY    = { mode = "prompt",  holdDuration = getHold("LEGENDARY",    1.5), actionText = "Saisir !"           },
-	MYTHIC       = { mode = "prompt",  holdDuration = getHold("MYTHIC",       3.0), actionText = "⚡ Attraper !!"     },
-	SECRET       = { mode = "prompt",  holdDuration = getHold("SECRET",       5.0), actionText = "🔴 Capturer !!!"   },
-	BRAINROT_GOD = { mode = "prompt",  holdDuration = getHold("BRAINROT_GOD", 8.0), actionText = "👑 LÉGENDAIRE !!!" },
+	COMMON       = { mode = "prompt",  holdDuration = getHold("COMMON",       0  ), actionText = "Pick up"             },
+	OG           = { mode = "prompt",  holdDuration = getHold("OG",           0  ), actionText = "Pick up!"            },
+	RARE         = { mode = "prompt",  holdDuration = getHold("RARE",         0  ), actionText = "🌟 Grab!"            },
+	EPIC         = { mode = "prompt",  holdDuration = getHold("EPIC",         0.5), actionText = "Capture"             },
+	LEGENDARY    = { mode = "prompt",  holdDuration = getHold("LEGENDARY",    1.5), actionText = "Grab!"               },
+	MYTHIC       = { mode = "prompt",  holdDuration = getHold("MYTHIC",       3.0), actionText = "⚡ Catch!!"          },
+	SECRET       = { mode = "prompt",  holdDuration = getHold("SECRET",       5.0), actionText = "🔴 Capture!!!"      },
+	BRAINROT_GOD = { mode = "prompt",  holdDuration = getHold("BRAINROT_GOD", 8.0), actionText = "👑 LEGENDARY!!!"   },
 }
 
 -- Valeur estimée par rareté (pour l'affichage du texte de dépôt)
@@ -294,14 +294,14 @@ local function messageSacPlein(player, pData)
 
 	if niveauMax then
 		notifierJoueur(player, "INFO",
-			"🎒 Sac plein ! (" .. max .. "/" .. max .. ") — Dépose tes Brain Rots à la base d'abord.")
+			"🎒 Carry full! (" .. max .. "/" .. max .. ") — Drop your Brain Rots at the base first.")
 	else
 		local prochainMax = CARRY_CONFIG.niveaux[niveau + 1]
 		local prix        = CARRY_CONFIG.prixUpgrade[niveau + 1] or 0
 		notifierJoueur(player, "INFO",
-			"🎒 Sac plein ! (" .. max .. "/" .. max .. ") — "
-			.. "💡 Option : augmente ta capacité à " .. prochainMax .. " slots pour "
-			.. prix .. " coins au Shop !")
+			"🎒 Carry full! (" .. max .. "/" .. max .. ") — "
+			.. "💡 Upgrade your carry capacity to " .. prochainMax .. " slots for "
+			.. prix .. " coins at the Shop!")
 	end
 end
 
@@ -413,7 +413,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		task.spawn(function()
 			local restant = duree
 			while holdingPlayer == player and restant > 0 and brModel and brModel.Parent do
-				notifierJoueur(player, "INFO", "⏳ Capture en cours... " .. math.ceil(restant) .. "s")
+				notifierJoueur(player, "INFO", "⏳ Capturing... " .. math.ceil(restant) .. "s")
 				task.wait(0.5)
 				restant = restant - 0.5
 			end
@@ -425,7 +425,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		-- Bug 1 : vérification base (nil = ChampCommun, tout le monde peut capturer)
 		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
 			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
-				notifierJoueur(player, "INFO", "❌ Ce Brain Rot n'est pas dans ton champ !")
+				notifierJoueur(player, "INFO", "❌ This Brain Rot is not in your field!")
 				prompt.Enabled = false
 				task.delay(0.1, function()
 					if prompt and prompt.Parent then prompt.Enabled = true end
@@ -453,10 +453,10 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 			-- Désactiver le prompt cancel le hold côté client
 			prompt.Enabled = false
-			notifierJoueur(precedent, "INFO", "❌ " .. player.Name .. " t'a interrompu !")
-			notifierJoueur(player,    "INFO", "⚡ Tu peux tenter de capturer !")
+			notifierJoueur(precedent, "INFO", "❌ " .. player.Name .. " interrupted you!")
+			notifierJoueur(player,    "INFO", "⚡ You can try to capture!")
 			notifierAutresJoueurs(player, "INFO",
-				"⚠️ " .. player.Name .. " tente d'attraper un " .. rarete.nom .. " !")
+				"⚠️ " .. player.Name .. " is trying to grab a " .. rarete.nom .. "!")
 
 			task.delay(0.1, function()
 				if prompt and prompt.Parent then prompt.Enabled = true end
@@ -465,7 +465,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 			holdingPlayer = player
 			notifProgression(player, cfg.holdDuration)
 			notifierAutresJoueurs(player, "INFO",
-				"⚠️ " .. player.Name .. " tente d'attraper un " .. rarete.nom .. " !")
+				"⚠️ " .. player.Name .. " is trying to grab a " .. rarete.nom .. "!")
 		end
 	end)
 
@@ -483,7 +483,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		-- Bug 1 : vérification base dans Triggered aussi
 		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
 			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
-				notifierJoueur(player, "INFO", "❌ Ce Brain Rot n'est pas dans ton champ !")
+				notifierJoueur(player, "INFO", "❌ This Brain Rot is not in your field!")
 				return
 			end
 		end
@@ -502,7 +502,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		-- Marquer comme capturé pour que le despawn timer de BrainRotSpawner l'ignore
 		pcall(function() brModel:SetAttribute("Captured", true) end)
 
-		notifierTous("🏆 " .. player.Name .. " a attrapé [" .. nomModele .. "] " .. rarete.nom .. " !")
+		notifierTous("🏆 " .. player.Name .. " grabbed [" .. nomModele .. "] " .. rarete.nom .. "!")
 
 		-- Passer le modèle monde directement (pas de clone depuis ServerStorage)
 		local success = effectuerRamassage(player, rarete, brModel)
@@ -527,7 +527,7 @@ local function creerPromptDepot(player, touchPart)
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name                  = "DepotPrompt"
-	prompt.ActionText            = "Déposer"
+	prompt.ActionText            = "Deposit"
 	prompt.ObjectText            = "0 Brain Rot"
 	prompt.HoldDuration          = 0
 	prompt.MaxActivationDistance = CARRY_CONFIG.depotMaxDistance
@@ -703,7 +703,7 @@ local function onMort(player)
 	local hrp     = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	local posMort = hrp and hrp.Position or Vector3.new(0, 5, 0)
 
-	notifierTous("💀 " .. player.Name .. " a lâché ses Brain Rots !")
+	notifierTous("💀 " .. player.Name .. " dropped their Brain Rots!")
 
 	local portesADrop = data.portes
 	data.portes = {}

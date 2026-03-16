@@ -152,7 +152,7 @@ local function assigner(player)
 
     if not baseIndex then
         -- Serveur plein → mode spectateur (observer uniquement)
-        notifierJoueur(player, "INFO", "👀 Serveur plein — mode spectateur")
+        notifierJoueur(player, "INFO", "👀 Server full — spectator mode")
         warn("[AssignationSystem] " .. player.Name .. " → spectateur (toutes les bases occupées)")
         return nil
     end
@@ -162,7 +162,7 @@ local function assigner(player)
     joueurParBase[baseIndex]    = player
 
     -- Informer le joueur et le téléporter
-    notifierJoueur(player, "INFO", "🏠 Base " .. baseIndex .. " assignée — bienvenue !")
+    notifierJoueur(player, "INFO", "🏠 Base " .. baseIndex .. " assigned — welcome!")
     teleporterVersBase(player, baseIndex)
 
     -- Re-téléporter à chaque respawn pour toujours revenir face à la base
@@ -197,7 +197,7 @@ local function liberer(player)
     assignations[player.UserId] = nil
     joueurParBase[baseIndex]    = nil
 
-    notifierTous("INFO", "🏠 " .. player.Name .. " a quitté — Base " .. baseIndex .. " disponible !")
+    notifierTous("INFO", "🏠 " .. player.Name .. " left — Base " .. baseIndex .. " available!")
     print("[AssignationSystem] Base_" .. baseIndex .. " libérée (départ de " .. player.Name .. ")")
 end
 

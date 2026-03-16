@@ -214,7 +214,7 @@ local function creerBillboardLock(spotModel, label)
 	lblLock.Size                   = UDim2.new(1, 0, 0.5, 0)
 	lblLock.Position               = UDim2.new(0, 0, 0, 0)
 	lblLock.BackgroundTransparency = 1
-	lblLock.Text                   = "🔒 Verrouillé"
+	lblLock.Text                   = "🔒 Locked"
 	lblLock.Font                   = Enum.Font.GothamBold
 	lblLock.TextColor3             = Color3.new(1, 1, 1)
 	lblLock.TextScaled             = true
@@ -224,7 +224,7 @@ local function creerBillboardLock(spotModel, label)
 	lblCoins.Size                   = UDim2.new(1, 0, 0.5, 0)
 	lblCoins.Position               = UDim2.new(0, 0, 0.5, 0)
 	lblCoins.BackgroundTransparency = 1
-	lblCoins.Text                   = "💰 " .. label
+	lblCoins.Text                   = "💰 " .. tostring(label or "?")
 	lblCoins.Font                   = Enum.Font.GothamBold
 	lblCoins.TextColor3             = Color3.new(1, 1, 1)
 	lblCoins.TextScaled             = true
@@ -414,8 +414,8 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 	end
 
 	-- Notifications
-	notifierJoueur(player, "INFO", "🎉 Étage " .. floorNum .. " débloqué !")
-	notifierTous("INFO", "🏗️ " .. player.Name .. " a débloqué l'Étage " .. floorNum .. " !")
+	notifierJoueur(player, "INFO", "🎉 Stage " .. floorNum .. " unlocked!")
+	notifierTous("INFO", "🏗️ " .. player.Name .. " unlocked Stage " .. floorNum .. "!")
 end
 
 -- ============================================================
@@ -575,6 +575,49 @@ end
 -- Réinitialise les données du joueur (à appeler à la déconnexion)
 function BaseProgressionSystem.Reset(player)
 	donneesJoueurs[player.UserId] = nil
+end
+
+-- Remet la base visuellement à zéro (étages 2+ cachés, étage 1 verrouillé).
+-- À appeler en TEST_MODE avant Init, après un reset DataStore, pour éviter
+-- que la base garde visuellement ses étages débloqués de la session précédente.
+function BaseProgressionSystem.ResetVisuelBase(baseIndex)
+	local bases = Workspace:FindFirstChild("Bases")
+	if not bases then return end
+	local baseRoot = bases:FindFirstChild("Base_" .. baseIndex)
+	if not baseRoot then return end
+
+	local candidatBase = baseRoot:FindFirstChild("Base")
+	local scoreRoot    = scorerConteneurBase(baseRoot)
+	local scoreBase    = scorerConteneurBase(candidatBase)
+	local baseFolder   = (scoreBase >= scoreRoot) and candidatBase or baseRoot
+	if not baseFolder or math.max(scoreBase, scoreRoot) <= 0 then return end
+
+	for _, floorDef in ipairs(FLOORS) do
+		local floorObj = trouverFloor(baseFolder, floorDef.index)
+		if not floorObj then continue end
+
+		if floorDef.index > 1 then
+			-- Étages supérieurs : tout invisible
+			cacherEtage(floorObj)
+		else
+			-- Étage 1 : structure visible, spots selon seuil de coins
+			afficherStructure(floorObj)
+			for _, seuil in ipairs(SEUILS) do
+				if seuil.floor == floorDef.index then
+					local spotObj = trouverSpot(floorObj, seuil.spot)
+					if spotObj then
+						if seuil.coins > 0 then
+							pcall(appliquerEtatVerrouille, spotObj, seuil)
+						else
+							pcall(appliquerEtatDebloque, spotObj, nil)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	print("[BaseProgressionSystem] ResetVisuel Base_" .. baseIndex .. " ✓")
 end
 
 return BaseProgressionSystem

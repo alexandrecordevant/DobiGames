@@ -65,7 +65,7 @@ local function BoucleAuto()
     local types        = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
     while true do
         task.wait(intervalle - earlyBird)
-        NotifierTous("⏰ Event dans 1h ! Reste connecté pour l'Early Bird 🎁", Color3.fromRGB(100,200,255))
+        NotifierTous("⏰ Event in 1h! Stay connected for the Early Bird bonus 🎁", Color3.fromRGB(100,200,255))
         EnvoyerDiscord("⏰ Event dans 1h !", "**" .. Config.NomDuJeu .. "** — Admin Abuse dans 1 heure !\n🎁 Early Bird pour ceux déjà connectés !")
         task.wait(earlyBird)
         local choix = types[math.random(1, #types)]
@@ -80,12 +80,12 @@ local function BoucleAdminAbuseHebdo()
         task.wait(60)
         local now = os.date("!*t")
         if now.wday == cfg.jourSemaine and now.hour == cfg.heureUTC and now.min == 0 then
-            NotifierTous("🔥 ADMIN ABUSE HEBDO ! Spawn ×" .. cfg.spawnMultiplier .. " pendant " .. cfg.dureeMinutes .. " min !", Color3.fromRGB(255,50,50))
+            NotifierTous("🔥 WEEKLY ADMIN ABUSE! Spawn ×" .. cfg.spawnMultiplier .. " for " .. cfg.dureeMinutes .. " min!", Color3.fromRGB(255,50,50))
             EnvoyerDiscord("🔥 ADMIN ABUSE HEBDOMADAIRE !", "@everyone\n**" .. Config.NomDuJeu .. "** — Spawn ×" .. cfg.spawnMultiplier .. " pendant " .. cfg.dureeMinutes .. " min !\n[Jouer maintenant](https://www.roblox.com/games)")
             CollectSystem.SetEventMultiplier(cfg.spawnMultiplier)
             task.delay(cfg.dureeMinutes * 60, function()
                 CollectSystem.SetEventMultiplier(1)
-                NotifierTous("Admin Abuse terminé. À samedi prochain !", Color3.fromRGB(200,200,200))
+                NotifierTous("Admin Abuse ended. See you next Saturday!", Color3.fromRGB(200,200,200))
                 EnvoyerDiscord("✅ Admin Abuse terminé", "Merci à tous ! Prochain event **samedi prochain**. 🔔")
             end)
         end

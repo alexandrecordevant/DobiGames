@@ -180,7 +180,7 @@ function EventRain.Terminer()
     end
 
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
-    if ev then pcall(function() ev:FireAllClients("INFO", "☀️ La pluie s'arrête... le champ reste fertilisé !") end) end
+    if ev then pcall(function() ev:FireAllClients("INFO", "☀️ The rain stops... the field stays fertilized!") end) end
 
     print("[EventRain] ■ Rain Event terminé")
 end

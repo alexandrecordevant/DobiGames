@@ -100,8 +100,8 @@ end
 local CONFIGS_GAMEPLAY = {
     LuckyHour = {
         duree     = getDureeEvent,  -- fonction appelée au lancement
-        msg       = "⭐ LUCKY HOUR ! Spawn ×10 !",
-        msgFin    = "⭐ Lucky Hour terminé.",
+        msg       = "⭐ LUCKY HOUR! Spawn ×10!",
+        msgFin    = "⭐ Lucky Hour ended.",
         appliquer = function()
             local BRS = getBrainRotSpawner()
             if BRS then pcall(BRS.SetEventMultiplier, 10) end
@@ -113,8 +113,8 @@ local CONFIGS_GAMEPLAY = {
     },
     DoubleCoins = {
         duree     = getDureeEvent,
-        msg       = "💰 DOUBLE COINS ! ×5 !",
-        msgFin    = "💰 Double Coins terminé.",
+        msg       = "💰 DOUBLE COINS! ×5!",
+        msgFin    = "💰 Double Coins ended.",
         appliquer = function()
             local IS = getIncomeSystem()
             local CS = getCollectSystem()
@@ -130,8 +130,8 @@ local CONFIGS_GAMEPLAY = {
     },
     SecretSpawn = {
         duree     = getDureeEvent,
-        msg       = "🔴 SECRET SPAWN ! " .. Config.CollectibleName .. " rare !",
-        msgFin    = "🔴 Secret Spawn terminé.",
+        msg       = "🔴 SECRET SPAWN! Rare " .. Config.CollectibleName .. "!",
+        msgFin    = "🔴 Secret Spawn ended.",
         appliquer = function() end,  -- ChampCommunSpawner gère le SECRET de façon autonome
         terminer  = function() end,
     },
