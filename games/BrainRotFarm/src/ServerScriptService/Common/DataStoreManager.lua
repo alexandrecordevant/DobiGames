@@ -37,6 +37,12 @@ local function DefaultData()
     }
 end
 
+-- Retourne des données vierges sans toucher au DataStore
+-- Utilisé par le reset automatique en TEST_MODE pour bypasser le cache Studio
+function DataStoreManager.GetDefaultData()
+    return DefaultData()
+end
+
 function DataStoreManager.Load(player)
     local ok, data = pcall(function() return DS:GetAsync("player_"..player.UserId) end)
     if not ok or not data then data = DefaultData() end

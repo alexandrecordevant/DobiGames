@@ -141,6 +141,10 @@ end
 
 local function OnPlayerAdded(player)
     -- ═══ RESET AUTOMATIQUE EN TEST_MODE ═══
+    -- Bypass DataStore complet : en Studio, GetAsync après RemoveAsync peut
+    -- retourner l'ancien cache → progression complète chargée → base déjà débloquée.
+    -- Solution : utiliser GetDefaultData() pour garantir des données vraiment vierges.
+    local dataForcee = nil
     if Config.TEST_MODE then
         local okTC, TestConfig = pcall(require, ReplicatedStorage.Test.TestConfig)
         if okTC and TestConfig and TestConfig.AutoResetOnJoin then
@@ -150,8 +154,11 @@ local function OnPlayerAdded(player)
                 DS:RemoveAsync("player_" .. player.UserId)
             end)
             if ok then
+                -- Bypass GetAsync — retourne directement des données vierges
+                -- (évite le cache Studio qui renverrait l'ancienne progression)
+                dataForcee = DataStoreManager.GetDefaultData()
                 print("[TEST] 🔄 Reset automatique : "
-                    .. player.Name .. " repart de zéro ✓")
+                    .. player.Name .. " repart de zéro ✓ (données vierges garanties)")
             else
                 warn("[TEST] Erreur reset DataStore : " .. tostring(err))
             end
@@ -159,8 +166,8 @@ local function OnPlayerAdded(player)
     end
     -- ═══════════════════════════════════════
 
-    -- Charger données (fraîches après reset)
-    local data = DataStoreManager.Load(player)
+    -- Charger données : vierges si reset effectué, sinon DataStore normal
+    local data = dataForcee or DataStoreManager.Load(player)
     SetData(player, data)
 
     -- Vérifier Game Passes
