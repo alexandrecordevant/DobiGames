@@ -196,6 +196,39 @@ local function cloneMiniModele(rarete)
     return clone
 end
 
+-- Supprime les instances parasites ajoutées pendant le cycle carry/capture
+-- qui deviendraient des cubes gris si on les rend visibles par erreur
+local function nettoyerParasites(clone)
+    -- PromptAnchor : Part 0.1×0.1×0.1 injectée par CarrySystem.creerPromptCapture
+    -- Elle est Transparency=1 dans le monde, mais le fade-in la rendrait visible (cube gris)
+    for _, v in ipairs(clone:GetDescendants()) do
+        if v.Name == "PromptAnchor" then
+            pcall(function() v:Destroy() end)
+        end
+    end
+
+    -- VfxInstance : dossier contenant speccloud1/2, saltfloor, etc.
+    -- Parts sans mesh → cubes gris si rendus opaques
+    local vfx = clone:FindFirstChild("VfxInstance")
+    if vfx then pcall(function() vfx:Destroy() end) end
+
+    -- BillboardGui et ProximityPrompts résiduels (texte "EPIC", prompt de capture)
+    for _, v in ipairs(clone:GetDescendants()) do
+        if v:IsA("BillboardGui") or v:IsA("ProximityPrompt") then
+            pcall(function() v:Destroy() end)
+        end
+    end
+
+    -- Constraints et forces physiques résiduels de la session carry
+    for _, v in ipairs(clone:GetDescendants()) do
+        if v:IsA("WeldConstraint") or v:IsA("Weld") or v:IsA("Motor6D")
+           or v:IsA("BodyForce") or v:IsA("BodyVelocity") or v:IsA("BodyGyro")
+           or v:IsA("BodyPosition") or v:IsA("BodyAngularVelocity") then
+            pcall(function() v:Destroy() end)
+        end
+    end
+end
+
 -- Place et anime le mini modèle sur un spot
 -- modeleSource (optionnel) = le modèle exact porté par le joueur (prioritaire sur ServerStorage)
 local function placerMiniModele(touchPart, rarete, modeleSource)
@@ -206,14 +239,6 @@ local function placerMiniModele(touchPart, rarete, modeleSource)
         pcall(function() clone = modeleSource:Clone() end)
         -- Supprimer le modèle détaché flottant dans le Workspace
         pcall(function() modeleSource:Destroy() end)
-        -- Nettoyer welds/motors résiduels de la session carry
-        if clone then
-            for _, w in ipairs(clone:GetDescendants()) do
-                if w:IsA("WeldConstraint") or w:IsA("Weld") or w:IsA("Motor6D") then
-                    pcall(function() w:Destroy() end)
-                end
-            end
-        end
         print("[DropSystem] Mini modèle issu du carry (modèle exact)")
     end
 
@@ -224,6 +249,10 @@ local function placerMiniModele(touchPart, rarete, modeleSource)
 
     if not clone then return nil end
 
+    -- Nettoyer les parasites AVANT tout autre traitement
+    -- (PromptAnchor, VfxInstance, constraints → cubes gris si laissés)
+    nettoyerParasites(clone)
+
     -- Mise à l'échelle réduite
     if clone:IsA("Model") then
         pcall(function() clone:ScaleTo(MINI_SCALE) end)
@@ -232,10 +261,14 @@ local function placerMiniModele(touchPart, rarete, modeleSource)
     -- Position : au-dessus du TouchPart
     local pos = touchPart.Position + Vector3.new(0, touchPart.Size.Y * 0.5 + 0.6, 0)
 
-    -- Anchorer toutes les BaseParts et rendre non-collidables
+    -- Mémoriser la transparence ORIGINALE de chaque part avant le fade-in
+    -- IMPORTANT : ne jamais tweener vers 0 — certaines parts sont intentionnellement
+    -- invisibles (FakeRootPart, hitbox, helpers). Les forcer à 0 crée les cubes gris.
+    local transparencesOriginales = {}
     for _, v in ipairs(clone:GetDescendants()) do
         if v:IsA("BasePart") then
             pcall(function()
+                transparencesOriginales[v] = v.Transparency
                 v.Anchored    = true
                 v.CanCollide  = false
                 v.Transparency = 1  -- départ invisible pour fade in
@@ -252,13 +285,15 @@ local function placerMiniModele(touchPart, rarete, modeleSource)
         end)
     end
 
-    -- Fade in (durée depuis AnimationConfig)
+    -- Fade in vers la transparence ORIGINALE (pas vers 0)
+    -- → les parts invisibles du modèle restent invisibles après le fade
     local fadeInDuree = (Config.AnimationConfig and Config.AnimationConfig.brDepotDuree) or 0.3
     local tweenInfo = TweenInfo.new(fadeInDuree, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     for _, v in ipairs(clone:GetDescendants()) do
         if v:IsA("BasePart") then
+            local transpCible = transparencesOriginales[v] or 0
             pcall(function()
-                TweenService:Create(v, tweenInfo, { Transparency = 0 }):Play()
+                TweenService:Create(v, tweenInfo, { Transparency = transpCible }):Play()
             end)
         end
     end
