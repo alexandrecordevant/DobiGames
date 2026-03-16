@@ -54,12 +54,13 @@ end)
 
 -- Event démarré
 local EventStarted = ReplicatedStorage:WaitForChild("EventStarted")
-EventStarted.OnClientEvent:Connect(function(_, duree)
+EventStarted.OnClientEvent:Connect(function(typeEvent, duree)
     eventFrame.Visible = true
+    local nomAffiche = typeEvent or "EVENT"
     local t = duree
     task.spawn(function()
         while t > 0 do
-            eventLabel.Text = "🔥 EVENT  " .. math.ceil(t) .. "s"
+            eventLabel.Text = "🔥 " .. nomAffiche .. "  " .. math.ceil(t) .. "s"
             task.wait(1) ; t = t - 1
         end
         eventFrame.Visible = false
