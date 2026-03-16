@@ -34,6 +34,14 @@ local function DefaultData()
         hasLuckyCharm  = false,
         -- Vitesse actuelle (modifiée par upgrade Speed)
         walkSpeedActuel = 16,
+        -- Flower Pots
+        pots = {
+            [1] = { debloque=true,  graine=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [2] = { debloque=false, graine=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [3] = { debloque=false, graine=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [4] = { debloque=false, graine=nil, stage=0, tempsRestant=0, instantGrow=false },
+        },
+        graines = { COMMON=0, RARE=0, EPIC=0, LEGENDARY=0 },
     }
 end
 

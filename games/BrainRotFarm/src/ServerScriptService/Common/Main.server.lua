@@ -29,6 +29,7 @@ local LeaderboardSystem     = require(ServerScriptService.Common.LeaderboardSyst
 local ShopSystem            = require(ServerScriptService.Common.ShopSystem)
 local SprinklerSystem       = require(ServerScriptService.Common.SprinklerSystem)
 local TracteurSystem        = require(ServerScriptService.Common.TracteurSystem)
+local FlowerPotSystem       = require(ServerScriptService.Common.FlowerPotSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -225,6 +226,9 @@ local function OnPlayerAdded(player)
         if data.hasTracteur then
             pcall(TracteurSystem.Activer, player, baseIndex)
         end
+
+        -- Initialiser les pots de fleurs
+        FlowerPotSystem.Init(player, baseIndex, data)
 
         -- Initialiser le système de Rebirth
         RebirthSystem.Init(player, data, baseIndex)
@@ -484,6 +488,10 @@ SprinklerSystem.Init()
 
 -- TracteurSystem : prêt (aucun tracteur actif au démarrage)
 TracteurSystem.Init()
+
+-- FlowerPotSystem : connecter la source de données et initialiser
+FlowerPotSystem.SetGetData(GetData)
+FlowerPotSystem.InitServeur()
 
 -- Démarrer TestRunner + ResetSystem si TEST_MODE actif (aucun overhead si false)
 if Config.TEST_MODE then

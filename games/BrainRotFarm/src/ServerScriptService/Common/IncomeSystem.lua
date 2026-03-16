@@ -97,7 +97,23 @@ local function calculerRevenu(player, spotsTable, playerData)
     local total = 0
     for _, spot in ipairs(spotsTable) do
         local base = INCOME_PAR_RARETE[spot.rarete] or 0
-        total = total + base
+        -- Multiplicateur Mutant : vérifier MutantTag sur le mini modèle du spot
+        local mutantMult = 1
+        if spot.touchPart and spot.touchPart.Parent then
+            for _, child in ipairs(spot.touchPart.Parent:GetChildren()) do
+                local tag = child:FindFirstChild("MutantTag")
+                if tag then
+                    mutantMult = tonumber(tag.Value) or 1
+                    break
+                end
+            end
+            -- Fallback : vérifier directement sous touchPart
+            if mutantMult == 1 then
+                local tag = spot.touchPart:FindFirstChild("MutantTag", true)
+                if tag then mutantMult = tonumber(tag.Value) or 1 end
+            end
+        end
+        total = total + base * mutantMult
     end
 
     if total == 0 then return 0 end

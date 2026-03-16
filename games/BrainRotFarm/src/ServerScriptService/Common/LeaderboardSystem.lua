@@ -110,6 +110,17 @@ local function GetIconesJoueur(playerData)
         end
         if estMax then icones = icones .. upgradeConfig.icone end
     end
+
+    -- Icône 🌱 si au moins un pot actif (graine en croissance)
+    if playerData.pots then
+        for _, pot in ipairs(playerData.pots) do
+            if pot.graine and pot.stage > 0 then
+                icones = icones .. "🌱"
+                break
+            end
+        end
+    end
+
     return icones
 end
 

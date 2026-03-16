@@ -83,6 +83,17 @@ local RARETE_ORDRE = {
     LEGENDARY=5, MYTHIC=6, SECRET=7, BRAINROT_GOD=8,
 }
 
+-- Lazy loader FlowerPotSystem (évite dépendance circulaire)
+local _FlowerPotSystem = nil
+local function getFlowerPotSystem()
+    if not _FlowerPotSystem then
+        local ok, m = pcall(require,
+            game:GetService("ServerScriptService").Common.FlowerPotSystem)
+        if ok then _FlowerPotSystem = m end
+    end
+    return _FlowerPotSystem
+end
+
 local brainrotsFolder = ServerStorage:WaitForChild("Brainrots")
 
 -- ============================================================
@@ -449,6 +460,11 @@ local function spawnerUnBrainRot(baseIndex)
 					onCapture = function(player)
 						if BrainRotSpawner.OnRareCollecte then
 							pcall(BrainRotSpawner.OnRareCollecte, player, rarete.nom)
+						end
+						-- Drop chance de graine selon la rareté
+						local FPS = getFlowerPotSystem()
+						if FPS then
+							pcall(FPS.TenterDropGraine, player, rarete.nom)
 						end
 					end
 				end

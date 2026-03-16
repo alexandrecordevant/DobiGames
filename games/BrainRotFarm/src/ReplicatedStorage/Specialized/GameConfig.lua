@@ -352,4 +352,95 @@ GameConfig.ProgressionConfig = {
     baseSurTotalGagne = true,
 }
 
+-- === FLOWER POT SYSTEM ===
+-- Lu par FlowerPotSystem (Common) — pots, graines, croissance, BR Mutants
+GameConfig.FlowerPotConfig = {
+
+    -- Déblocage des pots
+    pots = {
+        [1] = { nom = "FlowerPot_1", prixCoins = 0,     prixRobux = 0   },
+        [2] = { nom = "FlowerPot_2", prixCoins = 5000,  prixRobux = 0   },
+        [3] = { nom = "FlowerPot_3", prixCoins = 25000, prixRobux = 0   },
+        [4] = { nom = "FlowerPot_4", prixCoins = 0,     prixRobux = 149,
+                gamePassId = 0 },
+    },
+
+    -- Graines disponibles
+    graines = {
+        COMMON = {
+            nom           = "Common Seed",
+            icone         = "🌱",
+            rareteResult  = "COMMON",
+            prixCoins     = 200,
+            prixRobux     = 0,
+            dureeStages   = { 120, 120, 120, 120 },
+            dureeTest     = { 15,  15,  15,  15  },
+            multiplicateur = 3,
+        },
+        RARE = {
+            nom           = "Rare Seed",
+            icone         = "🌿",
+            rareteResult  = "RARE",
+            prixCoins     = 2000,
+            prixRobux     = 0,
+            dureeStages   = { 180, 180, 180, 180 },
+            dureeTest     = { 20,  20,  20,  20  },
+            multiplicateur = 5,
+        },
+        EPIC = {
+            nom           = "Epic Seed",
+            icone         = "🌸",
+            rareteResult  = "EPIC",
+            prixCoins     = 15000,
+            prixRobux     = 0,
+            dureeStages   = { 240, 240, 240, 240 },
+            dureeTest     = { 25,  25,  25,  25  },
+            multiplicateur = 8,
+        },
+        LEGENDARY = {
+            nom           = "Legendary Seed",
+            icone         = "🌟",
+            rareteResult  = "LEGENDARY",
+            prixCoins     = 0,
+            prixRobux     = 49,
+            gamePassId    = 0,
+            dureeStages   = { 300, 300, 300, 300 },
+            dureeTest     = { 30,  30,  30,  30  },
+            multiplicateur = 12,
+        },
+    },
+
+    -- Croissance instantanée (R$)
+    instantGrow = {
+        prixRobux  = 35,
+        gamePassId = 0,
+        label      = "⚡ Instant Grow",
+    },
+
+    -- Chances de drop de graine lors de la collecte d'un BR
+    dropChances = {
+        RARE      = 0.10,
+        EPIC      = 0.20,
+        LEGENDARY = 0.50,
+        MYTHIC    = 1.00,
+    },
+
+    -- Échelle visuelle par stage (0 = graine enterrée, 4 = mature)
+    stageScales = {
+        [0] = 0.0,
+        [1] = 0.3,
+        [2] = 0.6,
+        [3] = 0.9,
+        [4] = 1.4,
+    },
+
+    -- Couleur de teinte par stage
+    stageCouleurs = {
+        [1] = Color3.fromRGB(150, 255, 100),
+        [2] = Color3.fromRGB(80,  200, 60 ),
+        [3] = Color3.fromRGB(50,  180, 255),
+        [4] = Color3.fromRGB(255, 215, 0  ),
+    },
+}
+
 return GameConfig
