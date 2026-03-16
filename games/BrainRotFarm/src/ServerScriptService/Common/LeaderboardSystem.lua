@@ -156,6 +156,7 @@ local function CreerOuMettreAJourLeaderstats(player, playerData)
         ls        = Instance.new("Folder")
         ls.Name   = "leaderstats"
         ls.Parent = player
+        print("[LeaderboardSystem] leaderstats créés pour " .. player.Name .. " ✓")
     end
 
     local coins = ls:FindFirstChild("💰 Coins")
@@ -717,14 +718,29 @@ function LeaderboardSystem.Init()
     -- Panneau 3D custom (fallback)
     pcall(creerPanneau)
 
-    -- Initialiser les panneaux Studio avec un texte de démarrage (efface "indisponible")
+    -- Diagnostic : lister les panneaux disponibles dans Workspace.Leaderboards
     task.defer(function()
+        local lbFolder = Workspace:FindFirstChild("Leaderboards")
+        if lbFolder then
+            local enfants = {}
+            for _, child in ipairs(lbFolder:GetChildren()) do
+                table.insert(enfants, child.Name .. " (" .. child.ClassName .. ")")
+            end
+            print("[LeaderboardSystem] Workspace.Leaderboards contient : " .. table.concat(enfants, ", "))
+        else
+            warn("[LeaderboardSystem] Workspace.Leaderboards INTROUVABLE — panneaux Studio désactivés")
+        end
+
+        -- Initialiser les panneaux Studio avec un texte de démarrage (efface "indisponible")
         local lbCfg = Config.Leaderboards
         if lbCfg and lbCfg.Leaderboard1 then
             local t1 = trouverTexto(lbCfg.Leaderboard1.chemin)
             if t1 then
                 configurerTexto(t1)
                 pcall(function() t1.Text = "🏆 CLASSEMENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nEn attente..." end)
+                print("[LeaderboardSystem] Leaderboard1 Texto trouvé ✓ (" .. lbCfg.Leaderboard1.chemin .. ")")
+            else
+                warn("[LeaderboardSystem] Leaderboard1 Texto INTROUVABLE : " .. tostring(lbCfg.Leaderboard1.chemin))
             end
         end
         if lbCfg and lbCfg.Leaderboard2 then
@@ -732,6 +748,9 @@ function LeaderboardSystem.Init()
             if t2 then
                 configurerTexto(t2)
                 pcall(function() t2.Text = "📋 INFOS SERVEUR\n━━━━━━━━━━━━━━━━━━━━━━━━━━\nChargement..." end)
+                print("[LeaderboardSystem] Leaderboard2 Texto trouvé ✓ (" .. lbCfg.Leaderboard2.chemin .. ")")
+            else
+                warn("[LeaderboardSystem] Leaderboard2 Texto INTROUVABLE : " .. tostring(lbCfg.Leaderboard2.chemin))
             end
         end
     end)

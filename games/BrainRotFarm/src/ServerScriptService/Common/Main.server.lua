@@ -180,9 +180,6 @@ local function OnPlayerAdded(player)
         -- Réappliquer tous les upgrades shop achetés (WalkSpeed, Carry, etc.)
         ShopSystem.AppliquerTousUpgrades(player, data)
 
-        -- Mettre à jour le leaderboard pour ce joueur
-        LeaderboardSystem.MettreAJour(player, data)
-
         -- Initialiser le système de Rebirth
         RebirthSystem.Init(player, data, baseIndex)
 
@@ -194,6 +191,9 @@ local function OnPlayerAdded(player)
             TeleporterVersBaseAssignee(player, baseIndex, character)
         end)
     end
+
+    -- Mettre à jour le leaderboard (même en mode spectateur, leaderstats créés)
+    LeaderboardSystem.MettreAJour(player, data)
 
     -- Lancer auto-save (inclut spotsOccupes synchronisé par IncomeSystem)
     DataStoreManager.StartAutoSave(player, function()
@@ -377,19 +377,30 @@ end
 ChampCommunSpawner.Init()
 
 -- Connexion récompenses Brainrot (champs individuel + commun)
-local BrainrotReward = ServerScriptService:WaitForChild("_BrainrotReward")
+-- FindFirstChild + création manuelle : WaitForChild bloquerait tout si l'objet n'existe pas encore
+local BrainrotReward = ServerScriptService:FindFirstChild("_BrainrotReward")
+if not BrainrotReward then
+    BrainrotReward        = Instance.new("BindableEvent")
+    BrainrotReward.Name   = "_BrainrotReward"
+    BrainrotReward.Parent = ServerScriptService
+    print("[Main] _BrainrotReward BindableEvent créé ✓")
+end
+
 BrainrotReward.Event:Connect(function(player, montant, rarete)
     local data = GetData(player)
     if not data then return end
-    local multiplier   = CollectSystem.GetMultiplier(data)
-    local coinsGagnes       = math.floor(montant * multiplier * RebirthSystem.GetMultiplicateur(player))
-    data.coins              = data.coins + coinsGagnes
-    data.totalCoinsGagnes   = (data.totalCoinsGagnes or 0) + coinsGagnes
-    data.totalCollecte      = (data.totalCollecte or 0) + 1
+    local multiplier      = CollectSystem.GetMultiplier(data)
+    local coinsGagnes     = math.floor(
+        montant * multiplier * RebirthSystem.GetMultiplicateur(player)
+    )
+    data.coins            = data.coins + coinsGagnes
+    data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coinsGagnes
+    data.totalCollecte    = (data.totalCollecte or 0) + 1
     UpdateHUD:FireClient(player, data)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
     BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
+    LeaderboardSystem.MettreAJour(player, data)
 end)
 
 -- Démarrer les events automatiques (Admin Abuse, Lucky Hour...)
