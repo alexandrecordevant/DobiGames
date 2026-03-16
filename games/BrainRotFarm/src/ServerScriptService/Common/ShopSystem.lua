@@ -55,6 +55,15 @@ local RARETE_ORDRE = {
 -- ============================================================
 -- Chargement différé — évite les dépendances circulaires
 -- ============================================================
+local _AssignationSystem = nil
+local function getAssignationSystem()
+    if not _AssignationSystem then
+        local ok, m = pcall(require, ServerScriptService.Common.AssignationSystem)
+        if ok and m then _AssignationSystem = m end
+    end
+    return _AssignationSystem
+end
+
 local _CarrySystem = nil
 local function getCarrySystem()
     if not _CarrySystem then
@@ -372,7 +381,8 @@ end
 -- ============================================================
 -- ProximityPrompt — Shop dans chaque base
 -- ============================================================
-local function ajouterPromptShop(shopPart)
+-- baseIndex : index de la base concernée (pour vérifier l'ownership)
+local function ajouterPromptShop(shopPart, baseIndex)
     -- Supprimer un prompt existant
     local ancien = shopPart:FindFirstChildOfClass("ProximityPrompt")
     if ancien then ancien:Destroy() end
@@ -383,9 +393,26 @@ local function ajouterPromptShop(shopPart)
     prompt.KeyboardKeyCode       = Enum.KeyCode.E
     prompt.MaxActivationDistance = 8
     prompt.HoldDuration          = 0
+    prompt.RequiresLineOfSight   = false
     prompt.Parent                = shopPart
 
     prompt.Triggered:Connect(function(player)
+        -- Vérification ownership : seul le propriétaire de la base peut ouvrir son shop
+        local AS = getAssignationSystem()
+        if AS and baseIndex then
+            local baseJoueur = AS.GetBaseIndex(player)
+            if baseJoueur ~= baseIndex then
+                local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
+                if notif then
+                    pcall(function()
+                        notif:FireClient(player, "ERREUR",
+                            "❌ Ce shop appartient à un autre joueur !")
+                    end)
+                end
+                return
+            end
+        end
+
         local playerData = getData(player)
         if not playerData then return end
         if OuvrirShop then
@@ -421,19 +448,32 @@ local function trouverShopPart(baseModel)
 end
 
 local function initialiserShopsBases()
+    -- Attendre que le dossier Bases soit présent (max 15s — modèles Studio lents à charger)
     local basesFolder = workspace:FindFirstChild("Bases")
     if not basesFolder then
-        warn("[ShopSystem] Dossier 'Bases' introuvable dans Workspace")
+        local t = 0
+        repeat
+            task.wait(0.5)
+            t = t + 0.5
+            basesFolder = workspace:FindFirstChild("Bases")
+        until basesFolder or t >= 15
+    end
+
+    if not basesFolder then
+        warn("[ShopSystem] ⚠ Dossier 'Bases' introuvable après 15s — ProximityPrompts non créés")
         return
     end
 
     local nb = 0
     for _, baseModel in ipairs(basesFolder:GetChildren()) do
         if baseModel.Name:match("^Base_%d+$") then
+            -- Extraire l'index numérique depuis "Base_X"
+            local idx = tonumber(baseModel.Name:match("Base_(%d+)"))
             local shopPart = trouverShopPart(baseModel)
             if shopPart then
-                ajouterPromptShop(shopPart)
+                ajouterPromptShop(shopPart, idx)
                 nb = nb + 1
+                print("[ShopSystem] ProximityPrompt créé → " .. baseModel.Name)
             else
                 warn("[ShopSystem] ⚠ Pas de modèle Shop dans " .. baseModel.Name)
             end
@@ -443,11 +483,18 @@ local function initialiserShopsBases()
     print("[ShopSystem] " .. nb .. " ProximityPrompt(s) Shop initialisés")
 end
 
+-- API publique : recréer les ProximityPrompts (ex: après rechargement de carte)
+function ShopSystem.InitTousShops()
+    initialiserShopsBases()
+end
+
 -- ============================================================
 -- Init
 -- ============================================================
 function ShopSystem.Init()
-    -- Créer les RemoteEvents
+    print("[ShopSystem] Init() démarré…")
+
+    -- Créer les RemoteEvents (creerRemoteEvent est idempotent)
     OuvrirShop           = creerRemoteEvent("OuvrirShop")
     FermerShop           = creerRemoteEvent("FermerShop")
     AchatUpgrade         = creerRemoteEvent("AchatUpgrade")
@@ -456,11 +503,17 @@ function ShopSystem.Init()
     ConfirmerGamePass    = creerRemoteEvent("ConfirmerGamePass")
     ChangerSeuilTracteur = creerRemoteEvent("ChangerSeuilTracteur")
 
-    -- Ajouter ProximityPrompts après un court délai (laisse le temps au Workspace de charger)
-    task.spawn(function()
-        task.wait(1)
-        initialiserShopsBases()
-    end)
+    print("[ShopSystem] RemoteEvents créés :")
+    for _, nom in ipairs({
+        "OuvrirShop","FermerShop","AchatUpgrade","ShopUpdate",
+        "DemandeAchatRobux","ConfirmerGamePass","ChangerSeuilTracteur"
+    }) do
+        local etat = ReplicatedStorage:FindFirstChild(nom) and "✅" or "❌"
+        print("  " .. nom .. " : " .. etat)
+    end
+
+    -- Ajouter ProximityPrompts (initialiserShopsBases attend jusqu'à 15s)
+    task.spawn(initialiserShopsBases)
 
     -- Handler : achat en coins
     AchatUpgrade.OnServerEvent:Connect(function(player, nomUpgrade, niveauDemande)
@@ -607,7 +660,7 @@ function ShopSystem.Init()
     -- Compter les upgrades chargés
     local n = 0
     for _ in pairs(Config.ShopUpgrades) do n = n + 1 end
-    print("[ShopSystem] ✓ Initialisé — " .. n .. " upgrades chargés depuis GameConfig")
+    print("[ShopSystem] ✓ Init terminé — " .. n .. " upgrades | ProximityPrompts en cours…")
 end
 
 return ShopSystem

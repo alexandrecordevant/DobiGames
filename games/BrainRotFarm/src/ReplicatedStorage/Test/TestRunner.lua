@@ -283,6 +283,35 @@ local PLAN_DE_TEST = {
 
     {
         numero  = 15,
+        titre   = "SHOP — Vérification RemoteEvents + ProximityPrompts",
+        attente = 3,
+        instructions = {
+            "▶ Console doit afficher :",
+            "   [ShopSystem] Init() démarré…",
+            "   [ShopSystem] RemoteEvents créés :",
+            "     OuvrirShop : ✅",
+            "     AchatUpgrade : ✅",
+            "     ShopUpdate : ✅",
+            "   [ShopSystem] ProximityPrompt créé → Base_1",
+            "   [ShopSystem] 6 ProximityPrompt(s) Shop initialisés",
+            "",
+            "▶ Script Console (mode Server) :",
+            "   local RS = game.ReplicatedStorage",
+            "   for _,n in ipairs({'OuvrirShop','FermerShop','AchatUpgrade','ShopUpdate'}) do",
+            "     print(n..': '..(RS:FindFirstChild(n) and '✅' or '❌'))",
+            "   end",
+            "",
+            "▶ S'approcher du Shop de SA base → appuyer E",
+            "▶ Le menu Shop doit s'ouvrir",
+            "▶ S'approcher du Shop d'une AUTRE base → message ❌",
+            "▶ Acheter Arroseur Niv.1 (500 coins) → coins déduits + notif ✅",
+            "",
+            "✅ ATTENDU : Menu ouvert + achat validé + coins déduits + HUD mis à jour",
+        },
+    },
+
+    {
+        numero  = 16,
         titre   = "VÉRIFICATION FINALE",
         attente = 0,
         instructions = {
