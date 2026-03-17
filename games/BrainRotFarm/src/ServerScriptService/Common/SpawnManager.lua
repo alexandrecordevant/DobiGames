@@ -48,15 +48,15 @@ local CONFIG = {
 }
 
 -- ============================================================
--- Raretés — lues depuis GameConfig.SpawnableItems.raretés
+-- Raretés — lues depuis GameConfig.SpawnableItems.rarites
 -- ============================================================
 local _spawnableItems = _GameConfig.SpawnableItems or {}
 local _dosierBrainrots = _spawnableItems.dossier or "Brainrots"
 local _spawnZoneNom = _GameConfig.SpawnZoneNom or "SpawnZone"
 
 local RARITES = {}
-if _spawnableItems.raretés then
-    for _, r in ipairs(_spawnableItems.raretés) do
+if _spawnableItems.rarites then
+    for _, r in ipairs(_spawnableItems.rarites) do
         table.insert(RARITES, {
             nom     = r.nom,
             poids   = r.poids,
@@ -76,7 +76,7 @@ else
 end
 -- MYTHIC et SECRET exclus de ce script (ZoneCommune uniquement)
 
--- Ordre croissant des raretés (logique interne — non configurable)
+-- Ordre croissant des rarites (logique interne — non configurable)
 local RARETE_ORDRE = {
     COMMON=1, OG=2, RARE=3, EPIC=4,
     LEGENDARY=5, MYTHIC=6, SECRET=7, BRAINROT_GOD=8,
