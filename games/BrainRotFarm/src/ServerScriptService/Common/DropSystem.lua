@@ -24,16 +24,7 @@ local ProgConfig = Config.ProgressionConfig
 -- Décision : le dépôt ne donne PAS de one-shot coins, seulement le revenu passif.
 -- Les coins sont générés par IncomeSystem en continu.
 -- Cette table reste pour l'affichage texte du prompt avant dépôt.
-local VALEUR_PAR_RARETE = {
-    COMMON       = 1,
-    OG           = 3,
-    RARE         = 8,
-    EPIC         = 20,
-    LEGENDARY    = 60,
-    MYTHIC       = 200,
-    SECRET       = 500,
-    BRAINROT_GOD = 2000,
-}
+local VALEUR_PAR_RARETE = Config.ValeurParRarete
 
 -- Facteur de miniaturisation du modèle déposé sur le spot
 local MINI_SCALE = 0.35

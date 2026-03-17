@@ -437,4 +437,95 @@ GameConfig.FlowerPotConfig = {
     labelPotLocked4 = "🔒 149 R$",
 }
 
+-- === REBIRTH ===
+GameConfig.RebirthConfig = {
+    [1] = { coinsRequis=300000,  brainRotRequis={rarete="LEGENDARY",    quantite=1}, multiplicateur=1.5, slotsBonus=2  },
+    [2] = { coinsRequis=500000,  brainRotRequis={rarete="MYTHIC",       quantite=1}, multiplicateur=2.0, slotsBonus=4  },
+    [3] = { coinsRequis=1000000, brainRotRequis={rarete="SECRET",       quantite=1}, multiplicateur=3.0, slotsBonus=6  },
+    [4] = { coinsRequis=2000000, brainRotRequis={rarete="BRAINROT_GOD", quantite=1}, multiplicateur=5.0, slotsBonus=10 },
+}
+
+-- === CAPTURE CONFIG ===
+GameConfig.CaptureConfig = {
+    COMMON       = { mode="touched", holdDuration=0   },
+    OG           = { mode="touched", holdDuration=0   },
+    RARE         = { mode="touched", holdDuration=0   },
+    EPIC         = { mode="prompt",  holdDuration=0.5 },
+    LEGENDARY    = { mode="prompt",  holdDuration=1.5 },
+    MYTHIC       = { mode="prompt",  holdDuration=3.0 },
+    SECRET       = { mode="prompt",  holdDuration=5.0 },
+    BRAINROT_GOD = { mode="prompt",  holdDuration=8.0 },
+}
+
+-- === CARRY ===
+GameConfig.CarryNiveaux = {
+    [0] = 1,
+    [1] = 5,
+    [2] = 8,
+    [3] = 15,
+}
+
+GameConfig.CarryPrices = {
+    [1] = 1000,
+    [2] = 5000,
+    [3] = 0,
+}
+
+-- === VALEUR PAR RARETÉ ===
+GameConfig.ValeurParRarete = {
+    COMMON       = 1,
+    OG           = 3,
+    RARE         = 8,
+    EPIC         = 20,
+    LEGENDARY    = 60,
+    MYTHIC       = 200,
+    SECRET       = 500,
+    BRAINROT_GOD = 2000,
+}
+
+-- === INCOME PAR RARETÉ ===
+GameConfig.IncomeParRarete = {
+    COMMON       = 1,
+    OG           = 3,
+    RARE         = 8,
+    EPIC         = 20,
+    LEGENDARY    = 60,
+    MYTHIC       = 200,
+    SECRET       = 500,
+    BRAINROT_GOD = 2000,
+}
+
+-- === MAX BASES ===
+GameConfig.MaxBases = 6
+
+-- === ITEMS À SPAWNER ===
+GameConfig.SpawnableItems = {
+    dossier = "Brainrots",
+    raretés = {
+        { nom="COMMON",       poids=55,  valeur=1    },
+        { nom="OG",           poids=22,  valeur=3    },
+        { nom="RARE",         poids=13,  valeur=8    },
+        { nom="EPIC",         poids=7,   valeur=20   },
+        { nom="LEGENDARY",    poids=2.8, valeur=60   },
+        { nom="BRAINROT_GOD", poids=0.2, valeur=2000 },
+    },
+    raretesCommunOnly = { "MYTHIC", "SECRET" },
+}
+
+-- === ZONE COMMUNE ===
+GameConfig.CommunPoints = {
+    { x=190.92, y=16.189, z=66.30   },
+    { x=250.93, y=16.189, z=-80.20  },
+    { x=189.51, y=16.189, z=-241.28 },
+}
+
+-- === SPAWN CONFIG ===
+GameConfig.SpawnZoneNom = "SpawnZone"
+
+GameConfig.SpawnConfig = {
+    intervalleSecondes = 4,
+    maxParBase         = 15,
+    despawnSecondes    = 30,
+}
+
 return GameConfig

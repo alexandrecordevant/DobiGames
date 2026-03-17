@@ -24,16 +24,11 @@ local _testIncomeMult = (_TestConfig and _TestConfig.IncomeMultiplier) or 1
 -- Valeur de base par rareté (coins/sec par Brain Rot déposé)
 -- Multipliée par _testIncomeMult en TEST_MODE (×100)
 -- ============================================================
-local INCOME_PAR_RARETE = {
-    COMMON       = 1    * _testIncomeMult,
-    OG           = 3    * _testIncomeMult,
-    RARE         = 8    * _testIncomeMult,
-    EPIC         = 20   * _testIncomeMult,
-    LEGENDARY    = 60   * _testIncomeMult,
-    MYTHIC       = 200  * _testIncomeMult,
-    SECRET       = 500  * _testIncomeMult,
-    BRAINROT_GOD = 2000 * _testIncomeMult,
-}
+local _baseIncomeParRarete = _GameConfig.IncomeParRarete
+local INCOME_PAR_RARETE = {}
+for rarete, valeur in pairs(_baseIncomeParRarete) do
+    INCOME_PAR_RARETE[rarete] = valeur * _testIncomeMult
+end
 
 -- ============================================================
 -- Multiplicateur d'event (partagé pour tous les joueurs)

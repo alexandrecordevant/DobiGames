@@ -12,10 +12,15 @@ local Workspace         = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- ============================================================
+-- Config
+-- ============================================================
+local Config = require(ReplicatedStorage.Specialized.GameConfig)
+
+-- ============================================================
 -- Configuration
 -- ============================================================
 -- Nombre maximum de bases disponibles en simultané
-local MAX_BASES = 6
+local MAX_BASES = Config.MaxBases
 
 -- ============================================================
 -- État interne

@@ -18,7 +18,7 @@ local UpgradeSystem      = require(ReplicatedStorage.Common.UpgradeSystem)
 local DataStoreManager      = require(ServerScriptService.Common.DataStoreManager)
 local EventManager          = require(ServerScriptService.Common.EventManager)
 local MonetizationHandler   = require(ServerScriptService.Common.MonetizationHandler)
-local BrainRotSpawner       = require(ServerScriptService.Specialized.BrainRotSpawner)
+local SpawnManager          = require(ServerScriptService.Common.SpawnManager)
 local BaseProgressionSystem = require(ServerScriptService.Common.BaseProgressionSystem)
 local CarrySystem           = require(ServerScriptService.Common.CarrySystem)
 local RebirthSystem         = require(ServerScriptService.Common.RebirthSystem)
@@ -27,9 +27,9 @@ local DropSystem            = require(ServerScriptService.Common.DropSystem)
 local IncomeSystem          = require(ServerScriptService.Common.IncomeSystem)
 local LeaderboardSystem     = require(ServerScriptService.Common.LeaderboardSystem)
 local ShopSystem            = require(ServerScriptService.Common.ShopSystem)
-local SprinklerSystem       = require(ServerScriptService.Common.SprinklerSystem)
-local TracteurSystem        = require(ServerScriptService.Common.TracteurSystem)
-local FlowerPotSystem       = require(ServerScriptService.Common.FlowerPotSystem)
+local SprinklerSystem       = require(ServerScriptService.Specialized.SprinklerSystem)
+local TracteurSystem        = require(ServerScriptService.Specialized.TracteurSystem)
+local FlowerPotSystem       = require(ServerScriptService.Specialized.FlowerPotSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -180,16 +180,15 @@ local function OnPlayerAdded(player)
     task.wait(1)  -- laisser le client charger
     UpdateHUD:FireClient(player, data)
 
-    -- Assigner une base (AssignationSystem remplace BrainRotSpawner.AssignerBase)
+    -- Assigner une base (AssignationSystem remplace SpawnManager.AssignerBase)
     local baseIndex = AssignationSystem.AssignerJoueur(player)
     if baseIndex then
-        -- Informer BrainRotSpawner de la base assignée (pour le spawn des BRs dans le bon champ)
-        if BrainRotSpawner.SetBase then
-            BrainRotSpawner.SetBase(player, baseIndex)
-        elseif BrainRotSpawner.AssignerBase then
-            -- Compatibilité ascendante : BrainRotSpawner.AssignerBase peut toujours être appelé
-            -- avec baseIndex si la signature l'accepte, sinon on ignore
-            pcall(BrainRotSpawner.AssignerBase, player, baseIndex)
+        -- Informer SpawnManager de la base assignée (pour le spawn des BRs dans le bon champ)
+        if SpawnManager.SetBase then
+            SpawnManager.SetBase(player, baseIndex)
+        elseif SpawnManager.AssignerBase then
+            -- Compatibilité ascendante
+            pcall(SpawnManager.AssignerBase, player, baseIndex)
         end
 
         -- En TEST_MODE avec AutoReset : remettre la base visuellement à zéro
@@ -386,20 +385,20 @@ end
 -- ═══════════════════════════════════════════════
 
 -- Spawn des collectibles sur la map
-BrainRotSpawner.Init()
+SpawnManager.Init()
 
 -- Hook CarrySystem → ProximityPrompt pour tous les BRs (onCapture forwarded pour RARE+)
-BrainRotSpawner.OnBRSpawned = function(brModel, baseIndex, rarete, onCapture)
+SpawnManager.OnBRSpawned = function(brModel, baseIndex, rarete, onCapture)
     CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, onCapture)
 end
 
 -- Hook LeaderboardSystem → notifié quand un joueur capture un RARE+ via ProximityPrompt
-BrainRotSpawner.OnRareCollecte = function(player, rareteNom)
+SpawnManager.OnRareCollecte = function(player, rareteNom)
     LeaderboardSystem.EnregistrerRare(player, rareteNom)
 end
 
 -- Collecte Touched (COMMON/OG/RARE) → ramassage carry avec le modèle monde
-BrainRotSpawner.OnCollecte = function(player, baseIndex, rarete, brModel)
+SpawnManager.OnCollecte = function(player, baseIndex, rarete, brModel)
     return CarrySystem.RamasserBR(player, rarete, brModel)
 end
 
@@ -407,9 +406,9 @@ end
 CarrySystem.GetBaseJoueur = function(player) return AssignationSystem.GetBaseIndex(player) end
 CarrySystem.Init()
 
--- ChampCommun (MYTHIC + SECRET)
-local ChampCommunSpawner = require(ServerScriptService.Specialized.ChampCommunSpawner)
-ChampCommunSpawner.OnCollecte = function(player, typeNom)
+-- ZoneCommune (MYTHIC + SECRET)
+local CommunSpawner = require(ServerScriptService.Common.CommunSpawner)
+CommunSpawner.OnCollecte = function(player, typeNom)
     local data = GetData(player)
     if not data then return end
     local cfg = { MYTHIC = { valeur = 300 }, SECRET = { valeur = 1000 } }
@@ -424,12 +423,12 @@ ChampCommunSpawner.OnCollecte = function(player, typeNom)
     BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
 end
--- Bug 3 : MYTHIC/SECRET utilisent ProximityPrompt sans restriction de base (nil = ChampCommun)
-ChampCommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture)
+-- MYTHIC/SECRET utilisent ProximityPrompt sans restriction de base (nil = ZoneCommune)
+CommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture)
     local rarete = { nom = typeNom, dossier = typeNom }
     CarrySystem.OnBRSpawned(clone, nil, rarete, onCapture)
 end
-ChampCommunSpawner.Init()
+CommunSpawner.Init()
 
 -- Connexion récompenses Brainrot (champs individuel + commun)
 -- FindFirstChild + création manuelle : WaitForChild bloquerait tout si l'objet n'existe pas encore
