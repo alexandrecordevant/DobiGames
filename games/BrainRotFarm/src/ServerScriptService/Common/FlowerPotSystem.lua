@@ -376,7 +376,11 @@ function FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
     end
 
     _threads[cleThread] = task.spawn(function()
+        local aborted = false
+
         for stage = (potData.stage + 1), 4 do
+            if aborted then break end
+
             -- Vérifier que le joueur est toujours connecté et a toujours sa graine
             if not player.Parent then break end
             local pd = GetData(player)
@@ -388,22 +392,26 @@ function FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
 
             -- Boucle seconde par seconde
             for t = 1, duree do
-                if not player.Parent then goto done end
+                if not player.Parent then aborted = true break end
+
                 local pd2 = GetData(player)
-                if not pd2 or not pd2.pots then goto done end
+                if not pd2 or not pd2.pots then aborted = true break end
+
                 local pot2 = pd2.pots[potIndex]
-                if not pot2 or not pot2.graine then goto done end
+                if not pot2 or not pot2.graine then aborted = true break end
 
                 -- Croissance instantanée déclenchée ?
                 if pot2.instantGrow then
-                    pot2.instantGrow   = false
-                    pot2.tempsRestant  = 0
+                    pot2.instantGrow  = false
+                    pot2.tempsRestant = 0
                     break
                 end
 
                 pot2.tempsRestant = duree - t
                 task.wait(1)
             end
+
+            if aborted then break end
 
             -- Avancer au stage
             local pd3 = GetData(player)
@@ -432,7 +440,6 @@ function FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
             end
         end
 
-        ::done::
         _threads[cleThread] = nil
     end)
 end
@@ -586,52 +593,96 @@ function FlowerPotSystem.Recolter(player, potIndex)
     local rarete  = graineCfg.rareteResult
     local multVal = graineCfg.multiplicateur
 
-    -- Tenter d'ajouter au carry
-    local CS = getCarry()
-    if CS then
-        -- Cloner depuis ServerStorage.MutantModels si disponible
-        local mutantFolder = ServerStorage:FindFirstChild("MutantModels")
-        local sourceModel  = mutantFolder
-            and mutantFolder:FindFirstChild(rarete .. "_Mutant")
+    -- Clone un BR depuis Brainrots existants avec effets Mutant appliqués par script
+    local function clonerBRMutant(rareteNom)
+        local brainrots = ServerStorage:FindFirstChild("Brainrots")
+        local dossier   = brainrots and brainrots:FindFirstChild(rareteNom)
+        if not dossier then
+            warn("[FlowerPot] Dossier Brainrots/" .. rareteNom .. " introuvable")
+            return nil
+        end
+        local modeles = dossier:GetChildren()
+        if #modeles == 0 then
+            warn("[FlowerPot] Aucun modèle dans Brainrots/" .. rareteNom)
+            return nil
+        end
 
-        -- Fallback : cloner depuis Brainrots normal
-        if not sourceModel then
-            local brainrots = ServerStorage:FindFirstChild("Brainrots")
-            local dossier   = brainrots and brainrots:FindFirstChild(rarete)
-            if dossier then
-                local modeles = dossier:GetChildren()
-                if #modeles > 0 then
-                    sourceModel = modeles[math.random(1, #modeles)]
-                end
+        local clone = nil
+        pcall(function() clone = modeles[math.random(1, #modeles)]:Clone() end)
+        if not clone then return nil end
+
+        -- Scale ×2 + ancrer toutes les parts
+        for _, part in ipairs(clone:GetDescendants()) do
+            if part:IsA("BasePart") then
+                pcall(function()
+                    part.Size       = part.Size * 2
+                    part.Anchored   = true
+                    part.CanCollide = false
+                end)
             end
         end
 
-        if sourceModel then
-            local clone = nil
-            pcall(function() clone = sourceModel:Clone() end)
-            if clone then
-                -- Scale ×1.5 pour distinguer visuellement
+        -- Teinte arc-en-ciel aléatoire (3 couleurs Mutant)
+        local couleurs = {
+            Color3.fromRGB(255, 215, 0),   -- doré
+            Color3.fromRGB(255, 100, 255), -- rose
+            Color3.fromRGB(100, 200, 255), -- bleu clair
+        }
+        for _, part in ipairs(clone:GetDescendants()) do
+            if part:IsA("BasePart") then
                 pcall(function()
-                    if clone:IsA("Model") then
-                        local current = clone:GetScale and clone:GetScale() or 1
-                        clone:ScaleTo(current * 1.5)
-                    end
+                    part.Color = couleurs[math.random(1, #couleurs)]
                 end)
-
-                -- Ajouter tag Mutant
-                local tag = Instance.new("StringValue")
-                tag.Name   = "MutantTag"
-                tag.Value  = tostring(multVal)
-                tag.Parent = clone
-
-                local rareteObj = {
-                    nom      = rarete,
-                    dossier  = rarete,
-                    isMutant = true,
-                    valeur   = multVal,
-                }
-                pcall(CS.RamasserBR, player, rareteObj, clone)
             end
+        end
+
+        -- PointLight doré + particules sur la part principale
+        local rootPart = nil
+        if clone:IsA("Model") then
+            rootPart = clone.PrimaryPart
+                    or clone:FindFirstChild("RootPart")
+                    or clone:FindFirstChildWhichIsA("BasePart")
+        elseif clone:IsA("BasePart") then
+            rootPart = clone
+        end
+        if rootPart then
+            pcall(function()
+                local light = Instance.new("PointLight", rootPart)
+                light.Brightness = 4
+                light.Range      = 20
+                light.Color      = Color3.fromRGB(255, 215, 0)
+
+                local particles = Instance.new("ParticleEmitter", rootPart)
+                particles.Rate     = 15
+                particles.Lifetime = NumberRange.new(0.5, 1.0)
+                particles.Speed    = NumberRange.new(3, 8)
+                particles.Color    = ColorSequence.new(
+                    Color3.fromRGB(255, 215, 0))
+            end)
+        end
+
+        -- Tag Mutant pour IncomeSystem
+        local tag = Instance.new("StringValue")
+        tag.Name   = "MutantTag"
+        tag.Value  = "true"
+        tag.Parent = clone
+
+        clone.Name = rareteNom .. "_MUTANT"
+        return clone
+    end
+
+    -- Tenter d'ajouter au carry
+    local CS = getCarry()
+    if CS then
+        local clone = clonerBRMutant(rarete)
+        if clone then
+            local rareteObj = {
+                nom      = rarete,
+                dossier  = rarete,
+                isMutant = true,
+                valeur   = multVal,
+            }
+            pcall(CS.RamasserBR, player, rareteObj, clone)
         end
     end
 
