@@ -80,6 +80,303 @@ end
 local _threads = {}
 
 -- ============================================================
+-- FadeIn — anime la transparence de toutes les parts vers 0
+-- ============================================================
+local function FadeIn(model, duree)
+    local TS = game:GetService("TweenService")
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local cible = part:GetAttribute("OriginalTransparency") or 0
+            TS:Create(part,
+                TweenInfo.new(duree, Enum.EasingStyle.Quad),
+                { Transparency = cible }
+            ):Play()
+        end
+    end
+end
+
+-- ============================================================
+-- CreerPlanteProcedural — plante procedurale si PlantModels absent
+-- ============================================================
+local function CreerPlanteProcedural(stage, basePos, couleur, rarete)
+    local TS    = game:GetService("TweenService")
+    local model = Instance.new("Model")
+    model.Name  = "PlantProc"
+
+    local hauteurs = { [1]=1.5, [2]=2.5, [3]=3.5, [4]=4.5 }
+    local hauteur  = hauteurs[stage] or 1.5
+
+    -- Tige principale
+    local tige = Instance.new("Part")
+    tige.Name         = "Tige"
+    tige.Size         = Vector3.new(0.2, hauteur, 0.2)
+    tige.Position     = basePos + Vector3.new(0, hauteur/2, 0)
+    tige.Color        = Color3.fromRGB(50, 150, 50)
+    tige.Material     = Enum.Material.SmoothPlastic
+    tige.Anchored     = true
+    tige.CanCollide   = false
+    tige.Transparency = 1
+    tige.Parent       = model
+
+    -- Feuilles
+    local nbFeuilles = stage * 2
+    for i = 1, nbFeuilles do
+        local feuille = Instance.new("Part")
+        feuille.Name         = "Feuille_" .. i
+        feuille.Size         = Vector3.new(0.8, 0.1, 0.4)
+        feuille.Color        = Color3.fromRGB(30, 180, 60)
+        feuille.Material     = Enum.Material.SmoothPlastic
+        feuille.Anchored     = true
+        feuille.CanCollide   = false
+        feuille.Transparency = 1
+        local angle = (i / nbFeuilles) * math.pi * 2
+        local yPos  = basePos.Y + (hauteur * i / nbFeuilles)
+        feuille.Position = Vector3.new(
+            basePos.X + math.cos(angle) * 0.6,
+            yPos,
+            basePos.Z + math.sin(angle) * 0.6
+        )
+        feuille.CFrame = feuille.CFrame * CFrame.Angles(0, angle, math.rad(30))
+        feuille.Parent = model
+    end
+
+    -- Fleurs (stage 3+)
+    if stage >= 3 then
+        for i = 1, 4 do
+            local fleur = Instance.new("Part")
+            fleur.Name         = "Fleur_" .. i
+            fleur.Shape        = Enum.PartType.Ball
+            fleur.Size         = Vector3.new(0.4, 0.4, 0.4)
+            fleur.Color        = couleur
+            fleur.Material     = Enum.Material.Neon
+            fleur.Anchored     = true
+            fleur.CanCollide   = false
+            fleur.Transparency = 1
+            local angle = (i / 4) * math.pi * 2
+            fleur.Position = Vector3.new(
+                basePos.X + math.cos(angle) * 0.8,
+                basePos.Y + hauteur,
+                basePos.Z + math.sin(angle) * 0.8
+            )
+            fleur.Parent = model
+        end
+    end
+
+    -- Fruits + effets (stage 4)
+    if stage == 4 then
+        for i = 1, 3 do
+            local fruit = Instance.new("Part")
+            fruit.Name         = "Fruit_" .. i
+            fruit.Shape        = Enum.PartType.Ball
+            fruit.Size         = Vector3.new(0.3, 0.3, 0.3)
+            fruit.Color        = couleur
+            fruit.Material     = Enum.Material.Neon
+            fruit.Anchored     = true
+            fruit.CanCollide   = false
+            fruit.Transparency = 1
+            local angle = (i / 3) * math.pi * 2
+            fruit.Position = Vector3.new(
+                basePos.X + math.cos(angle) * 0.5,
+                basePos.Y + hauteur - 0.5,
+                basePos.Z + math.sin(angle) * 0.5
+            )
+            fruit.Parent = model
+            local fruitPos = fruit.Position
+            task.spawn(function()
+                while fruit.Parent do
+                    TS:Create(fruit,
+                        TweenInfo.new(1.5, Enum.EasingStyle.Sine,
+                            Enum.EasingDirection.InOut, -1, true),
+                        { Position = fruitPos + Vector3.new(0, 0.2, 0) }
+                    ):Play()
+                    task.wait(1.5)
+                end
+            end)
+        end
+
+        local light = Instance.new("PointLight", tige)
+        light.Brightness = 4
+        light.Range      = 12
+        light.Color      = couleur
+
+        local particles = Instance.new("ParticleEmitter", tige)
+        particles.Rate     = 15
+        particles.Lifetime = NumberRange.new(1, 2)
+        particles.Speed    = NumberRange.new(2, 5)
+        particles.Color    = ColorSequence.new(couleur)
+        particles.Size     = NumberSequence.new(0.2)
+
+        if rarete == "SECRET" then
+            particles.Rate  = 25
+            particles.Speed = NumberRange.new(3, 8)
+            local flammes = Instance.new("ParticleEmitter", tige)
+            flammes.Rate     = 10
+            flammes.Lifetime = NumberRange.new(0.5, 1.0)
+            flammes.Speed    = NumberRange.new(1, 3)
+            flammes.Color    = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 0)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 200, 0)),
+            })
+        end
+    end
+
+    -- Animation oscillation tige
+    model.Parent = workspace
+    task.spawn(function()
+        while tige.Parent do
+            TS:Create(tige,
+                TweenInfo.new(2, Enum.EasingStyle.Sine,
+                    Enum.EasingDirection.InOut, -1, true),
+                { CFrame = tige.CFrame * CFrame.Angles(0, 0, math.rad(3)) }
+            ):Play()
+            task.wait(2)
+        end
+    end)
+
+    FadeIn(model, 0.8)
+    return model
+end
+
+-- ============================================================
+-- CreerPlante — essaie PlantModels Studio, fallback procedural
+-- ============================================================
+local function CreerPlante(rarete, stage, basePos, couleur)
+    local ok, result = pcall(function()
+        local plantModels = game.ServerStorage:FindFirstChild("PlantModels")
+        if plantModels then
+            local rareteFolder = plantModels:FindFirstChild(rarete)
+            if rareteFolder then
+                local stageModel = rareteFolder:FindFirstChild("Plant_Stage" .. stage)
+                if stageModel then
+                    local clone = stageModel:Clone()
+                    local root  = clone.PrimaryPart
+                               or clone:FindFirstChildWhichIsA("BasePart")
+                    if root then
+                        clone:SetPrimaryPartCFrame(CFrame.new(basePos))
+                    end
+                    for _, part in ipairs(clone:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.Anchored   = true
+                            part.CanCollide = false
+                        end
+                    end
+                    FadeIn(clone, 0.5)
+                    return clone
+                end
+            end
+        end
+        return nil
+    end)
+    if ok and result then return result end
+    return CreerPlanteProcedural(stage, basePos, couleur, rarete)
+end
+
+-- ============================================================
+-- CreerBRMiniature — BR miniature synchronise avec la plante
+-- ============================================================
+local function CreerBRMiniature(rarete, stage, basePos, couleur)
+    local ok, result = pcall(function()
+        local dossier = game.ServerStorage.Brainrots:FindFirstChild(rarete)
+        if not dossier or #dossier:GetChildren() == 0 then return nil end
+
+        local clone = dossier:GetChildren()[1]:Clone()
+        local scales = { [1]=0.2, [2]=0.4, [3]=0.7, [4]=1.2 }
+        local scale  = scales[stage] or 0.2
+
+        for _, part in ipairs(clone:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Size        = part.Size * scale
+                part.Anchored    = true
+                part.CanCollide  = false
+                part.Transparency = 1
+            end
+        end
+
+        local hauteurs = { [1]=1.5, [2]=2.5, [3]=3.5, [4]=4.5 }
+        local yOffset  = hauteurs[stage] or 1.5
+
+        local root = clone.PrimaryPart
+                  or clone:FindFirstChild("RootPart")
+                  or clone:FindFirstChildWhichIsA("BasePart")
+        if root then
+            clone:SetPrimaryPartCFrame(CFrame.new(
+                basePos + Vector3.new(0, yOffset, 0)))
+        end
+
+        if root and stage >= 2 then
+            local light = Instance.new("PointLight", root)
+            light.Brightness = stage * 1.5
+            light.Range      = stage * 5
+            light.Color      = couleur
+        end
+
+        if stage == 4 then
+            task.spawn(function()
+                local TS2 = game:GetService("TweenService")
+                while clone.Parent and root and root.Parent do
+                    TS2:Create(root,
+                        TweenInfo.new(4, Enum.EasingStyle.Linear,
+                            Enum.EasingDirection.InOut, -1),
+                        { CFrame = root.CFrame * CFrame.Angles(0, math.rad(360), 0) }
+                    ):Play()
+                    task.wait(4)
+                end
+            end)
+        end
+
+        FadeIn(clone, 0.8)
+        return clone
+    end)
+    if ok then return result end
+    return nil
+end
+
+-- ============================================================
+-- ActualiserVisuelsSync — synchronise plante + BR dans le pot
+-- ============================================================
+local function ActualiserVisuelsSync(baseIndex, potIndex, stage, rarete)
+    pcall(function()
+        local cfg      = FPConfig
+        local base     = Workspace:FindFirstChild("Bases")
+                      and Workspace.Bases:FindFirstChild("Base_" .. baseIndex)
+        local potModel = base and base:FindFirstChild("FlowerPot_" .. potIndex)
+        if not potModel then return end
+
+        local potPart = potModel:IsA("BasePart") and potModel
+                     or potModel:FindFirstChildWhichIsA("BasePart")
+        if not potPart then return end
+
+        -- Supprimer visuels existants
+        local existingPlant = potModel:FindFirstChild("PlantModel")
+        local existingBR    = potModel:FindFirstChild("GrowthModel")
+        if existingPlant then existingPlant:Destroy() end
+        if existingBR    then existingBR:Destroy()    end
+
+        if stage == 0 then return end
+
+        local graineCfg = cfg.graines[rarete]
+        local couleur   = graineCfg and graineCfg.couleurStage4
+                       or Color3.fromRGB(180, 0, 255)
+
+        local basePos = potPart.Position + Vector3.new(0, potPart.Size.Y / 2, 0)
+
+        -- Couche 1 : plante
+        local plantModel = CreerPlante(rarete, stage, basePos, couleur)
+        if plantModel then
+            plantModel.Name   = "PlantModel"
+            plantModel.Parent = potModel
+        end
+
+        -- Couche 2 : BR miniature
+        local brModel = CreerBRMiniature(rarete, stage, basePos, couleur)
+        if brModel then
+            brModel.Name   = "GrowthModel"
+            brModel.Parent = potModel
+        end
+    end)
+end
+
+-- ============================================================
 -- Utilitaires
 -- ============================================================
 
@@ -276,91 +573,8 @@ end
 -- ============================================================
 
 function FlowerPotSystem.ActualiserVisuels(baseIndex, potIndex, stage, rarete)
-    local base     = Workspace:FindFirstChild("Bases")
-    local baseF    = base and base:FindFirstChild("Base_" .. baseIndex)
-    local potModel = baseF and baseF:FindFirstChild("FlowerPot_" .. potIndex)
-    if not potModel then return end
-
-    -- Supprimer l'ancien modèle
-    local existing = potModel:FindFirstChild("GrowthModel")
-    if existing then pcall(function() existing:Destroy() end) end
-
-    if not stage or stage == 0 then return end
-
-    -- Cloner un BR de la bonne rareté
-    local brainrots = ServerStorage:FindFirstChild("Brainrots")
-    local dossier   = brainrots and brainrots:FindFirstChild(rarete)
-    if not dossier then return end
-    local modeles = dossier:GetChildren()
-    if #modeles == 0 then return end
-
-    local clone = nil
-    pcall(function() clone = modeles[1]:Clone() end)
-    if not clone then return end
-    clone.Name = "GrowthModel"
-
-    local scale   = FPConfig.stageScales[stage] or 0.3
-    local potPart = getPotPart(potModel)
-
-    -- Appliquer scale sur toutes les BaseParts
-    for _, part in ipairs(clone:GetDescendants()) do
-        if part:IsA("BasePart") then
-            pcall(function()
-                part.Size       = part.Size * scale
-                part.Anchored   = true
-                part.CanCollide = false
-            end)
-        end
-    end
-    if clone:IsA("BasePart") then
-        pcall(function()
-            clone.Size       = clone.Size * scale
-            clone.Anchored   = true
-            clone.CanCollide = false
-        end)
-    end
-
-    -- Positionner au-dessus du pot
-    if potPart then
-        local yOffset = potPart.Size.Y * 0.5 + 1
-        pcall(function()
-            if clone:IsA("Model") then
-                clone:PivotTo(CFrame.new(
-                    potPart.Position + Vector3.new(0, yOffset, 0)))
-            else
-                clone.CFrame = CFrame.new(
-                    potPart.Position + Vector3.new(0, yOffset, 0))
-            end
-        end)
-    end
-
-    clone.Parent = potModel
-
-    -- Stage 4 : effets spéciaux (lumière + particules)
-    if stage == 4 then
-        local graineCfg = FPConfig.graines[rarete]
-        local rootPart  = nil
-        if clone:IsA("Model") then
-            rootPart = clone.PrimaryPart
-                    or clone:FindFirstChildWhichIsA("BasePart")
-        elseif clone:IsA("BasePart") then
-            rootPart = clone
-        end
-        if rootPart and graineCfg then
-            pcall(function()
-                local light = Instance.new("PointLight", rootPart)
-                light.Brightness = 6
-                light.Range      = 20
-                light.Color      = graineCfg.couleurStage4
-
-                local particles = Instance.new("ParticleEmitter", rootPart)
-                particles.Rate     = 25
-                particles.Lifetime = NumberRange.new(0.5, 1.5)
-                particles.Speed    = NumberRange.new(5, 10)
-                particles.Color    = ColorSequence.new(graineCfg.couleurStage4)
-            end)
-        end
-    end
+    -- Deléguer vers le système synchronisé plante + BR
+    ActualiserVisuelsSync(baseIndex, potIndex, stage or 0, rarete or "MYTHIC")
 end
 
 -- ============================================================
@@ -897,7 +1111,7 @@ function FlowerPotSystem.Recolter(player, potIndex)
         end
     end
 
-    -- Réinitialiser le pot
+    -- Reinitialiser le pot
     local graineName = rarete
     potData.rarete       = nil
     potData.stage        = 0
@@ -911,10 +1125,11 @@ function FlowerPotSystem.Recolter(player, potIndex)
         _threads[cleThread] = nil
     end
 
-    -- Actualiser visuels
+    -- Actualiser visuels (effacer modeles)
     local AS = getAssignation()
     local baseIndex = AS and AS.GetBaseIndex(player)
     if baseIndex then
+        pcall(ActualiserVisuelsSync, baseIndex, potIndex, 0, "MYTHIC")
         pcall(FlowerPotSystem.ActualiserPot, player, baseIndex, potIndex, data)
     end
 
@@ -1037,14 +1252,76 @@ function FlowerPotSystem.VerifierDailySeed(player, data)
     end
 end
 
-function FlowerPotSystem.ClaimDailySeed(player)
+-- ============================================================
+-- PlanteDailySeed — plante directement dans un pot specifique
+-- ============================================================
+function FlowerPotSystem.PlanteDailySeed(player, potIndex, rarete, data)
+    if not data or not data.pots or not data.dailySeed then return end
+    local ds     = data.dailySeed
+    local potData = data.pots[potIndex]
+    if not potData then return end
+
+    -- Detruire visuels existants
+    local AS = getAssignation()
+    local baseIndex = AS and AS.GetBaseIndex(player)
+    if baseIndex then
+        pcall(ActualiserVisuelsSync, baseIndex, potIndex, 0, "MYTHIC")
+    end
+
+    -- Planter
+    potData.rarete       = rarete
+    potData.stage        = 0
+    potData.tempsRestant = 0
+    potData.instantGrow  = false
+
+    ds.graineDispo    = false
+    ds.dernieresClaim = os.time()
+    local jourPlante  = ds.jourActuel
+    ds.jourActuel     = (ds.jourActuel % 7) + 1
+
+    if baseIndex then
+        FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
+        pcall(FlowerPotSystem.ActualiserPot, player, baseIndex, potIndex, data)
+        pcall(ActualiserVisuelsSync, baseIndex, potIndex, 0, rarete)
+    end
+
+    notifier(player, "SUCCESS",
+        "🎁 Day " .. jourPlante .. " seed: " .. rarete
+        .. " planted in Pot " .. potIndex .. "!")
+    majHUD(player)
+end
+
+-- ============================================================
+-- ConfirmerEcrasement — ecrase le pot apres confirmation client
+-- ============================================================
+function FlowerPotSystem.ConfirmerEcrasement(player, potIndex)
+    local data = GetData(player)
+    if not data or not data.dailySeed then return end
+    local ds    = data.dailySeed
+    local dsCfg = Config.FlowerPotConfig.dailySeed
+    local rarete = dsCfg.cycle[ds.jourActuel] or "MYTHIC"
+
+    -- Annuler thread existant sur ce pot
+    local cleThread = player.UserId .. "_" .. potIndex
+    if _threads[cleThread] then
+        pcall(function() task.cancel(_threads[cleThread]) end)
+        _threads[cleThread] = nil
+    end
+
+    FlowerPotSystem.PlanteDailySeed(player, potIndex, rarete, data)
+end
+
+-- ============================================================
+-- ClaimDailySeed — avec systeme anti-ecrasement
+-- ============================================================
+function FlowerPotSystem.ClaimDailySeed(player, potChoisi)
     local data = GetData(player)
     if not data or not data.dailySeed then return end
 
     local ds    = data.dailySeed
     local dsCfg = Config.FlowerPotConfig.dailySeed
 
-    -- Vérifier disponibilité
+    -- Verifier disponibilite
     if not ds.graineDispo then
         local seuil     = dsCfg.intervalleHeures * 3600
         local remaining = seuil - (os.time() - (ds.dernieresClaim or 0))
@@ -1053,7 +1330,33 @@ function FlowerPotSystem.ClaimDailySeed(player)
         return
     end
 
-    -- Trouver un pot vide débloqué
+    local rarete = dsCfg.cycle[ds.jourActuel] or "MYTHIC"
+
+    -- Si un pot specifique est demande
+    if potChoisi then
+        local pot = data.pots and data.pots[potChoisi]
+        if pot and pot.debloque and pot.rarete then
+            -- Pot occupe : demander confirmation
+            if OuvrirPot then
+                pcall(function()
+                    OuvrirPot:FireClient(player, potChoisi,
+                        "confirmer_ecrasement", {
+                            potIndex = potChoisi,
+                            rarete   = rarete,
+                            ancienne = pot.rarete,
+                            stage    = pot.stage,
+                        })
+                end)
+            end
+            return
+        elseif pot and pot.debloque then
+            -- Pot libre : planter directement
+            FlowerPotSystem.PlanteDailySeed(player, potChoisi, rarete, data)
+            return
+        end
+    end
+
+    -- Trouver un pot vide debloque
     local potLibre = nil
     for i = 1, 4 do
         local pot = data.pots and data.pots[i]
@@ -1063,35 +1366,34 @@ function FlowerPotSystem.ClaimDailySeed(player)
         end
     end
 
-    if not potLibre then
-        notifier(player, "ERROR",
-            "❌ No empty pot available! Harvest or unlock a pot first.")
+    if potLibre then
+        FlowerPotSystem.PlanteDailySeed(player, potLibre, rarete, data)
         return
     end
 
-    -- Graine du jour
-    local rarete = dsCfg.cycle[ds.jourActuel] or "MYTHIC"
-
-    data.pots[potLibre].rarete       = rarete
-    data.pots[potLibre].stage        = 0
-    data.pots[potLibre].tempsRestant = 0
-    data.pots[potLibre].instantGrow  = false
-
-    ds.graineDispo    = false
-    ds.dernieresClaim = os.time()
-    ds.jourActuel     = (ds.jourActuel % 7) + 1
-
-    local AS = getAssignation()
-    local baseIndex = AS and AS.GetBaseIndex(player)
-    if baseIndex then
-        FlowerPotSystem.LancerCroissance(player, baseIndex, potLibre, data)
-        pcall(FlowerPotSystem.ActualiserPot, player, baseIndex, potLibre, data)
+    -- Aucun pot libre : proposer de choisir quel pot ecraser
+    if OuvrirPot then
+        local etatsPots = {}
+        for i = 1, 4 do
+            local pot = data.pots and data.pots[i]
+            if pot then
+                etatsPots[i] = {
+                    debloque = pot.debloque,
+                    rarete   = pot.rarete,
+                    stage    = pot.stage,
+                }
+            end
+        end
+        pcall(function()
+            OuvrirPot:FireClient(player, 0, "choisir_pot", {
+                etatsPots    = etatsPots,
+                raretyDuJour = rarete,
+            })
+        end)
+    else
+        notifier(player, "ERROR",
+            "❌ No empty pot available! Harvest or unlock a pot first.")
     end
-
-    notifier(player, "SUCCESS",
-        "🎁 Day " .. (ds.jourActuel == 1 and 7 or ds.jourActuel - 1)
-        .. " seed: " .. rarete .. " planted in Pot " .. potLibre .. "!")
-    majHUD(player)
 end
 
 -- ============================================================
@@ -1186,7 +1488,7 @@ function FlowerPotSystem.InitServeur()
     InstantGrowEv    = getRemote("InstantGrowPot")
     ClaimDailySeedEv = getRemote("ClaimDailySeed")
 
-    -- Écouter les actions client
+    -- Ecouter les actions client
     DebloquerPotEv.OnServerEvent:Connect(function(player, potIndex)
         if type(potIndex) ~= "number" then return end
         FlowerPotSystem.DebloquerPot(player, potIndex)
@@ -1197,9 +1499,19 @@ function FlowerPotSystem.InitServeur()
         FlowerPotSystem.InstantGrow(player, potIndex)
     end)
 
-    ClaimDailySeedEv.OnServerEvent:Connect(function(player)
-        FlowerPotSystem.ClaimDailySeed(player)
+    ClaimDailySeedEv.OnServerEvent:Connect(function(player, potChoisi)
+        FlowerPotSystem.ClaimDailySeed(player, potChoisi)
     end)
+
+    -- Anti-ecrasement : confirmation cote client
+    local ConfirmerEcrasementEv = getRemote("ConfirmerEcrasement")
+    ConfirmerEcrasementEv.OnServerEvent:Connect(function(player, potIndex)
+        if type(potIndex) ~= "number" then return end
+        FlowerPotSystem.ConfirmerEcrasement(player, potIndex)
+    end)
+
+    -- DailySeedUpdate : le serveur peut pousser les donnees daily seed au client
+    getRemote("DailySeedUpdate")
 
     print("[FlowerPotSystem] ✓ Server initialized")
 end

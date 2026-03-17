@@ -478,6 +478,90 @@ end
 -- Écouter OuvrirPot depuis le serveur
 -- ============================================================
 
+-- ============================================================
+-- Mode : Choisir quel pot ecraser (tous les pots occupes)
+-- ============================================================
+
+local function afficherMenuChoisirPot(extraData)
+    clearContent()
+    titleLabel.Text = "🌱 Choose a Pot to Plant"
+
+    local etatsPots    = extraData and extraData.etatsPots    or {}
+    local raretyDuJour = extraData and extraData.raretyDuJour or "MYTHIC"
+
+    creerLigne("All pots are occupied. Choose one to overwrite:",
+        Color3.fromRGB(220, 200, 100), 32, 1)
+
+    for i = 1, 4 do
+        local pot = etatsPots[i]
+        if pot and pot.debloque then
+            local texte = "Pot " .. i
+            if pot.rarete then
+                texte = texte .. " — " .. pot.rarete .. " Stage " .. (pot.stage or 0) .. "/4"
+            else
+                texte = texte .. " — Empty"
+            end
+            local btn = creerBouton(scrollFrame,
+                texte,
+                pot.rarete and Color3.fromRGB(160, 60, 60) or Color3.fromRGB(60, 130, 60),
+                nil,
+                UDim2.new(1, 0, 0, 36),
+                12,
+                function()
+                    local re = ReplicatedStorage:FindFirstChild("ClaimDailySeed")
+                    if re then re:FireServer(i) end
+                    fermer()
+                end)
+            btn.LayoutOrder = i + 1
+        end
+    end
+
+    creerBouton(actionFrame, "Cancel",
+        Color3.fromRGB(140, 40, 40),
+        UDim2.new(0.25, 0, 0, 0),
+        UDim2.new(0.5, 0, 1, 0),
+        12, fermer)
+end
+
+-- ============================================================
+-- Mode : Confirmer ecrasement d'un pot occupe
+-- ============================================================
+
+local function afficherMenuConfirmerEcrasement(potIndex, extraData)
+    clearContent()
+    titleLabel.Text = "⚠️ Overwrite Pot " .. potIndex .. "?"
+
+    local ancienne = extraData and extraData.ancienne or "?"
+    local stage    = extraData and extraData.stage    or 0
+    local rarete   = extraData and extraData.rarete   or "MYTHIC"
+
+    creerLigne(
+        "Pot " .. potIndex .. " already has <b>" .. ancienne
+        .. "</b> at Stage <b>" .. stage .. "/4</b>.",
+        Color3.fromRGB(220, 180, 100), 36, 1)
+
+    creerLigne(
+        "Replace it with today's <b>" .. rarete .. "</b> seed?",
+        Color3.fromRGB(200, 200, 200), 28, 2)
+
+    creerBouton(actionFrame, "Confirm",
+        Color3.fromRGB(60, 160, 80),
+        UDim2.new(0, 0, 0, 0),
+        UDim2.new(0.48, 0, 1, 0),
+        12,
+        function()
+            local re = ReplicatedStorage:FindFirstChild("ConfirmerEcrasement")
+            if re then re:FireServer(potIndex) end
+            fermer()
+        end)
+
+    creerBouton(actionFrame, "Cancel",
+        Color3.fromRGB(140, 40, 40),
+        UDim2.new(0.52, 0, 0, 0),
+        UDim2.new(0.48, 0, 1, 0),
+        12, fermer)
+end
+
 OuvrirPot.OnClientEvent:Connect(function(potIndex, mode, extraData)
     currentPotIndex = potIndex
 
@@ -487,6 +571,14 @@ OuvrirPot.OnClientEvent:Connect(function(potIndex, mode, extraData)
         afficherMenuInfos(potIndex, extraData)
     elseif mode == "debloque" then
         afficherMenuDebloque(potIndex)
+    elseif mode == "choisir_pot" then
+        afficherMenuChoisirPot(extraData)
+    elseif mode == "confirmer_ecrasement" then
+        afficherMenuConfirmerEcrasement(potIndex, extraData)
+        ouvrirPanel()
+        return
+    else
+        return
     end
 
     ouvrirPanel()
@@ -499,6 +591,267 @@ if PotUpdate then
         if not mainFrame.Visible then return end
         -- Mettre à jour l'affichage si le panel est ouvert sur ce pot
         afficherMenuInfos(potIndex, potData)
+    end)
+end
+
+-- ============================================================
+-- Bouton Daily Seed (bas gauche du HUD)
+-- ============================================================
+
+local dailySeedButton = Instance.new("TextButton", screenGui)
+dailySeedButton.Name                   = "DailySeedButton"
+dailySeedButton.Size                   = UDim2.new(0, 140, 0, 40)
+dailySeedButton.Position               = UDim2.new(0, 10, 1, -200)
+dailySeedButton.BackgroundColor3       = Color3.fromRGB(30, 120, 30)
+dailySeedButton.BackgroundTransparency = 0.2
+dailySeedButton.TextColor3             = Color3.fromRGB(255, 255, 255)
+dailySeedButton.Font                   = Enum.Font.GothamBold
+dailySeedButton.TextSize               = 14
+dailySeedButton.RichText               = true
+dailySeedButton.Text                   = "🌱 Day 1/7"
+dailySeedButton.BorderSizePixel        = 0
+dailySeedButton.ZIndex                 = 10
+local _dsCorner = Instance.new("UICorner", dailySeedButton)
+_dsCorner.CornerRadius = UDim.new(0, 8)
+
+local _pulseTween = nil
+
+local function SetSeedReady(ready)
+    if _pulseTween then _pulseTween:Cancel() end
+    if ready then
+        dailySeedButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        _pulseTween = TweenService:Create(
+            dailySeedButton,
+            TweenInfo.new(0.8, Enum.EasingStyle.Sine,
+                Enum.EasingDirection.InOut, -1, true),
+            { BackgroundTransparency = 0.5 }
+        )
+        _pulseTween:Play()
+    else
+        dailySeedButton.BackgroundColor3       = Color3.fromRGB(30, 120, 30)
+        dailySeedButton.BackgroundTransparency = 0.2
+    end
+end
+
+-- ============================================================
+-- Panel Daily Seed
+-- ============================================================
+
+local _dailySeedData = nil  -- donnees recues du serveur
+
+local function FormatTempsLocal(secondes)
+    secondes = math.floor(secondes)
+    if secondes <= 0 then return "0s" end
+    local h = math.floor(secondes / 3600)
+    local m = math.floor((secondes % 3600) / 60)
+    local s = secondes % 60
+    if h > 0 then return h .. "h " .. m .. "m"
+    elseif m > 0 then return m .. "m " .. s .. "s"
+    else return s .. "s" end
+end
+
+local function OuvrirDailySeedPanel()
+    -- Fermer panel existant
+    local existing = screenGui:FindFirstChild("DailySeedPanel")
+    if existing then existing:Destroy() end
+
+    local panel = Instance.new("Frame", screenGui)
+    panel.Name                   = "DailySeedPanel"
+    panel.Size                   = UDim2.new(0, 320, 0, 480)
+    panel.Position               = UDim2.new(0.5, -160, 0.5, -240)
+    panel.BackgroundColor3       = Color3.fromRGB(20, 20, 20)
+    panel.BackgroundTransparency = 0.1
+    panel.BorderSizePixel        = 0
+    panel.ZIndex                 = 20
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
+
+    -- Titre
+    local titre = Instance.new("TextLabel", panel)
+    titre.Size                   = UDim2.new(1, -50, 0, 40)
+    titre.Position               = UDim2.new(0, 10, 0, 10)
+    titre.BackgroundTransparency = 1
+    titre.Text                   = "🌱 DAILY SEEDS"
+    titre.TextColor3             = Color3.fromRGB(255, 255, 255)
+    titre.Font                   = Enum.Font.GothamBold
+    titre.TextSize               = 18
+    titre.TextXAlignment         = Enum.TextXAlignment.Left
+    titre.ZIndex                 = 21
+
+    -- Bouton fermer
+    local btnClose = Instance.new("TextButton", panel)
+    btnClose.Size                   = UDim2.new(0, 30, 0, 30)
+    btnClose.Position               = UDim2.new(1, -40, 0, 8)
+    btnClose.BackgroundTransparency = 1
+    btnClose.Text                   = "✕"
+    btnClose.TextColor3             = Color3.fromRGB(200, 200, 200)
+    btnClose.Font                   = Enum.Font.GothamBold
+    btnClose.TextSize               = 18
+    btnClose.ZIndex                 = 21
+    btnClose.MouseButton1Click:Connect(function() panel:Destroy() end)
+
+    -- Separateur
+    local sep1 = Instance.new("Frame", panel)
+    sep1.Size             = UDim2.new(1, -20, 0, 1)
+    sep1.Position         = UDim2.new(0, 10, 0, 55)
+    sep1.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    sep1.BorderSizePixel  = 0
+    sep1.ZIndex           = 21
+
+    -- Donnees cycle
+    local dsCfg       = FPConfig and FPConfig.dailySeed or {}
+    local cycle       = dsCfg.cycle or { "MYTHIC","MYTHIC","SECRET","MYTHIC","MYTHIC","SECRET","MYTHIC" }
+    local jourActuel  = 1
+    local graineDispo = false
+    local tempsRestant = 0
+    if _dailySeedData then
+        if _dailySeedData.cycle then cycle = _dailySeedData.cycle end
+        jourActuel   = _dailySeedData.jourActuel  or 1
+        graineDispo  = _dailySeedData.graineDispo or false
+        tempsRestant = _dailySeedData.tempsRestant or 0
+    end
+
+    local icones = { MYTHIC = "☄️", SECRET = "🔴" }
+
+    for i = 1, 7 do
+        local rarete = cycle[i] or "MYTHIC"
+        local statut
+        if i < jourActuel then
+            statut = "claimed"
+        elseif i == jourActuel then
+            statut = graineDispo and "dispo" or "timer"
+        else
+            statut = "locked"
+        end
+
+        local yPos  = 65 + (i - 1) * 48
+        local ligne = Instance.new("Frame", panel)
+        ligne.Size                   = UDim2.new(1, -20, 0, 42)
+        ligne.Position               = UDim2.new(0, 10, 0, yPos)
+        ligne.BackgroundTransparency = statut == "dispo" and 0.6 or 0.9
+        ligne.BackgroundColor3       = statut == "dispo"
+            and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(40, 40, 40)
+        ligne.BorderSizePixel        = 0
+        ligne.ZIndex                 = 21
+        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 6)
+
+        local function lbl(text, x, w, color, bold, size)
+            local l = Instance.new("TextLabel", ligne)
+            l.Size                   = UDim2.new(0, w, 1, 0)
+            l.Position               = UDim2.new(0, x, 0, 0)
+            l.BackgroundTransparency = 1
+            l.Text                   = text
+            l.TextColor3             = color or Color3.fromRGB(200, 200, 200)
+            l.Font                   = bold and Enum.Font.GothamBold or Enum.Font.Gotham
+            l.TextSize               = size or 13
+            l.TextXAlignment         = Enum.TextXAlignment.Left
+            l.ZIndex                 = 22
+            return l
+        end
+
+        lbl("Day " .. i, 8, 44, Color3.fromRGB(150, 150, 150), false, 12)
+        lbl(icones[rarete] or "🌱", 52, 24, nil, false, 18)
+        lbl(rarete, 78, 80,
+            rarete == "SECRET" and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(180, 100, 255),
+            true, 13)
+
+        if statut == "claimed" then
+            lbl("✅ Claimed", 160, 100, Color3.fromRGB(100, 200, 100), false, 12)
+        elseif statut == "dispo" then
+            lbl("🔓 Ready!", 160, 80, Color3.fromRGB(255, 255, 100), true, 12)
+            local btnClaim = Instance.new("TextButton", ligne)
+            btnClaim.Size                   = UDim2.new(0, 55, 0, 26)
+            btnClaim.Position               = UDim2.new(1, -62, 0.5, -13)
+            btnClaim.BackgroundColor3       = Color3.fromRGB(0, 180, 0)
+            btnClaim.TextColor3             = Color3.fromRGB(255, 255, 255)
+            btnClaim.Font                   = Enum.Font.GothamBold
+            btnClaim.TextSize               = 12
+            btnClaim.Text                   = "Claim"
+            btnClaim.BorderSizePixel        = 0
+            btnClaim.ZIndex                 = 23
+            Instance.new("UICorner", btnClaim).CornerRadius = UDim.new(0, 6)
+            btnClaim.MouseButton1Click:Connect(function()
+                local re = ReplicatedStorage:FindFirstChild("ClaimDailySeed")
+                if re then re:FireServer() end
+                panel:Destroy()
+            end)
+        elseif statut == "timer" then
+            lbl("⏱ " .. FormatTempsLocal(tempsRestant), 160, 130,
+                Color3.fromRGB(150, 150, 150), false, 12)
+        else
+            lbl("🔒 Locked", 160, 100, Color3.fromRGB(100, 100, 100), false, 12)
+        end
+    end
+
+    -- Separateur bas
+    local sep2 = Instance.new("Frame", panel)
+    sep2.Size             = UDim2.new(1, -20, 0, 1)
+    sep2.Position         = UDim2.new(0, 10, 0, 405)
+    sep2.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    sep2.BorderSizePixel  = 0
+    sep2.ZIndex           = 21
+
+    -- Boutons R$
+    local btnSkip = Instance.new("TextButton", panel)
+    btnSkip.Size                   = UDim2.new(0, 135, 0, 32)
+    btnSkip.Position               = UDim2.new(0, 10, 1, -45)
+    btnSkip.BackgroundColor3       = Color3.fromRGB(255, 140, 0)
+    btnSkip.TextColor3             = Color3.fromRGB(255, 255, 255)
+    btnSkip.Font                   = Enum.Font.GothamBold
+    btnSkip.TextSize               = 12
+    btnSkip.Text                   = "⚡ Skip — 25 R$"
+    btnSkip.BorderSizePixel        = 0
+    btnSkip.ZIndex                 = 21
+    Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, 6)
+
+    local btnPack = Instance.new("TextButton", panel)
+    btnPack.Size                   = UDim2.new(0, 145, 0, 32)
+    btnPack.Position               = UDim2.new(1, -155, 1, -45)
+    btnPack.BackgroundColor3       = Color3.fromRGB(150, 0, 255)
+    btnPack.TextColor3             = Color3.fromRGB(255, 255, 255)
+    btnPack.Font                   = Enum.Font.GothamBold
+    btnPack.TextSize               = 12
+    btnPack.Text                   = "🎁 Pack x3 — 99 R$"
+    btnPack.BorderSizePixel        = 0
+    btnPack.ZIndex                 = 21
+    Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, 6)
+
+    -- Fermer avec Escape
+    local uis = game:GetService("UserInputService")
+    local conn
+    conn = uis.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Escape and panel.Parent then
+            panel:Destroy()
+            conn:Disconnect()
+        end
+    end)
+end
+
+dailySeedButton.MouseButton1Click:Connect(OuvrirDailySeedPanel)
+
+-- ============================================================
+-- LeaderboardUpdate : mise a jour bouton Daily Seed
+-- ============================================================
+
+local LeaderboardUpdate = ReplicatedStorage:WaitForChild("LeaderboardUpdate", 10)
+if LeaderboardUpdate then
+    LeaderboardUpdate.OnClientEvent:Connect(function(payload)
+        local dailySeedInfo = payload and payload.dailySeedInfo
+        if dailySeedInfo then
+            _dailySeedData = dailySeedInfo
+            if dailySeedInfo.graineDispo then
+                dailySeedButton.Text = "🌱 Seed Ready!"
+                SetSeedReady(true)
+            else
+                local j         = dailySeedInfo.jourActuel or 1
+                local remaining = dailySeedInfo.tempsRestant or 0
+                if remaining > 0 then
+                    dailySeedButton.Text = "🌱 Day " .. j .. "/7 " .. FormatTempsLocal(remaining)
+                else
+                    dailySeedButton.Text = "🌱 Day " .. j .. "/7"
+                end
+                SetSeedReady(false)
+            end
+        end
     end)
 end
 

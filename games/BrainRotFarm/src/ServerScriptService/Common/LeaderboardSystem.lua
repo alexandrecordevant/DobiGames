@@ -83,7 +83,28 @@ local function getEventVisuals()
 end
 
 -- ============================================================
--- Icônes upgrades MAX
+-- GetDailySeedData — donnees daily seed pour un joueur
+-- ============================================================
+local function GetDailySeedData(player)
+    local getData = LeaderboardSystem.GetPlayerData
+    if not getData then return nil end
+    local ok, data = pcall(getData, player)
+    if not ok or not data or not data.dailySeed then return nil end
+    local ds        = data.dailySeed
+    local remaining = ds.graineDispo and 0
+        or math.max(0, (24 * 3600) - (os.time() - (ds.dernieresClaim or 0)))
+    local cfg   = Config.FlowerPotConfig
+    local cycle = cfg and cfg.dailySeed and cfg.dailySeed.cycle or {}
+    return {
+        graineDispo  = ds.graineDispo,
+        jourActuel   = ds.jourActuel,
+        tempsRestant = remaining,
+        cycle        = cycle,
+    }
+end
+
+-- ============================================================
+-- Icones upgrades MAX
 -- ============================================================
 local function GetIconesJoueur(playerData)
     local shopUpgrades = Config.ShopUpgrades
@@ -673,15 +694,18 @@ local function broadcastClassement()
     -- Panneau 3D custom (fallback)
     pcall(mettreAJourPanneau, classement)
 
-    -- Envoi aux clients HUD avec infos serveur enrichies
+    -- Envoi aux clients HUD avec infos serveur enrichies + daily seed individuel
     if leaderboardEvent then
         local infosServeur = construireInfosServeur()
-        pcall(function()
-            leaderboardEvent:FireAllClients({
-                classement   = classement,
-                infosServeur = infosServeur,
-            })
-        end)
+        for _, player in ipairs(Players:GetPlayers()) do
+            pcall(function()
+                leaderboardEvent:FireClient(player, {
+                    classement    = classement,
+                    infosServeur  = infosServeur,
+                    dailySeedInfo = GetDailySeedData(player),
+                })
+            end)
+        end
     end
 end
 

@@ -435,6 +435,22 @@ GameConfig.FlowerPotConfig = {
     labelPotLocked2 = "🔒 5 000 💰",
     labelPotLocked3 = "🔒 25 000 💰",
     labelPotLocked4 = "🔒 149 R$",
+
+    -- Visuels plante par rarete
+    plantVisuels = {
+        MYTHIC = {
+            couleurTige    = Color3.fromRGB(100, 0, 200),
+            couleurFeuille = Color3.fromRGB(130, 0, 255),
+            couleurFleur   = Color3.fromRGB(180, 0, 255),
+            effetSpecial   = "sparkles",
+        },
+        SECRET = {
+            couleurTige    = Color3.fromRGB(180, 0, 0),
+            couleurFeuille = Color3.fromRGB(200, 50, 0),
+            couleurFleur   = Color3.fromRGB(255, 80, 0),
+            effetSpecial   = "flames",
+        },
+    },
 }
 
 -- === REBIRTH ===
@@ -501,7 +517,7 @@ GameConfig.MaxBases = 6
 -- === ITEMS À SPAWNER ===
 GameConfig.SpawnableItems = {
     dossier = "Brainrots",
-    raretés = {
+    rarites = {
         { nom="COMMON",       poids=55,  valeur=1    },
         { nom="OG",           poids=22,  valeur=3    },
         { nom="RARE",         poids=13,  valeur=8    },
