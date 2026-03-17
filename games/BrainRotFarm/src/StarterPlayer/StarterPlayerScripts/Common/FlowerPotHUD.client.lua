@@ -1,103 +1,134 @@
 -- StarterPlayer/StarterPlayerScripts/Common/FlowerPotHUD.client.lua
--- DobiGames — Interface plantation, croissance et récolte des pots
+-- DobiGames — Interface pots de fleurs : plantation, croissance, Daily Seed
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
 
-local player     = Players.LocalPlayer
-local playerGui  = player:WaitForChild("PlayerGui")
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- ============================================================
 -- RemoteEvents
 -- ============================================================
-local OuvrirPot      = ReplicatedStorage:WaitForChild("OuvrirPot", 10)
-local PlanterGraine  = ReplicatedStorage:WaitForChild("PlanterGraine", 10)
-local DebloquerPot   = ReplicatedStorage:WaitForChild("DebloquerPot", 10)
-local InstantGrowPot = ReplicatedStorage:WaitForChild("InstantGrowPot", 10)
+local OuvrirPot        = ReplicatedStorage:WaitForChild("OuvrirPot",    10)
+local PotUpdate        = ReplicatedStorage:WaitForChild("PotUpdate",    10)
+local DebloquerPot     = ReplicatedStorage:WaitForChild("DebloquerPot", 10)
+local InstantGrowPot   = ReplicatedStorage:WaitForChild("InstantGrowPot", 10)
+local ClaimDailySeed   = ReplicatedStorage:WaitForChild("ClaimDailySeed", 10)
 
-if not OuvrirPot or not PlanterGraine or not DebloquerPot then
-    warn("[FlowerPotHUD] RemoteEvents not found — aborting")
+if not OuvrirPot then
+    warn("[FlowerPotHUD] OuvrirPot RemoteEvent not found — aborting")
     return
 end
 
 -- ============================================================
--- Construction de la GUI principale
+-- Config locale (pour les prix/textes affichés)
 -- ============================================================
+local Config   = require(ReplicatedStorage:WaitForChild("Specialized")
+    :WaitForChild("GameConfig"))
+local FPConfig = Config.FlowerPotConfig
 
+-- ============================================================
+-- GUI principale
+-- ============================================================
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name             = "FlowerPotHUD"
-screenGui.ResetOnSpawn     = false
-screenGui.ZIndexBehavior   = Enum.ZIndexBehavior.Sibling
-screenGui.IgnoreGuiInset   = true
-screenGui.Parent           = playerGui
+screenGui.Name           = "FlowerPotHUD"
+screenGui.ResetOnSpawn   = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.IgnoreGuiInset = true
+screenGui.Parent         = playerGui
 
--- Frame principale (centrée, modal)
+-- Fond sombre semi-transparent (modal)
+local overlay = Instance.new("Frame")
+overlay.Name                   = "Overlay"
+overlay.Size                   = UDim2.new(1, 0, 1, 0)
+overlay.BackgroundColor3       = Color3.new(0, 0, 0)
+overlay.BackgroundTransparency = 0.6
+overlay.BorderSizePixel        = 0
+overlay.Visible                = false
+overlay.ZIndex                 = 10
+overlay.Parent                 = screenGui
+
+-- Frame principale
 local mainFrame = Instance.new("Frame")
 mainFrame.Name                   = "MainFrame"
-mainFrame.Size                   = UDim2.new(0, 320, 0, 260)
-mainFrame.Position               = UDim2.new(0.5, -160, 0.5, -130)
-mainFrame.BackgroundColor3       = Color3.fromRGB(20, 20, 30)
-mainFrame.BackgroundTransparency = 0.1
+mainFrame.Size                   = UDim2.new(0, 340, 0, 320)
+mainFrame.Position               = UDim2.new(0.5, -170, 0.5, -160)
+mainFrame.BackgroundColor3       = Color3.fromRGB(18, 18, 28)
+mainFrame.BackgroundTransparency = 0
 mainFrame.BorderSizePixel        = 0
 mainFrame.Visible                = false
+mainFrame.ZIndex                 = 11
 mainFrame.Parent                 = screenGui
-
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
 
 local uiStroke = Instance.new("UIStroke", mainFrame)
-uiStroke.Color     = Color3.fromRGB(80, 200, 120)
+uiStroke.Color     = Color3.fromRGB(120, 60, 200)
 uiStroke.Thickness = 2
 
 -- Titre
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name                   = "Title"
-titleLabel.Size                   = UDim2.new(1, -40, 0, 40)
-titleLabel.Position               = UDim2.new(0, 10, 0, 5)
+titleLabel.Size                   = UDim2.new(1, -44, 0, 44)
+titleLabel.Position               = UDim2.new(0, 12, 0, 6)
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
 titleLabel.Font                   = Enum.Font.GothamBold
 titleLabel.TextSize               = 18
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
-titleLabel.Text                   = "🌱 Pot"
+titleLabel.RichText               = true
+titleLabel.Text                   = "🌱 Flower Pot"
+titleLabel.ZIndex                 = 12
 titleLabel.Parent                 = mainFrame
 
 -- Séparateur
 local sep = Instance.new("Frame")
-sep.Size              = UDim2.new(1, -20, 0, 1)
-sep.Position          = UDim2.new(0, 10, 0, 48)
-sep.BackgroundColor3  = Color3.fromRGB(80, 200, 120)
-sep.BorderSizePixel   = 0
-sep.Parent            = mainFrame
-
--- Zone de contenu (scrollable si besoin)
-local contentFrame = Instance.new("Frame")
-contentFrame.Name                   = "Content"
-contentFrame.Size                   = UDim2.new(1, -20, 1, -100)
-contentFrame.Position               = UDim2.new(0, 10, 0, 55)
-contentFrame.BackgroundTransparency = 1
-contentFrame.Parent                 = mainFrame
+sep.Size             = UDim2.new(1, -24, 0, 1)
+sep.Position         = UDim2.new(0, 12, 0, 52)
+sep.BackgroundColor3 = Color3.fromRGB(120, 60, 200)
+sep.BorderSizePixel  = 0
+sep.ZIndex           = 12
+sep.Parent           = mainFrame
 
 -- Bouton fermer
 local closeBtn = Instance.new("TextButton")
-closeBtn.Name                   = "CloseBtn"
-closeBtn.Size                   = UDim2.new(0, 30, 0, 30)
-closeBtn.Position               = UDim2.new(1, -35, 0, 5)
-closeBtn.BackgroundColor3       = Color3.fromRGB(180, 40, 40)
-closeBtn.Text                   = "✕"
-closeBtn.TextColor3             = Color3.new(1, 1, 1)
-closeBtn.Font                   = Enum.Font.GothamBold
-closeBtn.TextSize               = 16
-closeBtn.BorderSizePixel        = 0
-closeBtn.Parent                 = mainFrame
+closeBtn.Size              = UDim2.new(0, 32, 0, 32)
+closeBtn.Position          = UDim2.new(1, -38, 0, 6)
+closeBtn.BackgroundColor3  = Color3.fromRGB(180, 40, 40)
+closeBtn.Text              = "✕"
+closeBtn.TextColor3        = Color3.new(1, 1, 1)
+closeBtn.Font              = Enum.Font.GothamBold
+closeBtn.TextSize          = 16
+closeBtn.BorderSizePixel   = 0
+closeBtn.ZIndex            = 12
+closeBtn.Parent            = mainFrame
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 
--- Zone des boutons d'action (bas du panel)
+-- Zone de contenu scrollable
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name              = "Content"
+scrollFrame.Size              = UDim2.new(1, -24, 1, -110)
+scrollFrame.Position          = UDim2.new(0, 12, 0, 58)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel   = 0
+scrollFrame.ScrollBarThickness = 4
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 60, 200)
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollFrame.ZIndex            = 12
+scrollFrame.Parent            = mainFrame
+
+local contentLayout = Instance.new("UIListLayout", scrollFrame)
+contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+contentLayout.Padding   = UDim.new(0, 8)
+
+-- Zone des boutons d'action (bas)
 local actionFrame = Instance.new("Frame")
 actionFrame.Name                   = "Actions"
-actionFrame.Size                   = UDim2.new(1, -20, 0, 44)
-actionFrame.Position               = UDim2.new(0, 10, 1, -50)
+actionFrame.Size                   = UDim2.new(1, -24, 0, 44)
+actionFrame.Position               = UDim2.new(0, 12, 1, -52)
 actionFrame.BackgroundTransparency = 1
+actionFrame.ZIndex                 = 12
 actionFrame.Parent                 = mainFrame
 
 -- ============================================================
@@ -105,47 +136,59 @@ actionFrame.Parent                 = mainFrame
 -- ============================================================
 
 local currentPotIndex = nil
-local currentMode     = nil
 
 local function clearContent()
-    for _, child in ipairs(contentFrame:GetChildren()) do
-        child:Destroy()
+    for _, c in ipairs(scrollFrame:GetChildren()) do
+        if not c:IsA("UIListLayout") then c:Destroy() end
     end
-    for _, child in ipairs(actionFrame:GetChildren()) do
-        child:Destroy()
-    end
+    for _, c in ipairs(actionFrame:GetChildren()) do c:Destroy() end
 end
 
-local function creerBouton(parent, text, color, position, size, callback)
+local function creerBouton(parent, text, color, pos, size, zIndex, callback)
     local btn = Instance.new("TextButton")
-    btn.Size                   = size or UDim2.new(0.45, 0, 1, 0)
-    btn.Position               = position or UDim2.new(0, 0, 0, 0)
-    btn.BackgroundColor3       = color or Color3.fromRGB(60, 160, 80)
-    btn.Text                   = text
-    btn.TextColor3             = Color3.new(1, 1, 1)
-    btn.Font                   = Enum.Font.GothamBold
-    btn.TextSize               = 15
-    btn.BorderSizePixel        = 0
-    btn.Parent                 = parent
+    btn.Size              = size or UDim2.new(0.48, 0, 1, 0)
+    btn.Position          = pos  or UDim2.new(0, 0, 0, 0)
+    btn.BackgroundColor3  = color or Color3.fromRGB(60, 160, 80)
+    btn.Text              = text
+    btn.TextColor3        = Color3.new(1, 1, 1)
+    btn.Font              = Enum.Font.GothamBold
+    btn.TextSize          = 14
+    btn.BorderSizePixel   = 0
+    btn.TextWrapped       = true
+    btn.ZIndex            = zIndex or 12
+    btn.Parent            = parent
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-
-    if callback then
-        btn.MouseButton1Click:Connect(callback)
-    end
+    if callback then btn.MouseButton1Click:Connect(callback) end
     return btn
 end
 
-local function afficherPanel(visible)
-    mainFrame.Visible = visible
-    if visible then
-        mainFrame.Size = UDim2.new(0, 0, 0, 0)
-        mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-        TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Back),
-            {
-                Size     = UDim2.new(0, 320, 0, 260),
-                Position = UDim2.new(0.5, -160, 0.5, -130),
-            }):Play()
-    end
+local function creerLigne(texte, couleur, taille, ordre, zIndex)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size                   = UDim2.new(1, 0, 0, taille or 28)
+    lbl.BackgroundTransparency = 1
+    lbl.Text                   = texte
+    lbl.TextColor3             = couleur or Color3.fromRGB(220, 220, 220)
+    lbl.Font                   = Enum.Font.Gotham
+    lbl.TextSize               = 14
+    lbl.TextXAlignment         = Enum.TextXAlignment.Left
+    lbl.TextWrapped            = true
+    lbl.RichText               = true
+    lbl.LayoutOrder            = ordre or 1
+    lbl.ZIndex                 = zIndex or 12
+    lbl.Parent                 = scrollFrame
+    return lbl
+end
+
+local function ouvrirPanel()
+    overlay.Visible   = true
+    mainFrame.Visible = true
+    mainFrame.Size    = UDim2.new(0, 0, 0, 0)
+    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    TweenService:Create(mainFrame, TweenInfo.new(0.22, Enum.EasingStyle.Back),
+        {
+            Size     = UDim2.new(0, 340, 0, 320),
+            Position = UDim2.new(0.5, -170, 0.5, -160),
+        }):Play()
 end
 
 local function fermer()
@@ -156,164 +199,196 @@ local function fermer()
         }):Play()
     task.wait(0.16)
     mainFrame.Visible = false
+    overlay.Visible   = false
     currentPotIndex   = nil
-    currentMode       = nil
 end
 
 closeBtn.MouseButton1Click:Connect(fermer)
+overlay.InputBegan:Connect(function(inp)
+    if inp.UserInputType == Enum.UserInputType.MouseButton1
+        or inp.UserInputType == Enum.UserInputType.Touch then
+        fermer()
+    end
+end)
+
+local function formatTemps(secs)
+    if not secs or secs <= 0 then return "Ready!" end
+    secs = math.floor(secs)
+    local h = math.floor(secs / 3600)
+    local m = math.floor((secs % 3600) / 60)
+    local s = secs % 60
+    if h > 0 then
+        return h .. "h " .. string.format("%02d", m) .. "m"
+    elseif m > 0 then
+        return m .. "m " .. string.format("%02d", s) .. "s"
+    else
+        return s .. "s"
+    end
+end
 
 -- ============================================================
--- Mode : Plantation (inventaire graines)
+-- Mode : Pot vide (pas de BR plantable dans carry)
 -- ============================================================
-local GRAINE_ORDER = { "COMMON", "RARE", "EPIC", "LEGENDARY" }
-local GRAINE_ICONES = { COMMON="🌱", RARE="🌿", EPIC="🌸", LEGENDARY="🌟" }
 
-local function afficherMenuPlanter(potIndex, grainesInv)
+local function afficherMenuEmpty(potIndex, dailySeedData)
     clearContent()
-    titleLabel.Text = "🌱 POT " .. potIndex .. " — Plant a Seed"
+    titleLabel.Text = "🌱 FLOWER POT " .. potIndex
 
-    local layout = Instance.new("UIListLayout", contentFrame)
-    layout.SortOrder       = Enum.SortOrder.LayoutOrder
-    layout.Padding         = UDim.new(0, 6)
+    -- Instruction principale
+    creerLigne(
+        "Carry a <b>MYTHIC</b> or <b>SECRET</b> Brain Rot to plant it here.",
+        Color3.fromRGB(200, 200, 200), 40, 1)
 
-    local hasAny = false
-    for _, rarete in ipairs(GRAINE_ORDER) do
-        local count = grainesInv[rarete] or 0
-        hasAny = hasAny or count > 0
+    -- Séparateur Daily Seed
+    local sepLbl = Instance.new("Frame")
+    sepLbl.Size             = UDim2.new(1, 0, 0, 1)
+    sepLbl.BackgroundColor3 = Color3.fromRGB(120, 60, 200)
+    sepLbl.BorderSizePixel  = 0
+    sepLbl.LayoutOrder      = 2
+    sepLbl.ZIndex           = 12
+    sepLbl.Parent           = scrollFrame
 
-        local row = Instance.new("Frame")
-        row.Size              = UDim2.new(1, 0, 0, 38)
-        row.BackgroundColor3  = Color3.fromRGB(30, 30, 45)
-        row.BorderSizePixel   = 0
-        row.LayoutOrder       = 1
-        row.Parent            = contentFrame
-        Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+    -- Titre Daily Seed
+    creerLigne("🎁 DAILY SEED",
+        Color3.fromRGB(255, 215, 0), 28, 3)
 
-        local icone = GRAINE_ICONES[rarete] or "🌱"
+    -- État daily seed
+    local dsCfg = FPConfig and FPConfig.dailySeed
+    local ds    = dailySeedData or {}
+    local jour  = ds.jourActuel or 1
+    local cycle = dsCfg and dsCfg.cycle or {}
+    local prochainRarete = cycle[jour] or "MYTHIC"
 
-        local nomLbl = Instance.new("TextLabel")
-        nomLbl.Size                   = UDim2.new(0.55, 0, 1, 0)
-        nomLbl.Position               = UDim2.new(0, 8, 0, 0)
-        nomLbl.BackgroundTransparency = 1
-        nomLbl.Text                   = icone .. " " .. rarete
-            .. "  ×" .. count
-        nomLbl.TextColor3             = Color3.fromRGB(220, 220, 220)
-        nomLbl.Font                   = Enum.Font.Gotham
-        nomLbl.TextSize               = 14
-        nomLbl.TextXAlignment         = Enum.TextXAlignment.Left
-        nomLbl.Parent                 = row
+    creerLigne("Day " .. jour .. " — " .. prochainRarete .. " Seed",
+        Color3.fromRGB(180, 180, 255), 24, 4)
 
-        if count > 0 then
-            local plantBtn = Instance.new("TextButton")
-            plantBtn.Size              = UDim2.new(0, 80, 0, 26)
-            plantBtn.Position          = UDim2.new(1, -88, 0.5, -13)
-            plantBtn.BackgroundColor3  = Color3.fromRGB(60, 160, 80)
-            plantBtn.Text              = "Plant"
-            plantBtn.TextColor3        = Color3.new(1, 1, 1)
-            plantBtn.Font              = Enum.Font.GothamBold
-            plantBtn.TextSize          = 13
-            plantBtn.BorderSizePixel   = 0
-            plantBtn.Parent            = row
-            Instance.new("UICorner", plantBtn).CornerRadius = UDim.new(0, 6)
+    if ds.graineDispo then
+        -- Disponible
+        creerLigne("✅ Ready to claim!",
+            Color3.fromRGB(100, 255, 120), 24, 5)
 
-            local capturedRarete = rarete
-            plantBtn.MouseButton1Click:Connect(function()
-                PlanterGraine:FireServer(potIndex, capturedRarete)
+        local claimBtn = creerBouton(scrollFrame,
+            "🌱 Claim",
+            Color3.fromRGB(60, 160, 80),
+            nil,
+            UDim2.new(1, 0, 0, 36),
+            12,
+            function()
+                ClaimDailySeed:FireServer()
                 fermer()
             end)
-        else
-            local dash = Instance.new("TextLabel")
-            dash.Size                   = UDim2.new(0, 80, 0, 26)
-            dash.Position               = UDim2.new(1, -88, 0.5, -13)
-            dash.BackgroundTransparency = 1
-            dash.Text                   = "—"
-            dash.TextColor3             = Color3.fromRGB(100, 100, 100)
-            dash.Font                   = Enum.Font.Gotham
-            dash.TextSize               = 14
-            dash.TextXAlignment         = Enum.TextXAlignment.Center
-            dash.Parent                 = row
+        claimBtn.LayoutOrder = 6
+
+    else
+        -- Pas encore disponible
+        local derniere = ds.dernieresClaim or 0
+        local seuil    = dsCfg and dsCfg.intervalleHeures * 3600 or 86400
+        local remaining = math.max(0, seuil - (os.time() - derniere))
+
+        creerLigne("⏱ Next in: " .. formatTemps(remaining),
+            Color3.fromRGB(200, 180, 100), 24, 5)
+
+        -- Skip R$
+        if dsCfg and dsCfg.skipPrixRobux and dsCfg.skipPrixRobux > 0 then
+            local skipBtn = creerBouton(scrollFrame,
+                "⚡ Skip — " .. dsCfg.skipPrixRobux .. " R$",
+                Color3.fromRGB(100, 40, 180),
+                nil,
+                UDim2.new(1, 0, 0, 36),
+                12,
+                function()
+                    warn("[FlowerPotHUD] Skip Daily Seed — R$ not configured")
+                end)
+            skipBtn.LayoutOrder = 6
         end
     end
 
-    -- Hint si inventaire vide
-    if not hasAny then
-        local hint = Instance.new("TextLabel")
-        hint.Size                   = UDim2.new(1, 0, 0, 30)
-        hint.BackgroundTransparency = 1
-        hint.Text                   = "💡 Collect RARE+ Brain Rots to get seeds!"
-        hint.TextColor3             = Color3.fromRGB(180, 180, 120)
-        hint.Font                   = Enum.Font.Gotham
-        hint.TextSize               = 13
-        hint.TextXAlignment         = Enum.TextXAlignment.Center
-        hint.Parent                 = contentFrame
+    -- Séparateur packs R$
+    local sepPacks = Instance.new("Frame")
+    sepPacks.Size             = UDim2.new(1, 0, 0, 1)
+    sepPacks.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+    sepPacks.BorderSizePixel  = 0
+    sepPacks.LayoutOrder      = 7
+    sepPacks.ZIndex           = 12
+    sepPacks.Parent           = scrollFrame
+
+    -- Pack ×3 MYTHIC
+    if dsCfg and dsCfg.packPrixRobux and dsCfg.packPrixRobux > 0 then
+        local packBtn = creerBouton(scrollFrame,
+            "🎁 Seed Pack ×3 MYTHIC — " .. dsCfg.packPrixRobux .. " R$",
+            Color3.fromRGB(120, 60, 0),
+            nil,
+            UDim2.new(1, 0, 0, 36),
+            12,
+            function()
+                warn("[FlowerPotHUD] Seed Pack — R$ not configured")
+            end)
+        packBtn.LayoutOrder = 8
     end
 
-    -- Bouton fermer en bas
+    -- 1 SECRET garanti
+    if dsCfg and dsCfg.premiumPrixRobux and dsCfg.premiumPrixRobux > 0 then
+        local premBtn = creerBouton(scrollFrame,
+            "👑 1 SECRET Seed — " .. dsCfg.premiumPrixRobux .. " R$",
+            Color3.fromRGB(150, 0, 0),
+            nil,
+            UDim2.new(1, 0, 0, 36),
+            12,
+            function()
+                warn("[FlowerPotHUD] SECRET Seed Pack — R$ not configured")
+            end)
+        premBtn.LayoutOrder = 9
+    end
+
+    -- Bouton fermer
     creerBouton(actionFrame, "Close",
         Color3.fromRGB(140, 40, 40),
-        UDim2.new(0.5, -50, 0, 0),
-        UDim2.new(0, 100, 1, 0),
-        fermer)
+        UDim2.new(0.25, 0, 0, 0),
+        UDim2.new(0.5, 0, 1, 0),
+        12, fermer)
 end
 
 -- ============================================================
 -- Mode : Infos croissance
 -- ============================================================
 
-local function formatTemps(secs)
-    secs = math.max(0, math.floor(secs))
-    local m = math.floor(secs / 60)
-    local s = secs % 60
-    if m > 0 then
-        return m .. "m " .. s .. "s"
-    else
-        return s .. "s"
-    end
-end
-
-local function afficherMenuInfos(potIndex, infos)
+local function afficherMenuInfos(potIndex, potData)
     clearContent()
-    local graine    = infos.graine    or "?"
-    local stage     = infos.stage     or 0
-    local tRestant  = infos.tempsRestant or 0
-    local prixInst  = infos.prixInstant or 35
+    local rarete    = potData and potData.rarete    or "?"
+    local stage     = potData and potData.stage     or 0
+    local tRestant  = potData and potData.tempsRestant or 0
 
-    local icone = GRAINE_ICONES[graine] or "🌿"
+    local graineCfg = FPConfig and FPConfig.graines and FPConfig.graines[rarete]
 
     if stage >= 4 then
-        titleLabel.Text = icone .. " POT " .. potIndex .. " — MATURE! 🌟"
+        titleLabel.Text = "🌟 POT " .. potIndex .. " — MATURE!"
     else
-        titleLabel.Text = icone .. " POT " .. potIndex .. " — Growing..."
+        titleLabel.Text = "🌱 POT " .. potIndex .. " — Growing..."
     end
 
-    -- Ligne rareté
-    local rarLbl = Instance.new("TextLabel")
-    rarLbl.Size                   = UDim2.new(1, 0, 0, 28)
-    rarLbl.BackgroundTransparency = 1
-    rarLbl.Text                   = icone .. " " .. graine .. " Seed"
-    rarLbl.TextColor3             = Color3.fromRGB(220, 220, 220)
-    rarLbl.Font                   = Enum.Font.GothamBold
-    rarLbl.TextSize               = 16
-    rarLbl.TextXAlignment         = Enum.TextXAlignment.Left
-    rarLbl.Parent                 = contentFrame
+    -- Rareté
+    creerLigne("<b>" .. rarete .. " Seed</b>",
+        Color3.fromRGB(255, 215, 0), 28, 1)
 
     -- Barre de progression stage
-    local stageFrame = Instance.new("Frame")
-    stageFrame.Size              = UDim2.new(1, 0, 0, 28)
-    stageFrame.BackgroundColor3  = Color3.fromRGB(30, 30, 45)
-    stageFrame.BorderSizePixel   = 0
-    stageFrame.Parent            = contentFrame
-    Instance.new("UICorner", stageFrame).CornerRadius = UDim.new(0, 6)
+    local barContainer = Instance.new("Frame")
+    barContainer.Size             = UDim2.new(1, 0, 0, 30)
+    barContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    barContainer.BorderSizePixel  = 0
+    barContainer.LayoutOrder      = 2
+    barContainer.ZIndex           = 12
+    barContainer.Parent           = scrollFrame
+    Instance.new("UICorner", barContainer).CornerRadius = UDim.new(0, 6)
 
-    -- Remplissage barre
-    local fill = Instance.new("Frame")
-    fill.Size             = UDim2.new(math.min(stage / 4, 1), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
-    fill.BorderSizePixel  = 0
-    fill.Parent           = stageFrame
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 6)
+    local barFill = Instance.new("Frame", barContainer)
+    barFill.Size             = UDim2.new(math.min(stage / 4, 1), 0, 1, 0)
+    barFill.BackgroundColor3 = graineCfg and graineCfg.couleurStage4
+                             or Color3.fromRGB(120, 60, 200)
+    barFill.BorderSizePixel  = 0
+    barFill.ZIndex           = 13
+    Instance.new("UICorner", barFill).CornerRadius = UDim.new(0, 6)
 
-    local stageLbl = Instance.new("TextLabel")
+    local stageLbl = Instance.new("TextLabel", barContainer)
     stageLbl.Size                   = UDim2.new(1, 0, 1, 0)
     stageLbl.BackgroundTransparency = 1
     stageLbl.Text                   = "Stage " .. stage .. " / 4"
@@ -321,52 +396,33 @@ local function afficherMenuInfos(potIndex, infos)
     stageLbl.Font                   = Enum.Font.GothamBold
     stageLbl.TextSize               = 13
     stageLbl.TextXAlignment         = Enum.TextXAlignment.Center
-    stageLbl.Parent                 = stageFrame
+    stageLbl.ZIndex                 = 14
 
-    -- Temps restant
+    -- Temps restant / prêt
     if stage < 4 then
-        local timeLbl = Instance.new("TextLabel")
-        timeLbl.Size                   = UDim2.new(1, 0, 0, 28)
-        timeLbl.BackgroundTransparency = 1
-        timeLbl.Text                   = "⏱ Ready in: " .. formatTemps(tRestant)
-        timeLbl.TextColor3             = Color3.fromRGB(180, 230, 255)
-        timeLbl.Font                   = Enum.Font.Gotham
-        timeLbl.TextSize               = 14
-        timeLbl.TextXAlignment         = Enum.TextXAlignment.Left
-        timeLbl.Parent                 = contentFrame
+        creerLigne("⏱ Ready in: " .. formatTemps(tRestant),
+            Color3.fromRGB(180, 230, 255), 26, 3)
+
+        -- Multiplicateur
+        if graineCfg then
+            creerLigne("💰 ×" .. graineCfg.multiplicateur .. " income when deposited",
+                Color3.fromRGB(255, 215, 0), 24, 4)
+        end
     else
-        local readyLbl = Instance.new("TextLabel")
-        readyLbl.Size                   = UDim2.new(1, 0, 0, 28)
-        readyLbl.BackgroundTransparency = 1
-        readyLbl.Text                   = "✅ Ready to harvest!"
-        readyLbl.TextColor3             = Color3.fromRGB(100, 255, 120)
-        readyLbl.Font                   = Enum.Font.GothamBold
-        readyLbl.TextSize               = 14
-        readyLbl.TextXAlignment         = Enum.TextXAlignment.Left
-        readyLbl.Parent                 = contentFrame
+        creerLigne("✅ Ready to harvest! Approach the pot.",
+            Color3.fromRGB(100, 255, 120), 26, 3)
     end
 
-    -- Layout vertical
-    local layout = Instance.new("UIListLayout", contentFrame)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding   = UDim.new(0, 6)
-
     -- Boutons d'action
-    if stage >= 4 then
-        creerBouton(actionFrame, "🌟 Harvest",
-            Color3.fromRGB(200, 160, 0),
-            UDim2.new(0, 0, 0, 0),
-            UDim2.new(0.5, -4, 1, 0),
-            function()
-                -- Le serveur gère la récolte via ProximityPrompt
-                -- Ici on ferme juste le panel (le joueur doit approcher le pot)
-                fermer()
-            end)
-    else
-        creerBouton(actionFrame, "⚡ Instant Grow\n" .. prixInst .. " R$",
+    if stage < 4 then
+        local igCfg = FPConfig and FPConfig.instantGrow
+        creerBouton(actionFrame,
+            (igCfg and igCfg.label or "⚡ Instant Grow")
+            .. "  " .. (igCfg and igCfg.prixRobux or 35) .. " R$",
             Color3.fromRGB(100, 40, 180),
             UDim2.new(0, 0, 0, 0),
-            UDim2.new(0.5, -4, 1, 0),
+            UDim2.new(0.48, 0, 1, 0),
+            12,
             function()
                 InstantGrowPot:FireServer(potIndex)
                 fermer()
@@ -375,51 +431,37 @@ local function afficherMenuInfos(potIndex, infos)
 
     creerBouton(actionFrame, "Close",
         Color3.fromRGB(140, 40, 40),
-        UDim2.new(0.5, 4, 0, 0),
-        UDim2.new(0.5, -4, 1, 0),
-        fermer)
+        stage < 4 and UDim2.new(0.52, 0, 0, 0) or UDim2.new(0.25, 0, 0, 0),
+        stage < 4 and UDim2.new(0.48, 0, 1, 0) or UDim2.new(0.5, 0, 1, 0),
+        12, fermer)
 end
 
 -- ============================================================
 -- Mode : Déblocage
 -- ============================================================
 
-local Config = require(ReplicatedStorage:WaitForChild("Specialized"):WaitForChild("GameConfig"))
-
 local function afficherMenuDebloque(potIndex)
     clearContent()
     titleLabel.Text = "🔒 POT " .. potIndex .. " — Locked"
 
-    local FPConfig  = Config.FlowerPotConfig
-    local potCfg    = FPConfig and FPConfig.pots and FPConfig.pots[potIndex]
+    local potCfg = FPConfig and FPConfig.pots and FPConfig.pots[potIndex]
 
-    local desc = Instance.new("TextLabel")
-    desc.Size                   = UDim2.new(1, 0, 0, 60)
-    desc.BackgroundTransparency = 1
-    desc.TextColor3             = Color3.fromRGB(220, 220, 220)
-    desc.Font                   = Enum.Font.Gotham
-    desc.TextSize               = 15
-    desc.TextWrapped            = true
-    desc.TextXAlignment         = Enum.TextXAlignment.Center
-    desc.Parent                 = contentFrame
-
+    local prixTexte = "Locked"
     if potCfg then
         if potCfg.prixCoins and potCfg.prixCoins > 0 then
-            desc.Text = "Unlock for " .. potCfg.prixCoins .. " 💰"
+            prixTexte = "Unlock for " .. potCfg.prixCoins .. " 💰"
         elseif potCfg.prixRobux and potCfg.prixRobux > 0 then
-            desc.Text = "Unlock for " .. potCfg.prixRobux .. " R$"
-        else
-            desc.Text = "This pot is locked."
+            prixTexte = "Unlock for " .. potCfg.prixRobux .. " R$"
         end
-    else
-        desc.Text = "Pot " .. potIndex .. " is locked."
     end
 
-    -- Boutons Unlock + Cancel
+    creerLigne(prixTexte, Color3.fromRGB(220, 220, 220), 40, 1)
+
     creerBouton(actionFrame, "Unlock",
         Color3.fromRGB(60, 160, 80),
         UDim2.new(0, 0, 0, 0),
-        UDim2.new(0.5, -4, 1, 0),
+        UDim2.new(0.48, 0, 1, 0),
+        12,
         function()
             DebloquerPot:FireServer(potIndex)
             fermer()
@@ -427,9 +469,9 @@ local function afficherMenuDebloque(potIndex)
 
     creerBouton(actionFrame, "Cancel",
         Color3.fromRGB(140, 40, 40),
-        UDim2.new(0.5, 4, 0, 0),
-        UDim2.new(0.5, -4, 1, 0),
-        fermer)
+        UDim2.new(0.52, 0, 0, 0),
+        UDim2.new(0.48, 0, 1, 0),
+        12, fermer)
 end
 
 -- ============================================================
@@ -438,28 +480,26 @@ end
 
 OuvrirPot.OnClientEvent:Connect(function(potIndex, mode, extraData)
     currentPotIndex = potIndex
-    currentMode     = mode
 
-    if mode == "planter" then
-        afficherMenuPlanter(potIndex, extraData or {})
+    if mode == "empty" then
+        afficherMenuEmpty(potIndex, extraData)
     elseif mode == "infos" then
-        afficherMenuInfos(potIndex, extraData or {})
+        afficherMenuInfos(potIndex, extraData)
     elseif mode == "debloque" then
         afficherMenuDebloque(potIndex)
     end
 
-    afficherPanel(true)
+    ouvrirPanel()
 end)
 
--- Fermer si on clique ailleurs
-screenGui.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-        -- Vérifier si le clic est hors du panel
-        -- (simple vérification : si mainFrame invisible, rien à faire)
+-- Mise à jour temps restant (envoi serveur toutes les 10s)
+if PotUpdate then
+    PotUpdate.OnClientEvent:Connect(function(potIndex, potData)
+        if potIndex ~= currentPotIndex then return end
         if not mainFrame.Visible then return end
-        -- On laisse les clics passer (ProximityPrompt les gère)
-    end
-end)
+        -- Mettre à jour l'affichage si le panel est ouvert sur ce pot
+        afficherMenuInfos(potIndex, potData)
+    end)
+end
 
 print("[FlowerPotHUD] ✓ Initialized")

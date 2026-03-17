@@ -36,6 +36,19 @@ local Workspace         = game:GetService("Workspace")
 local Debris            = game:GetService("Debris")
 
 -- ============================================================
+-- Lazy loader FlowerPotSystem (notifier quand le carry change)
+-- ============================================================
+local _FlowerPotSystem = nil
+local function getFlowerPotSystem()
+    if not _FlowerPotSystem then
+        local ok, m = pcall(require,
+            game:GetService("ServerScriptService").Common.FlowerPotSystem)
+        if ok then _FlowerPotSystem = m end
+    end
+    return _FlowerPotSystem
+end
+
+-- ============================================================
 -- Configuration capture hybride
 -- ============================================================
 -- HoldDuration réduit en TEST_MODE pour accélérer les captures
@@ -179,6 +192,12 @@ local function envoyerCarryUpdate(player)
 	pcall(function()
 		CarryUpdate:FireClient(player, { portes = #data.portes, max = max })
 	end)
+	-- Notifier FlowerPotSystem (illuminer/éteindre pots selon carry)
+	local FPS = getFlowerPotSystem()
+	if FPS and FPS.OnCarryChange then
+		local portés = data and data.portes or {}
+		pcall(FPS.OnCarryChange, player, portés)
+	end
 end
 
 local function notifierJoueur(player, typeNotif, message)

@@ -36,12 +36,16 @@ local function DefaultData()
         walkSpeedActuel = 16,
         -- Flower Pots
         pots = {
-            [1] = { debloque=true,  graine=nil, stage=0, tempsRestant=0, instantGrow=false },
-            [2] = { debloque=false, graine=nil, stage=0, tempsRestant=0, instantGrow=false },
-            [3] = { debloque=false, graine=nil, stage=0, tempsRestant=0, instantGrow=false },
-            [4] = { debloque=false, graine=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [1] = { debloque=true,  rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [2] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [3] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [4] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
         },
-        graines = { COMMON=0, RARE=0, EPIC=0, LEGENDARY=0 },
+        dailySeed = {
+            jourActuel     = 1,
+            dernieresClaim = 0,
+            graineDispo    = true,
+        },
     }
 end
 

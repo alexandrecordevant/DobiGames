@@ -353,60 +353,39 @@ GameConfig.ProgressionConfig = {
 }
 
 -- === FLOWER POT SYSTEM ===
--- Lu par FlowerPotSystem (Common) — pots, graines, croissance, BR Mutants
+-- Lu par FlowerPotSystem (Common) — pots MYTHIC/SECRET + BR Mutant + Daily Seed
 GameConfig.FlowerPotConfig = {
 
     -- Déblocage des pots
     pots = {
-        [1] = { nom = "FlowerPot_1", prixCoins = 0,     prixRobux = 0   },
-        [2] = { nom = "FlowerPot_2", prixCoins = 5000,  prixRobux = 0   },
-        [3] = { nom = "FlowerPot_3", prixCoins = 25000, prixRobux = 0   },
+        [1] = { nom = "FlowerPot_1", prixCoins = 0,     prixRobux = 0,
+                debloque = true  },
+        [2] = { nom = "FlowerPot_2", prixCoins = 5000,  prixRobux = 0,
+                debloque = false },
+        [3] = { nom = "FlowerPot_3", prixCoins = 25000, prixRobux = 0,
+                debloque = false },
         [4] = { nom = "FlowerPot_4", prixCoins = 0,     prixRobux = 149,
-                gamePassId = 0 },
+                debloque = false, gamePassId = 0 },
     },
 
-    -- Graines disponibles
+    -- BR plantables (uniquement MYTHIC et SECRET)
+    brPlantables = { "MYTHIC", "SECRET" },
+
+    -- Config par rareté plantée
     graines = {
-        COMMON = {
-            nom           = "Common Seed",
-            icone         = "🌱",
-            rareteResult  = "COMMON",
-            prixCoins     = 200,
-            prixRobux     = 0,
-            dureeStages   = { 120, 120, 120, 120 },
-            dureeTest     = { 15,  15,  15,  15  },
+        MYTHIC = {
+            dureeStages    = { 225, 225, 225, 225 },  -- réel : 15 min total
+            dureeTest      = { 30,  30,  30,  30  },  -- test : 2 min total
             multiplicateur = 3,
+            couleurStage4  = Color3.fromRGB(180, 0, 255),
+            label          = "MYTHIC Mutant",
         },
-        RARE = {
-            nom           = "Rare Seed",
-            icone         = "🌿",
-            rareteResult  = "RARE",
-            prixCoins     = 2000,
-            prixRobux     = 0,
-            dureeStages   = { 180, 180, 180, 180 },
-            dureeTest     = { 20,  20,  20,  20  },
-            multiplicateur = 5,
-        },
-        EPIC = {
-            nom           = "Epic Seed",
-            icone         = "🌸",
-            rareteResult  = "EPIC",
-            prixCoins     = 15000,
-            prixRobux     = 0,
-            dureeStages   = { 240, 240, 240, 240 },
-            dureeTest     = { 25,  25,  25,  25  },
+        SECRET = {
+            dureeStages    = { 450, 450, 450, 450 },  -- réel : 30 min total
+            dureeTest      = { 60,  60,  60,  60  },  -- test : 4 min total
             multiplicateur = 8,
-        },
-        LEGENDARY = {
-            nom           = "Legendary Seed",
-            icone         = "🌟",
-            rareteResult  = "LEGENDARY",
-            prixCoins     = 0,
-            prixRobux     = 49,
-            gamePassId    = 0,
-            dureeStages   = { 300, 300, 300, 300 },
-            dureeTest     = { 30,  30,  30,  30  },
-            multiplicateur = 12,
+            couleurStage4  = Color3.fromRGB(255, 50, 50),
+            label          = "SECRET Mutant",
         },
     },
 
@@ -417,15 +396,7 @@ GameConfig.FlowerPotConfig = {
         label      = "⚡ Instant Grow",
     },
 
-    -- Chances de drop de graine lors de la collecte d'un BR
-    dropChances = {
-        RARE      = 0.10,
-        EPIC      = 0.20,
-        LEGENDARY = 0.50,
-        MYTHIC    = 1.00,
-    },
-
-    -- Échelle visuelle par stage (0 = graine enterrée, 4 = mature)
+    -- Échelle visuelle par stage
     stageScales = {
         [0] = 0.0,
         [1] = 0.3,
@@ -434,13 +405,36 @@ GameConfig.FlowerPotConfig = {
         [4] = 1.4,
     },
 
-    -- Couleur de teinte par stage
-    stageCouleurs = {
-        [1] = Color3.fromRGB(150, 255, 100),
-        [2] = Color3.fromRGB(80,  200, 60 ),
-        [3] = Color3.fromRGB(50,  180, 255),
-        [4] = Color3.fromRGB(255, 215, 0  ),
+    -- Graine quotidienne (cycle 7 jours)
+    dailySeed = {
+        intervalleHeures = 24,
+        cycle = {
+            [1] = "MYTHIC",
+            [2] = "MYTHIC",
+            [3] = "SECRET",
+            [4] = "MYTHIC",
+            [5] = "MYTHIC",
+            [6] = "SECRET",
+            [7] = "SECRET",
+        },
+        skipPrixRobux    = 25,
+        packPrixRobux    = 99,
+        premiumPrixRobux = 149,
+        gamePassIds = {
+            skip    = 0,
+            pack    = 0,
+            premium = 0,
+        },
     },
+
+    -- Couleur dorée appliquée au spot quand un Mutant y est déposé
+    spotMutantCouleur = Color3.fromRGB(255, 215, 0),
+
+    -- Texte permanent sur pot vide
+    labelPotVide    = "🌱 Plant MYTHIC / SECRET here",
+    labelPotLocked2 = "🔒 5 000 💰",
+    labelPotLocked3 = "🔒 25 000 💰",
+    labelPotLocked4 = "🔒 149 R$",
 }
 
 return GameConfig
