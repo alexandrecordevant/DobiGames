@@ -25,8 +25,18 @@ local function GetConfig(nomValeur, valeurNormale)
     end
     return valeurNormale
 end
-local Players       = game:GetService("Players")
-local HttpService   = game:GetService("HttpService")
+local Players             = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+-- Chargement différé pour éviter les dépendances circulaires au boot
+local _DiscordWebhook = nil
+local function getDiscordWebhook()
+    if not _DiscordWebhook then
+        local ok, m = pcall(require, ServerScriptService.Common.DiscordWebhook)
+        if ok and m then _DiscordWebhook = m end
+    end
+    return _DiscordWebhook
+end
 
 local function NotifierTous(message, couleur)
     local event = game.ReplicatedStorage:FindFirstChild("NotifEvent")
@@ -34,18 +44,6 @@ local function NotifierTous(message, couleur)
     for _, p in ipairs(Players:GetPlayers()) do
         event:FireClient(p, "INFO", message)
     end
-end
-
-local function EnvoyerDiscord(titre, message)
-    if Config.DiscordWebhookURL == "" then return end
-    local ok = pcall(function()
-        HttpService:PostAsync(Config.DiscordWebhookURL,
-            HttpService:JSONEncode({
-                embeds = {{ title=titre, description=message,
-                    footer={ text="DobiGames · " .. Config.NomDuJeu } }}
-            }),
-            Enum.HttpContentType.ApplicationJson)
-    end)
 end
 
 local function DemarrerEvent(typeEvent)
@@ -59,18 +57,16 @@ local function DemarrerEvent(typeEvent)
 end
 
 local function BoucleAuto()
-    local intervalle   = GetConfig("EventIntervalleMinutes", Config.EventIntervalleMinutes) * 60
-    -- En test l'earlyBird est ignoré (intervalle trop court pour avoir un pre-avis)
-    local earlyBird    = Config.TEST_MODE and 0 or (Config.EarlyBirdBonusMinutes * 60)
-    local types        = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
+    local intervalle = GetConfig("EventIntervalleMinutes", Config.EventIntervalleMinutes) * 60
+    local earlyBird  = Config.TEST_MODE and 0 or (Config.EarlyBirdBonusMinutes * 60)
+    local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
     while true do
         task.wait(intervalle - earlyBird)
         NotifierTous("⏰ Event in 1h! Stay connected for the Early Bird bonus 🎁", Color3.fromRGB(100,200,255))
-        EnvoyerDiscord("⏰ Event dans 1h !", "**" .. Config.NomDuJeu .. "** — Admin Abuse dans 1 heure !\n🎁 Early Bird pour ceux déjà connectés !")
         task.wait(earlyBird)
         local choix = types[math.random(1, #types)]
         DemarrerEvent(choix)
-        EnvoyerDiscord("🔥 EVENT EN COURS !", "**" .. Config.NomDuJeu .. "** — " .. choix .. " actif maintenant !")
+        -- Pas de Discord pour ces events fréquents (Lucky Hour, Golden, etc.)
     end
 end
 
@@ -81,12 +77,13 @@ local function BoucleAdminAbuseHebdo()
         local now = os.date("!*t")
         if now.wday == cfg.jourSemaine and now.hour == cfg.heureUTC and now.min == 0 then
             NotifierTous("🔥 WEEKLY ADMIN ABUSE! Spawn ×" .. cfg.spawnMultiplier .. " for " .. cfg.dureeMinutes .. " min!", Color3.fromRGB(255,50,50))
-            EnvoyerDiscord("🔥 ADMIN ABUSE HEBDOMADAIRE !", "@everyone\n**" .. Config.NomDuJeu .. "** — Spawn ×" .. cfg.spawnMultiplier .. " pendant " .. cfg.dureeMinutes .. " min !\n[Jouer maintenant](https://www.roblox.com/games)")
+            -- Discord hebdo (rate limited 6h dans DiscordWebhook)
+            local DW = getDiscordWebhook()
+            if DW then pcall(DW.AdminAbuseHebdo) end
             CollectSystem.SetEventMultiplier(cfg.spawnMultiplier)
             task.delay(cfg.dureeMinutes * 60, function()
                 CollectSystem.SetEventMultiplier(1)
                 NotifierTous("Admin Abuse ended. See you next Saturday!", Color3.fromRGB(200,200,200))
-                EnvoyerDiscord("✅ Admin Abuse terminé", "Merci à tous ! Prochain event **samedi prochain**. 🔔")
             end)
         end
     end

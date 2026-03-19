@@ -24,11 +24,12 @@ GameConfig.ProduitSecretReveal    = { Id = 0, Prix = 25  }
 GameConfig.ProduitSkipTier        = { Id = 0, Prix = 50  }
 
 -- === DISCORD WEBHOOK ===
+-- Remplir depuis discord_webhooks.json après setup_discord.py
 GameConfig.DiscordWebhooks = {
-    events  = "URL_WEBHOOK_EVENTS",   -- #events
-    records = "URL_WEBHOOK_RECORDS",  -- #records
-    dev     = "URL_WEBHOOK_DEV",      -- #dev-logs
-    revenue = "URL_WEBHOOK_REVENUE",  -- #revenue-tracking
+    events  = "",  -- #events  : Admin Abuse hebdo, Top Farmer
+    records = "",  -- #records : BRAINROT_GOD, SECRET capturés
+    dev     = "",  -- #dev-logs : erreurs critiques (invisible des joueurs)
+    revenue = "",  -- #revenue-tracking : (usage futur)
 }
 GameConfig.DiscordInvite = "https://discord.gg/JfPHVBpQXS"
 
@@ -549,7 +550,5 @@ GameConfig.SpawnConfig = {
     maxParBase         = 15,
     despawnSecondes    = 30,
 }
-
-GameConfig.DiscordInvite = "https://discord.gg/JfPHVBpQXS"
 
 return GameConfig

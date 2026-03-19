@@ -30,6 +30,7 @@ local ShopSystem            = require(ServerScriptService.Common.ShopSystem)
 local SprinklerSystem       = require(ServerScriptService.Specialized.SprinklerSystem)
 local TracteurSystem        = require(ServerScriptService.Specialized.TracteurSystem)
 local FlowerPotSystem       = require(ServerScriptService.Specialized.FlowerPotSystem)
+local DiscordWebhook        = require(ServerScriptService.Common.DiscordWebhook)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -78,6 +79,7 @@ print("[" .. Config.NomDuJeu .. "] RemoteEvents créés ✓")
 -- ═══════════════════════════════════════════════
 
 local playerDataCache = {}  -- { [userId] = data }
+local sessionStart    = {}  -- { [userId] = os.time() au moment du join } (Top Farmer hebdo)
 
 local function GetData(player)
     return playerDataCache[player.UserId]
@@ -249,6 +251,9 @@ local function OnPlayerAdded(player)
         return GetData(player)
     end)
 
+    -- Début de session (pour tracking temps de jeu hebdo Top Farmer)
+    sessionStart[player.UserId] = os.time()
+
     print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " connecté (Tier " .. data.tier .. ", Prestige " .. data.prestige .. ")")
 end
 
@@ -258,6 +263,12 @@ local function OnPlayerRemoving(player)
 
     local data = GetData(player)
     if data then
+        -- Accumuler le temps de jeu hebdo (Top Farmer Discord)
+        local dureeSession = os.time() - (sessionStart[player.UserId] or os.time())
+        data.tempsJeuSemaine = (data.tempsJeuSemaine or 0) + dureeSession
+        data.tempsJeuTotal   = (data.tempsJeuTotal   or 0) + dureeSession
+        sessionStart[player.UserId] = nil
+
         -- Synchroniser spotsOccupes une dernière fois avant sauvegarde
         local spotsSerial = DropSystem.GetSpotsOccupesSerialisables(player)
         data.spotsOccupes = spotsSerial
@@ -395,6 +406,10 @@ end
 -- Hook LeaderboardSystem → notifié quand un joueur capture un RARE+ via ProximityPrompt
 SpawnManager.OnRareCollecte = function(player, rareteNom)
     LeaderboardSystem.EnregistrerRare(player, rareteNom)
+    -- Discord : BRAINROT_GOD uniquement (très rare → toujours envoyer)
+    if rareteNom == "BRAINROT_GOD" then
+        pcall(DiscordWebhook.BrainrotGodCapture, player.Name)
+    end
 end
 
 -- Collecte Touched (COMMON/OG/RARE) → ramassage carry avec le modèle monde
@@ -504,5 +519,36 @@ if Config.TEST_MODE then
     end
     warn("⚠️  TEST_MODE ACTIVÉ — Désactiver GameConfig.TEST_MODE avant publish !")
 end
+
+-- ═══════════════════════════════════════════════
+-- 7. TOP FARMER HEBDOMADAIRE (chaque lundi minuit UTC)
+-- ═══════════════════════════════════════════════
+task.spawn(function()
+    while true do
+        task.wait(60)
+        local date = os.date("!*t", os.time())
+        -- Lundi = 2, minuit UTC (wday 1=dim, 2=lun, ...)
+        if date.wday == 2 and date.hour == 0 and date.min == 0 then
+            local topPlayer = nil
+            local topTemps  = 0
+            for _, p in ipairs(Players:GetPlayers()) do
+                local d = GetData(p)
+                if d and (d.tempsJeuSemaine or 0) > topTemps then
+                    topTemps  = d.tempsJeuSemaine
+                    topPlayer = p
+                end
+            end
+            if topPlayer then
+                local heures = math.floor(topTemps / 3600)
+                pcall(DiscordWebhook.TopFarmerHebdo, topPlayer.Name, heures, os.date("!%V"))
+                -- Reset des compteurs hebdomadaires pour tous les joueurs en ligne
+                for _, p in ipairs(Players:GetPlayers()) do
+                    local d = GetData(p)
+                    if d then d.tempsJeuSemaine = 0 end
+                end
+            end
+        end
+    end
+end)
 
 print("[" .. Config.NomDuJeu .. "] 🚀 Serveur démarré · " .. os.date("%d/%m/%Y %H:%M"))

@@ -586,19 +586,7 @@ local function lancerScheduler(typeNom)
 				cfg.emoji, typeNom, formatTemps(cfg.compteurVisibleAvant)
 			))
 
-			-- Notification Discord (SECRET uniquement au compteur)
-			if typeNom == "SECRET" then
-				pcall(function()
-					DiscordWebhook.Envoyer(
-						"🔴 SECRET incoming",
-						string.format(
-							"Un Brain Rot SECRET apparaîtra dans %s sur la ZoneCommune !",
-							formatTemps(cfg.compteurVisibleAvant)
-						),
-						cfg.couleurHex
-					)
-				end)
-			end
+			-- Pas de notification Discord au compteur (trop fréquent)
 
 			-- Créer le billboard de compteur (Part dédiée en hauteur pour visibilité)
 			local spawnPos = SPAWN_POINTS[pointIdx]
@@ -636,19 +624,7 @@ local function lancerScheduler(typeNom)
 				cfg.emoji, typeNom, modeleSource.Name
 			))
 
-			-- Discord au spawn (SECRET uniquement)
-			if typeNom == "SECRET" then
-				pcall(function()
-					DiscordWebhook.Envoyer(
-						"🔴 SECRET apparu !",
-						string.format(
-							"Un Brain Rot SECRET **%s** vient d'apparaître sur la ZoneCommune !",
-							modeleSource.Name
-						),
-						cfg.couleurHex
-					)
-				end)
-			end
+			-- Pas de notification Discord au spawn (envoi uniquement à la capture)
 
 			-- ── Phase 4 : attendre résolution (collecte ou despawn) ─
 			local resolu         = false
@@ -679,18 +655,9 @@ local function lancerScheduler(typeNom)
 					playerCollecte.Name, nomModele, typeNom
 				))
 
-				-- Discord collecte (SECRET uniquement)
+				-- Discord : SECRET capturé (rate limited 30 min dans DiscordWebhook)
 				if typeNom == "SECRET" then
-					pcall(function()
-						DiscordWebhook.Envoyer(
-							"🏆 SECRET collecté !",
-							string.format(
-								"**%s** a attrapé le Brain Rot SECRET **%s** !",
-								playerCollecte.Name, nomModele
-							),
-							cfg.couleurHex
-						)
-					end)
+					pcall(DiscordWebhook.SecretCapture, playerCollecte.Name)
 				end
 
 				-- Callback principal (gestion coins dans Main.server.lua)

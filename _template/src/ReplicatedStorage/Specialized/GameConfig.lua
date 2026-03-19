@@ -6,6 +6,15 @@ local GameConfig = {}
 GameConfig.NomDuJeu  = "MonJeu"
 GameConfig.TEST_MODE = false
 
+-- === DISCORD ===
+-- GameConfig.DiscordWebhooks = {
+--     events  = "",  -- #events  : events hebdo importants
+--     records = "",  -- #records : captures rares
+--     dev     = "",  -- #dev-logs : erreurs critiques
+--     revenue = "",  -- #revenue-tracking : (usage futur)
+-- }
+-- GameConfig.DiscordInvite = ""
+
 -- === ITEMS À SPAWNER ===
 -- GameConfig.SpawnableItems = {
 --     dossier = "NomDossierServerStorage",
