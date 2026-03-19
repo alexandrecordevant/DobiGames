@@ -23,8 +23,14 @@ GameConfig.ProduitLuckyHour       = { Id = 0, Prix = 35  }
 GameConfig.ProduitSecretReveal    = { Id = 0, Prix = 25  }
 GameConfig.ProduitSkipTier        = { Id = 0, Prix = 50  }
 
--- === DISCORD WEBHOOK (remplir après création Discord) ===
-GameConfig.DiscordWebhookURL = ""
+-- === DISCORD WEBHOOK ===
+GameConfig.DiscordWebhooks = {
+    events  = "URL_WEBHOOK_EVENTS",   -- #events
+    records = "URL_WEBHOOK_RECORDS",  -- #records
+    dev     = "URL_WEBHOOK_DEV",      -- #dev-logs
+    revenue = "URL_WEBHOOK_REVENUE",  -- #revenue-tracking
+}
+GameConfig.DiscordInvite = "https://discord.gg/JfPHVBpQXS"
 
 -- === ÉCONOMIE ===
 GameConfig.BaseSpawnRate          = 3
@@ -543,5 +549,7 @@ GameConfig.SpawnConfig = {
     maxParBase         = 15,
     despawnSecondes    = 30,
 }
+
+GameConfig.DiscordInvite = "https://discord.gg/JfPHVBpQXS"
 
 return GameConfig

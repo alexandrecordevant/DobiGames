@@ -194,3 +194,46 @@ CollectVFX.OnClientEvent:Connect(function(montant, rarete)
           TextTransparency = 1 }):Play()
     task.delay(1.5, function() popup:Destroy() end)
 end)
+
+-- ============================================================
+-- Discord button (bottom-left, above Daily Seed)
+-- ============================================================
+local GuiService = game:GetService("GuiService")
+
+local discordButton = Instance.new("TextButton", gui)
+discordButton.Name                   = "DiscordButton"
+discordButton.Size                   = UDim2.new(0, 140, 0, 40)
+discordButton.Position               = UDim2.new(0, 10, 1, -250)
+discordButton.BackgroundColor3       = Color3.fromRGB(88, 101, 242)
+discordButton.BackgroundTransparency = 0.1
+discordButton.TextColor3             = Color3.fromRGB(255, 255, 255)
+discordButton.Font                   = Enum.Font.GothamBold
+discordButton.TextSize               = 13
+discordButton.Text                   = "💬 Join Discord"
+discordButton.BorderSizePixel        = 0
+
+local discordCorner = Instance.new("UICorner", discordButton)
+discordCorner.CornerRadius = UDim.new(0, 8)
+
+discordButton.MouseButton1Click:Connect(function()
+    GuiService:OpenBrowserWindow(Config.DiscordInvite or "https://discord.gg/JfPHVBpQXS")
+end)
+
+discordButton.MouseEnter:Connect(function()
+    TweenService:Create(discordButton, TweenInfo.new(0.15), { BackgroundTransparency = 0.0 }):Play()
+end)
+
+discordButton.MouseLeave:Connect(function()
+    TweenService:Create(discordButton, TweenInfo.new(0.15), { BackgroundTransparency = 0.1 }):Play()
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(30)
+        TweenService:Create(discordButton,
+            TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 2, true),
+            { BackgroundTransparency = 0.5 }
+        ):Play()
+        task.wait(0.6)
+    end
+end)
