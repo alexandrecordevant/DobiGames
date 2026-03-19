@@ -237,3 +237,55 @@ task.spawn(function()
         task.wait(0.6)
     end
 end)
+
+-- ============================================================
+-- Notifications générales (NotifEvent)
+-- ============================================================
+local NotifEvent = game.ReplicatedStorage:WaitForChild("NotifEvent")
+
+-- Couleurs par type de notification
+local NOTIF_COULEURS = {
+    INFO    = Color3.fromRGB(0, 150, 255),
+    SUCCESS = Color3.fromRGB(0, 200, 0),
+    ERROR   = Color3.fromRGB(255, 50, 50),
+    WARNING = Color3.fromRGB(255, 165, 0),
+}
+
+-- Label réutilisable (créé une seule fois)
+local notifLabel = Instance.new("TextLabel", gui)
+notifLabel.Name                   = "NotifLabel"
+notifLabel.Size                   = UDim2.new(0, 400, 0, 50)
+notifLabel.Position               = UDim2.new(0.5, -200, 0, 20)
+notifLabel.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
+notifLabel.BackgroundTransparency = 0.3
+notifLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
+notifLabel.Font                   = Enum.Font.GothamBold
+notifLabel.TextSize               = 16
+notifLabel.RichText               = true
+notifLabel.BorderSizePixel        = 0
+notifLabel.Visible                = false
+notifLabel.ZIndex                 = 20
+local notifCorner = Instance.new("UICorner", notifLabel)
+notifCorner.CornerRadius = UDim.new(0, 8)
+
+local notifMasque = false  -- empêche les chevauchements
+
+NotifEvent.OnClientEvent:Connect(function(typeNotif, message)
+    if not message then return end
+
+    -- Couleur selon le type
+    notifLabel.BackgroundColor3 = NOTIF_COULEURS[typeNotif] or Color3.fromRGB(0, 0, 0)
+    notifLabel.Text             = message
+    notifLabel.Visible          = true
+
+    -- Annuler le masquage précédent puis masquer après 3s
+    notifMasque = false
+    task.delay(3, function()
+        if not notifMasque then
+            notifLabel.Visible = false
+        end
+    end)
+    notifMasque = true
+end)
+
+print("[HUDController] NotifEvent connecté ✓")

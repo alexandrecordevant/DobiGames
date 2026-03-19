@@ -62,13 +62,14 @@ end
 -- ============================================================
 -- Chargement différé des systèmes gameplay
 -- ============================================================
-local _BrainRotSpawner = nil
+-- Common car renommé et déplacé
+local _SpawnManager = nil
 local function getBrainRotSpawner()
-    if not _BrainRotSpawner then
-        local ok, m = pcall(require, ServerScriptService.Specialized.BrainRotSpawner)
-        if ok and m then _BrainRotSpawner = m end
+    if not _SpawnManager then
+        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.SpawnManager)
+        if ok and m then _SpawnManager = m end
     end
-    return _BrainRotSpawner
+    return _SpawnManager
 end
 
 local _IncomeSystem = nil

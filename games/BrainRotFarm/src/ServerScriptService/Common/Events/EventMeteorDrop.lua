@@ -20,12 +20,12 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Config = require(ReplicatedStorage.Specialized.GameConfig)
 
 -- ============================================================
--- Chargement différé de BrainRotSpawner
+-- Chargement différé de SpawnManager (renommé depuis BrainRotSpawner)
 -- ============================================================
 local _BRS = nil
 local function getBRS()
     if not _BRS then
-        local ok, m = pcall(require, ServerScriptService.Specialized.BrainRotSpawner)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.SpawnManager)
         if ok and m then _BRS = m end
     end
     return _BRS

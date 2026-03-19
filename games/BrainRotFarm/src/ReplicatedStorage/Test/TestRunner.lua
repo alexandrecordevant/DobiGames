@@ -416,7 +416,7 @@ local function VerifierScripts()
         { service=SSS, chemin="Common.AssignationSystem",       nom="AssignationSystem"     },
         { service=SSS, chemin="Common.BaseProgressionSystem",   nom="BaseProgressionSystem" },
         { service=SSS, chemin="Common.RebirthSystem",           nom="RebirthSystem"         },
-        { service=SSS, chemin="Specialized.BrainRotSpawner",    nom="BrainRotSpawner"       },
+        { service=SSS, chemin="Common.SpawnManager",             nom="SpawnManager"          },
         { service=SSS, chemin="Specialized.ChampCommunSpawner", nom="ChampCommunSpawner"    },
         { service=RS,  chemin="Specialized.GameConfig",         nom="GameConfig"            },
         { service=RS,  chemin="Test.TestConfig",                nom="TestConfig"            },
