@@ -104,7 +104,7 @@ local _FlowerPotSystem = nil
 local function getFlowerPotSystem()
     if not _FlowerPotSystem then
         local ok, m = pcall(require,
-            game:GetService("ServerScriptService").Common.FlowerPotSystem)
+            game:GetService("ServerScriptService").Specialized.FlowerPotSystem)
         if ok then _FlowerPotSystem = m end
     end
     return _FlowerPotSystem
@@ -336,9 +336,13 @@ local function spawnerUnBrainRot(baseIndex)
 	-- Récupérer tous les BaseParts
 	local parts = obtenirBaseParts(clone)
 
-	-- CanCollide = false permanent (collecte via ProximityPrompt)
+	-- CanCollide = false permanent, CanTouch = true pour Touched events (COMMON/OG/RARE)
+	local usesTouch = (RARETE_ORDRE[rarete.nom] or 0) <= 3
 	for _, part in ipairs(parts) do
 		part.CanCollide = false
+		if usesTouch then
+			part.CanTouch = true
+		end
 	end
 
 	-- Enregistrer dans la liste des actifs
@@ -399,14 +403,15 @@ local function spawnerUnBrainRot(baseIndex)
 			for _, part in ipairs(parts) do
 				part.Anchored = true
 			end
+
+			-- ProximityPrompt pour EPIC+ (via OnBRSpawned)
 			if SpawnManager.OnBRSpawned then
 				local onCapture = nil
-				if (RARETE_ORDRE[rarete.nom] or 0) >= 3 then  -- RARE = 3, EPIC = 4, etc.
+				if (RARETE_ORDRE[rarete.nom] or 0) >= 4 then  -- EPIC = 4, LEGENDARY = 5, etc.
 					onCapture = function(player)
 						if SpawnManager.OnRareCollecte then
 							pcall(SpawnManager.OnRareCollecte, player, rarete.nom)
 						end
-						-- Drop chance de graine selon la rareté
 						local FPS = getFlowerPotSystem()
 						if FPS then
 							pcall(FPS.TenterDropGraine, player, rarete.nom)
@@ -414,6 +419,35 @@ local function spawnerUnBrainRot(baseIndex)
 					end
 				end
 				pcall(SpawnManager.OnBRSpawned, clone, baseIndex, rarete, onCapture)
+			end
+
+			-- Ramassage Touched pour COMMON / OG / RARE (ordre <= 3)
+			-- Indépendant de OnBRSpawned pour éviter les problèmes de timing
+			if (RARETE_ORDRE[rarete.nom] or 0) <= 3 then
+				local touchCollected = false
+				for _, part in ipairs(parts) do
+					part.Touched:Connect(function(hit)
+						if touchCollected then return end
+						if clone:GetAttribute("Captured") then return end
+						if not SpawnManager.OnCollecte then return end
+						local char = hit.Parent
+						local pl   = Players:GetPlayerFromCharacter(char)
+						if not pl then
+							char = hit.Parent and hit.Parent.Parent
+							pl   = char and Players:GetPlayerFromCharacter(char)
+						end
+						if not pl then return end
+						-- Seulement le joueur assigné à cette base
+						if assignations[pl.UserId] ~= baseIndex then return end
+						local ok2, success = pcall(SpawnManager.OnCollecte, pl, baseIndex, rarete, clone)
+						if ok2 and success then
+							touchCollected = true
+							pcall(function() clone:SetAttribute("Captured", true) end)
+							actifs[baseIndex][id] = nil
+							compteurs[baseIndex]  = math.max(0, compteurs[baseIndex] - 1)
+						end
+					end)
+				end
 			end
 		end
 	end)
