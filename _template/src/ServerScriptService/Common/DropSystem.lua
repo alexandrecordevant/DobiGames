@@ -411,6 +411,13 @@ local function scannerSpots(player, baseIndex)
                 local spotModel = trouverSpot(floorObj, spotNum)
                 if spotModel then
                     local touchPart = spotModel:FindFirstChild("TouchPart")
+                    if touchPart and not touchPart:IsA("BasePart") then touchPart = nil end
+                    if not touchPart then
+                        touchPart = spotModel:IsA("BasePart") and spotModel
+                                 or spotModel:FindFirstChild("Part")
+                                 or (spotModel:IsA("Model") and spotModel.PrimaryPart)
+                                 or spotModel:FindFirstChildWhichIsA("BasePart")
+                    end
                     if touchPart then
                         local cle = floorDef.index .. "_" .. spotNum
                         spotIndex[player.UserId][cle] = touchPart
@@ -491,11 +498,32 @@ function DropSystem.Init(player, baseIndex, playerData)
     end
 end
 
--- Enregistre un spot nouvellement débloqué (appelé depuis BaseProgressionSystem via hook dans Main)
-function DropSystem.InitSpot(player, touchPart)
-    -- Rien à faire ici car le scan initial couvre tous les spots du fichier config.
-    -- Cette fonction est conservée pour l'API publique et les hooks futurs.
-    -- Le touchPart est déjà dans spotIndex s'il correspond à un spot de la config.
+-- Ajoute un spot au spotIndex (appelé par BaseProgressionSystem lors d'un déblocage runtime)
+function DropSystem.AjouterSpotIndex(player, spotKey, touchPart)
+    if not spotIndex[player.UserId] then spotIndex[player.UserId] = {} end
+    if spotIndex[player.UserId][spotKey] then return end
+    spotIndex[player.UserId][spotKey] = touchPart
+    print("[DropSystem] SpotIndex mis à jour : " .. spotKey .. " → " .. player.Name)
+end
+
+-- Enregistre un spot nouvellement débloqué depuis un spotModel (API alternative)
+function DropSystem.InitSpot(player, spotModel, spotKey)
+    if not spotModel then return end
+    local touchPart = spotModel:FindFirstChild("TouchPart")
+    if touchPart and not touchPart:IsA("BasePart") then touchPart = nil end
+    if not touchPart then
+        touchPart = spotModel:IsA("BasePart") and spotModel
+                 or spotModel:FindFirstChild("Part")
+                 or (spotModel:IsA("Model") and spotModel.PrimaryPart)
+                 or spotModel:FindFirstChildWhichIsA("BasePart")
+    end
+    if not touchPart then
+        warn("[DropSystem] InitSpot : aucune Part trouvée dans " .. spotModel.Name)
+        return
+    end
+    if spotKey then
+        DropSystem.AjouterSpotIndex(player, spotKey, touchPart)
+    end
 end
 
 -- ============================================================

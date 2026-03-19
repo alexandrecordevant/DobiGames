@@ -34,6 +34,54 @@ local function GetFloorNom(index)
 end
 
 -- ============================================================
+-- Lazy loaders (évitent les dépendances circulaires)
+-- ============================================================
+local _CarrySystem = nil
+local function getCarrySystem()
+    if not _CarrySystem then
+        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.CarrySystem)
+        if ok and m then _CarrySystem = m end
+    end
+    return _CarrySystem
+end
+
+local _DropSystem = nil
+local function getDropSystem()
+    if not _DropSystem then
+        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.DropSystem)
+        if ok and m then _DropSystem = m end
+    end
+    return _DropSystem
+end
+
+-- Crée le DepotPrompt + met à jour spotIndex pour un spot nouvellement débloqué (runtime)
+-- Ne pas appeler pendant Init (CarrySystem.InitDepotSpotsBase s'en charge en masse)
+local function activerDepotSpot(player, spotObj, spotKey)
+    local touchPart = spotObj:FindFirstChild("TouchPart")
+    if touchPart and not touchPart:IsA("BasePart") then touchPart = nil end
+    if not touchPart then
+        touchPart = spotObj:IsA("BasePart") and spotObj
+                 or spotObj:FindFirstChild("Part")
+                 or (spotObj:IsA("Model") and spotObj.PrimaryPart)
+                 or spotObj:FindFirstChildWhichIsA("BasePart")
+    end
+    if not touchPart then
+        warn("[BaseProgressionSystem] activerDepotSpot : aucune Part dans " .. spotObj.Name)
+        return
+    end
+
+    -- Mettre à jour le spotIndex de DropSystem (sinon DeposerBrainRots rejette le spot)
+    local DS = getDropSystem()
+    if DS then pcall(DS.AjouterSpotIndex, player, spotKey, touchPart) end
+
+    -- Créer le ProximityPrompt de dépôt via CarrySystem
+    local CS = getCarrySystem()
+    if CS then pcall(CS.AjouterDepotSpot, player, touchPart) end
+
+    print(string.format("[BaseProgressionSystem] DepotPrompt créé : %s (spot %s)", spotObj.Name, spotKey))
+end
+
+-- ============================================================
 -- État interne par joueur
 -- ============================================================
 -- { baseIndex, playerData, progression, spotsActifs, baseFolder }
@@ -393,11 +441,14 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 		effetDeblocageEtage(racineFloor.Position + Vector3.new(0, 5, 0))
 	end
 
-	-- spot_1 → débloqué
+	-- spot_1 → débloqué + DepotPrompt créé
 	local spot1 = trouverSpot(floorObj, 1)
-	if spot1 then appliquerEtatDebloque(spot1, dd.spotsActifs) end
+	if spot1 then
+		appliquerEtatDebloque(spot1, dd.spotsActifs)
+		activerDepotSpot(player, spot1, floorNum .. "_1")
+	end
 
-	-- spot_2 à spot_10 → verrouillés (maintenant visibles à 0.7)
+	-- spot_2 à spot_10 → verrouillés (maintenant visibles à 0.7) ou déjà débloqués (cascade)
 	for _, seuil in ipairs(SEUILS) do
 		if seuil.floor == floorNum and seuil.spot > 1 then
 			local spotObj = trouverSpot(floorObj, seuil.spot)
@@ -406,6 +457,7 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 				if dd.progression[cle] then
 					-- Déjà débloqué (cas rare : déblocage en cascade)
 					appliquerEtatDebloque(spotObj, dd.spotsActifs)
+					activerDepotSpot(player, spotObj, cle)
 				else
 					appliquerEtatVerrouille(spotObj, seuil)
 				end
@@ -422,10 +474,12 @@ end
 -- Déblocage d'un spot individuel
 -- ============================================================
 
-local function debloquerSpotIndividuel(dd, floorObj, seuil)
+local function debloquerSpotIndividuel(player, dd, floorObj, seuil)
 	local spotObj = trouverSpot(floorObj, seuil.spot)
 	if not spotObj then return end
 	appliquerEtatDebloque(spotObj, dd.spotsActifs)
+	-- Créer le DepotPrompt et mettre à jour spotIndex (runtime)
+	activerDepotSpot(player, spotObj, seuil.floor .. "_" .. seuil.spot)
 end
 
 -- ============================================================
@@ -456,8 +510,8 @@ function BaseProgressionSystem.VerifierDeblocages(player, playerData)
 				-- Premier spot d'un étage supérieur → déblocage complet de l'étage
 				debloquerEtage(player, dd, seuil.floor, floorObj)
 			else
-				-- Spot individuel
-				debloquerSpotIndividuel(dd, floorObj, seuil)
+				-- Spot individuel (player passé pour créer le DepotPrompt)
+				debloquerSpotIndividuel(player, dd, floorObj, seuil)
 			end
 		end
 	end

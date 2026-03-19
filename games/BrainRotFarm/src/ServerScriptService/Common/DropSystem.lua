@@ -381,6 +381,28 @@ local function supprimerPromptRecuperer(touchPart)
 end
 
 -- ============================================================
+-- Utilitaire — trouver la Part de dépôt dans un spotModel
+-- Cherche dans cet ordre : TouchPart nommé, Part direct, PrimaryPart, premier BasePart
+-- ============================================================
+
+local function trouverTouchPart(spotModel)
+    -- 1. Child explicitement nommé "TouchPart"
+    local tp = spotModel:FindFirstChild("TouchPart")
+    if tp and tp:IsA("BasePart") then return tp end
+    -- 2. Le spot EST lui-même une BasePart
+    if spotModel:IsA("BasePart") then return spotModel end
+    -- 3. Child nommé "Part"
+    tp = spotModel:FindFirstChild("Part")
+    if tp and tp:IsA("BasePart") then return tp end
+    -- 4. PrimaryPart du Model
+    if spotModel:IsA("Model") and spotModel.PrimaryPart then
+        return spotModel.PrimaryPart
+    end
+    -- 5. Premier BasePart descendant
+    return spotModel:FindFirstChildWhichIsA("BasePart")
+end
+
+-- ============================================================
 -- Construction de la table de lookup spots (Init)
 -- ============================================================
 
@@ -401,10 +423,12 @@ local function scannerSpots(player, baseIndex)
             for spotNum = 1, (floorDef.spots or 10) do
                 local spotModel = trouverSpot(floorObj, spotNum)
                 if spotModel then
-                    local touchPart = spotModel:FindFirstChild("TouchPart")
+                    local touchPart = trouverTouchPart(spotModel)
                     if touchPart then
                         local cle = floorDef.index .. "_" .. spotNum
                         spotIndex[player.UserId][cle] = touchPart
+                    else
+                        warn("[DropSystem] Aucune Part trouvée dans " .. spotModel.Name)
                     end
                 end
             end
@@ -482,11 +506,28 @@ function DropSystem.Init(player, baseIndex, playerData)
     end
 end
 
--- Enregistre un spot nouvellement débloqué (appelé depuis BaseProgressionSystem via hook dans Main)
-function DropSystem.InitSpot(player, touchPart)
-    -- Rien à faire ici car le scan initial couvre tous les spots du fichier config.
-    -- Cette fonction est conservée pour l'API publique et les hooks futurs.
-    -- Le touchPart est déjà dans spotIndex s'il correspond à un spot de la config.
+-- Ajoute un spot au spotIndex (appelé par BaseProgressionSystem lors d'un déblocage runtime)
+-- spotKey = "floor_spot" (ex : "2_3"), touchPart = la Part de dépôt
+function DropSystem.AjouterSpotIndex(player, spotKey, touchPart)
+    if not spotIndex[player.UserId] then spotIndex[player.UserId] = {} end
+    if spotIndex[player.UserId][spotKey] then return end  -- déjà enregistré
+    spotIndex[player.UserId][spotKey] = touchPart
+    print("[DropSystem] SpotIndex mis à jour : " .. spotKey .. " → " .. player.Name)
+end
+
+-- Enregistre un spot nouvellement débloqué depuis un spotModel (API alternative)
+-- Trouve la touchPart automatiquement et l'ajoute au spotIndex
+function DropSystem.InitSpot(player, spotModel, spotKey)
+    if not spotModel then return end
+    local touchPart = trouverTouchPart(spotModel)
+    if not touchPart then
+        warn("[DropSystem] InitSpot : aucune Part trouvée dans " .. spotModel.Name)
+        return
+    end
+    if spotKey then
+        DropSystem.AjouterSpotIndex(player, spotKey, touchPart)
+    end
+    print("[DropSystem] InitSpot : " .. spotModel.Name .. " enregistré pour " .. player.Name)
 end
 
 -- ============================================================
