@@ -1,6 +1,6 @@
 -- ServerScriptService/CarrySystem.lua
 -- BrainRotFarm — Transport + Capture des Brain Rots
--- Touched pour COMMON/OG/RARE
+-- ProximityPrompt pour tous les BR
 -- ProximityPrompt avec HoldDuration progressif pour EPIC → BRAINROT_GOD
 -- ProximityPrompt instantané pour dépôt à la base
 
@@ -42,7 +42,7 @@ local _FlowerPotSystem = nil
 local function getFlowerPotSystem()
     if not _FlowerPotSystem then
         local ok, m = pcall(require,
-            game:GetService("ServerScriptService").Common.FlowerPotSystem)
+            game:GetService("ServerScriptService").Specialized.FlowerPotSystem)
         if ok then _FlowerPotSystem = m end
     end
     return _FlowerPotSystem
@@ -832,6 +832,14 @@ function CarrySystem.ViderCarry(player)
 	return deposes
 end
 
+-- Ajouter un BR directement au carry (utilisé par FlowerPotSystem, DropSystem)
+-- clone  : Model ou BasePart déjà cloné (nil → clone depuis ServerStorage via rarete.dossier)
+-- rarete : table { nom=string, dossier=string?, isMutant=bool?, valeur=number? }
+-- Retourne true si succès, false si carry plein
+function CarrySystem.AjouterAuCarry(player, clone, rarete)
+    return effectuerRamassage(player, rarete, clone)
+end
+
 function CarrySystem.SetProtection(player, valeur)
 	local data = donneesJoueurs[player.UserId]
 	if data then data.hasProtection = valeur == true end
@@ -855,36 +863,14 @@ function CarrySystem.GetRayonAimant(player)
 	return rayonAimant[player.UserId] or 0
 end
 
--- Appelé depuis Main.server.lua via BrainRotSpawner.OnCollecte
--- Pour les BRs en mode "touched" (COMMON / OG / RARE)
-function CarrySystem.RamasserBR(player, rarete, brModel)
-	local cfg = CAPTURE_CONFIG[rarete and rarete.nom or "COMMON"]
-	if cfg and cfg.mode == "prompt" then
-		return false  -- géré par OnBRSpawned → ProximityPrompt
-	end
-	return effectuerRamassage(player, rarete, brModel)
-end
-
--- Appelé depuis Main.server.lua, connecté à BrainRotSpawner.OnBRSpawned.
--- Pour les BRs EPIC+ : attache un ProximityPrompt au modèle monde.
---
--- ⚠️ Nécessite l'ajout dans BrainRotSpawner, à la fin de spawnerUnBrainRot()
---    (après l'animation, avant le task.delay despawn) :
---
---    if BrainRotSpawner.OnBRSpawned then
---        pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
---    end
---
+-- Appelé depuis Main.server.lua, connecté à SpawnManager.OnBRSpawned.
+-- Attache un ProximityPrompt au modèle monde pour tous les BR.
 function CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, onCapture)
 	if not rarete then
 		warn("[CarrySystem] OnBRSpawned : rarete nil")
 		return
 	end
-	local cfg = CAPTURE_CONFIG[rarete.nom]
-	if cfg and cfg.mode == "prompt" then
-		creerPromptCapture(brModel, rarete, baseIndex, onCapture)
-	end
-	-- mode "touched" : BrainRotSpawner gère via Touched + OnCollecte
+	creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 end
 
 -- ============================================================
@@ -908,7 +894,7 @@ function CarrySystem.Init()
 	Players.PlayerAdded:Connect(initJoueur)
 	Players.PlayerRemoving:Connect(nettoyerJoueur)
 
-	print("[CarrySystem] ✓ Initialisé (Touched COMMON/OG/RARE · ProximityPrompt EPIC+)")
+	print("[CarrySystem] ✓ Initialisé (ProximityPrompt pour tous les BR)")
 end
 
 return CarrySystem

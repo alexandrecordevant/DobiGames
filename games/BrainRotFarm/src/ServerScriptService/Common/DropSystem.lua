@@ -580,15 +580,35 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     for i = 2, #tous do
         local restant = tous[i]
         if restant and restant.rarete then
-            pcall(CarrySystem.RamasserBR, player, restant.rarete, restant.modele)
+            -- Remettre les BR restants dans le carry
+            pcall(CarrySystem.AjouterAuCarry, player, restant.modele, restant.rarete)
         end
     end
 
     -- Calculer la valeur par seconde
     local valeurSec = VALEUR_PAR_RARETE[rarete] or 1
+    -- Multiplier par le multiplicateur si BR Mutant
+    if entree.rarete.isMutant and entree.rarete.valeur then
+        valeurSec = valeurSec * entree.rarete.valeur
+    end
 
     -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
     local miniModel = placerMiniModele(touchPart, rarete, modeleDepose)
+
+    -- Spot doré si BR Mutant
+    if entree.rarete.isMutant then
+        local spotColor = (Config.FlowerPotConfig and Config.FlowerPotConfig.spotMutantCouleur)
+                       or Color3.fromRGB(255, 215, 0)
+        pcall(function()
+            touchPart.Color = spotColor
+            local light = touchPart:FindFirstChild("MutantLight")
+                       or Instance.new("PointLight", touchPart)
+            light.Name       = "MutantLight"
+            light.Brightness = 2
+            light.Range      = 10
+            light.Color      = Color3.fromRGB(255, 215, 0)
+        end)
+    end
 
     -- Enregistrer en mémoire locale
     spotsData[uid][touchPart] = {
@@ -664,7 +684,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
 
     -- Remettre le BR dans le carry du joueur
     local rareteObj = { nom = rarete, dossier = rarete }
-    pcall(CarrySystem.RamasserBR, player, rareteObj, nil)
+    pcall(CarrySystem.AjouterAuCarry, player, nil, rareteObj)
 
     -- Remettre le SurfaceGui à vide
     viderGui(touchPart)
@@ -862,7 +882,7 @@ function DropSystem.EjecterBR(player, touchPart)
                         if triggerPlayer ~= player then return end
                         local CS = require(ServerScriptService.Common.CarrySystem)
                         local rareteObj = { nom = rarete, dossier = rarete }
-                        pcall(CS.RamasserBR, player, rareteObj, nil)
+                        pcall(CS.AjouterAuCarry, player, nil, rareteObj)
                         pcall(function() clone:Destroy() end)
                     end)
                     -- Auto-destroy après 15s

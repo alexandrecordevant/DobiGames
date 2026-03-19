@@ -414,7 +414,7 @@ end
 
 -- Collecte Touched (COMMON/OG/RARE) → ramassage carry avec le modèle monde
 SpawnManager.OnCollecte = function(player, baseIndex, rarete, brModel)
-    return CarrySystem.RamasserBR(player, rarete, brModel)
+    return CarrySystem.AjouterAuCarry(player, brModel, rarete)
 end
 
 -- CarrySystem utilise AssignationSystem comme source de vérité pour la base du joueur

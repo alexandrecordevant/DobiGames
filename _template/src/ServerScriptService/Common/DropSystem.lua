@@ -576,7 +576,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     for i = 2, #tous do
         local restant = tous[i]
         if restant and restant.rarete then
-            pcall(CarrySystem.RamasserBR, player, restant.rarete, restant.modele)
+            pcall(CarrySystem.AjouterAuCarry, player, restant.modele, restant.rarete)
         end
     end
 
@@ -660,7 +660,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
 
     -- Remettre le BR dans le carry du joueur
     local rareteObj = { nom = rarete, dossier = rarete }
-    pcall(CarrySystem.RamasserBR, player, rareteObj, nil)
+    pcall(CarrySystem.AjouterAuCarry, player, nil, rareteObj)
 
     -- Remettre le SurfaceGui à vide
     viderGui(touchPart)
@@ -856,7 +856,7 @@ function DropSystem.EjecterBR(player, touchPart)
                         if triggerPlayer ~= player then return end
                         local CS = require(ServerScriptService.Common.CarrySystem)
                         local rareteObj = { nom = rarete, dossier = rarete }
-                        pcall(CS.RamasserBR, player, rareteObj, nil)
+                        pcall(CS.AjouterAuCarry, player, nil, rareteObj)
                         pcall(function() clone:Destroy() end)
                     end)
                     -- Auto-destroy après 15s

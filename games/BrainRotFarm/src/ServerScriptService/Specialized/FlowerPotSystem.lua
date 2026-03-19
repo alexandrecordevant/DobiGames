@@ -897,7 +897,7 @@ function FlowerPotSystem.Planter(player, potIndex)
         else
             -- Remettre les autres dans le carry
             if e.rarete then
-                pcall(CS.RamasserBR, player, e.rarete, e.modele)
+                pcall(CS.AjouterAuCarry, player, e.modele, e.rarete)
             end
         end
     end
@@ -913,7 +913,7 @@ function FlowerPotSystem.Planter(player, potIndex)
     if not baseIndex then
         notifier(player, "ERROR", "❌ No base assigned!")
         potData.rarete = nil
-        if modeleDepose then pcall(CS.RamasserBR, player, brAPlanter.rarete, modeleDepose) end
+        if modeleDepose then pcall(CS.AjouterAuCarry, player, modeleDepose, brAPlanter.rarete) end
         return
     end
 
@@ -1199,7 +1199,15 @@ function FlowerPotSystem.Recolter(player, potIndex)
                     valeur   = multVal,
                     couleur  = graineCfg.couleurStage4,
                 }
-                pcall(CS.RamasserBR, player, rareteObj, clone)
+                -- Ajouter le Mutant au carry (retourne false si carry plein)
+                local ok2, success = pcall(CS.AjouterAuCarry, player, clone, rareteObj)
+                if not ok2 or not success then
+                    -- Carry plein → ne pas réinitialiser le pot, joueur peut réessayer
+                    notifier(player, "WARNING",
+                        "🎒 Carry full! Deposit your Brain Rots first, then harvest.")
+                    pcall(function() clone:Destroy() end)
+                    return
+                end
             end
         end
     end

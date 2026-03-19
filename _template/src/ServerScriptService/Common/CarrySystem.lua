@@ -865,6 +865,14 @@ function CarrySystem.RamasserBR(player, rarete, brModel)
 	return effectuerRamassage(player, rarete, brModel)
 end
 
+-- Ajouter un BR directement au carry (utilisé par FlowerPotSystem, DropSystem)
+-- clone  : Model ou BasePart déjà cloné (nil → clone depuis ServerStorage via rarete.dossier)
+-- rarete : table { nom=string, dossier=string?, isMutant=bool?, valeur=number? }
+-- Retourne true si succès, false si carry plein
+function CarrySystem.AjouterAuCarry(player, clone, rarete)
+	return effectuerRamassage(player, rarete, clone)
+end
+
 -- Appelé depuis Main.server.lua, connecté à BrainRotSpawner.OnBRSpawned.
 -- Pour les BRs EPIC+ : attache un ProximityPrompt au modèle monde.
 --
