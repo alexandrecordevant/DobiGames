@@ -96,6 +96,64 @@ local function FadeIn(model, duree)
 end
 
 -- ============================================================
+-- NettoyerModeleVisuel — supprime parasites visuels d'un clone BR
+-- (VfxInstance, FakeRootPart, constraints → cubes gris)
+-- Marque OriginalTransparency=1 sur les parts à garder invisibles
+-- afin que FadeIn les laisse à 1 lors de l'animation
+-- ============================================================
+local function NettoyerModeleVisuel(clone)
+    local toDetruire = {}
+    for _, descendant in ipairs(clone:GetDescendants()) do
+        -- VfxInstance : cause principale des cubes gris
+        if descendant.Name == "VfxInstance" then
+            table.insert(toDetruire, descendant)
+
+        -- FakeRootPart : rendre invisible + marquer pour FadeIn
+        elseif descendant.Name == "FakeRootPart" and descendant:IsA("BasePart") then
+            pcall(function()
+                descendant.Transparency = 1
+                descendant.CanCollide   = false
+                descendant.CanTouch     = false
+                descendant.Anchored     = true
+                descendant.Size         = Vector3.new(0.01, 0.01, 0.01)
+                descendant:SetAttribute("OriginalTransparency", 1)
+            end)
+
+        -- Contraintes physiques résiduelles
+        elseif descendant:IsA("WeldConstraint")
+            or descendant:IsA("Weld")
+            or descendant:IsA("Motor6D")
+            or descendant:IsA("BodyForce")
+            or descendant:IsA("BodyVelocity")
+            or descendant:IsA("BodyGyro") then
+            table.insert(toDetruire, descendant)
+
+        -- Parts sans mesh déjà transparentes → garder invisibles (FadeIn les laissera à 1)
+        elseif descendant:IsA("BasePart") then
+            local hasMesh = descendant:FindFirstChildOfClass("SpecialMesh")
+                         or descendant:FindFirstChildOfClass("MeshPart")
+                         or descendant:IsA("MeshPart")
+                         or descendant:IsA("UnionOperation")
+            if not hasMesh and descendant.Transparency >= 0.9 then
+                pcall(function()
+                    descendant.Transparency = 1
+                    descendant:SetAttribute("OriginalTransparency", 1)
+                end)
+            end
+            pcall(function()
+                descendant.Anchored   = true
+                descendant.CanCollide = false
+                descendant.CanTouch   = false
+            end)
+        end
+    end
+    -- Détruire hors boucle (évite de modifier la liste pendant l'itération)
+    for _, v in ipairs(toDetruire) do
+        pcall(function() v:Destroy() end)
+    end
+end
+
+-- ============================================================
 -- CreerPlanteProcedural — plante procedurale si PlantModels absent
 -- ============================================================
 local function CreerPlanteProcedural(stage, basePos, couleur, rarete)
@@ -280,6 +338,10 @@ local function CreerBRMiniature(rarete, stage, basePos, couleur)
         if not dossier or #dossier:GetChildren() == 0 then return nil end
 
         local clone = dossier:GetChildren()[1]:Clone()
+
+        -- Nettoyer AVANT tout (supprime VfxInstance, FakeRootPart, constraints)
+        NettoyerModeleVisuel(clone)
+
         local scales = { [1]=0.2, [2]=0.4, [3]=0.7, [4]=1.2 }
         local scale  = scales[stage] or 0.2
 
@@ -999,11 +1061,12 @@ function FlowerPotSystem.PotMature(player, baseIndex, potIndex, data)
     local graineCfg = FPConfig.graines[potData.rarete]
     if not graineCfg then return end
 
+    -- Notifier le joueur
     notifier(player, "SUCCESS",
         "🌟 " .. potData.rarete .. " Mutant ready!"
-        .. " Go harvest Pot " .. potIndex .. "!")
+        .. " Press F to harvest Pot " .. potIndex .. "!")
 
-    -- Mettre à jour le PointLight sur le pot
+    -- Trouver le pot dans le Workspace
     local bases    = Workspace:FindFirstChild("Bases")
     local base     = bases and bases:FindFirstChild("Base_" .. baseIndex)
     local potModel = base and base:FindFirstChild("FlowerPot_" .. potIndex)
@@ -1012,6 +1075,7 @@ function FlowerPotSystem.PotMature(player, baseIndex, potIndex, data)
     local potPart = getPotPart(potModel)
     if not potPart then return end
 
+    -- Lumière stage 4
     pcall(function()
         local light = potPart:FindFirstChild("PotLight")
         if not light then
@@ -1022,6 +1086,35 @@ function FlowerPotSystem.PotMature(player, baseIndex, potIndex, data)
         light.Range      = 25
         light.Color      = graineCfg.couleurStage4
     end)
+
+    -- Créer le ProximityPrompt Harvest (garanti présent au stage 4)
+    pcall(function()
+        local existing = potPart:FindFirstChildOfClass("ProximityPrompt")
+        if existing then existing:Destroy() end
+
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.ActionText            = "Harvest"
+        prompt.ObjectText            = "🌟 " .. (graineCfg.label or potData.rarete)
+        prompt.HoldDuration          = 0
+        prompt.MaxActivationDistance = 8
+        prompt.KeyboardKeyCode       = Enum.KeyCode.F
+        prompt.RequiresLineOfSight   = false
+        prompt.Enabled               = true
+        prompt.Parent                = potPart
+
+        prompt.Triggered:Connect(function(triggerPlayer)
+            if triggerPlayer ~= player then return end
+            FlowerPotSystem.Recolter(triggerPlayer, potIndex)
+        end)
+    end)
+
+    -- Billboard stage 4
+    pcall(function()
+        majBillboard(potPart,
+            "<font color='#FFD700'>🌟 READY! Press F to Harvest!</font>")
+    end)
+
+    print("[FlowerPot] Pot " .. potIndex .. " mûr → Harvest prompt créé")
 end
 
 -- ============================================================

@@ -832,6 +832,8 @@ function DropSystem.EjecterBR(player, touchPart)
                 local clone  = nil
                 pcall(function() clone = source:Clone() end)
                 if clone then
+                    -- Nettoyer les parasites visuels (VfxInstance, PromptAnchor → cubes gris)
+                    nettoyerParasites(clone)
                     -- Position légèrement décalée du spot
                     local offset = Vector3.new(math.random(-4, 4), 1, math.random(-4, 4))
                     local pos    = touchPart.Position + offset
