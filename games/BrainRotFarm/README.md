@@ -5,7 +5,6 @@
 - **DataStoreManager.lua** — Sauvegarde et chargement des données joueur (DataStore)
 - **SpawnManager.lua** — Spawn des BR dans les champs individuels de chaque base
 - **CommunSpawner.lua** — Spawn des BR dans la zone commune (MYTHIC + SECRET)
-- **RebirthSystem.lua** — Rebirth : reset du tier contre un multiplicateur permanent
 - **LeaderboardSystem.lua** — Leaderstats in-game et classement Discord hebdomadaire
 - **ShopSystem.lua** — Achats d'upgrades et items via ProximityPrompt
 - **EventVisuals.lua** — Effets visuels et gameplay pendant les events (NightMode, MeteorDrop, Rain…)
@@ -38,6 +37,7 @@
 - **server/BaseProgressionSystem.lua** — Déblocage des spots de base
 - **server/CarrySystem.lua** — Ramassage et transport des BR
 - **server/DropSystem.lua** — Dépôt des BR sur les spots, visuels, revenus
+- **server/RebirthSystem.lua** — Rebirth : reset progression contre multiplicateur permanent
 - **server/EventManager.lua** — Events automatiques
 - **server/IncomeSystem.lua** — Revenus passifs
 - **server/MonetizationHandler.lua** — Game Passes

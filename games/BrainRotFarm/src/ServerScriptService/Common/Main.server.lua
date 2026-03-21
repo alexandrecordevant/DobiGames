@@ -12,19 +12,19 @@ local RunService         = game:GetService("RunService")
 -- ═══════════════════════════════════════════════
 
 local Config             = require(ReplicatedStorage.Specialized.GameConfig)
-local CollectSystem      = require(ReplicatedStorage.Common.CollectSystem)
-local UpgradeSystem      = require(ReplicatedStorage.Common.UpgradeSystem)
+local CollectSystem      = require(ReplicatedStorage.SharedLib.Shared.CollectSystem)
+local UpgradeSystem      = require(ReplicatedStorage.SharedLib.Shared.UpgradeSystem)
 
 local DataStoreManager      = require(ServerScriptService.Common.DataStoreManager)
-local EventManager          = require(ServerScriptService.Common.EventManager)
-local MonetizationHandler   = require(ServerScriptService.Common.MonetizationHandler)
+local EventManager          = require(ReplicatedStorage.SharedLib.Server.EventManager)
+local MonetizationHandler   = require(ReplicatedStorage.SharedLib.Server.MonetizationHandler)
 local SpawnManager          = require(ServerScriptService.Common.SpawnManager)
-local BaseProgressionSystem = require(ServerScriptService.Common.BaseProgressionSystem)
-local CarrySystem           = require(ServerScriptService.Common.CarrySystem)
-local RebirthSystem         = require(ServerScriptService.Common.RebirthSystem)
-local AssignationSystem     = require(ServerScriptService.Common.AssignationSystem)
-local DropSystem            = require(ServerScriptService.Common.DropSystem)
-local IncomeSystem          = require(ServerScriptService.Common.IncomeSystem)
+local BaseProgressionSystem = require(ReplicatedStorage.SharedLib.Server.BaseProgressionSystem)
+local CarrySystem           = require(ReplicatedStorage.SharedLib.Server.CarrySystem)
+local RebirthSystem         = require(ReplicatedStorage.SharedLib.Server.RebirthSystem)
+local AssignationSystem     = require(ReplicatedStorage.SharedLib.Server.AssignationSystem)
+local DropSystem            = require(ReplicatedStorage.SharedLib.Server.DropSystem)
+local IncomeSystem          = require(ReplicatedStorage.SharedLib.Server.IncomeSystem)
 local LeaderboardSystem     = require(ServerScriptService.Common.LeaderboardSystem)
 local ShopSystem            = require(ServerScriptService.Common.ShopSystem)
 local SprinklerSystem       = require(ServerScriptService.Specialized.SprinklerSystem)
@@ -231,7 +231,24 @@ local function OnPlayerAdded(player)
         -- Initialiser les pots de fleurs
         FlowerPotSystem.Init(player, baseIndex, data)
 
-        -- Initialiser le système de Rebirth
+        -- Initialiser le système de Rebirth (callbacks Farm injectés ici)
+        RebirthSystem.Config = Config.RebirthConfig
+        RebirthSystem.IsProgressionComplete = function(playerData)
+            return playerData.progression and playerData.progression["4_10"] == true
+        end
+        RebirthSystem.OnRebirthComplete = function(player, niveau, cfg)
+            pcall(function()
+                DiscordWebhook.Envoyer(
+                    "🔥 " .. player.Name .. " — " .. cfg.label,
+                    string.format(
+                        "**%s** vient d'effectuer son **%s** sur BrainRotFarm !\n" ..
+                        "Multiplicateur : **×%.1f** | Slots bonus : **+%d**",
+                        player.Name, cfg.label, cfg.multiplicateur, cfg.slotsBonus
+                    ),
+                    cfg.couleurHex
+                )
+            end)
+        end
         RebirthSystem.Init(player, data, baseIndex)
 
         -- Toujours respawn devant la base assignée (spawn initial + respawns)
@@ -419,6 +436,9 @@ end
 
 -- CarrySystem utilise AssignationSystem comme source de vérité pour la base du joueur
 CarrySystem.GetBaseJoueur = function(player) return AssignationSystem.GetBaseIndex(player) end
+CarrySystem.OnCarryChange = function(player, portes)
+    FlowerPotSystem.OnCarryChange(player, portes)
+end
 CarrySystem.Init()
 
 -- ZoneCommune (MYTHIC + SECRET)
@@ -487,6 +507,48 @@ end
 EventManager.Init()
 
 -- Initialiser AssignationSystem (connecte PlayerRemoving, assigne joueurs déjà présents)
+AssignationSystem.GetSpawnCFrame = function(baseIndex)
+    local bases = workspace:FindFirstChild("Bases")
+    if not bases then return nil end
+    local baseRoot = bases:FindFirstChild("Base_" .. tostring(baseIndex))
+    if not baseRoot then return nil end
+
+    local sl = baseRoot:FindFirstChildWhichIsA("SpawnLocation")
+        or (function()
+            for _, d in ipairs(baseRoot:GetDescendants()) do
+                if d:IsA("SpawnLocation") then return d end
+            end
+        end)()
+    if sl then return sl.CFrame + Vector3.new(0, 4, 0) end
+
+    for _, d in ipairs(baseRoot:GetDescendants()) do
+        if d:IsA("BasePart") then
+            local n = string.lower(d.Name or "")
+            if n == "spawnlocation" or n == "spawnpoint" or n == "spawn" then
+                return d.CFrame + Vector3.new(0, 4, 0)
+            end
+        end
+    end
+
+    local spawnZone = baseRoot:FindFirstChild("SpawnZone")
+    if spawnZone then
+        if spawnZone:IsA("BasePart") then return spawnZone.CFrame + Vector3.new(0, 4, 0) end
+        local wT = spawnZone:FindFirstChild("Wall_Top")
+        local wB = spawnZone:FindFirstChild("Wall_Bottom")
+        local wL = spawnZone:FindFirstChild("Wall_Left")
+        local wR = spawnZone:FindFirstChild("Wall_Right")
+        if wT and wB and wL and wR then
+            return CFrame.new(
+                (wL.Position.X + wR.Position.X) / 2,
+                math.max(wT.Position.Y, wB.Position.Y, wL.Position.Y, wR.Position.Y) + 4,
+                (wT.Position.Z + wB.Position.Z) / 2
+            )
+        end
+    end
+
+    local ok, cf = pcall(function() return baseRoot:GetPivot() end)
+    return ok and cf and (cf + Vector3.new(0, 5, 0)) or nil
+end
 AssignationSystem.Init()
 
 -- LeaderboardSystem : connecter la source de données et démarrer la boucle
