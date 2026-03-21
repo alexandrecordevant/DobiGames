@@ -1,3 +1,4 @@
 .DS_Store
 node_modules/
 .rojo-cache/
+discord_config.json

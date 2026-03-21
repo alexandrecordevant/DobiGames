@@ -470,10 +470,10 @@ GameConfig.RebirthConfig = {
 
 -- === CAPTURE CONFIG ===
 GameConfig.CaptureConfig = {
-    COMMON       = { mode="touched", holdDuration=0   },
-    OG           = { mode="touched", holdDuration=0   },
-    RARE         = { mode="touched", holdDuration=0   },
-    EPIC         = { mode="prompt",  holdDuration=0.5 },
+    COMMON       = { mode="prompt", holdDuration=0   },
+    OG           = { mode="prompt", holdDuration=0   },
+    RARE         = { mode="prompt", holdDuration=0   },
+    EPIC         = { mode="prompt", holdDuration=0.5 },
     LEGENDARY    = { mode="prompt",  holdDuration=1.5 },
     MYTHIC       = { mode="prompt",  holdDuration=3.0 },
     SECRET       = { mode="prompt",  holdDuration=5.0 },

@@ -67,7 +67,7 @@ local textosInfos      = {}
 local _ChampCommunSpawner = nil
 local function getChampCommunSpawner()
     if not _ChampCommunSpawner then
-        local ok, m = pcall(require, ServerScriptService.Specialized.ChampCommunSpawner)
+        local ok, m = pcall(require, ServerScriptService.Common.CommunSpawner)
         if ok and m then _ChampCommunSpawner = m end
     end
     return _ChampCommunSpawner

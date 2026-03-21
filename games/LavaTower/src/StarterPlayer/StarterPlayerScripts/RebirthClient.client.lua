@@ -28,32 +28,51 @@ end
 
 local menuOuvert      = false
 local rebirthEnCours  = false
-local dernierPayload  = nil   -- dernière réponse serveur
+local dernierPayload  = nil
 
 -- ═══════════════════════════════════════════════
 -- 3. PALETTE DE COULEURS
 -- ═══════════════════════════════════════════════
 
 local C = {
-	BG          = Color3.fromRGB(13,  13,  20 ),
-	CARD        = Color3.fromRGB(20,  20,  32 ),
-	SECTION     = Color3.fromRGB(28,  28,  44 ),
-	BORDER      = Color3.fromRGB(55,  55,  80 ),
-	ORANGE      = Color3.fromRGB(255, 107, 0  ),
-	ORANGE_DARK = Color3.fromRGB(200, 80,  0  ),
-	GREEN       = Color3.fromRGB(50,  210, 90 ),
-	GREEN_DARK  = Color3.fromRGB(35,  140, 60 ),
-	RED         = Color3.fromRGB(220, 50,  50 ),
-	WHITE       = Color3.fromRGB(240, 240, 250),
-	MUTED       = Color3.fromRGB(140, 140, 165),
-	BAR_BG      = Color3.fromRGB(35,  35,  52 ),
+	-- Fonds
+	BG          = Color3.fromRGB(58,  58,  59 ),   -- fond très sombre / overlay
+	CARD        = Color3.fromRGB(75,  75,  76 ),   -- fond popup principal
+	SECTION     = Color3.fromRGB(88,  72,  58 ),   -- blocs internes (teinté BROWN)
+	BORDER      = Color3.fromRGB(108, 108, 110),   -- bordures discrètes
+
+	-- Accent BLUE (header / info / navigation)
+	BLUE        = Color3.fromRGB(53,  137, 189),
+	BLUE_DARK   = Color3.fromRGB(38,  100, 145),
+	BLUE_LIGHT  = Color3.fromRGB(78,  160, 212),
+
+	-- Accent GREEN (action principale / succès / progression)
+	GREEN       = Color3.fromRGB(95,  170, 85 ),
+	GREEN_DARK  = Color3.fromRGB(70,  130, 62 ),
+	GREEN_DIM   = Color3.fromRGB(52,  80,  48 ),
+
+	-- BROWN (économie / items / progression rebirth)
+	BROWN       = Color3.fromRGB(120, 85,  55 ),
+	BROWN_LIGHT = Color3.fromRGB(148, 108, 72 ),
+
+	-- États
+	RED         = Color3.fromRGB(185, 65,  55 ),   -- erreur / insuffisant
+
+	-- Textes
+	WHITE       = Color3.fromRGB(232, 230, 225),   -- texte principal
+	MUTED       = Color3.fromRGB(158, 156, 152),   -- texte secondaire désaturé
+
+	-- Barre de progression
+	BAR_BG      = Color3.fromRGB(48,  48,  50 ),
+
+	-- Raretés (harmonisées avec la palette)
 	RARITY = {
-		Common    = Color3.fromRGB(200, 200, 200),
-		Uncommon  = Color3.fromRGB(80,  210, 100),
-		Rare      = Color3.fromRGB(100, 130, 255),
-		Epic      = Color3.fromRGB(180, 50,  255),
-		Legendary = Color3.fromRGB(255, 200, 0  ),
-		Secret    = Color3.fromRGB(255, 50,  50 ),
+		Common    = Color3.fromRGB(198, 198, 198),
+		Uncommon  = Color3.fromRGB(95,  200, 110),
+		Rare      = Color3.fromRGB(75,  140, 215),
+		Epic      = Color3.fromRGB(162, 60,  228),
+		Legendary = Color3.fromRGB(228, 185, 40 ),
+		Secret    = Color3.fromRGB(210, 58,  58 ),
 	},
 }
 
@@ -61,11 +80,9 @@ local C = {
 -- 4. UTILITAIRES
 -- ═══════════════════════════════════════════════
 
--- Supprime l'ancienne ScreenGui si elle existe (évite les doublons)
 local existing = playerGui:FindFirstChild("RebirthGui")
 if existing then existing:Destroy() end
 
--- Formate un nombre avec virgules : 1500000 → "1,500,000"
 local function fmtNumber(n)
 	n = math.floor(tonumber(n) or 0)
 	local s = tostring(n)
@@ -79,7 +96,6 @@ local function fmtNumber(n)
 	return result
 end
 
--- Formate en compact : 1500000 → "1.5M"
 local function fmtCompact(n)
 	n = tonumber(n) or 0
 	if n >= 1e9 then  return string.format("%.1fB", n/1e9)
@@ -88,20 +104,18 @@ local function fmtCompact(n)
 	else return tostring(math.floor(n)) end
 end
 
--- Tween rapide sur une propriété d'une instance
 local function tween(inst, info, props)
 	TweenService:Create(inst, info, props):Play()
 end
 
--- Création rapide d'un UICorner
+-- Arrondi par défaut réduit à 5 (style semi-carré)
 local function addCorner(parent, radius)
 	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, radius or 8)
+	c.CornerRadius = UDim.new(0, radius or 5)
 	c.Parent = parent
 	return c
 end
 
--- Création rapide d'un UIStroke
 local function addStroke(parent, color, thickness)
 	local s = Instance.new("UIStroke")
 	s.Color = color or C.BORDER
@@ -110,7 +124,6 @@ local function addStroke(parent, color, thickness)
 	return s
 end
 
--- Crée un TextLabel simple
 local function makeLabel(parent, text, pos, size, color, textSize, font, xAlign)
 	local l = Instance.new("TextLabel")
 	l.Text                   = text
@@ -145,24 +158,24 @@ print("[RebirthClient] ScreenGui créé ✓")
 
 local mainBtn = Instance.new("TextButton")
 mainBtn.Name             = "MainRebirthButton"
-mainBtn.Size             = UDim2.new(0, 68, 0, 88)
-mainBtn.Position         = UDim2.new(0, 10, 0.5, -44)
-mainBtn.BackgroundColor3 = C.ORANGE
+mainBtn.Size             = UDim2.new(0, 72, 0, 92)
+mainBtn.Position         = UDim2.new(0, 12, 0.5, -46)
+mainBtn.BackgroundColor3 = C.GREEN
 mainBtn.BorderSizePixel  = 0
 mainBtn.Text             = ""
 mainBtn.AutoButtonColor  = false
 mainBtn.ZIndex           = 5
 mainBtn.Parent           = screenGui
-addCorner(mainBtn, 12)
-addStroke(mainBtn, Color3.fromRGB(255, 160, 60), 2)
+addCorner(mainBtn, 6)
+addStroke(mainBtn, C.GREEN_DARK, 2)
 
 local mainArrow = Instance.new("TextLabel")
 mainArrow.Text                   = "↺"
-mainArrow.Size                   = UDim2.new(1, 0, 0, 46)
-mainArrow.Position               = UDim2.new(0, 0, 0, 4)
+mainArrow.Size                   = UDim2.new(1, 0, 0, 50)
+mainArrow.Position               = UDim2.new(0, 0, 0, 6)
 mainArrow.BackgroundTransparency = 1
 mainArrow.TextColor3             = C.WHITE
-mainArrow.TextSize               = 30
+mainArrow.TextSize               = 28
 mainArrow.Font                   = Enum.Font.GothamBlack
 mainArrow.TextXAlignment         = Enum.TextXAlignment.Center
 mainArrow.ZIndex                 = 6
@@ -170,11 +183,11 @@ mainArrow.Parent                 = mainBtn
 
 local mainLabel = Instance.new("TextLabel")
 mainLabel.Text                   = "REBIRTH"
-mainLabel.Size                   = UDim2.new(1, 0, 0, 28)
-mainLabel.Position               = UDim2.new(0, 0, 1, -32)
+mainLabel.Size                   = UDim2.new(1, 0, 0, 26)
+mainLabel.Position               = UDim2.new(0, 0, 1, -30)
 mainLabel.BackgroundTransparency = 1
 mainLabel.TextColor3             = C.WHITE
-mainLabel.TextSize               = 11
+mainLabel.TextSize               = 10
 mainLabel.Font                   = Enum.Font.GothamBold
 mainLabel.TextXAlignment         = Enum.TextXAlignment.Center
 mainLabel.ZIndex                 = 6
@@ -182,12 +195,12 @@ mainLabel.Parent                 = mainBtn
 
 print("[RebirthClient] Bouton principal créé ✓")
 
--- Hover du bouton principal
+-- Hover du bouton principal (subtil, +6px width/height)
 mainBtn.MouseEnter:Connect(function()
-	tween(mainBtn, TweenInfo.new(0.12), { BackgroundColor3 = C.ORANGE_DARK, Size = UDim2.new(0, 74, 0, 96) })
+	tween(mainBtn, TweenInfo.new(0.1), { BackgroundColor3 = C.GREEN_DARK, Size = UDim2.new(0, 78, 0, 98) })
 end)
 mainBtn.MouseLeave:Connect(function()
-	tween(mainBtn, TweenInfo.new(0.12), { BackgroundColor3 = C.ORANGE, Size = UDim2.new(0, 68, 0, 88) })
+	tween(mainBtn, TweenInfo.new(0.1), { BackgroundColor3 = C.GREEN, Size = UDim2.new(0, 72, 0, 92) })
 end)
 
 -- ═══════════════════════════════════════════════
@@ -199,7 +212,7 @@ local overlay = Instance.new("Frame")
 overlay.Name                   = "Overlay"
 overlay.Size                   = UDim2.new(1, 0, 1, 0)
 overlay.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
-overlay.BackgroundTransparency = 0.5
+overlay.BackgroundTransparency = 0.55
 overlay.BorderSizePixel        = 0
 overlay.Visible                = false
 overlay.ZIndex                 = 9
@@ -215,7 +228,7 @@ popup.BorderSizePixel  = 0
 popup.Visible          = false
 popup.ZIndex           = 10
 popup.Parent           = screenGui
-addCorner(popup, 16)
+addCorner(popup, 8)
 addStroke(popup, C.BORDER, 2)
 
 print("[RebirthClient] Popup créé ✓")
@@ -223,18 +236,18 @@ print("[RebirthClient] Popup créé ✓")
 -- ── En-tête ──────────────────────────────────────────────────────────────────
 
 local header = Instance.new("Frame")
-header.Size             = UDim2.new(1, 0, 0, 58)
-header.BackgroundColor3 = C.ORANGE
+header.Size             = UDim2.new(1, 0, 0, 56)
+header.BackgroundColor3 = C.BLUE
 header.BorderSizePixel  = 0
 header.ZIndex           = 11
 header.Parent           = popup
-addCorner(header, 16)
+addCorner(header, 8)
 
--- Coin inférieur carré pour le header (hack pour ne pas avoir de coins en bas)
+-- Masque les coins arrondis en bas du header
 local headerFill = Instance.new("Frame")
-headerFill.Size             = UDim2.new(1, 0, 0, 16)
-headerFill.Position         = UDim2.new(0, 0, 1, -16)
-headerFill.BackgroundColor3 = C.ORANGE
+headerFill.Size             = UDim2.new(1, 0, 0, 8)
+headerFill.Position         = UDim2.new(0, 0, 1, -8)
+headerFill.BackgroundColor3 = C.BLUE
 headerFill.BorderSizePixel  = 0
 headerFill.ZIndex           = 11
 headerFill.Parent           = header
@@ -242,25 +255,25 @@ headerFill.Parent           = header
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Text                   = "✦  REBIRTH"
 titleLabel.Size                   = UDim2.new(1, -50, 1, 0)
-titleLabel.Position               = UDim2.new(0, 18, 0, 0)
+titleLabel.Position               = UDim2.new(0, 16, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3             = C.WHITE
-titleLabel.TextSize               = 22
+titleLabel.TextSize               = 20
 titleLabel.Font                   = Enum.Font.GothamBlack
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.TextYAlignment         = Enum.TextYAlignment.Center
 titleLabel.ZIndex                 = 12
 titleLabel.Parent                 = header
 
--- Sous-titre niveau actuel → prochain
+-- Sous-titre niveau actuel → prochain (positionné dans la zone header)
 local levelLabel = Instance.new("TextLabel")
 levelLabel.Name                   = "LevelLabel"
 levelLabel.Text                   = "Niveau 0  →  1"
-levelLabel.Size                   = UDim2.new(1, -50, 0, 20)
-levelLabel.Position               = UDim2.new(0, 18, 0, 36)
+levelLabel.Size                   = UDim2.new(1, -50, 0, 18)
+levelLabel.Position               = UDim2.new(0, 16, 0, 38)
 levelLabel.BackgroundTransparency = 1
-levelLabel.TextColor3             = Color3.fromRGB(255, 220, 160)
-levelLabel.TextSize               = 13
+levelLabel.TextColor3             = Color3.fromRGB(180, 212, 235)  -- bleu clair désaturé
+levelLabel.TextSize               = 12
 levelLabel.Font                   = Enum.Font.GothamBold
 levelLabel.TextXAlignment         = Enum.TextXAlignment.Left
 levelLabel.ZIndex                 = 12
@@ -270,33 +283,33 @@ levelLabel.Parent                 = popup
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name             = "CloseBtn"
 closeBtn.Text             = "✕"
-closeBtn.Size             = UDim2.new(0, 36, 0, 36)
-closeBtn.Position         = UDim2.new(1, -46, 0, 11)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+closeBtn.Size             = UDim2.new(0, 32, 0, 32)
+closeBtn.Position         = UDim2.new(1, -42, 0, 12)
+closeBtn.BackgroundColor3 = C.BLUE_DARK
 closeBtn.TextColor3       = C.WHITE
-closeBtn.TextSize         = 16
+closeBtn.TextSize         = 14
 closeBtn.Font             = Enum.Font.GothamBlack
 closeBtn.BorderSizePixel  = 0
 closeBtn.ZIndex           = 13
 closeBtn.Parent           = popup
-addCorner(closeBtn, 8)
+addCorner(closeBtn, 4)
 
 -- ── Section REQUIREMENTS ─────────────────────────────────────────────────────
 
 local reqTitle = makeLabel(popup, "REQUIREMENTS",
-	UDim2.new(0, 18, 0, 68), UDim2.new(1, -36, 0, 22),
-	C.MUTED, 11, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+	UDim2.new(0, 16, 0, 68), UDim2.new(1, -32, 0, 20),
+	C.MUTED, 10, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
 reqTitle.ZIndex = 11
 
 -- Bloc Money
 local moneyBlock = Instance.new("Frame")
-moneyBlock.Size             = UDim2.new(1, -28, 0, 74)
-moneyBlock.Position         = UDim2.new(0, 14, 0, 92)
+moneyBlock.Size             = UDim2.new(1, -24, 0, 76)
+moneyBlock.Position         = UDim2.new(0, 12, 0, 90)
 moneyBlock.BackgroundColor3 = C.SECTION
 moneyBlock.BorderSizePixel  = 0
 moneyBlock.ZIndex           = 11
 moneyBlock.Parent           = popup
-addCorner(moneyBlock, 10)
+addCorner(moneyBlock, 6)
 addStroke(moneyBlock, C.BORDER, 1)
 
 local moneyIcon = makeLabel(moneyBlock, "💰  Money",
@@ -319,13 +332,13 @@ moneyAmounts.Parent                 = moneyBlock
 
 -- Barre de progression argent
 local barBg = Instance.new("Frame")
-barBg.Size             = UDim2.new(1, -24, 0, 16)
+barBg.Size             = UDim2.new(1, -24, 0, 14)
 barBg.Position         = UDim2.new(0, 12, 0, 34)
 barBg.BackgroundColor3 = C.BAR_BG
 barBg.BorderSizePixel  = 0
 barBg.ZIndex           = 12
 barBg.Parent           = moneyBlock
-addCorner(barBg, 6)
+addCorner(barBg, 3)
 
 local barFill = Instance.new("Frame")
 barFill.Name             = "BarFill"
@@ -334,7 +347,7 @@ barFill.BackgroundColor3 = C.GREEN
 barFill.BorderSizePixel  = 0
 barFill.ZIndex           = 13
 barFill.Parent           = barBg
-addCorner(barFill, 6)
+addCorner(barFill, 3)
 
 local barText = Instance.new("TextLabel")
 barText.Name                   = "BarText"
@@ -352,10 +365,10 @@ local moneyStatus = Instance.new("TextLabel")
 moneyStatus.Name                   = "MoneyStatus"
 moneyStatus.Text                   = "✗  Insuffisant"
 moneyStatus.Size                   = UDim2.new(1, -24, 0, 18)
-moneyStatus.Position               = UDim2.new(0, 12, 0, 52)
+moneyStatus.Position               = UDim2.new(0, 12, 0, 54)
 moneyStatus.BackgroundTransparency = 1
 moneyStatus.TextColor3             = C.RED
-moneyStatus.TextSize               = 12
+moneyStatus.TextSize               = 11
 moneyStatus.Font                   = Enum.Font.GothamBold
 moneyStatus.TextXAlignment         = Enum.TextXAlignment.Left
 moneyStatus.ZIndex                 = 12
@@ -363,13 +376,13 @@ moneyStatus.Parent                 = moneyBlock
 
 -- Bloc BrainRot Rarity
 local rarityBlock = Instance.new("Frame")
-rarityBlock.Size             = UDim2.new(1, -28, 0, 68)
-rarityBlock.Position         = UDim2.new(0, 14, 0, 174)
+rarityBlock.Size             = UDim2.new(1, -24, 0, 68)
+rarityBlock.Position         = UDim2.new(0, 12, 0, 174)
 rarityBlock.BackgroundColor3 = C.SECTION
 rarityBlock.BorderSizePixel  = 0
 rarityBlock.ZIndex           = 11
 rarityBlock.Parent           = popup
-addCorner(rarityBlock, 10)
+addCorner(rarityBlock, 6)
 addStroke(rarityBlock, C.BORDER, 1)
 
 local rarityTitle = makeLabel(rarityBlock, "🎲  BrainRot Rarity",
@@ -406,18 +419,18 @@ rarityStatus.Parent                 = rarityBlock
 -- ── Section REWARDS ───────────────────────────────────────────────────────────
 
 local rewTitle = makeLabel(popup, "REWARDS",
-	UDim2.new(0, 18, 0, 252), UDim2.new(1, -36, 0, 22),
-	C.MUTED, 11, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+	UDim2.new(0, 16, 0, 252), UDim2.new(1, -32, 0, 20),
+	C.MUTED, 10, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
 rewTitle.ZIndex = 11
 
 local rewardBlock = Instance.new("Frame")
-rewardBlock.Size             = UDim2.new(1, -28, 0, 50)
-rewardBlock.Position         = UDim2.new(0, 14, 0, 276)
+rewardBlock.Size             = UDim2.new(1, -24, 0, 50)
+rewardBlock.Position         = UDim2.new(0, 12, 0, 274)
 rewardBlock.BackgroundColor3 = C.SECTION
 rewardBlock.BorderSizePixel  = 0
 rewardBlock.ZIndex           = 11
 rewardBlock.Parent           = popup
-addCorner(rewardBlock, 10)
+addCorner(rewardBlock, 6)
 addStroke(rewardBlock, C.BORDER, 1)
 
 local rewardText = Instance.new("TextLabel")
@@ -426,7 +439,7 @@ rewardText.Text                   = "📦  +1 Slot"
 rewardText.Size                   = UDim2.new(1, -24, 1, 0)
 rewardText.Position               = UDim2.new(0, 12, 0, 0)
 rewardText.BackgroundTransparency = 1
-rewardText.TextColor3             = Color3.fromRGB(255, 218, 50)
+rewardText.TextColor3             = Color3.fromRGB(228, 185, 40)   -- or Legendary
 rewardText.TextSize               = 16
 rewardText.Font                   = Enum.Font.GothamBlack
 rewardText.TextXAlignment         = Enum.TextXAlignment.Left
@@ -437,8 +450,8 @@ rewardText.Parent                 = rewardBlock
 
 local warnLabel = makeLabel(popup,
 	"⚠  You will lose all your BrainRots and money!",
-	UDim2.new(0, 14, 0, 336), UDim2.new(1, -28, 0, 34),
-	Color3.fromRGB(255, 160, 60), 12, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+	UDim2.new(0, 12, 0, 334), UDim2.new(1, -24, 0, 34),
+	Color3.fromRGB(198, 165, 95), 11, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
 warnLabel.TextWrapped = true
 warnLabel.ZIndex = 11
 
@@ -447,28 +460,28 @@ warnLabel.ZIndex = 11
 local confirmBtn = Instance.new("TextButton")
 confirmBtn.Name             = "ConfirmBtn"
 confirmBtn.Text             = "CONFIRM REBIRTH"
-confirmBtn.Size             = UDim2.new(1, -28, 0, 54)
-confirmBtn.Position         = UDim2.new(0, 14, 0, 378)
+confirmBtn.Size             = UDim2.new(1, -24, 0, 52)
+confirmBtn.Position         = UDim2.new(0, 12, 0, 376)
 confirmBtn.BackgroundColor3 = C.GREEN
 confirmBtn.TextColor3       = C.WHITE
-confirmBtn.TextSize         = 18
+confirmBtn.TextSize         = 17
 confirmBtn.Font             = Enum.Font.GothamBlack
 confirmBtn.BorderSizePixel  = 0
 confirmBtn.AutoButtonColor  = false
 confirmBtn.ZIndex           = 11
 confirmBtn.Parent           = popup
-addCorner(confirmBtn, 12)
+addCorner(confirmBtn, 6)
 addStroke(confirmBtn, C.GREEN_DARK, 2)
 
 -- Message de résultat (success / fail) sous le bouton confirm
 local resultLabel = Instance.new("TextLabel")
 resultLabel.Name                   = "ResultLabel"
 resultLabel.Text                   = ""
-resultLabel.Size                   = UDim2.new(1, -28, 0, 36)
-resultLabel.Position               = UDim2.new(0, 14, 0, 438)
+resultLabel.Size                   = UDim2.new(1, -24, 0, 36)
+resultLabel.Position               = UDim2.new(0, 12, 0, 436)
 resultLabel.BackgroundTransparency = 1
 resultLabel.TextColor3             = C.GREEN
-resultLabel.TextSize               = 13
+resultLabel.TextSize               = 12
 resultLabel.Font                   = Enum.Font.GothamBold
 resultLabel.TextXAlignment         = Enum.TextXAlignment.Center
 resultLabel.TextWrapped            = true
@@ -480,11 +493,11 @@ resultLabel.Parent                 = popup
 local slotsLabel = Instance.new("TextLabel")
 slotsLabel.Name                   = "SlotsLabel"
 slotsLabel.Text                   = "Current slots: 1"
-slotsLabel.Size                   = UDim2.new(1, -28, 0, 26)
-slotsLabel.Position               = UDim2.new(0, 14, 0, 482)
+slotsLabel.Size                   = UDim2.new(1, -24, 0, 24)
+slotsLabel.Position               = UDim2.new(0, 12, 0, 482)
 slotsLabel.BackgroundTransparency = 1
 slotsLabel.TextColor3             = C.MUTED
-slotsLabel.TextSize               = 12
+slotsLabel.TextSize               = 11
 slotsLabel.Font                   = Enum.Font.GothamBold
 slotsLabel.TextXAlignment         = Enum.TextXAlignment.Center
 slotsLabel.ZIndex                 = 11
@@ -501,7 +514,7 @@ local function setConfirmEnabled(enabled)
 		confirmBtn.Active           = true
 		confirmBtn.Text             = "CONFIRM REBIRTH"
 	else
-		confirmBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
+		confirmBtn.BackgroundColor3 = Color3.fromRGB(62, 62, 64)
 		confirmBtn.TextColor3       = C.MUTED
 		confirmBtn.Active           = false
 	end
@@ -545,8 +558,8 @@ local function updatePopupFromPayload(payload)
 	-- ── Argent ──
 	local ratio = math.min(cur.money / math.max(req.money, 1), 1)
 	tween(barFill, TweenInfo.new(0.3), { Size = UDim2.new(ratio, 0, 1, 0) })
-	barFill.BackgroundColor3 = (ratio >= 1) and C.GREEN or Color3.fromRGB(220, 80, 50)
-	barText.Text   = fmtNumber(cur.money) .. " / " .. fmtNumber(req.money)
+	barFill.BackgroundColor3 = (ratio >= 1) and C.GREEN or C.BROWN
+	barText.Text      = fmtNumber(cur.money) .. " / " .. fmtNumber(req.money)
 	moneyAmounts.Text = fmtCompact(cur.money) .. " / " .. fmtCompact(req.money)
 
 	if cur.money >= req.money then
@@ -611,7 +624,7 @@ local function openMenu()
 	overlay.Visible      = true
 	popup.Visible        = true
 	popup.Size           = UDim2.new(0, 440, 0, 0)
-	tween(popup, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+	tween(popup, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 		{ Size = UDim2.new(0, 440, 0, 530) })
 	print("[RebirthClient] Menu ouvert ✓")
 	fetchData()
@@ -619,9 +632,9 @@ end
 
 local function closeMenu()
 	menuOuvert = false
-	tween(popup, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+	tween(popup, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
 		{ Size = UDim2.new(0, 440, 0, 0) })
-	task.delay(0.18, function()
+	task.delay(0.16, function()
 		popup.Visible   = false
 		overlay.Visible = false
 	end)

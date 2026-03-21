@@ -62,10 +62,10 @@ TestConfig.AdminAbuseHebdo = {
 
 -- HoldDuration réduit (mais pas à 0 — teste quand même le ProximityPrompt)
 TestConfig.CaptureConfig = {
-    COMMON       = { mode = "touched", holdDuration = 0   },
-    OG           = { mode = "touched", holdDuration = 0   },
-    RARE         = { mode = "touched", holdDuration = 0   },
-    EPIC         = { mode = "prompt",  holdDuration = 0.3 },
+    COMMON       = { mode = "prompt", holdDuration = 0   },
+    OG           = { mode = "prompt", holdDuration = 0   },
+    RARE         = { mode = "prompt", holdDuration = 0   },
+    EPIC         = { mode = "prompt", holdDuration = 0.3 },
     LEGENDARY    = { mode = "prompt",  holdDuration = 0.5 },
     MYTHIC       = { mode = "prompt",  holdDuration = 1.0 },
     SECRET       = { mode = "prompt",  holdDuration = 2.0 },
