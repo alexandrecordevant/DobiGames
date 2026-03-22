@@ -9,10 +9,11 @@ local TweenService = game:GetService("TweenService")
 local player       = Players.LocalPlayer
 local playerGui    = player:WaitForChild("PlayerGui")
 
--- Attendre les RemoteEvents créés par RebirthSystem.lua
+-- Attendre les RemoteEvents créés par RebirthSystem.lua et Main.server.lua
 local RebirthButtonUpdate = RS:WaitForChild("RebirthButtonUpdate", 10)
 local RebirthAnimation    = RS:WaitForChild("RebirthAnimation",    10)
 local DemandeRebirth      = RS:WaitForChild("DemandeRebirth",      10)
+local OuvrirRebirth       = RS:WaitForChild("OuvrirRebirth",       10)
 
 if not RebirthButtonUpdate or not RebirthAnimation or not DemandeRebirth then
     warn("[RebirthHUD] RemoteEvents introuvables — script interrompu")
@@ -392,5 +393,16 @@ RebirthAnimation.OnClientEvent:Connect(function(data)
         end)
     end)
 end)
+
+-- ============================================================
+-- OuvrirRebirth — déclenché par BoardSystem ou bouton gauche
+-- ============================================================
+if OuvrirRebirth then
+    OuvrirRebirth.OnClientEvent:Connect(function()
+        if rebirthFrame then
+            rebirthFrame.Visible = true
+        end
+    end)
+end
 
 print("[RebirthHUD] Initialisé ✓")

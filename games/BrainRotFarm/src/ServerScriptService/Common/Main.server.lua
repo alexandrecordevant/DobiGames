@@ -31,6 +31,7 @@ local SprinklerSystem       = require(ServerScriptService.Specialized.SprinklerS
 local TracteurSystem        = require(ServerScriptService.Specialized.TracteurSystem)
 local FlowerPotSystem       = require(ServerScriptService.Specialized.FlowerPotSystem)
 local DiscordWebhook        = require(ServerScriptService.Common.DiscordWebhook)
+local BoardSystem           = require(ServerScriptService.Common.BoardSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -62,6 +63,7 @@ local EventEnded         = CreerRemoteEvent("EventEnded")
 local OfflineIncomeNotif = CreerRemoteEvent("OfflineIncomeNotif")
 local SecretRevealNotif  = CreerRemoteEvent("SecretRevealNotif")
 local CollectVFX         = CreerRemoteEvent("CollectVFX")
+local OuvrirRebirth      = CreerRemoteEvent("OuvrirRebirth")
 
 -- Events client → serveur (actions joueur)
 local DemandeUpgrade     = CreerRemoteEvent("DemandeUpgrade")
@@ -237,6 +239,11 @@ local function OnPlayerAdded(player)
             return playerData.progression and playerData.progression["4_10"] == true
         end
         RebirthSystem.OnRebirthComplete = function(player, niveau, cfg)
+            -- Débloquer le floor suivant visuellement
+            pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, player, niveau)
+            -- Mettre à jour le board de la base
+            pcall(BoardSystem.MettreAJourBoard, player, niveau)
+            -- Notification Discord
             pcall(function()
                 DiscordWebhook.Envoyer(
                     "🔥 " .. player.Name .. " — " .. cfg.label,
@@ -505,6 +512,12 @@ if EventManager.OnEventEnd then
     end
 end
 EventManager.Init()
+
+-- Masquer floors > 1 sur toutes les bases avant que les joueurs rejoignent
+BaseProgressionSystem.InitBasesInactives()
+
+-- Initialiser les boards cliquables devant chaque base
+BoardSystem.Init()
 
 -- Initialiser AssignationSystem (connecte PlayerRemoving, assigne joueurs déjà présents)
 AssignationSystem.GetSpawnCFrame = function(baseIndex)

@@ -551,4 +551,11 @@ GameConfig.SpawnConfig = {
     despawnSecondes    = 30,
 }
 
+-- === BOARD CONFIG ===
+-- Textes et comportements des boards cliquables devant chaque base
+GameConfig.BoardConfig = {
+    texteDefaut   = "🔄 REBIRTH\nClick to view",
+    distanceClick = 20,
+}
+
 return GameConfig
