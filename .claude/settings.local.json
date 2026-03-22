@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Admin/Documents/Developpement/DobiGames/**)",
+      "Bash(2)",
+      "Bash(done)",
+      "Bash(wc -l \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/ServerScriptService/Common/\"*.lua \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/ServerScriptService/Specialized/\"*.lua \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/ReplicatedStorage/Common/\"*.lua \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/ReplicatedStorage/Specialized/\"*.lua \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/StarterPlayer/StarterPlayerScripts/Common/\"*.lua)",
+      "Bash(BASE=\"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src\" __NEW_LINE_94335ccd7ee889b3__ echo \"=== SPRINKLER / ARROSEUR ===\" grep -rn -i \"sprinkler\\\\|arroseur\\\\|upgradeArroseur\" \"$BASE\" --include=\"*.lua\")",
+      "Bash(BASE_FARM=\"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src\" BASE_KONG=\"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotKong/src\" __NEW_LINE_02022aecc9453b79__ echo \"=== FARM : qui require les 8 scripts ===\" grep -rn \"require.*IncomeSystem\\\\|require.*BaseProgressionSystem\\\\|require.*EventManager\\\\|require.*MonetizationHandler\\\\|require.*EventGolden\\\\|require.*HUDController\\\\|require.*CollectSystem\\\\|require.*UpgradeSystem\" \"$BASE_FARM\" --include=\"*.lua\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames",
+      "c:\\Users\\Admin\\Documents\\Developpement\\DobiGames"
+    ]
+  }
+}

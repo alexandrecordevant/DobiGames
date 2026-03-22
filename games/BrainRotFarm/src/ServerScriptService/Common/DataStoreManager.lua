@@ -2,7 +2,7 @@
 local DataStoreManager = {}
 local DataStoreService = game:GetService("DataStoreService")
 local DS               = DataStoreService:GetDataStore("BrainRotIdleV1")
-local CollectSystem    = require(game.ReplicatedStorage.Common.CollectSystem)
+local CollectSystem    = require(game.ReplicatedStorage.SharedLib.Shared.CollectSystem)
 
 local function DefaultData()
     return {
