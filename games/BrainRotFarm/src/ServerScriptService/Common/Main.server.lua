@@ -241,8 +241,15 @@ local function OnPlayerAdded(player)
         RebirthSystem.OnRebirthComplete = function(player, niveau, cfg)
             -- Débloquer le floor suivant visuellement
             pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, player, niveau)
-            -- Mettre à jour le board de la base
-            pcall(BoardSystem.MettreAJourBoard, player, niveau)
+            -- Mettre à jour le board (etat minimal pour afficher le nouveau niveau)
+            pcall(BoardSystem.MettreAJourBoard, player, {
+                rebirthLevel   = niveau,
+                coinsActuels   = 0,
+                coinsRequis    = cfg and cfg.coinsRequis or 0,
+                brainRotRequis = cfg and cfg.brainRotRequis and cfg.brainRotRequis.rarete or "?",
+                manqueBR       = "pending",  -- vient d'être reset, BR consommé
+                label          = cfg and cfg.label or nil,
+            })
             -- Notification Discord
             pcall(function()
                 DiscordWebhook.Envoyer(
@@ -257,6 +264,20 @@ local function OnPlayerAdded(player)
             end)
         end
         RebirthSystem.Init(player, data, baseIndex)
+
+        -- Afficher les données Rebirth actuelles sur le board de la base
+        task.delay(2, function()
+            if not GetData(player) then return end
+            local ok2, manques = RebirthSystem.VerifierConditions(player)
+            pcall(BoardSystem.MettreAJourBoard, player, {
+                rebirthLevel   = data.rebirthLevel or 0,
+                coinsActuels   = data.coins or 0,
+                coinsRequis    = manques and manques.manqueCoins
+                    and (data.coins or 0) + manques.manqueCoins or 0,
+                brainRotRequis = manques and manques.manqueBR or nil,
+                manqueBR       = manques and manques.manqueBR or nil,
+            })
+        end)
 
         -- Toujours respawn devant la base assignée (spawn initial + respawns)
         if player.Character then

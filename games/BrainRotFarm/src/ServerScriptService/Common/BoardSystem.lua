@@ -1,7 +1,7 @@
 -- ServerScriptService/Common/BoardSystem.lua
 -- BrainRotFarm — Boards cliquables devant chaque base
--- ClickDetector → ouvre menu Rebirth côté client
--- BillboardGui → affiche le niveau Rebirth de la base
+-- SurfaceGui sur la face du Board → affiche infos Rebirth
+-- ClickDetector → ouvre le menu Rebirth côté client
 -- 0 valeur hardcodée — tout lu depuis GameConfig
 
 local BoardSystem = {}
@@ -9,8 +9,8 @@ local BoardSystem = {}
 -- ============================================================
 -- Services
 -- ============================================================
-local ReplicatedStorage   = game:GetService("ReplicatedStorage")
-local Workspace           = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace         = game:GetService("Workspace")
 
 -- ============================================================
 -- Config (Specialized — aucune valeur hardcodée ici)
@@ -22,7 +22,7 @@ local boardCfg = Config.BoardConfig or {
 }
 
 -- ============================================================
--- Lazy loaders (évite les dépendances circulaires au boot)
+-- Lazy loaders
 -- ============================================================
 local _RebirthSystem = nil
 local function getRebirthSystem()
@@ -42,7 +42,6 @@ local function getAssignationSystem()
     return _AssignationSystem
 end
 
--- RemoteEvent OuvrirRebirth (créé par Main ou ici si absent)
 local function getOuvrirRebirth()
     local ev = ReplicatedStorage:FindFirstChild("OuvrirRebirth")
     if not ev then
@@ -54,48 +53,196 @@ local function getOuvrirRebirth()
 end
 
 -- ============================================================
--- Utilitaires
+-- Utilitaires — formate un nombre avec espaces milliers
 -- ============================================================
+local function formaterNombre(n)
+    local s      = tostring(math.floor(n or 0))
+    local result = ""
+    local count  = 0
+    for i = #s, 1, -1 do
+        if count > 0 and count % 3 == 0 then result = " " .. result end
+        result = s:sub(i, i) .. result
+        count  = count + 1
+    end
+    return result
+end
 
--- Trouve ou crée le BillboardGui d'un Board
-local function obtenirBillboard(board)
-    local bb = board:FindFirstChild("BoardBillboard")
-    if bb then return bb end
+-- ============================================================
+-- Création de la SurfaceGui sur le Board
+-- Affiche les infos Rebirth directement sur la surface de l'objet
+-- ============================================================
+local function creerSurfaceGui(board)
+    -- Supprimer l'ancienne SurfaceGui si elle existe
+    local ancienne = board:FindFirstChild("BoardGui")
+    if ancienne then ancienne:Destroy() end
 
-    bb             = Instance.new("BillboardGui", board)
-    bb.Name        = "BoardBillboard"
-    bb.Size        = UDim2.new(0, 280, 0, 100)
-    bb.AlwaysOnTop = false
-    bb.MaxDistance = 35
+    local sg = Instance.new("SurfaceGui", board)
+    sg.Name             = "BoardGui"
+    sg.Face             = Enum.NormalId.Front
+    sg.SizingMode       = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud    = 50
+    sg.AlwaysOnTop      = false
+    sg.MaxDistance      = 40
+    sg.LightInfluence   = 0.3
 
-    -- Position au-dessus du Board (fonctionne même si Board n'a pas de Size)
-    local ok, sz = pcall(function() return board.Size.Y end)
-    bb.StudsOffset = Vector3.new(0, (ok and sz or 2) / 2 + 1.5, 0)
+    -- Fond semi-transparent
+    local fond = Instance.new("Frame", sg)
+    fond.Name                   = "Fond"
+    fond.Size                   = UDim2.new(1, 0, 1, 0)
+    fond.BackgroundColor3       = Color3.fromRGB(10, 10, 20)
+    fond.BackgroundTransparency = 0.3
+    fond.BorderSizePixel        = 0
 
-    local lblTitre = Instance.new("TextLabel", bb)
-    lblTitre.Name                   = "LblTitre"
-    lblTitre.Size                   = UDim2.new(1, 0, 0.6, 0)
-    lblTitre.Position               = UDim2.new(0, 0, 0, 0)
+    local corner = Instance.new("UICorner", fond)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    local stroke = Instance.new("UIStroke", fond)
+    stroke.Color     = Color3.fromRGB(255, 140, 0)
+    stroke.Thickness = 3
+
+    -- Titre "🔄 REBIRTH"
+    local lblTitre = Instance.new("TextLabel", fond)
+    lblTitre.Name                   = "Titre"
+    lblTitre.Size                   = UDim2.new(1, -10, 0.2, 0)
+    lblTitre.Position               = UDim2.new(0, 5, 0, 4)
     lblTitre.BackgroundTransparency = 1
-    lblTitre.TextColor3             = Color3.fromRGB(255, 255, 255)
+    lblTitre.TextColor3             = Color3.fromRGB(255, 165, 0)
     lblTitre.Font                   = Enum.Font.GothamBold
-    lblTitre.TextSize               = 18
+    lblTitre.TextScaled             = true
     lblTitre.RichText               = true
-    lblTitre.TextWrapped            = true
-    lblTitre.Text                   = boardCfg.texteDefaut
+    lblTitre.Text                   = "🔄 REBIRTH"
 
-    local lblSub = Instance.new("TextLabel", bb)
-    lblSub.Name                   = "LblSub"
-    lblSub.Size                   = UDim2.new(1, 0, 0.4, 0)
-    lblSub.Position               = UDim2.new(0, 0, 0.6, 0)
-    lblSub.BackgroundTransparency = 1
-    lblSub.TextColor3             = Color3.fromRGB(255, 200, 0)
-    lblSub.Font                   = Enum.Font.Gotham
-    lblSub.TextSize               = 13
-    lblSub.RichText               = true
-    lblSub.Text                   = "<i>Click to open Rebirth menu</i>"
+    -- Niveau actuel → suivant
+    local lblNiveau = Instance.new("TextLabel", fond)
+    lblNiveau.Name                   = "Niveau"
+    lblNiveau.Size                   = UDim2.new(1, -10, 0.18, 0)
+    lblNiveau.Position               = UDim2.new(0, 5, 0.2, 2)
+    lblNiveau.BackgroundTransparency = 1
+    lblNiveau.TextColor3             = Color3.fromRGB(255, 255, 255)
+    lblNiveau.Font                   = Enum.Font.GothamBold
+    lblNiveau.TextScaled             = true
+    lblNiveau.RichText               = true
+    lblNiveau.Text                   = "Level 0 → 1"
 
-    return bb
+    -- Barre de progression coins (fond)
+    local barFond = Instance.new("Frame", fond)
+    barFond.Name             = "BarFond"
+    barFond.Size             = UDim2.new(1, -10, 0.08, 0)
+    barFond.Position         = UDim2.new(0, 5, 0.4, 0)
+    barFond.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    barFond.BorderSizePixel  = 0
+    Instance.new("UICorner", barFond).CornerRadius = UDim.new(1, 0)
+
+    -- Barre de progression coins (remplissage)
+    local barFill = Instance.new("Frame", barFond)
+    barFill.Name             = "Fill"
+    barFill.Size             = UDim2.new(0, 0, 1, 0)
+    barFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    barFill.BorderSizePixel  = 0
+    Instance.new("UICorner", barFill).CornerRadius = UDim.new(1, 0)
+
+    -- Coins X / Y
+    local lblCoins = Instance.new("TextLabel", fond)
+    lblCoins.Name                   = "Coins"
+    lblCoins.Size                   = UDim2.new(1, -10, 0.15, 0)
+    lblCoins.Position               = UDim2.new(0, 5, 0.5, 2)
+    lblCoins.BackgroundTransparency = 1
+    lblCoins.TextColor3             = Color3.fromRGB(255, 215, 0)
+    lblCoins.Font                   = Enum.Font.Gotham
+    lblCoins.TextScaled             = true
+    lblCoins.RichText               = true
+    lblCoins.Text                   = "💰 — / —"
+
+    -- BR requis
+    local lblBR = Instance.new("TextLabel", fond)
+    lblBR.Name                   = "BR"
+    lblBR.Size                   = UDim2.new(1, -10, 0.15, 0)
+    lblBR.Position               = UDim2.new(0, 5, 0.66, 2)
+    lblBR.BackgroundTransparency = 1
+    lblBR.TextColor3             = Color3.fromRGB(200, 200, 200)
+    lblBR.Font                   = Enum.Font.Gotham
+    lblBR.TextScaled             = true
+    lblBR.RichText               = true
+    lblBR.Text                   = "☄️ — requis"
+
+    -- Hint "Click to view"
+    local lblHint = Instance.new("TextLabel", fond)
+    lblHint.Name                   = "Hint"
+    lblHint.Size                   = UDim2.new(1, -10, 0.13, 0)
+    lblHint.Position               = UDim2.new(0, 5, 0.85, 2)
+    lblHint.BackgroundTransparency = 1
+    lblHint.TextColor3             = Color3.fromRGB(150, 150, 150)
+    lblHint.Font                   = Enum.Font.Gotham
+    lblHint.TextScaled             = true
+    lblHint.RichText               = true
+    lblHint.Text                   = "<i>🖱 Click to open menu</i>"
+
+    return sg
+end
+
+-- ============================================================
+-- Met à jour le contenu de la SurfaceGui d'un Board
+-- etat = table identique à celle envoyée par RebirthButtonUpdate :
+--   rebirthLevel, coinsActuels, coinsRequis, brainRotRequis, manqueBR, multiplicateur
+-- ============================================================
+local function mettreAJourSurfaceGui(board, etat)
+    local sg   = board:FindFirstChild("BoardGui")
+    if not sg then return end
+    local fond = sg:FindFirstChild("Fond")
+    if not fond then return end
+
+    local niveau   = etat.rebirthLevel or 0
+    local coinsA   = etat.coinsActuels or 0
+    local coinsR   = etat.coinsRequis  or 0
+    local rarete   = etat.brainRotRequis or "?"
+    local brOk     = etat.manqueBR == nil
+    local pct      = coinsR > 0 and math.clamp(coinsA / coinsR, 0, 1) or 0
+
+    -- Niveau
+    local lblNiveau = fond:FindFirstChild("Niveau")
+    if lblNiveau then
+        lblNiveau.Text = "<b>Level " .. niveau .. " → " .. (niveau + 1) .. "</b>"
+        if etat.label then
+            lblNiveau.Text = "<b>" .. etat.label .. "</b>"
+        end
+    end
+
+    -- Barre coins
+    local barFond = fond:FindFirstChild("BarFond")
+    local barFill = barFond and barFond:FindFirstChild("Fill")
+    if barFill then
+        barFill.Size             = UDim2.new(pct, 0, 1, 0)
+        barFill.BackgroundColor3 = pct >= 1
+            and Color3.fromRGB(0, 220, 0)
+            or  Color3.fromRGB(255, 200, 0)
+    end
+
+    -- Coins
+    local lblCoins = fond:FindFirstChild("Coins")
+    if lblCoins then
+        lblCoins.Text = "💰 " .. formaterNombre(coinsA) .. " / " .. formaterNombre(coinsR)
+        lblCoins.TextColor3 = pct >= 1
+            and Color3.fromRGB(0, 255, 100)
+            or  Color3.fromRGB(255, 215, 0)
+    end
+
+    -- BR requis
+    local lblBR = fond:FindFirstChild("BR")
+    if lblBR then
+        local check = brOk and "✅" or "❌"
+        lblBR.Text       = "☄️ " .. rarete .. "  " .. check
+        lblBR.TextColor3 = brOk
+            and Color3.fromRGB(100, 255, 100)
+            or  Color3.fromRGB(255, 100, 100)
+    end
+
+    -- Bordure : orange si prêt à rebirther
+    local stroke = fond:FindFirstChildOfClass("UIStroke")
+    if stroke then
+        stroke.Color = (pct >= 1 and brOk)
+            and Color3.fromRGB(255, 215, 0)
+            or  Color3.fromRGB(255, 140, 0)
+    end
 end
 
 -- ============================================================
@@ -109,7 +256,7 @@ function BoardSystem.Init()
         return
     end
 
-    local maxBases    = Config.MaxBases or 6
+    local maxBases      = Config.MaxBases or 6
     local OuvrirRebirth = getOuvrirRebirth()
 
     for i = 1, maxBases do
@@ -118,7 +265,10 @@ function BoardSystem.Init()
         local board = bat and bat:FindFirstChild("Board")
 
         if board then
-            -- Supprimer l'ancien ClickDetector s'il existe
+            -- Créer la SurfaceGui
+            creerSurfaceGui(board)
+
+            -- ClickDetector
             local ancien = board:FindFirstChildOfClass("ClickDetector")
             if ancien then ancien:Destroy() end
 
@@ -127,24 +277,19 @@ function BoardSystem.Init()
 
             local capturedIndex = i
             cd.MouseClick:Connect(function(player)
-                -- Forcer la mise à jour du bouton avant d'ouvrir
+                -- Mettre à jour le bouton avant d'ouvrir
                 local RS = getRebirthSystem()
                 if RS then pcall(RS.MettreAJourBouton, player) end
 
-                -- Ouvrir le panel Rebirth côté client
                 pcall(function() OuvrirRebirth:FireClient(player) end)
 
                 print("[BoardSystem] " .. player.Name
                     .. " → panel Rebirth ouvert (Base_" .. capturedIndex .. ")")
             end)
 
-            -- BillboardGui
-            obtenirBillboard(board)
-
             print("[BoardSystem] Board configuré → Base_" .. i)
         else
-            warn("[BoardSystem] Board introuvable dans Base_" .. i
-                .. (base and bat and " (bat trouvé mais pas Board)" or ""))
+            warn("[BoardSystem] Board introuvable dans Base_" .. i)
         end
     end
 
@@ -152,10 +297,11 @@ function BoardSystem.Init()
 end
 
 -- ============================================================
--- API publique — Mise à jour du Board après Rebirth
+-- API publique — Mise à jour du Board pour un joueur
+-- etat = table RebirthButtonUpdate (rebirthLevel, coinsActuels, coinsRequis, etc.)
 -- ============================================================
 
-function BoardSystem.MettreAJourBoard(player, niveauRebirth)
+function BoardSystem.MettreAJourBoard(player, etat)
     local AS = getAssignationSystem()
     if not AS then return end
     local baseIndex = AS.GetBaseIndex(player)
@@ -168,12 +314,7 @@ function BoardSystem.MettreAJourBoard(player, niveauRebirth)
     local board = bat and bat:FindFirstChild("Board")
     if not board then return end
 
-    local bb      = board:FindFirstChild("BoardBillboard")
-    local lbl     = bb and bb:FindFirstChild("LblTitre")
-    if lbl then
-        lbl.Text = "🔄 <b>REBIRTH " .. niveauRebirth .. "</b>\n"
-            .. "Floor " .. (niveauRebirth + 1) .. " unlocked!"
-    end
+    mettreAJourSurfaceGui(board, etat or {})
 end
 
 return BoardSystem
