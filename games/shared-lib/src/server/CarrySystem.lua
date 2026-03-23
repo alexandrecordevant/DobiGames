@@ -10,20 +10,7 @@ local CarrySystem = {}
 -- function(player) → baseIndex ou nil
 CarrySystem.GetBaseJoueur = nil
 
--- ============================================================
--- TEST_MODE — capacité et prix upgrades réduits
--- ============================================================
 local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
-local _TestConfig = _GameConfig.TEST_MODE
-    and require(game.ReplicatedStorage.Test.TestConfig)
-    or nil
-
-local function GetConfig(nomValeur, valeurNormale)
-    if _TestConfig and _TestConfig[nomValeur] ~= nil then
-        return _TestConfig[nomValeur]
-    end
-    return valeurNormale
-end
 
 -- ============================================================
 -- Services
@@ -42,25 +29,10 @@ CarrySystem.OnCarryChange = nil
 -- ============================================================
 -- Configuration capture hybride
 -- ============================================================
--- HoldDuration réduit en TEST_MODE pour accélérer les captures
--- Lire depuis Config (TestConfig en priorité si défini)
-local CAPTURE_CONFIG = (_TestConfig and _TestConfig.CaptureConfig) or _GameConfig.CaptureConfig
+local CAPTURE_CONFIG = _GameConfig.CaptureConfig
 local VALEURS_RARETE = _GameConfig.ValeurParRarete
 local CARRY_NIVEAUX  = _GameConfig.CarryNiveaux
-local CARRY_PRICES   = (_TestConfig and _TestConfig.CarryPrices) or _GameConfig.CarryPrices
-
--- Capacité par défaut : TestConfig.CarryCapaciteDefaut si défini,
--- sinon GameConfig.CarryCapaciteDefaut, sinon 1 (valeur réelle)
-local _carryDefaut = (_TestConfig and _TestConfig.CarryCapaciteDefaut)
-    or _GameConfig.CarryCapaciteDefaut
-    or 1
-
--- Fusionner _carryDefaut dans CARRY_NIVEAUX (niveau 0 peut être overridé en test)
-if _carryDefaut ~= 1 then
-    CARRY_NIVEAUX = {}
-    for k, v in pairs(_GameConfig.CarryNiveaux) do CARRY_NIVEAUX[k] = v end
-    CARRY_NIVEAUX[0] = _carryDefaut
-end
+local CARRY_PRICES   = _GameConfig.CarryPrices
 
 local CARRY_CONFIG = {
 	niveaux = CARRY_NIVEAUX,

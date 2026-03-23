@@ -3,12 +3,6 @@
 
 local GameConfig = {}
 
--- ═══════════════════════════════════════════
--- MODE TEST
--- ⚠️ METTRE À false AVANT PUBLISH
--- ═══════════════════════════════════════════
-GameConfig.TEST_MODE = true
-
 -- === IDENTITÉ DU JEU ===
 GameConfig.NomDuJeu          = "Brain Rot Farm"
 GameConfig.Theme             = "farm"
@@ -557,5 +551,9 @@ GameConfig.BoardConfig = {
     texteDefaut   = "🔄 REBIRTH\nClick to view",
     distanceClick = 20,
 }
+
+-- === PLANT MODELS PATH ===
+-- Dossier dans ServerStorage contenant Graine (Part+SpecialMesh) et Tree (Model)
+GameConfig.PlantModelsPath = "PlantModels"
 
 return GameConfig

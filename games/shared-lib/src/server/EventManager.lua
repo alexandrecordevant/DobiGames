@@ -14,17 +14,6 @@ local function getEventVisuals()
     return _EventVisuals
 end
 
--- TEST_MODE : intervalles réduits pour valider le flow en studio
-local _TestConfig = Config.TEST_MODE
-    and require(game.ReplicatedStorage.Test.TestConfig)
-    or nil
-
-local function GetConfig(nomValeur, valeurNormale)
-    if _TestConfig and _TestConfig[nomValeur] ~= nil then
-        return _TestConfig[nomValeur]
-    end
-    return valeurNormale
-end
 local Players = game:GetService("Players")
 
 local function NotifierTous(message, couleur)
@@ -46,8 +35,8 @@ local function DemarrerEvent(typeEvent)
 end
 
 local function BoucleAuto()
-    local intervalle = GetConfig("EventIntervalleMinutes", Config.EventIntervalleMinutes) * 60
-    local earlyBird  = Config.TEST_MODE and 0 or (Config.EarlyBirdBonusMinutes * 60)
+    local intervalle = Config.EventIntervalleMinutes * 60
+    local earlyBird  = Config.EarlyBirdBonusMinutes * 60
     local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
     while true do
         task.wait(intervalle - earlyBird)

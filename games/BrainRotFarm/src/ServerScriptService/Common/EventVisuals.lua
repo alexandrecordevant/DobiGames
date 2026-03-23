@@ -16,17 +16,6 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 local Config = require(ReplicatedStorage.Specialized.GameConfig)
 
-local _TestConfig = Config.TEST_MODE
-    and require(ReplicatedStorage.Test.TestConfig)
-    or nil
-
-local function GetConfig(nomValeur, valeurNormale)
-    if _TestConfig and _TestConfig[nomValeur] ~= nil then
-        return _TestConfig[nomValeur]
-    end
-    return valeurNormale
-end
-
 -- ============================================================
 -- Chargement différé des modules visuels
 -- ============================================================
@@ -94,7 +83,7 @@ end
 -- LuckyHour, DoubleCoins, SecretSpawn gardent leurs effets ici
 -- ============================================================
 local function getDureeEvent()
-    return GetConfig("EventDureeMinutes", Config.EventDureeMinutes) * 60
+    return Config.EventDureeMinutes * 60
 end
 
 local CONFIGS_GAMEPLAY = {

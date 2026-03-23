@@ -147,34 +147,7 @@ end
 -- ═══════════════════════════════════════════════
 
 local function OnPlayerAdded(player)
-    -- ═══ RESET AUTOMATIQUE EN TEST_MODE ═══
-    -- Bypass DataStore complet : en Studio, GetAsync après RemoveAsync peut
-    -- retourner l'ancien cache → progression complète chargée → base déjà débloquée.
-    -- Solution : utiliser GetDefaultData() pour garantir des données vraiment vierges.
-    local dataForcee = nil
-    if Config.TEST_MODE then
-        local okTC, TestConfig = pcall(require, ReplicatedStorage.Test.TestConfig)
-        if okTC and TestConfig and TestConfig.AutoResetOnJoin then
-            local DS = game:GetService("DataStoreService")
-                           :GetDataStore("BrainRotIdleV1")
-            local ok, err = pcall(function()
-                DS:RemoveAsync("player_" .. player.UserId)
-            end)
-            if ok then
-                -- Bypass GetAsync — retourne directement des données vierges
-                -- (évite le cache Studio qui renverrait l'ancienne progression)
-                dataForcee = DataStoreManager.GetDefaultData()
-                print("[TEST] 🔄 Reset automatique : "
-                    .. player.Name .. " repart de zéro ✓ (données vierges garanties)")
-            else
-                warn("[TEST] Erreur reset DataStore : " .. tostring(err))
-            end
-        end
-    end
-    -- ═══════════════════════════════════════
-
-    -- Charger données : vierges si reset effectué, sinon DataStore normal
-    local data = dataForcee or DataStoreManager.Load(player)
+    local data = DataStoreManager.Load(player)
     SetData(player, data)
 
     -- Vérifier Game Passes
@@ -193,13 +166,6 @@ local function OnPlayerAdded(player)
         elseif SpawnManager.AssignerBase then
             -- Compatibilité ascendante
             pcall(SpawnManager.AssignerBase, player, baseIndex)
-        end
-
-        -- En TEST_MODE avec AutoReset : remettre la base visuellement à zéro
-        -- AVANT Init pour éviter les étages débloqués persistants entre sessions
-        if dataForcee then
-            pcall(BaseProgressionSystem.ResetVisuelBase, baseIndex)
-            print("[TEST] 🔄 Reset visuel Base_" .. baseIndex .. " ✓")
         end
 
         -- Initialiser la progression visuelle de la base
@@ -602,19 +568,6 @@ TracteurSystem.Init()
 -- FlowerPotSystem : connecter la source de données et initialiser
 FlowerPotSystem.SetGetData(GetData)
 FlowerPotSystem.InitServeur()
-
--- Démarrer TestRunner + ResetSystem si TEST_MODE actif (aucun overhead si false)
-if Config.TEST_MODE then
-    local ok, TestRunner = pcall(require, ReplicatedStorage.Test.TestRunner)
-    if ok and TestRunner then
-        task.spawn(TestRunner.Init)
-    end
-    local okRS, ResetSystem = pcall(require, ReplicatedStorage.Test.ResetSystem)
-    if okRS and ResetSystem then
-        pcall(ResetSystem.Init)
-    end
-    warn("⚠️  TEST_MODE ACTIVÉ — Désactiver GameConfig.TEST_MODE avant publish !")
-end
 
 -- ═══════════════════════════════════════════════
 -- 7. TOP FARMER HEBDOMADAIRE (chaque lundi minuit UTC)

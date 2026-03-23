@@ -420,50 +420,6 @@ local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
 end
 
 -- ============================================================
--- Achat gratuit TEST_MODE — uniquement si Config.TEST_MODE = true (vérification serveur)
--- ============================================================
-local function traiterAchatTestGratuit(player, nomUpgrade, niveauDemande)
-    -- Double vérification serveur : jamais faire confiance au client
-    if not Config.TEST_MODE then
-        return false, "TEST_MODE inactif côté serveur"
-    end
-
-    local playerData = getData(player)
-    if not playerData then return false, "Données introuvables" end
-
-    local upgradeConfig = Config.ShopUpgrades[nomUpgrade]
-    if not upgradeConfig then return false, "Upgrade inconnu : " .. tostring(nomUpgrade) end
-
-    local niveauConfig = upgradeConfig.niveaux[niveauDemande]
-    if not niveauConfig then return false, "Niveau invalide : " .. tostring(niveauDemande) end
-
-    -- Uniquement pour les options R$ (robux)
-    if niveauConfig.type ~= "robux" then
-        return false, "Cet upgrade n'est pas R$ — utiliser l'achat coins normal"
-    end
-
-    -- Appliquer selon isGamePass ou upgrade à niveaux
-    assurerUpgrades(playerData)
-    if upgradeConfig.isGamePass then
-        playerData[upgradeConfig.dataField] = true
-    else
-        local niveauActuel = playerData.upgrades[upgradeConfig.dataField] or 0
-        if niveauDemande > niveauActuel then
-            playerData.upgrades[upgradeConfig.dataField] = niveauDemande
-        else
-            return false, "Niveau déjà atteint"
-        end
-    end
-
-    -- Appliquer l'effet immédiatement
-    pcall(appliquerEffet, player, playerData, niveauConfig)
-
-    return true,
-        upgradeConfig.icone .. " " .. upgradeConfig.nom ..
-        " activated for free [TEST]!"
-end
-
--- ============================================================
 -- ProximityPrompt — Shop dans chaque base
 -- ============================================================
 -- baseIndex : index de la base concernée (pour vérifier l'ownership)
@@ -600,29 +556,21 @@ function ShopSystem.Init()
     -- Ajouter ProximityPrompts (initialiserShopsBases attend jusqu'à 15s)
     task.spawn(initialiserShopsBases)
 
-    -- Handler : achat (coins OU gratuit TEST_MODE)
-    AchatUpgrade.OnServerEvent:Connect(function(player, nomUpgrade, niveauDemande, isTestGratuit)
+    -- Handler : achat coins
+    AchatUpgrade.OnServerEvent:Connect(function(player, nomUpgrade, niveauDemande)
         -- Validation des types (jamais faire confiance au client)
         if type(nomUpgrade) ~= "string" then return end
         if type(niveauDemande) ~= "number" then return end
         niveauDemande = math.floor(niveauDemande)
 
-        local ok, message
-
-        -- Route vers achat gratuit si demandé ET TEST_MODE vérifié côté serveur
-        if isTestGratuit == true and Config.TEST_MODE then
-            ok, message = traiterAchatTestGratuit(player, nomUpgrade, niveauDemande)
-        else
-            ok, message = traiterAchatCoins(player, nomUpgrade, niveauDemande)
-        end
+        local ok, message = traiterAchatCoins(player, nomUpgrade, niveauDemande)
 
         local playerData = getData(player)
         local notif      = ReplicatedStorage:FindFirstChild("NotifEvent")
 
         if ok then
-            local prefixe = (isTestGratuit and Config.TEST_MODE) and "🧪 " or "✅ "
             if notif then
-                pcall(function() notif:FireClient(player, "SUCCESS", prefixe .. message) end)
+                pcall(function() notif:FireClient(player, "SUCCESS", "✅ " .. message) end)
             end
             local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
             if UpdateHUD and playerData then

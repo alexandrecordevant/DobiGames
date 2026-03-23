@@ -11,24 +11,12 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
--- ============================================================
--- TEST_MODE — multiplicateur income ×100 pour accélérer la progression
--- ============================================================
 local _GameConfig  = require(game.ReplicatedStorage.Specialized.GameConfig)
-local _TestConfig  = _GameConfig.TEST_MODE
-    and require(game.ReplicatedStorage.Test.TestConfig)
-    or nil
-local _testIncomeMult = (_TestConfig and _TestConfig.IncomeMultiplier) or 1
 
 -- ============================================================
 -- Valeur de base par rareté (coins/sec par Brain Rot déposé)
--- Multipliée par _testIncomeMult en TEST_MODE (×100)
 -- ============================================================
-local _baseIncomeParRarete = _GameConfig.IncomeParRarete
-local INCOME_PAR_RARETE = {}
-for rarete, valeur in pairs(_baseIncomeParRarete) do
-    INCOME_PAR_RARETE[rarete] = valeur * _testIncomeMult
-end
+local INCOME_PAR_RARETE = _GameConfig.IncomeParRarete
 
 -- ============================================================
 -- Multiplicateur d'event (partagé pour tous les joueurs)

@@ -29,12 +29,6 @@ local function Envoyer(webhookURL, contenu, username, couleur)
         return
     end
 
-    -- En TEST_MODE : print au lieu d'envoyer vraiment
-    if Config.TEST_MODE then
-        print("[Discord TEST] " .. tostring(username) .. " : " .. tostring(contenu))
-        return
-    end
-
     local ok, err = pcall(function()
         HttpService:PostAsync(
             webhookURL,

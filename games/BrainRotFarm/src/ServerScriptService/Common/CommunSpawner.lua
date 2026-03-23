@@ -41,29 +41,13 @@ local function getLeaderboardSystem()
     return _LeaderboardSystem
 end
 
--- Configuration TEST_MODE
-local _GameConfig = Config
-local _TestConfig = _GameConfig.TEST_MODE
-    and require(game.ReplicatedStorage.Test.TestConfig)
-    or nil
-
--- Retourne la config ZoneCommune (TestConfig ou valeur par défaut)
-local function GetZoneCommCfg(typeNom, champKey, valeurNormale)
-    if _TestConfig and _TestConfig.ChampCommun
-        and _TestConfig.ChampCommun[typeNom]
-        and _TestConfig.ChampCommun[typeNom][champKey] ~= nil then
-        return _TestConfig.ChampCommun[typeNom][champKey]
-    end
-    return valeurNormale
-end
-
 -- ============================================================
 -- Configuration des raretés
 -- ============================================================
 local CONFIG = {
 	MYTHIC = {
-		intervalleSecondes   = GetZoneCommCfg("MYTHIC", "intervalleSecondes",   8 * 60),
-		compteurVisibleAvant = GetZoneCommCfg("MYTHIC", "compteurVisibleAvant", 3 * 60),
+		intervalleSecondes   = 8 * 60,
+		compteurVisibleAvant = 3 * 60,
 		valeur               = 300,
 		despawnSecondes      = 60,
 		couleur              = Color3.fromRGB(148, 0, 211),
@@ -72,8 +56,8 @@ local CONFIG = {
 		dossier              = "MYTHIC",
 	},
 	SECRET = {
-		intervalleSecondes   = GetZoneCommCfg("SECRET", "intervalleSecondes",   20 * 60),
-		compteurVisibleAvant = GetZoneCommCfg("SECRET", "compteurVisibleAvant",  5 * 60),
+		intervalleSecondes   = 20 * 60,
+		compteurVisibleAvant = 5 * 60,
 		valeur               = 1000,
 		despawnSecondes      = 60,
 		couleur              = Color3.fromRGB(255, 30, 30),

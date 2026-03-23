@@ -9,8 +9,7 @@
                 "Server": { "$path": "../shared-lib/src/server" },
                 "Shared": { "$path": "../shared-lib/src/shared" }
             },
-            "Specialized": { "$path": "src/ReplicatedStorage/Specialized" },
-            "Test": { "$path": "src/ReplicatedStorage/Test" }
+            "Specialized": { "$path": "src/ReplicatedStorage/Specialized" }
         },
         "ServerScriptService": {
             "$className": "ServerScriptService",

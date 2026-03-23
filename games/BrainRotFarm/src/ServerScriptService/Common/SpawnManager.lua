@@ -17,17 +17,6 @@ local Workspace      = game:GetService("Workspace")
 -- Config — lue depuis GameConfig
 -- ============================================================
 local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
-local _TestConfig = _GameConfig.TEST_MODE
-    and require(game.ReplicatedStorage.Test.TestConfig)
-    or nil
-
-local function GetConfig(nomValeur, valeurNormale)
-    if _TestConfig and _TestConfig[nomValeur] ~= nil then
-        return _TestConfig[nomValeur]
-    end
-    return valeurNormale
-end
-
 -- Valeurs animation depuis AnimationConfig (fallback si absent)
 local _animCfg = _GameConfig.AnimationConfig or {}
 
@@ -35,10 +24,10 @@ local _animCfg = _GameConfig.AnimationConfig or {}
 local _spawnCfg = _GameConfig.SpawnConfig or {}
 
 local CONFIG = {
-	INTERVALLE_SPAWN_DEFAUT = GetConfig("BaseSpawnRate", _spawnCfg.intervalleSecondes or 4),
+	INTERVALLE_SPAWN_DEFAUT = _spawnCfg.intervalleSecondes or 4,
 	DUREE_FADE_OUT          = 0.3,
-	DUREE_DESPAWN           = GetConfig("DESPAWN_SECONDES", _spawnCfg.despawnSecondes or 30),
-	MAX_PAR_BASE            = GetConfig("MAX_BRAINROTS_MAP", _spawnCfg.maxParBase or 15),
+	DUREE_DESPAWN           = _spawnCfg.despawnSecondes or 30,
+	MAX_PAR_BASE            = _spawnCfg.maxParBase or 15,
 	Y_OFFSET                = 2,
 	NETTOYAGE_ITERATIONS    = 15,
 	-- Pousse de terre — lus depuis GameConfig.AnimationConfig
