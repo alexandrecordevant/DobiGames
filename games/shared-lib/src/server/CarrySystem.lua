@@ -566,6 +566,8 @@ end
 
 -- Crée les prompts de dépôt pour tous les spots actifs d'un joueur
 function CarrySystem.InitDepotSpotsBase(player, spotsActifs)
+	-- Auto-init si appelé avant CarrySystem.Init() (ordre PlayerAdded dans Main)
+	if not donneesJoueurs[player.UserId] then initJoueur(player) end
 	local data = donneesJoueurs[player.UserId]
 	if not data then return end
 
@@ -585,6 +587,8 @@ end
 
 -- Ajoute un prompt pour un nouveau spot débloqué après Init
 function CarrySystem.AjouterDepotSpot(player, touchPart)
+	-- Auto-init si appelé avant CarrySystem.Init()
+	if not donneesJoueurs[player.UserId] then initJoueur(player) end
 	local data = donneesJoueurs[player.UserId]
 	if not data then return end
 	if not data.depotPrompts then data.depotPrompts = {} end
@@ -705,6 +709,9 @@ end
 -- ============================================================
 
 local function initJoueur(player)
+	-- Idempotent : si déjà initialisé (ex: appelé par InitDepotSpotsBase avant PlayerAdded),
+	-- ne pas écraser les données existantes (depotPrompts déjà créés).
+	if donneesJoueurs[player.UserId] then return end
 	donneesJoueurs[player.UserId] = {
 		portes        = {},
 		niveauCarry   = 0,
