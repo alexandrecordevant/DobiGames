@@ -8,6 +8,7 @@ local RS           = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local player       = Players.LocalPlayer
 local playerGui    = player:WaitForChild("PlayerGui")
+local T            = require(RS.SharedLib.Shared.UITheme)
 
 -- Attendre les RemoteEvents créés par RebirthSystem.lua et Main.server.lua
 local RebirthButtonUpdate = RS:WaitForChild("RebirthButtonUpdate", 10)
@@ -38,8 +39,8 @@ local rebirthFrame = Instance.new("Frame")
 rebirthFrame.Name                   = "RebirthFrame"
 rebirthFrame.Size                   = UDim2.new(0, 350, 0, 145)
 rebirthFrame.Position               = UDim2.new(0.5, -175, 1, -160)
-rebirthFrame.BackgroundColor3       = Color3.fromRGB(15, 15, 15)
-rebirthFrame.BackgroundTransparency = 0.2
+rebirthFrame.BackgroundColor3       = T.fondPrincipal
+rebirthFrame.BackgroundTransparency = 0.1
 rebirthFrame.BorderSizePixel        = 0
 rebirthFrame.Visible                = false
 rebirthFrame.Parent                 = screenGui
@@ -48,7 +49,7 @@ local corner = Instance.new("UICorner", rebirthFrame)
 corner.CornerRadius = UDim.new(0, 10)
 
 local stroke = Instance.new("UIStroke", rebirthFrame)
-stroke.Color     = Color3.fromRGB(255, 140, 0)
+stroke.Color     = T.bordureAccent
 stroke.Thickness = 1.5
 
 -- Titre
@@ -57,7 +58,7 @@ lblTitre.Name                   = "Titre"
 lblTitre.Size                   = UDim2.new(1, -20, 0, 24)
 lblTitre.Position               = UDim2.new(0, 10, 0, 8)
 lblTitre.BackgroundTransparency = 1
-lblTitre.TextColor3             = Color3.fromRGB(255, 165, 0)
+lblTitre.TextColor3             = T.texteTitre
 lblTitre.Font                   = Enum.Font.GothamBold
 lblTitre.TextSize               = 16
 lblTitre.TextXAlignment         = Enum.TextXAlignment.Left
@@ -69,7 +70,7 @@ local barFond = Instance.new("Frame", rebirthFrame)
 barFond.Name             = "BarFond"
 barFond.Size             = UDim2.new(1, -20, 0, 14)
 barFond.Position         = UDim2.new(0, 10, 0, 36)
-barFond.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+barFond.BackgroundColor3 = T.barreVide
 barFond.BorderSizePixel  = 0
 Instance.new("UICorner", barFond).CornerRadius = UDim.new(1, 0)
 
@@ -77,7 +78,7 @@ Instance.new("UICorner", barFond).CornerRadius = UDim.new(1, 0)
 local barFill = Instance.new("Frame", barFond)
 barFill.Name             = "BarFill"
 barFill.Size             = UDim2.new(0, 0, 1, 0)
-barFill.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+barFill.BackgroundColor3 = T.barreRebirth
 barFill.BorderSizePixel  = 0
 Instance.new("UICorner", barFill).CornerRadius = UDim.new(1, 0)
 
@@ -86,7 +87,7 @@ local lblPourcent = Instance.new("TextLabel", barFond)
 lblPourcent.Name                   = "Pourcent"
 lblPourcent.Size                   = UDim2.new(1, 0, 1, 0)
 lblPourcent.BackgroundTransparency = 1
-lblPourcent.TextColor3             = Color3.fromRGB(255, 255, 255)
+lblPourcent.TextColor3             = T.texte
 lblPourcent.Font                   = Enum.Font.GothamBold
 lblPourcent.TextSize               = 11
 lblPourcent.Text                   = "0%"
@@ -97,7 +98,7 @@ lblCoins.Name                   = "Coins"
 lblCoins.Size                   = UDim2.new(1, -20, 0, 18)
 lblCoins.Position               = UDim2.new(0, 10, 0, 54)
 lblCoins.BackgroundTransparency = 1
-lblCoins.TextColor3             = Color3.fromRGB(255, 215, 0)
+lblCoins.TextColor3             = T.texte
 lblCoins.Font                   = Enum.Font.Gotham
 lblCoins.TextSize               = 13
 lblCoins.TextXAlignment         = Enum.TextXAlignment.Left
@@ -110,7 +111,7 @@ lblBR.Name                   = "BRRequis"
 lblBR.Size                   = UDim2.new(1, -20, 0, 18)
 lblBR.Position               = UDim2.new(0, 10, 0, 74)
 lblBR.BackgroundTransparency = 1
-lblBR.TextColor3             = Color3.fromRGB(200, 200, 200)
+lblBR.TextColor3             = T.texteSecondaire
 lblBR.Font                   = Enum.Font.Gotham
 lblBR.TextSize               = 13
 lblBR.TextXAlignment         = Enum.TextXAlignment.Left
@@ -122,8 +123,8 @@ local btnRebirth = Instance.new("TextButton", rebirthFrame)
 btnRebirth.Name                   = "BtnRebirth"
 btnRebirth.Size                   = UDim2.new(1, -20, 0, 34)
 btnRebirth.Position               = UDim2.new(0, 10, 0, 100)
-btnRebirth.BackgroundColor3       = Color3.fromRGB(80, 80, 80)
-btnRebirth.TextColor3             = Color3.fromRGB(255, 255, 255)
+btnRebirth.BackgroundColor3       = T.fondSecondaire
+btnRebirth.TextColor3             = T.texteSecondaire
 btnRebirth.Font                   = Enum.Font.GothamBold
 btnRebirth.TextSize               = 14
 btnRebirth.Text                   = "⚡ REBIRTH — ×1.5 income"
@@ -171,11 +172,12 @@ local function SetBoutonPret(ready)
     end
 
     if ready then
-        btnRebirth.BackgroundColor3       = Color3.fromRGB(255, 140, 0)
+        btnRebirth.BackgroundColor3       = T.fondBoutonRebirth
+        btnRebirth.TextColor3             = T.texte
         btnRebirth.BackgroundTransparency = 0
-        stroke.Color                      = Color3.fromRGB(255, 215, 0)
+        stroke.Color                      = T.bordureAccent
         stroke.Thickness                  = 2.5
-        -- Pulse orange ↔ transparent
+        -- Pulse jaune blé ↔ transparent
         pulseTween = TweenService:Create(
             btnRebirth,
             TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
@@ -183,9 +185,10 @@ local function SetBoutonPret(ready)
         )
         pulseTween:Play()
     else
-        btnRebirth.BackgroundColor3       = Color3.fromRGB(80, 80, 80)
+        btnRebirth.BackgroundColor3       = T.fondSecondaire
+        btnRebirth.TextColor3             = T.texteSecondaire
         btnRebirth.BackgroundTransparency = 0
-        stroke.Color                      = Color3.fromRGB(255, 140, 0)
+        stroke.Color                      = T.bordureAccent
         stroke.Thickness                  = 1.5
     end
 end
@@ -221,11 +224,11 @@ RebirthButtonUpdate.OnClientEvent:Connect(function(data)
 
     -- Couleur barre selon progression
     if pct >= 100 then
-        barFill.BackgroundColor3 = Color3.fromRGB(0, 220, 0)
+        barFill.BackgroundColor3 = T.barrePleine
     elseif pct >= 75 then
-        barFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+        barFill.BackgroundColor3 = T.barreRebirth
     else
-        barFill.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+        barFill.BackgroundColor3 = T.fondBoutonRebirth
     end
 
     -- Coins
@@ -266,21 +269,21 @@ local function afficherConfirmation(multStr)
     confirm.Name                   = "ConfirmRebirth"
     confirm.Size                   = UDim2.new(0, 320, 0, 160)
     confirm.Position               = UDim2.new(0.5, -160, 0.5, -80)
-    confirm.BackgroundColor3       = Color3.fromRGB(20, 20, 20)
+    confirm.BackgroundColor3       = T.fondPrincipal
     confirm.BackgroundTransparency = 0.05
     confirm.BorderSizePixel        = 0
     confirm.ZIndex                 = 5
     Instance.new("UICorner", confirm).CornerRadius = UDim.new(0, 12)
 
     local stroke2 = Instance.new("UIStroke", confirm)
-    stroke2.Color     = Color3.fromRGB(255, 140, 0)
+    stroke2.Color     = T.bordureAccent
     stroke2.Thickness = 2
 
     local lbl = Instance.new("TextLabel", confirm)
     lbl.Size                   = UDim2.new(1, -20, 0, 70)
     lbl.Position               = UDim2.new(0, 10, 0, 12)
     lbl.BackgroundTransparency = 1
-    lbl.TextColor3             = Color3.fromRGB(255, 255, 255)
+    lbl.TextColor3             = T.texte
     lbl.Font                   = Enum.Font.GothamBold
     lbl.TextSize               = 14
     lbl.TextWrapped            = true
@@ -292,8 +295,8 @@ local function afficherConfirmation(multStr)
     local btnOui = Instance.new("TextButton", confirm)
     btnOui.Size             = UDim2.new(0.45, 0, 0, 38)
     btnOui.Position         = UDim2.new(0.05, 0, 1, -48)
-    btnOui.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-    btnOui.TextColor3       = Color3.fromRGB(255, 255, 255)
+    btnOui.BackgroundColor3 = T.fondBouton
+    btnOui.TextColor3       = T.texte
     btnOui.Font             = Enum.Font.GothamBold
     btnOui.TextSize         = 14
     btnOui.Text             = "✅ Confirm"
@@ -304,8 +307,8 @@ local function afficherConfirmation(multStr)
     local btnNon = Instance.new("TextButton", confirm)
     btnNon.Size             = UDim2.new(0.45, 0, 0, 38)
     btnNon.Position         = UDim2.new(0.5, 0, 1, -48)
-    btnNon.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    btnNon.TextColor3       = Color3.fromRGB(255, 255, 255)
+    btnNon.BackgroundColor3 = T.fondBoutonDanger
+    btnNon.TextColor3       = T.texte
     btnNon.Font             = Enum.Font.GothamBold
     btnNon.TextSize         = 14
     btnNon.Text             = "❌ Cancel"
