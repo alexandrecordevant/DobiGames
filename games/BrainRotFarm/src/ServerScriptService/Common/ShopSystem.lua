@@ -464,28 +464,65 @@ local function ajouterPromptShop(shopPart, baseIndex)
     end)
 end
 
-local function trouverShopPart(baseModel)
-    local shopModel = baseModel:FindFirstChild("Shop")
-    if not shopModel then return nil end
-
-    -- Part directe
-    if shopModel:IsA("BasePart") then return shopModel end
-
-    -- TouchPart / Trigger nommé
+-- Trouve la BasePart d'accroche dans un Model Shop
+-- Priorité : TouchPart nommé → PrimaryPart → enfant direct BasePart
+--            → descendant non-Lantern (fallback)
+local function trouverShopPart(shopModel)
+    -- 1. TouchPart explicitement nommé
     for _, nomCible in ipairs({ "TouchPart", "Trigger", "Base", "Hit" }) do
         local tp = shopModel:FindFirstChild(nomCible)
         if tp and tp:IsA("BasePart") then return tp end
     end
 
-    -- PrimaryPart du modèle
+    -- 2. PrimaryPart du modèle Shop
     if shopModel.PrimaryPart then return shopModel.PrimaryPart end
 
-    -- Première BasePart descendante
-    for _, d in ipairs(shopModel:GetDescendants()) do
-        if d:IsA("BasePart") then return d end
+    -- 3. Enfants directs BasePart (évite les sous-modèles décoratifs comme Lantern)
+    for _, child in ipairs(shopModel:GetChildren()) do
+        if child:IsA("BasePart") then return child end
+    end
+
+    -- 4. Descendant BasePart en évitant les sous-modèles Lantern et décoratifs
+    for _, desc in ipairs(shopModel:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            -- Remonter jusqu'à shopModel pour détecter un ancêtre "Lantern"
+            local ancestor = desc.Parent
+            local dansDecor = false
+            while ancestor and ancestor ~= shopModel do
+                if ancestor.Name == "Lantern"
+                or ancestor.Name:find("Lantern")
+                or ancestor.Name:find("Text") then
+                    dansDecor = true
+                    break
+                end
+                ancestor = ancestor.Parent
+            end
+            if not dansDecor then return desc end
+        end
     end
 
     return nil
+end
+
+-- Initialise le ProximityPrompt d'un Shop (Model) pour une base donnée
+function ShopSystem.InitShop(baseIndex, shopModel)
+    -- Supprimer tout PP existant dans le shop
+    for _, desc in ipairs(shopModel:GetDescendants()) do
+        if desc:IsA("ProximityPrompt") then
+            desc:Destroy()
+        end
+    end
+    local ancien = shopModel:FindFirstChildOfClass("ProximityPrompt")
+    if ancien then ancien:Destroy() end
+
+    local touchPart = trouverShopPart(shopModel)
+    if not touchPart then
+        warn("[ShopSystem] ⚠ Aucune BasePart trouvée dans Shop de Base_" .. baseIndex)
+        return
+    end
+
+    ajouterPromptShop(touchPart, baseIndex)
+    print("[ShopSystem] PP créé → Base_" .. baseIndex .. " sur " .. touchPart.Name)
 end
 
 local function initialiserShopsBases()
@@ -506,17 +543,15 @@ local function initialiserShopsBases()
     end
 
     local nb = 0
-    for _, baseModel in ipairs(basesFolder:GetChildren()) do
-        if baseModel.Name:match("^Base_%d+$") then
-            -- Extraire l'index numérique depuis "Base_X"
-            local idx = tonumber(baseModel.Name:match("Base_(%d+)"))
-            local shopPart = trouverShopPart(baseModel)
-            if shopPart then
-                ajouterPromptShop(shopPart, idx)
+    for i = 1, (Config.MaxBases or 6) do
+        local baseModel = basesFolder:FindFirstChild("Base_" .. i)
+        if baseModel then
+            local shopModel = baseModel:FindFirstChild("Shop")
+            if shopModel then
+                ShopSystem.InitShop(i, shopModel)
                 nb = nb + 1
-                print("[ShopSystem] ProximityPrompt créé → " .. baseModel.Name)
             else
-                warn("[ShopSystem] ⚠ Pas de modèle Shop dans " .. baseModel.Name)
+                warn("[ShopSystem] ⚠ Pas de modèle Shop dans Base_" .. i)
             end
         end
     end
