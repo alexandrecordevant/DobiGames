@@ -28,7 +28,7 @@ local _AssignationSystem = nil
 local function getAssignation()
     if not _AssignationSystem then
         local ok, m = pcall(require,
-            ServerScriptService.Common.AssignationSystem)
+            ReplicatedStorage.SharedLib.Server.AssignationSystem)
         if ok then _AssignationSystem = m end
     end
     return _AssignationSystem
@@ -154,251 +154,29 @@ local function NettoyerModeleVisuel(clone)
 end
 
 -- ============================================================
--- CreerPlanteProcedural — plante procedurale si PlantModels absent
+-- NettoyerPot — supprime les visuels plante du pot
 -- ============================================================
-local function CreerPlanteProcedural(stage, basePos, couleur, rarete)
-    local TS    = game:GetService("TweenService")
-    local model = Instance.new("Model")
-    model.Name  = "PlantProc"
-
-    local hauteurs = { [1]=1.5, [2]=2.5, [3]=3.5, [4]=4.5 }
-    local hauteur  = hauteurs[stage] or 1.5
-
-    -- Tige principale
-    local tige = Instance.new("Part")
-    tige.Name         = "Tige"
-    tige.Size         = Vector3.new(0.2, hauteur, 0.2)
-    tige.Position     = basePos + Vector3.new(0, hauteur/2, 0)
-    tige.Color        = Color3.fromRGB(50, 150, 50)
-    tige.Material     = Enum.Material.SmoothPlastic
-    tige.Anchored     = true
-    tige.CanCollide   = false
-    tige.Transparency = 1
-    tige.Parent       = model
-
-    -- Feuilles
-    local nbFeuilles = stage * 2
-    for i = 1, nbFeuilles do
-        local feuille = Instance.new("Part")
-        feuille.Name         = "Feuille_" .. i
-        feuille.Size         = Vector3.new(0.8, 0.1, 0.4)
-        feuille.Color        = Color3.fromRGB(30, 180, 60)
-        feuille.Material     = Enum.Material.SmoothPlastic
-        feuille.Anchored     = true
-        feuille.CanCollide   = false
-        feuille.Transparency = 1
-        local angle = (i / nbFeuilles) * math.pi * 2
-        local yPos  = basePos.Y + (hauteur * i / nbFeuilles)
-        feuille.Position = Vector3.new(
-            basePos.X + math.cos(angle) * 0.6,
-            yPos,
-            basePos.Z + math.sin(angle) * 0.6
-        )
-        feuille.CFrame = feuille.CFrame * CFrame.Angles(0, angle, math.rad(30))
-        feuille.Parent = model
-    end
-
-    -- Fleurs (stage 3+)
-    if stage >= 3 then
-        for i = 1, 4 do
-            local fleur = Instance.new("Part")
-            fleur.Name         = "Fleur_" .. i
-            fleur.Shape        = Enum.PartType.Ball
-            fleur.Size         = Vector3.new(0.4, 0.4, 0.4)
-            fleur.Color        = couleur
-            fleur.Material     = Enum.Material.Neon
-            fleur.Anchored     = true
-            fleur.CanCollide   = false
-            fleur.Transparency = 1
-            local angle = (i / 4) * math.pi * 2
-            fleur.Position = Vector3.new(
-                basePos.X + math.cos(angle) * 0.8,
-                basePos.Y + hauteur,
-                basePos.Z + math.sin(angle) * 0.8
-            )
-            fleur.Parent = model
-        end
-    end
-
-    -- Fruits + effets (stage 4)
-    if stage == 4 then
-        for i = 1, 3 do
-            local fruit = Instance.new("Part")
-            fruit.Name         = "Fruit_" .. i
-            fruit.Shape        = Enum.PartType.Ball
-            fruit.Size         = Vector3.new(0.3, 0.3, 0.3)
-            fruit.Color        = couleur
-            fruit.Material     = Enum.Material.Neon
-            fruit.Anchored     = true
-            fruit.CanCollide   = false
-            fruit.Transparency = 1
-            local angle = (i / 3) * math.pi * 2
-            fruit.Position = Vector3.new(
-                basePos.X + math.cos(angle) * 0.5,
-                basePos.Y + hauteur - 0.5,
-                basePos.Z + math.sin(angle) * 0.5
-            )
-            fruit.Parent = model
-            local fruitPos = fruit.Position
-            task.spawn(function()
-                while fruit.Parent do
-                    TS:Create(fruit,
-                        TweenInfo.new(1.5, Enum.EasingStyle.Sine,
-                            Enum.EasingDirection.InOut, -1, true),
-                        { Position = fruitPos + Vector3.new(0, 0.2, 0) }
-                    ):Play()
-                    task.wait(1.5)
-                end
-            end)
-        end
-
-        local light = Instance.new("PointLight", tige)
-        light.Brightness = 4
-        light.Range      = 12
-        light.Color      = couleur
-
-        local particles = Instance.new("ParticleEmitter", tige)
-        particles.Rate     = 15
-        particles.Lifetime = NumberRange.new(1, 2)
-        particles.Speed    = NumberRange.new(2, 5)
-        particles.Color    = ColorSequence.new(couleur)
-        particles.Size     = NumberSequence.new(0.2)
-
-        if rarete == "SECRET" then
-            particles.Rate  = 25
-            particles.Speed = NumberRange.new(3, 8)
-            local flammes = Instance.new("ParticleEmitter", tige)
-            flammes.Rate     = 10
-            flammes.Lifetime = NumberRange.new(0.5, 1.0)
-            flammes.Speed    = NumberRange.new(1, 3)
-            flammes.Color    = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 0)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 200, 0)),
-            })
-        end
-    end
-
-    -- Animation oscillation tige
-    model.Parent = workspace
-    task.spawn(function()
-        while tige.Parent do
-            TS:Create(tige,
-                TweenInfo.new(2, Enum.EasingStyle.Sine,
-                    Enum.EasingDirection.InOut, -1, true),
-                { CFrame = tige.CFrame * CFrame.Angles(0, 0, math.rad(3)) }
-            ):Play()
-            task.wait(2)
-        end
-    end)
-
-    FadeIn(model, 0.8)
-    return model
-end
-
--- ============================================================
--- CreerPlante — essaie PlantModels Studio, fallback procedural
--- ============================================================
-local function CreerPlante(rarete, stage, basePos, couleur)
-    local ok, result = pcall(function()
-        local plantModels = game.ServerStorage:FindFirstChild("PlantModels")
-        if plantModels then
-            local rareteFolder = plantModels:FindFirstChild(rarete)
-            if rareteFolder then
-                local stageModel = rareteFolder:FindFirstChild("Plant_Stage" .. stage)
-                if stageModel then
-                    local clone = stageModel:Clone()
-                    local root  = clone.PrimaryPart
-                               or clone:FindFirstChildWhichIsA("BasePart")
-                    if root then
-                        clone:SetPrimaryPartCFrame(CFrame.new(basePos))
-                    end
-                    for _, part in ipairs(clone:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.Anchored   = true
-                            part.CanCollide = false
-                        end
-                    end
-                    FadeIn(clone, 0.5)
-                    return clone
-                end
-            end
-        end
-        return nil
-    end)
-    if ok and result then return result end
-    return CreerPlanteProcedural(stage, basePos, couleur, rarete)
-end
-
--- ============================================================
--- CreerBRMiniature — BR miniature synchronise avec la plante
--- ============================================================
-local function CreerBRMiniature(rarete, stage, basePos, couleur)
-    local ok, result = pcall(function()
-        local dossier = game.ServerStorage.Brainrots:FindFirstChild(rarete)
-        if not dossier or #dossier:GetChildren() == 0 then return nil end
-
-        local clone = dossier:GetChildren()[1]:Clone()
-
-        -- Nettoyer AVANT tout (supprime VfxInstance, FakeRootPart, constraints)
-        NettoyerModeleVisuel(clone)
-
-        local scales = { [1]=0.2, [2]=0.4, [3]=0.7, [4]=1.2 }
-        local scale  = scales[stage] or 0.2
-
-        for _, part in ipairs(clone:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Size        = part.Size * scale
-                part.Anchored    = true
-                part.CanCollide  = false
-                part.Transparency = 1
-            end
-        end
-
-        local hauteurs = { [1]=1.5, [2]=2.5, [3]=3.5, [4]=4.5 }
-        local yOffset  = hauteurs[stage] or 1.5
-
-        local root = clone.PrimaryPart
-                  or clone:FindFirstChild("RootPart")
-                  or clone:FindFirstChildWhichIsA("BasePart")
-        if root then
-            clone:SetPrimaryPartCFrame(CFrame.new(
-                basePos + Vector3.new(0, yOffset, 0)))
-        end
-
-        if root and stage >= 2 then
-            local light = Instance.new("PointLight", root)
-            light.Brightness = stage * 1.5
-            light.Range      = stage * 5
-            light.Color      = couleur
-        end
-
-        if stage == 4 then
-            task.spawn(function()
-                local TS2 = game:GetService("TweenService")
-                while clone.Parent and root and root.Parent do
-                    TS2:Create(root,
-                        TweenInfo.new(4, Enum.EasingStyle.Linear,
-                            Enum.EasingDirection.InOut, -1),
-                        { CFrame = root.CFrame * CFrame.Angles(0, math.rad(360), 0) }
-                    ):Play()
-                    task.wait(4)
-                end
-            end)
-        end
-
-        FadeIn(clone, 0.8)
-        return clone
-    end)
-    if ok then return result end
-    return nil
-end
-
--- ============================================================
--- ActualiserVisuelsSync — synchronise plante + BR dans le pot
--- ============================================================
-local function ActualiserVisuelsSync(baseIndex, potIndex, stage, rarete)
+local function NettoyerPot(baseIndex, potIndex)
     pcall(function()
-        local cfg      = FPConfig
+        local base     = Workspace:FindFirstChild("Bases")
+                      and Workspace.Bases:FindFirstChild("Base_" .. baseIndex)
+        local potModel = base and base:FindFirstChild("FlowerPot_" .. potIndex)
+        if not potModel then return end
+
+        local existingPlant = potModel:FindFirstChild("PlantModel")
+        local existingBR    = potModel:FindFirstChild("GrowthModel")
+        if existingPlant then existingPlant:Destroy() end
+        if existingBR    then existingBR:Destroy()    end
+    end)
+end
+
+-- ============================================================
+-- GererVisuelsPlante — Graine (stage 0) ou Tree scalé (stages 1-4)
+-- ServerStorage.PlantModels.Graine → Part + SpecialMesh
+-- ServerStorage.PlantModels.Tree   → Model (~86 parts)
+-- ============================================================
+local function GererVisuelsPlante(baseIndex, potIndex, stage)
+    pcall(function()
         local base     = Workspace:FindFirstChild("Bases")
                       and Workspace.Bases:FindFirstChild("Base_" .. baseIndex)
         local potModel = base and base:FindFirstChild("FlowerPot_" .. potIndex)
@@ -408,32 +186,85 @@ local function ActualiserVisuelsSync(baseIndex, potIndex, stage, rarete)
                      or potModel:FindFirstChildWhichIsA("BasePart")
         if not potPart then return end
 
-        -- Supprimer visuels existants
-        local existingPlant = potModel:FindFirstChild("PlantModel")
-        local existingBR    = potModel:FindFirstChild("GrowthModel")
-        if existingPlant then existingPlant:Destroy() end
-        if existingBR    then existingBR:Destroy()    end
-
-        if stage == 0 then return end
-
-        local graineCfg = cfg.graines[rarete]
-        local couleur   = graineCfg and graineCfg.couleurStage4
-                       or Color3.fromRGB(180, 0, 255)
+        local plantModels = ServerStorage:FindFirstChild("PlantModels")
+        if not plantModels then return end
 
         local basePos = potPart.Position + Vector3.new(0, potPart.Size.Y / 2, 0)
 
-        -- Couche 1 : plante
-        local plantModel = CreerPlante(rarete, stage, basePos, couleur)
-        if plantModel then
-            plantModel.Name   = "PlantModel"
-            plantModel.Parent = potModel
-        end
+        if stage == 0 then
+            -- Graine : fade in depuis l'invisible
+            local graineSrc = plantModels:FindFirstChild("Graine")
+            if not graineSrc then return end
+            local clone = graineSrc:Clone()
 
-        -- Couche 2 : BR miniature
-        local brModel = CreerBRMiniature(rarete, stage, basePos, couleur)
-        if brModel then
-            brModel.Name   = "GrowthModel"
-            brModel.Parent = potModel
+            if clone:IsA("Model") then
+                local root = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart")
+                if root then clone:SetPrimaryPartCFrame(CFrame.new(basePos)) end
+                for _, p in ipairs(clone:GetDescendants()) do
+                    if p:IsA("BasePart") then
+                        p.Transparency = 1
+                        p.Anchored     = true
+                        p.CanCollide   = false
+                    end
+                end
+                clone.Name   = "PlantModel"
+                clone.Parent = potModel
+                FadeIn(clone, 0.5)
+            else
+                -- BasePart directe (Part + SpecialMesh enfant)
+                clone.Position     = basePos
+                clone.Transparency = 1
+                clone.Anchored     = true
+                clone.CanCollide   = false
+                clone.Name         = "PlantModel"
+                clone.Parent       = potModel
+                TweenService:Create(clone,
+                    TweenInfo.new(0.5, Enum.EasingStyle.Quad),
+                    { Transparency = 0 }):Play()
+            end
+
+        else
+            -- Tree scalé selon stage : 0.05 / 0.2 / 0.5 / 1.0
+            local treeSrc = plantModels:FindFirstChild("Tree")
+            if not treeSrc then return end
+
+            local scales      = { [1]=0.05, [2]=0.2, [3]=0.5, [4]=1.0 }
+            local targetScale = scales[stage] or 0.05
+
+            local clone = treeSrc:Clone()
+
+            -- Positionner à l'échelle native d'abord
+            local root = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart")
+            if root then clone:SetPrimaryPartCFrame(CFrame.new(basePos)) end
+
+            -- Appliquer l'échelle cible et mémoriser les tailles finales
+            pcall(function() clone:ScaleTo(targetScale) end)
+            local cibles = {}
+            for _, p in ipairs(clone:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    cibles[p]      = p.Size
+                    p.Transparency = 1
+                    p.Anchored     = true
+                    p.CanCollide   = false
+                end
+            end
+
+            -- Réduire à 10 % de la taille cible pour l'animation d'entrée
+            pcall(function() clone:ScaleTo(targetScale * 0.1) end)
+
+            clone.Name   = "PlantModel"
+            clone.Parent = potModel
+
+            -- Fade in des transparences
+            FadeIn(clone, 0.4)
+
+            -- Tween croissance vers la taille cible
+            local ti = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            for part, siz in pairs(cibles) do
+                if part.Parent then
+                    TweenService:Create(part, ti, { Size = siz }):Play()
+                end
+            end
         end
     end)
 end
@@ -635,8 +466,8 @@ end
 -- ============================================================
 
 function FlowerPotSystem.ActualiserVisuels(baseIndex, potIndex, stage, rarete)
-    -- Deléguer vers le système synchronisé plante + BR
-    ActualiserVisuelsSync(baseIndex, potIndex, stage or 0, rarete or "MYTHIC")
+    NettoyerPot(baseIndex, potIndex)
+    GererVisuelsPlante(baseIndex, potIndex, stage or 0)
 end
 
 -- ============================================================
@@ -1230,7 +1061,7 @@ function FlowerPotSystem.Recolter(player, potIndex)
     local AS = getAssignation()
     local baseIndex = AS and AS.GetBaseIndex(player)
     if baseIndex then
-        pcall(ActualiserVisuelsSync, baseIndex, potIndex, 0, "MYTHIC")
+        NettoyerPot(baseIndex, potIndex)
         pcall(FlowerPotSystem.ActualiserPot, player, baseIndex, potIndex, data)
     end
 
@@ -1366,7 +1197,7 @@ function FlowerPotSystem.PlanteDailySeed(player, potIndex, rarete, data)
     local AS = getAssignation()
     local baseIndex = AS and AS.GetBaseIndex(player)
     if baseIndex then
-        pcall(ActualiserVisuelsSync, baseIndex, potIndex, 0, "MYTHIC")
+        NettoyerPot(baseIndex, potIndex)
     end
 
     -- Planter
@@ -1383,7 +1214,7 @@ function FlowerPotSystem.PlanteDailySeed(player, potIndex, rarete, data)
     if baseIndex then
         FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
         pcall(FlowerPotSystem.ActualiserPot, player, baseIndex, potIndex, data)
-        pcall(ActualiserVisuelsSync, baseIndex, potIndex, 0, rarete)
+        GererVisuelsPlante(baseIndex, potIndex, 0)
     end
 
     notifier(player, "SUCCESS",

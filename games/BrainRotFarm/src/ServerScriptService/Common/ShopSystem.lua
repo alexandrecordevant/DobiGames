@@ -58,7 +58,7 @@ local RARETE_ORDRE = {
 local _AssignationSystem = nil
 local function getAssignationSystem()
     if not _AssignationSystem then
-        local ok, m = pcall(require, ServerScriptService.Common.AssignationSystem)
+        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.AssignationSystem)
         if ok and m then _AssignationSystem = m end
     end
     return _AssignationSystem
