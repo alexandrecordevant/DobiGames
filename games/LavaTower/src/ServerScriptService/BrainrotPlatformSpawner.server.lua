@@ -127,7 +127,8 @@ local RARITY_ZONES = {
 -- INITIALISATION
 -- ════════════════════════════════════════════════════════════════
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
+local CollectionService  = game:GetService("CollectionService")
 
 local brainrotsRoot = ReplicatedStorage:FindFirstChild(DOSSIER_BRAINROTS_NOM)
 if not brainrotsRoot then
@@ -204,6 +205,47 @@ local function choisirModele(rarete)
 end
 
 -- ════════════════════════════════════════════════════════════════
+-- SETUP CLONE — pickup + billboard
+--
+-- À appeler juste après modele:Clone(), avant de parenter.
+-- Garantit que le clone est :
+--   1. pickable  (tag BrainrotCollectible → BrainrotPromptService l'enregistre)
+--   2. billboardable (PrimaryPart assurée + attribut Rarete défini)
+-- ════════════════════════════════════════════════════════════════
+
+local TAG_COLLECTIBLE = "BrainrotCollectible"
+
+local function SetupBrainrotClone(clone, rarete)
+	-- ── 1. Attribut Rarete (requis par BrainrotBillboard) ────────────────────
+	if not clone:GetAttribute("Rarete") then
+		clone:SetAttribute("Rarete", rarete)
+	end
+
+	-- ── 2. PrimaryPart — garantit la présence pour Billboard + ProximityPrompt
+	if clone:IsA("Model") and not clone.PrimaryPart then
+		-- Cherche récursivement (couvre les sous-Models)
+		local found = clone:FindFirstChildWhichIsA("BasePart", true)
+		if found then
+			clone.PrimaryPart = found
+			warn(string.format(
+				"[PlatformSpawner] PrimaryPart manquante sur '%s' — assignée à '%s'",
+				clone.Name, found:GetFullName()
+			))
+		else
+			warn(string.format(
+				"[PlatformSpawner] ❌ '%s' n'a aucune BasePart — billboard/pickup impossibles",
+				clone.Name
+			))
+			return
+		end
+	end
+
+	-- ── 3. Tag CollectionService → BrainrotPromptService ajoute le ProximityPrompt
+	--       (déclenche GetInstanceAddedSignal après le parenting)
+	CollectionService:AddTag(clone, TAG_COLLECTIBLE)
+end
+
+-- ════════════════════════════════════════════════════════════════
 -- BILLBOARD TIMER
 --
 -- Ajoute une ligne rouge de countdown au BillboardGui "BrainrotInfo"
@@ -235,11 +277,11 @@ local function ajouterTimerBillboard(brainrot, duree)
 
 	-- BillboardGui dédié au timer — positionné juste sous le BrainrotInfo
 	-- BrainrotInfo : StudsOffset (0,5,0), Size 2.5 studs → base à ≈3.75 studs
-	-- TimerGui     : StudsOffset (0,3,0), Size 0.5 studs  → sommet à ≈3.25 studs
+	-- TimerGui     : StudsOffset (0,2.6,0), Size 0.85 studs  → sommet à ≈3.025 studs
 	local timerGui = Instance.new("BillboardGui")
 	timerGui.Name         = "TimerGui"
-	timerGui.Size         = UDim2.new(5, 0, 0.5, 0)    -- même largeur que BrainrotInfo
-	timerGui.StudsOffset  = Vector3.new(0, 3, 0)        -- en dessous du BrainrotInfo
+	timerGui.Size         = UDim2.new(5, 0, 0.85, 0)   -- légèrement agrandi pour meilleure lisibilité
+	timerGui.StudsOffset  = Vector3.new(0, 2.6, 0)      -- compensé pour rester sous le BrainrotInfo
 	timerGui.AlwaysOnTop  = false
 	timerGui.ResetOnSpawn = false
 	timerGui.Parent       = attache
@@ -288,49 +330,39 @@ local function spawnBrainrot(plateforme)
 	-- 3. Cloner
 	local clone = modele:Clone()
 
-	-- 4. Positionner au-dessus du centre de la plateforme
-	--    GetBoundingBox() fonctionne sur Model ; pour BasePart, utiliser Size
-	local brainrotHauteur
-	if clone:IsA("Model") then
-		local _, sz = clone:GetBoundingBox()
-		brainrotHauteur = sz.Y
-	else
-		brainrotHauteur = clone.Size.Y
-	end
+	-- 4. Positionner le clone posé sur la surface de la plateforme
+	--    On calcule l'offset pivot→bas de la bounding box pour que le bas du modèle
+	--    atterrisse exactement sur la surface, sans flottement.
+	local bbCF, bbSize = clone:GetBoundingBox()
+	local pivotCF      = clone:GetPivot()
+	-- Distance algébrique du pivot au bas de la bounding box (peut être positif ou négatif)
+	local pivotToBottom = (bbCF.Position.Y - bbSize.Y / 2) - pivotCF.Position.Y
 
-	local surfaceY    = plateforme.Position.Y + plateforme.Size.Y / 2
-	local centreClone = Vector3.new(
-		plateforme.Position.X,
-		surfaceY + CONFIG.HAUTEUR_OFFSET + brainrotHauteur / 2,
-		plateforme.Position.Z
-	)
+	local surfaceY     = plateforme.Position.Y + plateforme.Size.Y / 2
+	local targetPivotY = surfaceY - pivotToBottom + CONFIG.HAUTEUR_OFFSET
+	local centreClone  = Vector3.new(plateforme.Position.X, targetPivotY, plateforme.Position.Z)
 	clone:PivotTo(CFrame.new(centreClone))
 
-	-- 5. Définir l'attribut Rarete si absent (requis par BrainrotBillboard)
-	if not clone:GetAttribute("Rarete") then
-		clone:SetAttribute("Rarete", rarete)
-	end
+	-- 5. Setup pickup + billboard (tag CollectionService, PrimaryPart, attribut Rarete)
+	SetupBrainrotClone(clone, rarete)
 
 	-- 6. Parenter dans workspace.Brainrots
-	--    → BrainrotBillboard.server.lua crée le billboard automatiquement
+	--    → BrainrotBillboard.server.lua crée le billboard via DescendantAdded
+	--    → BrainrotPromptService crée le ProximityPrompt via GetInstanceAddedSignal(TAG)
 	clone.Parent = workspaceBrainrots or workspace
 
 	-- 7. Enregistrer l'état de la plateforme
 	platformState[plateforme] = clone
 
-	-- 8. Billboard timer (countdown rouge sous le BrainrotInfo)
-	ajouterTimerBillboard(clone, CONFIG.DUREE_VIE)
-
-	print(string.format("[PlatformSpawner] ✦ Spawn %s [%s] à Y=%.0f", clone.Name, rarete, hauteur))
+	-- 8. Billboard timer — non-bloquant pour ne pas retarder les autres spawns
+	task.spawn(ajouterTimerBillboard, clone, CONFIG.DUREE_VIE)
 
 	-- 9. Auto-despawn après DUREE_VIE secondes
 	task.delay(CONFIG.DUREE_VIE, function()
-		-- Vérifier que c'est toujours CE clone sur cette plateforme
 		if platformState[plateforme] ~= clone then return end
 		platformState[plateforme] = nil
 		if clone and clone.Parent then
 			clone:Destroy()
-			print(string.format("[PlatformSpawner] Despawn %s [%s] Y=%.0f", modele.Name, rarete, hauteur))
 		end
 	end)
 end
@@ -355,7 +387,6 @@ local function scannerTours()
 	for _, enfant in ipairs(workspace:GetChildren()) do
 		-- Filtrer : doit être un Model dont le nom commence par le préfixe
 		if not enfant:IsA("Model") then continue end
-		if not enfant.Name:sub(1, #TOWER_NAME_PREFIX) == TOWER_NAME_PREFIX then continue end
 		if enfant.Name:sub(1, #TOWER_NAME_PREFIX) ~= TOWER_NAME_PREFIX then continue end
 
 		-- Doit contenir le dossier de plateformes
@@ -377,12 +408,6 @@ local function getPlatefformes()
 		warn("[PlatformSpawner] Aucune tour détectée avec le préfixe '" .. TOWER_NAME_PREFIX .. "'")
 		return liste
 	end
-	print("[PlatformSpawner] " .. #tours .. " tour(s) détectée(s) : " ..
-		table.concat((function()
-			local noms = {}
-			for _, t in ipairs(tours) do table.insert(noms, t.Name) end
-			return noms
-		end)(), ", "))
 
 	for _, tour in ipairs(tours) do
 		local dossier = tour:FindFirstChild(NOM_DOSSIER_PLATEFORMES)
@@ -404,7 +429,6 @@ local function getPlatefformes()
 		end
 	end
 
-	print("[PlatformSpawner] " .. #liste .. " plateforme(s) au total")
 	return liste
 end
 
@@ -456,10 +480,9 @@ task.spawn(function()
 		return
 	end
 
-	print(string.format("[PlatformSpawner] ✓ Démarré — %d plateforme(s) | cycle %ds | chance %.0f%%",
-		#plateformes, CONFIG.INTERVALLE_CYCLE, CONFIG.CHANCE_SPAWN * 100))
-
 	-- Premier cycle immédiat, puis toutes les INTERVALLE_CYCLE secondes
+	-- Toutes les plateformes sont évaluées dans la même passe, sans wait entre elles.
+	-- spawnBrainrot est synchrone ; seul le timer billboard tourne en tâche de fond.
 	while true do
 		for _, plateforme in ipairs(plateformes) do
 			evaluerPlateforme(plateforme)

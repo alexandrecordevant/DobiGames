@@ -13,27 +13,28 @@ local playerGui   = localPlayer:WaitForChild("PlayerGui")
 
 -- GameConfig
 local Config = require(ReplicatedStorage.Specialized.GameConfig)
+local T      = require(ReplicatedStorage.SharedLib.Shared.UITheme)
 
 -- ============================================================
--- Couleurs
+-- Couleurs (thème Farm Brain Rot)
 -- ============================================================
-local C_BG          = Color3.fromRGB(12, 12, 18)
-local C_BG_ALT      = Color3.fromRGB(20, 20, 28)
-local C_BORDER      = Color3.fromRGB(60, 60, 90)
-local C_TITLE       = Color3.fromRGB(255, 210, 50)
-local C_TEXT        = Color3.fromRGB(220, 220, 235)
-local C_DIM         = Color3.fromRGB(130, 130, 150)
-local C_GREEN_BG    = Color3.fromRGB(20, 60, 20)
-local C_GREEN_TXT   = Color3.fromRGB(80, 220, 80)
-local C_GREY_BG     = Color3.fromRGB(30, 30, 35)
-local C_GREY_TXT    = Color3.fromRGB(90, 90, 100)
-local C_GOLD_BG     = Color3.fromRGB(60, 40, 5)
-local C_GOLD_TXT    = Color3.fromRGB(255, 200, 50)
-local C_MAX_BG      = Color3.fromRGB(60, 10, 10)
-local C_MAX_TXT     = Color3.fromRGB(255, 80, 80)
+local C_BG          = T.fondPrincipal
+local C_BG_ALT      = T.fondSecondaire
+local C_BORDER      = T.bordure
+local C_TITLE       = T.texteTitre
+local C_TEXT        = T.texte
+local C_DIM         = T.texteSecondaire
+local C_GREEN_BG    = T.fondBouton
+local C_GREEN_TXT   = T.texte
+local C_GREY_BG     = Color3.fromRGB(55, 40, 20)
+local C_GREY_TXT    = T.texteSecondaire
+local C_GOLD_BG     = T.fondBoutonRobux
+local C_GOLD_TXT    = T.fondPrincipal
+local C_MAX_BG      = Color3.fromRGB(60, 80, 20)
+local C_MAX_TXT     = T.barrePleine
 local C_OVERLAY     = Color3.fromRGB(0, 0, 0)
-local C_COINS       = Color3.fromRGB(255, 220, 60)
-local C_SEP         = Color3.fromRGB(45, 45, 60)
+local C_COINS       = T.texteTitre
+local C_SEP         = T.bordure
 
 -- ============================================================
 -- Constantes layout
@@ -92,7 +93,7 @@ panelStroke.Parent    = panel
 local headerBar = Instance.new("Frame")
 headerBar.Name             = "Header"
 headerBar.Size             = UDim2.new(1, 0, 0, HEADER_H)
-headerBar.BackgroundColor3 = Color3.fromRGB(20, 18, 6)
+headerBar.BackgroundColor3 = T.fondSecondaire
 headerBar.BorderSizePixel  = 0
 headerBar.Parent           = panel
 
@@ -115,9 +116,9 @@ local closeBtn = Instance.new("TextButton")
 closeBtn.Name              = "Close"
 closeBtn.Size              = UDim2.new(0, 38, 0, 38)
 closeBtn.Position          = UDim2.new(1, -46, 0.5, -19)
-closeBtn.BackgroundColor3  = Color3.fromRGB(80, 20, 20)
+closeBtn.BackgroundColor3  = T.fondBoutonDanger
 closeBtn.Text              = "✕"
-closeBtn.TextColor3        = Color3.fromRGB(255, 100, 100)
+closeBtn.TextColor3        = T.texte
 closeBtn.Font              = Enum.Font.GothamBold
 closeBtn.TextScaled        = true
 closeBtn.BorderSizePixel   = 0
@@ -420,13 +421,13 @@ local function construireSeuilTracteur(donnes, yPos)
     frame.Name             = "SeuilTracteur"
     frame.Size             = UDim2.new(1, -10, 0, SEUIL_H)
     frame.Position         = UDim2.new(0, 5, 0, yPos)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 18, 6)
+    frame.BackgroundColor3 = T.fondSecondaire
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color     = Color3.fromRGB(80, 60, 10)
+    stroke.Color     = T.bordure
     stroke.Thickness = 1.5
     stroke.Parent    = frame
 

@@ -96,10 +96,7 @@ local function setupBillboard(model)
 	local rarete = model:GetAttribute("Rarete")
 	if not rarete then return end
 
-	-- 2. Evite les doublons
-	if model:FindFirstChild("BrainrotInfo") then return end
-
-	-- 3. Trouve la part d'attache (PrimaryPart ou premier BasePart)
+	-- 2. Trouve la part d'attache (PrimaryPart ou premier BasePart)
 	local attache
 	if model:IsA("Model") then
 		attache = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
@@ -107,6 +104,9 @@ local function setupBillboard(model)
 		attache = model
 	end
 	if not attache then return end
+
+	-- 3. Evite les doublons — vérifié sur l'attache, là où le billboard est réellement parenté
+	if attache:FindFirstChild("BrainrotInfo") then return end
 
 	-- 4. Récupère les attributs (valeurs par défaut si nil)
 	local prix          = model:GetAttribute("Prix")          or 0
@@ -116,7 +116,7 @@ local function setupBillboard(model)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name          = "BrainrotInfo"
 	billboard.Size          = UDim2.new(5, 0, 2.5, 0)   -- studs : taille fixe dans le monde
-	billboard.StudsOffset   = Vector3.new(0, 5, 0)
+	billboard.StudsOffset   = Vector3.new(0, 7, 0)
 	billboard.AlwaysOnTop   = false
 	billboard.ResetOnSpawn  = false
 	billboard.Parent        = attache

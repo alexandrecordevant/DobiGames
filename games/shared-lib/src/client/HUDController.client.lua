@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService     = game:GetService("TweenService")
 local player           = Players.LocalPlayer
 local Config           = require(ReplicatedStorage.Specialized.GameConfig)
+local T                = require(ReplicatedStorage.SharedLib.Shared.UITheme)
 
 local gui = Instance.new("ScreenGui")
 gui.Name          = "HUD"
@@ -30,12 +31,12 @@ end
 -- Coins
 local _, coinsLabel = NouveauLabel(gui,
     UDim2.new(0,220,0,50), UDim2.new(0,10,0,10),
-    Color3.fromRGB(0,0,0), Config.CouleurAccent, "💰 0")
+    T.fondPrincipal, T.texteTitre, "💰 0")
 
 -- Tier
 local _, tierLabel = NouveauLabel(gui,
     UDim2.new(0,220,0,40), UDim2.new(0,10,0,65),
-    Color3.fromRGB(0,0,0), Color3.fromRGB(255,255,255), "Tier 0")
+    T.fondPrincipal, T.texte, "Tier 0")
 
 -- Event banner
 local eventFrame, eventLabel = NouveauLabel(gui,
@@ -73,9 +74,9 @@ OIN.OnClientEvent:Connect(function(montant)
     local notif = Instance.new("TextLabel", gui)
     notif.Size                   = UDim2.new(0,320,0,60)
     notif.Position               = UDim2.new(0.5,-160,0.5,-30)
-    notif.BackgroundColor3       = Color3.fromRGB(0,150,0)
+    notif.BackgroundColor3       = T.fondBouton
     notif.BackgroundTransparency = 0.1
-    notif.TextColor3             = Color3.fromRGB(255,255,255)
+    notif.TextColor3             = T.texte
     notif.TextScaled             = true
     notif.Font                   = Enum.Font.GothamBold
     notif.Text                   = "💤 Offline : +" .. montant .. " coins !"
@@ -214,9 +215,9 @@ local notifLabel = Instance.new("TextLabel", gui)
 notifLabel.Name                   = "NotifLabel"
 notifLabel.Size                   = UDim2.new(0, 400, 0, 50)
 notifLabel.Position               = UDim2.new(0.5, -200, 0, 20)
-notifLabel.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
-notifLabel.BackgroundTransparency = 0.3
-notifLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
+notifLabel.BackgroundColor3       = T.fondPrincipal
+notifLabel.BackgroundTransparency = 0.1
+notifLabel.TextColor3             = T.texte
 notifLabel.Font                   = Enum.Font.GothamBold
 notifLabel.TextSize               = 16
 notifLabel.RichText               = true
@@ -255,8 +256,8 @@ local btnShop = Instance.new("TextButton", gui)
 btnShop.Name                   = "ShopRobuxButton"
 btnShop.Size                   = UDim2.new(0, 110, 0, 50)
 btnShop.Position               = UDim2.new(0, 10, 0.5, -130)
-btnShop.BackgroundColor3       = Color3.fromRGB(0, 162, 255)
-btnShop.TextColor3             = Color3.fromRGB(255, 255, 255)
+btnShop.BackgroundColor3       = T.fondBoutonRobux
+btnShop.TextColor3             = T.fondPrincipal
 btnShop.Font                   = Enum.Font.GothamBold
 btnShop.TextSize               = 13
 btnShop.Text                   = "🛒 Shop"
@@ -269,7 +270,7 @@ local lblShopSub = Instance.new("TextLabel", btnShop)
 lblShopSub.Size                   = UDim2.new(1, 0, 0, 16)
 lblShopSub.Position               = UDim2.new(0, 0, 1, -18)
 lblShopSub.BackgroundTransparency = 1
-lblShopSub.TextColor3             = Color3.fromRGB(200, 240, 255)
+lblShopSub.TextColor3             = T.fondPrincipal
 lblShopSub.Font                   = Enum.Font.Gotham
 lblShopSub.TextSize               = 11
 lblShopSub.Text                   = "Robux only"
@@ -286,8 +287,8 @@ local btnRebirthLeft = Instance.new("TextButton", gui)
 btnRebirthLeft.Name                   = "RebirthButtonLeft"
 btnRebirthLeft.Size                   = UDim2.new(0, 110, 0, 85)
 btnRebirthLeft.Position               = UDim2.new(0, 10, 0.5, -65)
-btnRebirthLeft.BackgroundColor3       = Color3.fromRGB(30, 180, 30)
-btnRebirthLeft.TextColor3             = Color3.fromRGB(255, 255, 255)
+btnRebirthLeft.BackgroundColor3       = T.fondBouton
+btnRebirthLeft.TextColor3             = T.texte
 btnRebirthLeft.Font                   = Enum.Font.GothamBold
 btnRebirthLeft.TextSize               = 12
 btnRebirthLeft.Text                   = "🔄\nRebirth\n0 → 1"
@@ -301,14 +302,14 @@ local rebirthBarBg = Instance.new("Frame", btnRebirthLeft)
 rebirthBarBg.Name             = "BarBg"
 rebirthBarBg.Size             = UDim2.new(1, -10, 0, 8)
 rebirthBarBg.Position         = UDim2.new(0, 5, 1, -13)
-rebirthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+rebirthBarBg.BackgroundColor3 = T.barreVide
 rebirthBarBg.BorderSizePixel  = 0
 Instance.new("UICorner", rebirthBarBg).CornerRadius = UDim.new(1, 0)
 
 local rebirthBarFill = Instance.new("Frame", rebirthBarBg)
 rebirthBarFill.Name             = "Fill"
 rebirthBarFill.Size             = UDim2.new(0, 0, 1, 0)
-rebirthBarFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+rebirthBarFill.BackgroundColor3 = T.barrePleine
 rebirthBarFill.BorderSizePixel  = 0
 Instance.new("UICorner", rebirthBarFill).CornerRadius = UDim.new(1, 0)
 
@@ -342,14 +343,14 @@ if RebirthButtonUpdate then
         -- Couleur + pulse si prêt
         if pulseTweenLeft then pulseTweenLeft:Cancel() end
         if pct >= 1 and brOk then
-            btnRebirthLeft.BackgroundColor3       = Color3.fromRGB(255, 140, 0)
+            btnRebirthLeft.BackgroundColor3       = T.fondBoutonRebirth
             btnRebirthLeft.BackgroundTransparency = 0
             pulseTweenLeft = TweenService:Create(btnRebirthLeft,
                 TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
                 { BackgroundTransparency = 0.3 })
             pulseTweenLeft:Play()
         else
-            btnRebirthLeft.BackgroundColor3       = Color3.fromRGB(30, 180, 30)
+            btnRebirthLeft.BackgroundColor3       = T.fondBouton
             btnRebirthLeft.BackgroundTransparency = 0
         end
 
@@ -368,15 +369,15 @@ local function creerShopRobuxPanel()
     panel.Name                   = "ShopRobuxPanel"
     panel.Size                   = UDim2.new(0, 340, 0, 500)
     panel.Position               = UDim2.new(0, 130, 0.5, -250)
-    panel.BackgroundColor3       = Color3.fromRGB(15, 15, 15)
-    panel.BackgroundTransparency = 0.1
+    panel.BackgroundColor3       = T.fondPrincipal
+    panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0
     panel.Visible                = false
     panel.ZIndex                 = 10
     Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
 
     local stroke = Instance.new("UIStroke", panel)
-    stroke.Color     = Color3.fromRGB(0, 162, 255)
+    stroke.Color     = T.bordureAccent
     stroke.Thickness = 2
 
     -- Titre
@@ -384,7 +385,7 @@ local function creerShopRobuxPanel()
     titre.Size                   = UDim2.new(1, -50, 0, 40)
     titre.Position               = UDim2.new(0, 10, 0, 5)
     titre.BackgroundTransparency = 1
-    titre.TextColor3             = Color3.fromRGB(0, 200, 255)
+    titre.TextColor3             = T.texteTitre
     titre.Font                   = Enum.Font.GothamBold
     titre.TextSize               = 18
     titre.TextXAlignment         = Enum.TextXAlignment.Left
@@ -396,7 +397,7 @@ local function creerShopRobuxPanel()
     btnFermer.Size                   = UDim2.new(0, 30, 0, 30)
     btnFermer.Position               = UDim2.new(1, -35, 0, 8)
     btnFermer.BackgroundTransparency = 1
-    btnFermer.TextColor3             = Color3.fromRGB(200, 200, 200)
+    btnFermer.TextColor3             = T.texteSecondaire
     btnFermer.Font                   = Enum.Font.GothamBold
     btnFermer.TextSize               = 16
     btnFermer.Text                   = "✕"
@@ -410,7 +411,7 @@ local function creerShopRobuxPanel()
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel        = 0
     scroll.ScrollBarThickness     = 4
-    scroll.ScrollBarImageColor3   = Color3.fromRGB(0, 162, 255)
+    scroll.ScrollBarImageColor3   = T.bordure
     scroll.CanvasSize             = UDim2.new(0, 0, 0, 0)
     scroll.ZIndex                 = 11
 
@@ -445,8 +446,8 @@ local function creerShopRobuxPanel()
         local ligne = Instance.new("Frame", scroll)
         ligne.Name                   = "Item_" .. idx
         ligne.Size                   = UDim2.new(1, -10, 0, 60)
-        ligne.BackgroundColor3       = Color3.fromRGB(30, 30, 30)
-        ligne.BackgroundTransparency = 0.3
+        ligne.BackgroundColor3       = T.fondSecondaire
+        ligne.BackgroundTransparency = 0.1
         ligne.BorderSizePixel        = 0
         ligne.LayoutOrder            = idx
         ligne.ZIndex                 = 12
@@ -456,7 +457,7 @@ local function creerShopRobuxPanel()
         lblNom.Size                   = UDim2.new(0.6, 0, 1, 0)
         lblNom.Position               = UDim2.new(0, 10, 0, 0)
         lblNom.BackgroundTransparency = 1
-        lblNom.TextColor3             = Color3.fromRGB(255, 255, 255)
+        lblNom.TextColor3             = T.texte
         lblNom.Font                   = Enum.Font.GothamBold
         lblNom.TextSize               = 13
         lblNom.TextXAlignment         = Enum.TextXAlignment.Left
@@ -467,8 +468,8 @@ local function creerShopRobuxPanel()
         local btnAcheter = Instance.new("TextButton", ligne)
         btnAcheter.Size             = UDim2.new(0, 95, 0, 36)
         btnAcheter.Position         = UDim2.new(1, -105, 0.5, -18)
-        btnAcheter.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-        btnAcheter.TextColor3       = Color3.fromRGB(255, 255, 255)
+        btnAcheter.BackgroundColor3 = T.fondBoutonRobux
+        btnAcheter.TextColor3       = T.fondPrincipal
         btnAcheter.Font             = Enum.Font.GothamBold
         btnAcheter.TextSize         = 12
         btnAcheter.Text             = item.prix .. " R$ 🔥"
