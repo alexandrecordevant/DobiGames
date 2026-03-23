@@ -34,7 +34,7 @@ end
 local _CarrySystem = nil
 local function getCarrySystem()
     if not _CarrySystem then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.CarrySystem)
+        local ok, m = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.CarrySystem)
         if ok and m then _CarrySystem = m end
     end
     return _CarrySystem

@@ -452,12 +452,25 @@ local function restaurerDepots(player, playerData)
     for spotKey, info in pairs(playerData.spotsOccupes) do
         local touchPart = index[spotKey]
         if touchPart and info and info.rarete then
-            local valeur    = VALEUR_PAR_RARETE[info.rarete] or 1
-            local miniModel = placerMiniModele(touchPart, info.rarete)
+            local valeur = VALEUR_PAR_RARETE[info.rarete] or 1
+
+            -- Tenter de restaurer le modèle exact via brNom (évite le clone aléatoire)
+            local modeleSource = nil
+            if info.brNom then
+                local brainrots = ServerStorage:FindFirstChild("Brainrots")
+                local dossier = brainrots and brainrots:FindFirstChild(info.rarete)
+                local brSource = dossier and dossier:FindFirstChild(info.brNom)
+                if brSource then
+                    pcall(function() modeleSource = brSource:Clone() end)
+                end
+            end
+
+            local miniModel = placerMiniModele(touchPart, info.rarete, modeleSource)
 
             spotsData[uid][touchPart] = {
                 spotKey   = spotKey,
                 rarete    = info.rarete,
+                brNom     = info.brNom,  -- conserver pour retrieve ultérieur correct
                 valeurSec = valeur,
                 miniModel = miniModel,
             }
@@ -592,6 +605,10 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         valeurSec = valeurSec * entree.rarete.valeur
     end
 
+    -- Mémoriser le nom exact du BR AVANT que placerMiniModele détruise modeleDepose
+    -- (placerMiniModele clone modeleDepose puis le destroy — le nom devient inaccessible après)
+    local brNom = modeleDepose and modeleDepose.Name or nil
+
     -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
     local miniModel = placerMiniModele(touchPart, rarete, modeleDepose)
 
@@ -610,10 +627,11 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         end)
     end
 
-    -- Enregistrer en mémoire locale
+    -- Enregistrer en mémoire locale (brNom permet de restituer le bon modèle au retrieve)
     spotsData[uid][touchPart] = {
         spotKey   = spotKey,
         rarete    = rarete,
+        brNom     = brNom,      -- nom exact du modèle BR (ex: "Tralalero_Tralala")
         valeurSec = valeurSec,
         miniModel = miniModel,
     }
@@ -682,9 +700,30 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     -- Supprimer le prompt de récupération et réactiver le DepotPrompt
     supprimerPromptRecuperer(touchPart)
 
-    -- Remettre le BR dans le carry du joueur
+    -- Cloner le modèle exact depuis ServerStorage via brNom (évite un BR aléatoire au retrieve)
+    local modeleRestitue = nil
+    local brNom = entree.brNom
+    if brNom then
+        local brainrots = ServerStorage:FindFirstChild("Brainrots")
+        local dossierRarete = brainrots and brainrots:FindFirstChild(rarete)
+        if dossierRarete then
+            local brSource = dossierRarete:FindFirstChild(brNom)
+            if brSource then
+                pcall(function() modeleRestitue = brSource:Clone() end)
+            end
+            -- Fallback : premier BR de la rareté si le modèle exact est introuvable
+            if not modeleRestitue then
+                local premiers = dossierRarete:GetChildren()
+                if #premiers > 0 then
+                    pcall(function() modeleRestitue = premiers[1]:Clone() end)
+                end
+            end
+        end
+    end
+
+    -- Remettre le BR dans le carry du joueur (avec le bon modèle visuel)
     local rareteObj = { nom = rarete, dossier = rarete }
-    pcall(CarrySystem.AjouterAuCarry, player, nil, rareteObj)
+    pcall(CarrySystem.AjouterAuCarry, player, modeleRestitue, rareteObj)
 
     -- Remettre le SurfaceGui à vide
     viderGui(touchPart)
@@ -765,6 +804,7 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
         result[entry.spotKey] = {
             rarete    = entry.rarete,
             valeurSec = entry.valeurSec,
+            brNom     = entry.brNom,  -- nom exact du modèle BR pour restauration fidèle
         }
     end
     return result
