@@ -48,7 +48,7 @@ end
 local _DropSystem = nil
 local function getDropSystem()
     if not _DropSystem then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.DropSystem)
+        local ok, m = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.DropSystem)
         if ok and m then _DropSystem = m end
     end
     return _DropSystem

@@ -411,7 +411,7 @@ local function VerifierScripts()
         { service=SSS, chemin="Common.Main",                    nom="Main.server"           },
         { service=SSS, chemin="Common.DataStoreManager",        nom="DataStoreManager"      },
         { service=SSS, chemin="Common.CarrySystem",             nom="CarrySystem"           },
-        { service=SSS, chemin="Common.DropSystem",              nom="DropSystem"            },
+        { service=RS,  chemin="SharedLib.Server.DropSystem",    nom="DropSystem"            },
         { service=SSS, chemin="Common.IncomeSystem",            nom="IncomeSystem"          },
         { service=SSS, chemin="Common.AssignationSystem",       nom="AssignationSystem"     },
         { service=SSS, chemin="Common.BaseProgressionSystem",   nom="BaseProgressionSystem" },

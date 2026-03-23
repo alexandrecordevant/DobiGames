@@ -526,17 +526,11 @@ local function creerPromptDepot(player, touchPart)
 		if not data or #data.portes == 0 then return end
 
 		-- Appeler DropSystem si disponible
-		local SSS = game:GetService("ServerScriptService")
-		local commonFolder = SSS:FindFirstChild("Common")
-		local dropChild = commonFolder and commonFolder:FindFirstChild("DropSystem")
-		if dropChild then
-			local ok, DropSystem = pcall(require, dropChild)
-			if ok and DropSystem and DropSystem.DeposerBrainRots then
-				DropSystem.DeposerBrainRots(player, touchPart)
-				return
-			end
+		local ok, DropSystem = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.DropSystem)
+		if ok and DropSystem and DropSystem.DeposerBrainRots then
+			DropSystem.DeposerBrainRots(player, touchPart)
+			return
 		end
-		-- Fallback avant création de DropSystem
 		warn("[CarrySystem] DropSystem introuvable — carry vidé sans récompense")
 		CarrySystem.ViderCarry(player)
 	end)
