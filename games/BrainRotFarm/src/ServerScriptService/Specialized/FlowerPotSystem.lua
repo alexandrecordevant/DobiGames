@@ -38,7 +38,7 @@ local _CarrySystem = nil
 local function getCarry()
     if not _CarrySystem then
         local ok, m = pcall(require,
-            ServerScriptService.Common.CarrySystem)
+            ReplicatedStorage.SharedLib.Server.CarrySystem)
         if ok then _CarrySystem = m end
     end
     return _CarrySystem
