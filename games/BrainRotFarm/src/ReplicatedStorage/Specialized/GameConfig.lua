@@ -428,6 +428,26 @@ GameConfig.FlowerPotConfig = {
         },
     },
 
+    -- Arbres du ChampCommun (Tree 1 et Tree 2)
+    arbresConfig = {
+        {
+            nom       = "Tree 1",   -- espace, pas underscore (nom Studio)
+            sommetPos = Vector3.new(227.512, 67.588, 6.610),
+        },
+        {
+            nom       = "Tree 2",
+            sommetPos = Vector3.new(227.512, 67.588, -163.389),
+        },
+    },
+
+    -- Config des drops de graines sur les arbres
+    arbresDropConfig = {
+        intervalleSecondes = 1800,  -- 30 min entre chaque graine
+        chanceMYTHIC       = 70,    -- 70% MYTHIC
+        chanceSECRET       = 30,    -- 30% SECRET
+        timeoutSecondes    = 300,   -- 5 min avant reset si non collectée
+    },
+
     -- Couleur dorée appliquée au spot quand un Mutant y est déposé
     spotMutantCouleur = Color3.fromRGB(255, 215, 0),
 

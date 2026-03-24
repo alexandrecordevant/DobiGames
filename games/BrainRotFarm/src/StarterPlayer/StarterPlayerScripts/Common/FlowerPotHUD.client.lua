@@ -16,6 +16,7 @@ local PotUpdate        = ReplicatedStorage:WaitForChild("PotUpdate",    10)
 local DebloquerPot     = ReplicatedStorage:WaitForChild("DebloquerPot", 10)
 local InstantGrowPot   = ReplicatedStorage:WaitForChild("InstantGrowPot", 10)
 local ClaimDailySeed   = ReplicatedStorage:WaitForChild("ClaimDailySeed", 10)
+local UpdateGraines    = ReplicatedStorage:WaitForChild("UpdateGraines",  10)
 
 if not OuvrirPot then
     warn("[FlowerPotHUD] OuvrirPot RemoteEvent not found — aborting")
@@ -857,6 +858,14 @@ if LeaderboardUpdate then
                 SetSeedReady(false)
             end
         end
+    end)
+end
+
+-- Mise à jour stock de graines (depuis ArbreSystem via UpdateGraines)
+local _grainesLocales = {}
+if UpdateGraines then
+    UpdateGraines.OnClientEvent:Connect(function(graines)
+        _grainesLocales = graines or {}
     end)
 end
 

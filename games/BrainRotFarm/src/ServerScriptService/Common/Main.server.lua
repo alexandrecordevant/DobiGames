@@ -32,6 +32,7 @@ local TracteurSystem        = require(ServerScriptService.Specialized.TracteurSy
 local FlowerPotSystem       = require(ServerScriptService.Specialized.FlowerPotSystem)
 local DiscordWebhook        = require(ServerScriptService.Common.DiscordWebhook)
 local BoardSystem           = require(ServerScriptService.Common.BoardSystem)
+local ArbreSystem           = require(ServerScriptService.Common.ArbreSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -64,6 +65,7 @@ local OfflineIncomeNotif = CreerRemoteEvent("OfflineIncomeNotif")
 local SecretRevealNotif  = CreerRemoteEvent("SecretRevealNotif")
 local CollectVFX         = CreerRemoteEvent("CollectVFX")
 local OuvrirRebirth      = CreerRemoteEvent("OuvrirRebirth")
+local UpdateGraines      = CreerRemoteEvent("UpdateGraines")
 
 -- Events client → serveur (actions joueur)
 local DemandeUpgrade     = CreerRemoteEvent("DemandeUpgrade")
@@ -568,6 +570,10 @@ TracteurSystem.Init()
 -- FlowerPotSystem : connecter la source de données et initialiser
 FlowerPotSystem.SetGetData(GetData)
 FlowerPotSystem.InitServeur()
+
+-- ArbreSystem : graines sur les arbres du ChampCommun
+ArbreSystem.GetData = GetData
+ArbreSystem.Init()
 
 -- ═══════════════════════════════════════════════
 -- 7. TOP FARMER HEBDOMADAIRE (chaque lundi minuit UTC)
