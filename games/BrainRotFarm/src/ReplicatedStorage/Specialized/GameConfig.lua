@@ -556,4 +556,10 @@ GameConfig.BoardConfig = {
 -- Dossier dans ServerStorage contenant Graine (Part+SpecialMesh) et Tree (Model)
 GameConfig.PlantModelsPath = "PlantModels"
 
+-- === RARETÉS EXCLUES DU SPAWN NORMAL ===
+-- Ces raretés ne spawneront jamais via SpawnManager ni CommunSpawner
+GameConfig.RaretesExcluesSpawn = {
+    "OG",  -- jamais en spawn normal
+}
+
 return GameConfig

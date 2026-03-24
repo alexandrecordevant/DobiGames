@@ -62,4 +62,11 @@ Config.ChampCommun = {
     Expiration      = 120,    -- secondes avant disparition (Legendary, Mythic)
 }
 
+-- ══════════════════════════════════════════════════════════════
+-- RARETÉS EXCLUES DU SPAWN NORMAL
+-- ══════════════════════════════════════════════════════════════
+Config.RaretesExcluesSpawn = {
+    "OG",  -- jamais en spawn normal
+}
+
 return Config

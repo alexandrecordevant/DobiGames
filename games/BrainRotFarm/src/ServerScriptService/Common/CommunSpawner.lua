@@ -67,6 +67,15 @@ local CONFIG = {
 	},
 }
 
+-- Raretés exclues du spawn — lues depuis GameConfig
+local _raretesExclues = Config.RaretesExcluesSpawn or {}
+local function EstExclue(typeNom)
+    for _, nom in ipairs(_raretesExclues) do
+        if nom == typeNom then return true end
+    end
+    return false
+end
+
 -- Effets permanents — valeurs par défaut (couleur MYTHIC)
 local COULEUR_DEFAUT       = Color3.fromRGB(148, 0, 211)
 local PARTICLE_RATE_BASE   = 8
@@ -526,6 +535,10 @@ end
 local function lancerScheduler(typeNom)
 	local cfg = CONFIG[typeNom]
 	if not cfg then return end
+    if EstExclue(typeNom) then
+        print("[CommunSpawner] " .. typeNom .. " exclu du spawn (RaretesExcluesSpawn)")
+        return
+    end
 
 	local function estActif()
 		return typeNom == "MYTHIC" and actifMythic or actifSecret

@@ -76,6 +76,15 @@ for _, r in ipairs(RARITES) do
 	POIDS_TOTAL = POIDS_TOTAL + r.poids
 end
 
+-- Raretés exclues du spawn — lues depuis GameConfig
+local _raretesExclues = _GameConfig.RaretesExcluesSpawn or {}
+local function EstExclue(rarete)
+    for _, nom in ipairs(_raretesExclues) do
+        if nom == rarete.nom then return true end
+    end
+    return false
+end
+
 -- ============================================================
 -- État interne
 -- ============================================================
@@ -105,17 +114,24 @@ local brainrotsFolder = ServerStorage:WaitForChild(_dosierBrainrots)
 -- Utilitaires internes
 -- ============================================================
 
--- Tire une rareté selon les poids
+-- Tire une rareté selon les poids (réessaie si la rareté est exclue)
 local function tirerRarete()
-	local r = math.random() * POIDS_TOTAL
-	local cumul = 0
-	for _, rarete in ipairs(RARITES) do
-		cumul = cumul + rarete.poids
-		if r <= cumul then
-			return rarete
-		end
-	end
-	return RARITES[1] -- fallback COMMON
+    local tentatives = 0
+    local rarete
+    repeat
+        local r     = math.random() * POIDS_TOTAL
+        local cumul = 0
+        rarete      = RARITES[1]  -- fallback COMMON
+        for _, candidat in ipairs(RARITES) do
+            cumul = cumul + candidat.poids
+            if r <= cumul then
+                rarete = candidat
+                break
+            end
+        end
+        tentatives = tentatives + 1
+    until not EstExclue(rarete) or tentatives > 20
+    return rarete
 end
 
 -- Retourne un modèle aléatoire depuis le dossier de rareté
