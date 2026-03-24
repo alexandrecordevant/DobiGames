@@ -34,14 +34,20 @@ local function DemarrerEvent(typeEvent)
     end
 end
 
+-- Timestamp (os.time) du prochain event — lu par GetProchainEvent()
+local prochainEventTimestamp = nil
+
 local function BoucleAuto()
     local intervalle = Config.EventIntervalleMinutes * 60
     local earlyBird  = Config.EarlyBirdBonusMinutes * 60
     local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
     while true do
+        -- Enregistrer le moment prévu du prochain event
+        prochainEventTimestamp = os.time() + intervalle
         task.wait(intervalle - earlyBird)
         NotifierTous("⏰ Event in 1h! Stay connected for the Early Bird bonus 🎁", Color3.fromRGB(100,200,255))
         task.wait(earlyBird)
+        prochainEventTimestamp = nil  -- event imminant, effacer le timer
         local choix = types[math.random(1, #types)]
         DemarrerEvent(choix)
         -- Pas de Discord pour ces events fréquents (Lucky Hour, Golden, etc.)
@@ -76,6 +82,13 @@ end
 
 function EventManager.DeclenchemantManuel(typeEvent)
     DemarrerEvent(typeEvent)
+end
+
+-- Retourne le temps restant avant le prochain event automatique (secondes)
+-- Retourne 0 si event imminent ou données absentes
+function EventManager.GetProchainEvent()
+    if not prochainEventTimestamp then return 0 end
+    return math.max(0, prochainEventTimestamp - os.time())
 end
 
 return EventManager

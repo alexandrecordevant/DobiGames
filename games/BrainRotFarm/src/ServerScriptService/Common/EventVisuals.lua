@@ -170,14 +170,14 @@ function EventVisuals.GetEventActif()
 end
 
 -- Retourne le temps restant de l'event en cours
--- { actif=bool, nom=string|nil, tempsRestant=secondes }
+-- { actif=bool, nom=string|nil, tempsRestant=secondes, dureeTotal=secondes }
 function EventVisuals.GetTempsRestantEvent()
     if not eventActif or not eventStartTime or not eventDuree then
-        return { actif = false, nom = nil, tempsRestant = 0 }
+        return { actif = false, nom = nil, tempsRestant = 0, dureeTotal = 0 }
     end
     local ecoule  = os.time() - eventStartTime
     local restant = math.max(0, eventDuree - ecoule)
-    return { actif = true, nom = eventActif, tempsRestant = restant }
+    return { actif = true, nom = eventActif, tempsRestant = restant, dureeTotal = eventDuree }
 end
 
 function EventVisuals.TerminerActif()

@@ -82,6 +82,24 @@ local function getEventVisuals()
     return _EventVisuals
 end
 
+local _SpawnManager = nil
+local function getSpawnManager()
+    if not _SpawnManager then
+        local ok, m = pcall(require, ServerScriptService.Common.SpawnManager)
+        if ok and m then _SpawnManager = m end
+    end
+    return _SpawnManager
+end
+
+local _EventManager = nil
+local function getEventManager()
+    if not _EventManager then
+        local ok, m = pcall(require, ServerScriptService:FindFirstChild("EventManager", true))
+        if ok and m then _EventManager = m end
+    end
+    return _EventManager
+end
+
 -- ============================================================
 -- GetDailySeedData — donnees daily seed pour un joueur
 -- ============================================================
@@ -149,17 +167,14 @@ end
 -- Utilitaires — formatage
 -- ============================================================
 
--- Séparateur espace comme milliers : 12 450 💰
+-- Format K/M/B : 1 500 → 1.5K, 2 500 000 → 2.5M
 local function formatCoins(n)
     n = math.floor(n or 0)
-    local s   = tostring(n)
-    local res = ""
-    local len = #s
-    for i = 1, len do
-        if i > 1 and (len - i + 1) % 3 == 0 then res = res .. " " end
-        res = res .. s:sub(i, i)
+    if     n >= 1e9  then return string.format("%.1fB", n / 1e9)
+    elseif n >= 1e6  then return string.format("%.1fM", n / 1e6)
+    elseif n >= 1e3  then return string.format("%.0fK", n / 1e3)
+    else                  return tostring(n)
     end
-    return res
 end
 
 local function tronquer(nom, maxLen)
@@ -168,10 +183,42 @@ local function tronquer(nom, maxLen)
 end
 
 local function rangLabel(rang)
-    if rang == 1 then return "🥇"
+    if rang == 1 then return "👑"
     elseif rang == 2 then return "🥈"
     elseif rang == 3 then return "🥉"
-    else return tostring(rang) end
+    else return tostring(rang) .. "." end
+end
+
+-- Compte les BR Mutants posés dans la base d'un joueur
+-- Cherche un enfant "MutantTag" dans chaque spot_ de la hiérarchie Base_X/Base
+local function CompterMutants(baseIndex)
+    if not baseIndex then return 0 end
+    local count = 0
+    local bases = Workspace:FindFirstChild("Bases")
+    local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
+    local bat   = base and base:FindFirstChild("Base")
+    if not bat then return 0 end
+    for _, floor in ipairs(bat:GetChildren()) do
+        for _, spot in ipairs(floor:GetChildren()) do
+            if spot.Name:find("spot_") then
+                local tag = spot:FindFirstChild("MutantTag")
+                if not tag then
+                    local bp = spot:FindFirstChildWhichIsA("BasePart")
+                    tag = bp and bp:FindFirstChild("MutantTag")
+                end
+                if tag then count = count + 1 end
+            end
+        end
+    end
+    return count
+end
+
+-- Barre de progression pour les events actifs (10 blocs)
+local function barreProgression(tempsRestant, dureeTotal)
+    if dureeTotal <= 0 then return "░░░░░░░░░░" end
+    local pct    = math.clamp(tempsRestant / dureeTotal, 0, 1)
+    local pleins = math.floor(pct * 10)
+    return string.rep("█", pleins) .. string.rep("░", 10 - pleins)
 end
 
 local function FormatTemps(secondes)
@@ -488,32 +535,41 @@ end
 -- ============================================================
 
 local function BuildTextoClassement()
-    local sep      = "━━━━━━━━━━━━━━━━━━━━━"
-    local MEDAILLES = { "🥇", "🥈", "🥉" }
-    local lines    = { "🏆 LEADERBOARD", sep }
+    local sep   = "━━━━━━━━━━━━━━━━━━━━━"
+    local lines = {
+        '<b><font color="#FFD700">🏆 BRAINROTFARM — TOP FARMERS</font></b>',
+        sep,
+    }
 
     for i = 1, MAX_JOUEURS do
         local entree = classementActuel[i]
         if entree then
-            local rang  = MEDAILLES[i] or tostring(i)
-            local nom   = tronquer(entree.name, 10)
-            local coins = formatCoins(entree.coins)
+            local rang   = rangLabel(i)
+            local nom    = tronquer(entree.name, 10)
+            local coins  = "💰 " .. formatCoins(entree.coins)
+            local icones = entree.icones ~= "" and entree.icones or ""
+            local mutant = "🌱×" .. (entree.mutants or 0)
 
             -- Top 3 en couleur RichText
-            if COULEURS_RICHTEXT[i] then
-                local c = COULEURS_RICHTEXT[i]
-                rang = '<font color="' .. c .. '">' .. rang .. '</font>'
-                nom  = '<font color="' .. c .. '">' .. nom  .. '</font>'
+            local couleur = COULEURS_RICHTEXT[i]
+            if couleur then
+                rang  = '<font color="' .. couleur .. '"><b>' .. rang  .. '</b></font>'
+                nom   = '<font color="' .. couleur .. '"><b>' .. nom   .. '</b></font>'
+                coins = '<font color="' .. couleur .. '">'    .. coins .. '</font>'
             end
 
-            table.insert(lines, rang .. "  " .. nom .. "  " .. coins .. " 💰")
+            local ligne = rang .. " " .. nom .. "  " .. coins
+            if icones ~= "" then ligne = ligne .. "  " .. icones end
+            ligne = ligne .. "  " .. mutant
+
+            table.insert(lines, ligne)
 
             -- Ligne vide après le podium
-            if i == 3 then
+            if i == 3 and #classementActuel > 3 then
                 table.insert(lines, "")
             end
         else
-            table.insert(lines, "· · ·")
+            table.insert(lines, "  " .. i .. ".  · · ·")
         end
     end
 
@@ -545,56 +601,86 @@ local NOMS_EVENTS = {
 }
 
 local function BuildTextoInfos()
-    local lignes = {}
-    table.insert(lignes, "📡 LIVE")
-    table.insert(lignes, "")
+    local sep    = "━━━━━━━━━━━━━━━━━━━━━"
+    local lignes = {
+        '<b><font color="#00FFFF">⚡ LIVE — EVENTS</font></b>',
+        sep,
+    }
 
-    -- Prochain MYTHIC + SECRET
-    local avantSpawns = #lignes
+    -- ── Section ChampCommun ──────────────────────────────────────────
     local CCS = getChampCommunSpawner()
     if CCS and CCS.GetProchainSpawn then
-        local ok, mythic = pcall(CCS.GetProchainSpawn, "MYTHIC")
-        if ok and mythic and mythic.tempsRestant >= 0 then
-            table.insert(lignes, "☄️  MYTHIC   in  " .. FormatTemps(mythic.tempsRestant))
-        end
-        local ok2, secret = pcall(CCS.GetProchainSpawn, "SECRET")
-        if ok2 and secret and secret.tempsRestant >= 0 then
-            table.insert(lignes, "🔴  SECRET   in " .. FormatTemps(secret.tempsRestant))
-        end
-    end
+        table.insert(lignes, "<b>🌾 ChampCommun</b>")
 
-    -- Séparateur si au moins un spawn affiché
-    if #lignes > avantSpawns then
+        local okM, mythic = pcall(CCS.GetProchainSpawn, "MYTHIC")
+        if okM and mythic then
+            if mythic.tempsRestant == 0 then
+                table.insert(lignes, "☄️  MYTHIC   → 🟢 ACTIF!")
+            else
+                table.insert(lignes, "☄️  MYTHIC   → ⏳ " .. FormatTemps(mythic.tempsRestant))
+            end
+        end
+
+        local okS, secret = pcall(CCS.GetProchainSpawn, "SECRET")
+        if okS and secret then
+            if secret.tempsRestant == 0 then
+                table.insert(lignes, "🔴  SECRET   → 🟢 ACTIF!")
+            else
+                table.insert(lignes, "🔴  SECRET   → ⏳ " .. FormatTemps(secret.tempsRestant))
+            end
+        end
+
         table.insert(lignes, "")
     end
 
-    -- Event actif
+    -- ── Section Prochain Event automatique ──────────────────────────
+    local EM = getEventManager()
+    if EM and EM.GetProchainEvent then
+        local ok, tempsAvant = pcall(EM.GetProchainEvent)
+        if ok and tempsAvant and tempsAvant > 0 then
+            table.insert(lignes, "<b>📅 PROCHAIN EVENT</b>")
+            table.insert(lignes, "⚡ Next event  → dans " .. FormatTemps(tempsAvant))
+            table.insert(lignes, "")
+        end
+    end
+
+    -- ── Section Event actif ─────────────────────────────────────────
     local EV = getEventVisuals()
     if EV then
         local nomEvent = EV.GetEventActif and EV.GetEventActif()
         if nomEvent then
             local infoEvent    = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
             local tempsRestant = (infoEvent and infoEvent.tempsRestant) or 0
+            local dureeTotal   = (infoEvent and infoEvent.dureeTotal)   or 0
             local nomAffiche   = NOMS_EVENTS[nomEvent] or nomEvent
+            local barre        = barreProgression(tempsRestant, dureeTotal)
+            local pct          = dureeTotal > 0
+                and math.floor((tempsRestant / dureeTotal) * 100) or 0
+
+            table.insert(lignes, "<b>⚡ EVENT ACTIF</b>")
             table.insert(lignes, nomAffiche .. "   " .. FormatTemps(tempsRestant))
+            table.insert(lignes, barre .. "  " .. pct .. "%")
+            table.insert(lignes, "")
+        else
+            table.insert(lignes, "⏸️  Aucun event actif")
             table.insert(lignes, "")
         end
     end
 
-    -- Dernier rare (< 3 min = 180s)
+    -- ── Dernier rare capturé (< 3 min) ──────────────────────────────
     local dr = LeaderboardSystem.DernierRare
     if dr and (os.time() - (dr.timestamp or 0)) < 180 then
         local nomCourt = dr.joueur:sub(1, 10)
-        table.insert(lignes, "👑  " .. nomCourt .. "  grabbed")
+        table.insert(lignes, '<font color="#FFD700">👑 ' .. nomCourt .. " a capturé</font>")
         table.insert(lignes, "    " .. dr.rarete .. "  🔥")
         table.insert(lignes, "")
     end
 
-    -- Top collecteur
+    -- ── Top collecteur ───────────────────────────────────────────────
     local top = GetTopCollecteur()
     if top then
-        table.insert(lignes, "🏆  Top farmer")
-        table.insert(lignes, "    " .. top.nom:sub(1, 10) .. "  ·  " .. top.totalCollecte .. " BR")
+        table.insert(lignes, "🏆 Top Farmer")
+        table.insert(lignes, "  " .. top.nom:sub(1, 10) .. "  ·  " .. top.totalCollecte .. " BR")
     end
 
     return table.concat(lignes, "\n")
@@ -656,10 +742,13 @@ end
 local function collecterClassement()
     local liste   = {}
     local getData = LeaderboardSystem.GetPlayerData
+    local SM      = getSpawnManager()
 
     for _, player in ipairs(Players:GetPlayers()) do
         local playerData = getData and getData(player)
         if playerData then
+            local baseIndex = SM and SM.GetBase(player)
+            local mutants   = CompterMutants(baseIndex)
             table.insert(liste, {
                 name          = player.Name,
                 displayName   = player.DisplayName,
@@ -667,6 +756,7 @@ local function collecterClassement()
                 rebirth       = math.floor(playerData.rebirthLevel or 0),
                 totalCollecte = math.floor(playerData.totalCollecte or 0),
                 icones        = GetIconesJoueur(playerData),
+                mutants       = mutants,
                 userId        = player.UserId,
             })
             -- Mettre à jour leaderstats pendant qu'on a les données fraîches
