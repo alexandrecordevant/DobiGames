@@ -149,6 +149,16 @@ function RebirthSystem.VerifierConditions(player)
     local rarete   = cfg.brainRotRequis.rarete
     local quantite = cfg.brainRotRequis.quantite
     local stock    = inv[rarete] or 0
+
+    -- Vérifier aussi dans les slots déposés (spotsOccupes) — fix LEGENDARY non compté
+    local spotsOccupes = data.spotsOccupes or {}
+    for _, slotData in pairs(spotsOccupes) do
+        if type(slotData) == "table" and slotData.rarete == rarete then
+            stock = stock + 1
+            print("[RebirthSystem] BR requis trouvé dans slot déposé : " .. rarete)
+        end
+    end
+
     if stock < quantite then
         ok = false
         manques.manqueBR       = rarete

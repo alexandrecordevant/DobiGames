@@ -316,15 +316,24 @@ end
 -- Utilitaires — ProximityPrompts
 -- ============================================================
 
--- Ajoute ou met à jour le prompt de récupération sur un spot occupé
+-- Ajoute le prompt "Retrieve" ET le prompt "Sell" sur un slot occupé
 local function creerPromptRecuperer(touchPart, player)
+    -- Supprimer les anciens prompts
     local ancien = touchPart:FindFirstChild("RecupererPrompt")
     if ancien then ancien:Destroy() end
+    local ancienVente = touchPart:FindFirstChild("VendrePrompt")
+    if ancienVente then ancienVente:Destroy() end
 
+    -- Lire la rareté pour l'objectText du Sell
+    local uid       = player.UserId
+    local entree    = spotsData[uid] and spotsData[uid][touchPart]
+    local rareteNom = entree and entree.rarete or "BR"
+
+    -- PP Retrieve (touche E, instantané)
     local prompt = Instance.new("ProximityPrompt")
     prompt.Name                  = "RecupererPrompt"
     prompt.ActionText            = "Retrieve"
-    prompt.ObjectText            = "Brain Rot"
+    prompt.ObjectText            = "↩️ " .. rareteNom
     prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 10
     prompt.KeyboardKeyCode       = Enum.KeyCode.E
@@ -334,6 +343,22 @@ local function creerPromptRecuperer(touchPart, player)
     prompt.Triggered:Connect(function(triggerPlayer)
         if triggerPlayer ~= player then return end
         DropSystem.RecupererBrainRot(player, touchPart)
+    end)
+
+    -- PP Sell (touche G, 1s de maintien)
+    local promptVente = Instance.new("ProximityPrompt")
+    promptVente.Name                  = "VendrePrompt"
+    promptVente.ActionText            = "Sell"
+    promptVente.ObjectText            = "💰 " .. rareteNom
+    promptVente.HoldDuration          = 1.0
+    promptVente.MaxActivationDistance = 10
+    promptVente.KeyboardKeyCode       = Enum.KeyCode.G
+    promptVente.RequiresLineOfSight   = false
+    promptVente.Parent                = touchPart
+
+    promptVente.Triggered:Connect(function(triggerPlayer)
+        if triggerPlayer ~= player then return end
+        DropSystem.VendreBR(player, touchPart)
     end)
 
     local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
@@ -373,6 +398,8 @@ end
 local function supprimerPromptRecuperer(touchPart)
     local r = touchPart:FindFirstChild("RecupererPrompt")
     if r then pcall(function() r:Destroy() end) end
+    local v = touchPart:FindFirstChild("VendrePrompt")
+    if v then pcall(function() v:Destroy() end) end
     local rp = touchPart:FindFirstChild("RemplacerPrompt")
     if rp then pcall(function() rp:Destroy() end) end
 
@@ -748,7 +775,12 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     -- Retirer du spot
     local rarete    = entree.rarete
     local miniModel = entree.miniModel
+    local spotKey   = entree.spotKey
     spotsData[uid][touchPart] = nil
+
+    -- Supprimer les visuels income (billboard + CollectPart) + créditer coins en attente
+    local IS = getIncomeSystem()
+    if IS then IS.SupprimerSlotVisuel(player, touchPart, spotKey) end
 
     -- Supprimer le mini modèle
     supprimerMiniModele(miniModel)
@@ -785,13 +817,12 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     viderGui(touchPart)
 
     -- Recalculer l'income
-    local IS = getIncomeSystem()
     if IS then
         IS.RecalculerIncome(player, construireSpotsTable(player))
     end
 
     notifierJoueur(player, "INFO", "↩️ Brain Rot [" .. rarete .. "] retrieved to your carry!")
-    print("[DropSystem] " .. player.Name .. " a récupéré " .. rarete .. " du spot " .. entree.spotKey)
+    print("[DropSystem] " .. player.Name .. " a récupéré " .. rarete .. " du spot " .. spotKey)
 end
 
 -- ============================================================
@@ -932,7 +963,12 @@ function DropSystem.EjecterBR(player, touchPart)
 
     local rarete    = entree.rarete
     local miniModel = entree.miniModel
+    local spotKey   = entree.spotKey
     spotsData[uid][touchPart] = nil
+
+    -- Supprimer les visuels income (billboard + CollectPart) + créditer coins en attente
+    local IS = getIncomeSystem()
+    if IS then IS.SupprimerSlotVisuel(player, touchPart, spotKey) end
 
     supprimerMiniModele(miniModel)
     supprimerPromptRecuperer(touchPart)
@@ -994,10 +1030,52 @@ function DropSystem.EjecterBR(player, touchPart)
     end
 
     -- Recalculer l'income
-    local IS = getIncomeSystem()
     if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
 
-    print("[DropSystem] BR éjecté : " .. rarete .. " du spot " .. entree.spotKey)
+    print("[DropSystem] BR éjecté : " .. rarete .. " du spot " .. spotKey)
+end
+
+-- ============================================================
+-- API publique — Vente directe d'un BR déposé (sans passer par le carry)
+-- ============================================================
+
+-- Vend le BR sur touchPart : crédite les coins en attente + coins de vente immédiate,
+-- détruit le visuel, libère le slot.
+function DropSystem.VendreBR(player, touchPart)
+    local uid = player.UserId
+    if not spotsData[uid] then return end
+
+    local entree = spotsData[uid][touchPart]
+    if not entree then return end
+
+    local rarete    = entree.rarete
+    local miniModel = entree.miniModel
+    local spotKey   = entree.spotKey
+    spotsData[uid][touchPart] = nil
+
+    -- Récupérer IncomeSystem une seule fois
+    local IS = getIncomeSystem()
+
+    -- Créditer les coins en attente ET supprimer les visuels income (billboard + CollectPart)
+    if IS then IS.SupprimerSlotVisuel(player, touchPart, spotKey) end
+
+    -- Bonus vente immédiate : valeur de 10s de revenu
+    local bonusVente = math.floor(entree.valeurSec * 10)
+    if IS and bonusVente > 0 then
+        IS.AjouterCoins(player, bonusVente)
+    end
+
+    -- Supprimer le mini modèle et les prompts
+    supprimerMiniModele(miniModel)
+    supprimerPromptRecuperer(touchPart)
+    viderGui(touchPart)
+
+    -- Recalculer l'income
+    if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
+
+    notifierJoueur(player, "INFO",
+        "💰 Brain Rot [" .. rarete .. "] sold! +" .. tostring(bonusVente) .. " coins")
+    print("[DropSystem] " .. player.Name .. " a vendu " .. rarete .. " du spot " .. spotKey)
 end
 
 -- Nettoie l'état du joueur (appelé à la déconnexion)
