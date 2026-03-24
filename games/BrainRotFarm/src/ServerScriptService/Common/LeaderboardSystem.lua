@@ -56,10 +56,8 @@ local rowFrames        = {}
 local footerLabel      = nil
 local derniereMaj      = 0
 
--- Cache des Texto Studio (rempli dans Init via task.defer)
--- LB1 + LB3 = classement, LB2 + LB4 = infos
-local textosClassement = {}
-local textosInfos      = {}
+-- Cache des Texto Studio — LB1 et LB2, même contenu (rempli dans Init)
+local textosLeaderboards = {}
 
 -- ============================================================
 -- Lazy-requires (évite les dépendances circulaires)
@@ -499,15 +497,36 @@ local function GetLeaderboardTexto(nomPanneau)
     return gui:FindFirstChild("Texto")
 end
 
--- Applique RichText + style sur un TextLabel Studio
+-- Applique RichText + fond noir sur un TextLabel Studio
+-- Noircit aussi le Frame parent et la SurfaceGui/BillboardGui si présents
 local function configurerTexto(texto)
     pcall(function()
         texto.RichText               = true
         texto.TextScaled             = true
         texto.Font                   = Enum.Font.GothamBold
         texto.TextColor3             = Color3.fromRGB(255, 255, 255)
-        texto.BackgroundTransparency = 1
+        texto.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
+        texto.BackgroundTransparency = 0.1   -- fond quasi-noir
         texto.TextXAlignment         = Enum.TextXAlignment.Left
+        texto.TextYAlignment         = Enum.TextYAlignment.Top
+
+        -- Noircir le Frame parent si présent
+        local parent = texto.Parent
+        if parent and parent:IsA("Frame") then
+            parent.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
+            parent.BackgroundTransparency = 0.05
+        end
+
+        -- Noircir le canvas de la SurfaceGui / BillboardGui
+        local gui = parent and parent.Parent
+        if gui then
+            if gui:IsA("SurfaceGui") or gui:IsA("BillboardGui") then
+                pcall(function()
+                    gui.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
+                    gui.BackgroundTransparency = 0
+                end)
+            end
+        end
     end)
 end
 
@@ -534,60 +553,8 @@ end
 -- Format : RichText, top3 coloré, ligne vide après rang 3
 -- ============================================================
 
-local function BuildTextoClassement()
-    local sep   = "━━━━━━━━━━━━━━━━━━━━━"
-    local lines = {
-        '<b><font color="#FFD700">🏆 BRAINROTFARM — TOP FARMERS</font></b>',
-        sep,
-    }
-
-    for i = 1, MAX_JOUEURS do
-        local entree = classementActuel[i]
-        if entree then
-            local rang   = rangLabel(i)
-            local nom    = tronquer(entree.name, 10)
-            local coins  = "💰 " .. formatCoins(entree.coins)
-            local icones = entree.icones ~= "" and entree.icones or ""
-            local mutant = "🌱×" .. (entree.mutants or 0)
-
-            -- Top 3 en couleur RichText
-            local couleur = COULEURS_RICHTEXT[i]
-            if couleur then
-                rang  = '<font color="' .. couleur .. '"><b>' .. rang  .. '</b></font>'
-                nom   = '<font color="' .. couleur .. '"><b>' .. nom   .. '</b></font>'
-                coins = '<font color="' .. couleur .. '">'    .. coins .. '</font>'
-            end
-
-            local ligne = rang .. " " .. nom .. "  " .. coins
-            if icones ~= "" then ligne = ligne .. "  " .. icones end
-            ligne = ligne .. "  " .. mutant
-
-            table.insert(lines, ligne)
-
-            -- Ligne vide après le podium
-            if i == 3 and #classementActuel > 3 then
-                table.insert(lines, "")
-            end
-        else
-            table.insert(lines, "  " .. i .. ".  · · ·")
-        end
-    end
-
-    return table.concat(lines, "\n")
-end
-
-local function MettreAJourClassement()
-    local texte = BuildTextoClassement()
-    for _, texto in ipairs(textosClassement) do
-        if texto and texto.Parent then
-            pcall(function() texto.Text = texte end)
-        end
-    end
-end
-
 -- ============================================================
--- Leaderboard Infos — LB2 + LB4
--- Format : tension + envie, max 6 blocs, peu de texte
+-- Noms affichés des events
 -- ============================================================
 
 local NOMS_EVENTS = {
@@ -600,51 +567,65 @@ local NOMS_EVENTS = {
     SecretSpawn = "🔴 Secret Spawn",
 }
 
-local function BuildTextoInfos()
-    local sep    = "━━━━━━━━━━━━━━━━━━━━━"
-    local lignes = {
-        '<b><font color="#00FFFF">⚡ LIVE — EVENTS</font></b>',
-        sep,
-    }
+-- ============================================================
+-- BuildTextoComplet — contenu fusionné (classement + events)
+-- Affiché identiquement sur LB1 et LB2
+-- ============================================================
 
-    -- ── Section ChampCommun ──────────────────────────────────────────
+local function BuildTextoComplet()
+    local sep   = "─────────────────────"
+    local lines = {}
+
+    -- ── SECTION 1 : Classement ───────────────────────────────────────
+    table.insert(lines, '<b><font color="#FFD700">🏆 TOP FARMERS</font></b>')
+    table.insert(lines, sep)
+
+    for i = 1, MAX_JOUEURS do
+        local entree = classementActuel[i]
+        if entree then
+            local rang   = rangLabel(i)
+            local nom    = tronquer(entree.name, 9)
+            local coins  = "💰" .. formatCoins(entree.coins)
+            local icones = (entree.icones ~= "" and entree.icones) or ""
+            local mutant = "🌱×" .. (entree.mutants or 0)
+
+            local couleur = COULEURS_RICHTEXT[i]
+            if couleur then
+                rang  = '<font color="' .. couleur .. '"><b>' .. rang .. '</b></font>'
+                nom   = '<font color="' .. couleur .. '">'    .. nom  .. '</font>'
+                coins = '<font color="' .. couleur .. '">'    .. coins .. '</font>'
+            end
+
+            local ligne = rang .. " " .. nom .. " " .. coins
+            if icones ~= "" then ligne = ligne .. " " .. icones end
+            ligne = ligne .. " " .. mutant
+            table.insert(lines, ligne)
+        else
+            table.insert(lines, "  " .. i .. ". · · ·")
+        end
+    end
+
+    -- ── SECTION 2 : ChampCommun ──────────────────────────────────────
+    table.insert(lines, sep)
+    table.insert(lines, '<b><font color="#00FFFF">⚡ LIVE</font></b>')
+
     local CCS = getChampCommunSpawner()
     if CCS and CCS.GetProchainSpawn then
-        table.insert(lignes, "<b>🌾 ChampCommun</b>")
-
         local okM, mythic = pcall(CCS.GetProchainSpawn, "MYTHIC")
         if okM and mythic then
-            if mythic.tempsRestant == 0 then
-                table.insert(lignes, "☄️  MYTHIC   → 🟢 ACTIF!")
-            else
-                table.insert(lignes, "☄️  MYTHIC   → ⏳ " .. FormatTemps(mythic.tempsRestant))
-            end
+            local txt = mythic.tempsRestant == 0
+                and "🟢 ACTIF!" or ("⏳ " .. FormatTemps(mythic.tempsRestant))
+            table.insert(lines, "☄️ MYTHIC → " .. txt)
         end
-
         local okS, secret = pcall(CCS.GetProchainSpawn, "SECRET")
         if okS and secret then
-            if secret.tempsRestant == 0 then
-                table.insert(lignes, "🔴  SECRET   → 🟢 ACTIF!")
-            else
-                table.insert(lignes, "🔴  SECRET   → ⏳ " .. FormatTemps(secret.tempsRestant))
-            end
-        end
-
-        table.insert(lignes, "")
-    end
-
-    -- ── Section Prochain Event automatique ──────────────────────────
-    local EM = getEventManager()
-    if EM and EM.GetProchainEvent then
-        local ok, tempsAvant = pcall(EM.GetProchainEvent)
-        if ok and tempsAvant and tempsAvant > 0 then
-            table.insert(lignes, "<b>📅 PROCHAIN EVENT</b>")
-            table.insert(lignes, "⚡ Next event  → dans " .. FormatTemps(tempsAvant))
-            table.insert(lignes, "")
+            local txt = secret.tempsRestant == 0
+                and "🟢 ACTIF!" or ("⏳ " .. FormatTemps(secret.tempsRestant))
+            table.insert(lines, "🔴 SECRET → " .. txt)
         end
     end
 
-    -- ── Section Event actif ─────────────────────────────────────────
+    -- ── SECTION 3 : Event actif ou prochain ──────────────────────────
     local EV = getEventVisuals()
     if EV then
         local nomEvent = EV.GetEventActif and EV.GetEventActif()
@@ -654,41 +635,37 @@ local function BuildTextoInfos()
             local dureeTotal   = (infoEvent and infoEvent.dureeTotal)   or 0
             local nomAffiche   = NOMS_EVENTS[nomEvent] or nomEvent
             local barre        = barreProgression(tempsRestant, dureeTotal)
-            local pct          = dureeTotal > 0
-                and math.floor((tempsRestant / dureeTotal) * 100) or 0
-
-            table.insert(lignes, "<b>⚡ EVENT ACTIF</b>")
-            table.insert(lignes, nomAffiche .. "   " .. FormatTemps(tempsRestant))
-            table.insert(lignes, barre .. "  " .. pct .. "%")
-            table.insert(lignes, "")
+            local pct          = dureeTotal > 0 and math.floor((tempsRestant / dureeTotal) * 100) or 0
+            table.insert(lines, '<b><font color="#FF8800">⚡ ' .. nomAffiche .. '</font></b>')
+            table.insert(lines, barre .. " " .. pct .. "%  (" .. FormatTemps(tempsRestant) .. ")")
         else
-            table.insert(lignes, "⏸️  Aucun event actif")
-            table.insert(lignes, "")
+            local EM = getEventManager()
+            if EM and EM.GetProchainEvent then
+                local ok, tempsAvant = pcall(EM.GetProchainEvent)
+                if ok and tempsAvant and tempsAvant > 0 then
+                    table.insert(lines, "📅 Next event → " .. FormatTemps(tempsAvant))
+                end
+            end
         end
     end
 
-    -- ── Dernier rare capturé (< 3 min) ──────────────────────────────
+    -- ── SECTION 4 : Dernier rare (< 3 min) ──────────────────────────
     local dr = LeaderboardSystem.DernierRare
     if dr and (os.time() - (dr.timestamp or 0)) < 180 then
-        local nomCourt = dr.joueur:sub(1, 10)
-        table.insert(lignes, '<font color="#FFD700">👑 ' .. nomCourt .. " a capturé</font>")
-        table.insert(lignes, "    " .. dr.rarete .. "  🔥")
-        table.insert(lignes, "")
+        table.insert(lines, sep)
+        table.insert(lines,
+            '<font color="#FFD700">👑 ' .. dr.joueur:sub(1, 10) .. " → " .. dr.rarete .. " 🔥</font>")
     end
 
-    -- ── Top collecteur ───────────────────────────────────────────────
-    local top = GetTopCollecteur()
-    if top then
-        table.insert(lignes, "🏆 Top Farmer")
-        table.insert(lignes, "  " .. top.nom:sub(1, 10) .. "  ·  " .. top.totalCollecte .. " BR")
-    end
-
-    return table.concat(lignes, "\n")
+    return table.concat(lines, "\n")
 end
 
-local function MettreAJourInfos()
-    local texte = BuildTextoInfos()
-    for _, texto in ipairs(textosInfos) do
+-- ── Table unique : les 2 panneaux reçoivent le même texte ────────────
+local textosLeaderboards = {}
+
+local function MettreAJourLeaderboards()
+    local texte = BuildTextoComplet()
+    for _, texto in ipairs(textosLeaderboards) do
         if texto and texto.Parent then
             pcall(function() texto.Text = texte end)
         end
@@ -805,9 +782,10 @@ end
 
 local function boucleLeaderboard()
     while true do
-        -- Cycle 1 : broadcast + mise à jour classement LB1+LB3
+        -- Broadcast classement (panneau 3D custom + clients HUD)
         pcall(broadcastClassement)
-        pcall(MettreAJourClassement)
+        -- Mise à jour identique LB1 + LB2 (texte fusionné)
+        pcall(MettreAJourLeaderboards)
 
         -- Footer panneau 3D (compte elapsed en live)
         if footerLabel then
@@ -825,11 +803,6 @@ local function boucleLeaderboard()
         end
 
         task.wait(UPDATE_CLASSEMENT)
-
-        -- Cycle 2 : mise à jour infos LB2+LB4
-        pcall(MettreAJourInfos)
-
-        task.wait(UPDATE_INFOS)
     end
 end
 
@@ -902,37 +875,27 @@ function LeaderboardSystem.Init()
             warn("[LeaderboardSystem] Workspace.Leaderboards INTROUVABLE — panneaux Studio désactivés")
         end
 
-        -- Récupérer les 4 textos
-        local noms   = { "Leaderboard1", "Leaderboard2", "Leaderboard3", "Leaderboard4" }
-        local textos = {}
+        -- Récupérer les 2 textos (LB1 + LB2 — même contenu)
+        local noms = { "Leaderboard1", "Leaderboard2" }
+        local initTexte = "🏆 TOP FARMERS\n─────────────────────\nLoading..."
+        textosLeaderboards = {}
         for _, nom in ipairs(noms) do
             local t = GetLeaderboardTexto(nom)
-            textos[nom] = t
             if t then
                 pcall(configurerTexto, t)
+                pcall(function() t.Text = initTexte end)
+                table.insert(textosLeaderboards, t)
                 print("[LeaderboardSystem] " .. nom .. " Texto ✓")
             else
                 warn("[LeaderboardSystem] " .. nom .. " Texto INTROUVABLE")
             end
         end
-
-        -- Textes initiaux (efface "indisponible" Studio)
-        local initCls = "🏆 LEADERBOARD\n━━━━━━━━━━━━━━━━━━━━━\nWaiting..."
-        local initInf = "📡 LIVE\n\nLoading..."
-        if textos.Leaderboard1 then pcall(function() textos.Leaderboard1.Text = initCls end) end
-        if textos.Leaderboard3 then pcall(function() textos.Leaderboard3.Text = initCls end) end
-        if textos.Leaderboard2 then pcall(function() textos.Leaderboard2.Text = initInf end) end
-        if textos.Leaderboard4 then pcall(function() textos.Leaderboard4.Text = initInf end) end
-
-        -- Remplir les tables (utilisées par boucleLeaderboard)
-        textosClassement = { textos.Leaderboard1, textos.Leaderboard3 }
-        textosInfos      = { textos.Leaderboard2, textos.Leaderboard4 }
     end)
 
     -- Lancer la boucle (les textos seront nil pour les 2 premiers ticks, sans effet)
     task.spawn(boucleLeaderboard)
 
-    print("[LeaderboardSystem] ✓ Initialisé (LB1+LB3 classement · LB2+LB4 infos · cycle 10s)")
+    print("[LeaderboardSystem] ✓ Initialisé (LB1+LB2 identiques · contenu fusionné · cycle " .. UPDATE_CLASSEMENT .. "s)")
 end
 
 -- Mise à jour immédiate (appelée après gain de coins, rebirth, etc.)
@@ -942,7 +905,7 @@ function LeaderboardSystem.MettreAJour(player, playerData)
     end
     task.spawn(function()
         pcall(broadcastClassement)
-        pcall(MettreAJourClassement)
+        pcall(MettreAJourLeaderboards)
     end)
 end
 
