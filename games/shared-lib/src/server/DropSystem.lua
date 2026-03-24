@@ -640,9 +640,13 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         valeurSec = valeurSec * entree.rarete.valeur
     end
 
-    -- Mémoriser le nom exact du BR AVANT que placerMiniModele détruise modeleDepose
-    -- (placerMiniModele clone modeleDepose puis le destroy — le nom devient inaccessible après)
-    local brNom = modeleDepose and modeleDepose.Name or nil
+    -- Mémoriser le nom original du BR (Attribute posé par SpawnManager/CommunSpawner)
+    -- Le modèle est renommé "BR_1_42" / "CC_MYTHIC_7" au spawn → utiliser OriginalName
+    -- pour retrouver le bon modèle dans ServerStorage lors de la restauration
+    local brNom = nil
+    if modeleDepose then
+        brNom = modeleDepose:GetAttribute("OriginalName") or modeleDepose.Name
+    end
 
     -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
     local miniModel = placerMiniModele(touchPart, rarete, modeleDepose)

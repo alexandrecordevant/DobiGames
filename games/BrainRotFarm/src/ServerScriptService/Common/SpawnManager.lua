@@ -320,9 +320,10 @@ local function spawnerUnBrainRot(baseIndex)
 	idCounter  = idCounter + 1
 	local id   = idCounter
 	clone.Name = string.format("BR_%d_%d", baseIndex, id)
-	pcall(function() clone:SetAttribute("Rarete",    rarete.nom) end)
-	pcall(function() clone:SetAttribute("BaseIndex", baseIndex)  end)
-	pcall(function() clone:SetAttribute("SpawnId",   id)         end)
+	pcall(function() clone:SetAttribute("Rarete",       rarete.nom)    end)
+	pcall(function() clone:SetAttribute("BaseIndex",    baseIndex)     end)
+	pcall(function() clone:SetAttribute("SpawnId",      id)            end)
+	pcall(function() clone:SetAttribute("OriginalName", modeleSource.Name) end)
 
 	-- Position aléatoire dans la SpawnZone
 	local x = math.random() * (zone.xMax - zone.xMin) + zone.xMin

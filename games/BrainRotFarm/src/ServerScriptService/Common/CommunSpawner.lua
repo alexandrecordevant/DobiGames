@@ -420,6 +420,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 
 	idCounter  = idCounter + 1
 	clone.Name = string.format("CC_%s_%d", typeNom, idCounter)
+	pcall(function() clone:SetAttribute("OriginalName", modeleSource.Name) end)
 	clone.Parent = Workspace
 
 	local racine = obtenirRacine(clone)
