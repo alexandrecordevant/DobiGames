@@ -452,14 +452,17 @@ local function restaurerDepots(player, playerData)
     for spotKey, info in pairs(playerData.spotsOccupes) do
         local touchPart = index[spotKey]
         if touchPart and info and info.rarete then
-            local valeur = VALEUR_PAR_RARETE[info.rarete] or 1
+            -- Utiliser valeurSec sauvegardée (préserve le multiplicateur Mutant)
+            local valeur   = info.valeurSec or (VALEUR_PAR_RARETE[info.rarete] or 1)
+            local isMutant = info.isMutant == true
 
-            -- Tenter de restaurer le modèle exact via brNom (évite le clone aléatoire)
+            -- Tenter de restaurer le modèle exact via brNom
+            -- Les modèles Mutant (_MUTANT) n'existent pas dans ServerStorage → fallback rareté
             local modeleSource = nil
-            if info.brNom then
+            if info.brNom and not isMutant then
                 local brainrots = ServerStorage:FindFirstChild("Brainrots")
-                local dossier = brainrots and brainrots:FindFirstChild(info.rarete)
-                local brSource = dossier and dossier:FindFirstChild(info.brNom)
+                local dossier   = brainrots and brainrots:FindFirstChild(info.rarete)
+                local brSource  = dossier and dossier:FindFirstChild(info.brNom)
                 if brSource then
                     pcall(function() modeleSource = brSource:Clone() end)
                 end
@@ -467,18 +470,49 @@ local function restaurerDepots(player, playerData)
 
             local miniModel = placerMiniModele(touchPart, info.rarete, modeleSource)
 
+            -- Restaurer le visuel Mutant (spot doré + particules)
+            if isMutant then
+                local spotColor = (Config.FlowerPotConfig
+                    and Config.FlowerPotConfig.spotMutantCouleur)
+                    or Color3.fromRGB(255, 215, 0)
+                pcall(function()
+                    touchPart.Color = spotColor
+                    local light = touchPart:FindFirstChild("MutantLight")
+                               or Instance.new("PointLight", touchPart)
+                    light.Name       = "MutantLight"
+                    light.Brightness = 2
+                    light.Range      = 10
+                    light.Color      = Color3.fromRGB(255, 215, 0)
+                end)
+                if miniModel then
+                    pcall(function()
+                        local root = miniModel.PrimaryPart
+                                  or miniModel:FindFirstChildWhichIsA("BasePart")
+                        if root then
+                            local p = Instance.new("ParticleEmitter", root)
+                            p.Rate     = 8
+                            p.Lifetime = NumberRange.new(0.5, 1.2)
+                            p.Speed    = NumberRange.new(2, 4)
+                            p.Color    = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+                            p.Size     = NumberSequence.new(0.2)
+                            p.LightEmission = 0.8
+                        end
+                    end)
+                end
+            end
+
             spotsData[uid][touchPart] = {
                 spotKey   = spotKey,
                 rarete    = info.rarete,
-                brNom     = info.brNom,  -- conserver pour retrieve ultérieur correct
+                brNom     = info.brNom,
+                isMutant  = isMutant,
                 valeurSec = valeur,
                 miniModel = miniModel,
             }
 
             mettreAJourGui(touchPart, valeur)
             creerPromptRecuperer(touchPart, player)
-            local infoSpot = spotsData[uid][touchPart]
-            creerPromptRemplacer(touchPart, player, infoSpot and infoSpot.rarete)
+            creerPromptRemplacer(touchPart, player, info.rarete)
         end
     end
 end
@@ -599,9 +633,10 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     end
 
     -- Calculer la valeur par seconde
+    local isMutant  = entree.rarete.isMutant == true
     local valeurSec = VALEUR_PAR_RARETE[rarete] or 1
     -- Multiplier par le multiplicateur si BR Mutant
-    if entree.rarete.isMutant and entree.rarete.valeur then
+    if isMutant and entree.rarete.valeur then
         valeurSec = valeurSec * entree.rarete.valeur
     end
 
@@ -613,7 +648,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     local miniModel = placerMiniModele(touchPart, rarete, modeleDepose)
 
     -- Spot doré si BR Mutant
-    if entree.rarete.isMutant then
+    if isMutant then
         local spotColor = (Config.FlowerPotConfig and Config.FlowerPotConfig.spotMutantCouleur)
                        or Color3.fromRGB(255, 215, 0)
         pcall(function()
@@ -625,13 +660,30 @@ function DropSystem.DeposerBrainRots(player, touchPart)
             light.Range      = 10
             light.Color      = Color3.fromRGB(255, 215, 0)
         end)
+        -- Ajouter particules dorées sur le mini modèle
+        if miniModel then
+            pcall(function()
+                local root = miniModel.PrimaryPart
+                          or miniModel:FindFirstChildWhichIsA("BasePart")
+                if root then
+                    local p = Instance.new("ParticleEmitter", root)
+                    p.Rate     = 8
+                    p.Lifetime = NumberRange.new(0.5, 1.2)
+                    p.Speed    = NumberRange.new(2, 4)
+                    p.Color    = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+                    p.Size     = NumberSequence.new(0.2)
+                    p.LightEmission = 0.8
+                end
+            end)
+        end
     end
 
-    -- Enregistrer en mémoire locale (brNom permet de restituer le bon modèle au retrieve)
+    -- Enregistrer en mémoire locale
     spotsData[uid][touchPart] = {
         spotKey   = spotKey,
         rarete    = rarete,
         brNom     = brNom,      -- nom exact du modèle BR (ex: "Tralalero_Tralala")
+        isMutant  = isMutant,   -- pour restauration fidèle après reconnexion
         valeurSec = valeurSec,
         miniModel = miniModel,
     }
@@ -804,7 +856,8 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
         result[entry.spotKey] = {
             rarete    = entry.rarete,
             valeurSec = entry.valeurSec,
-            brNom     = entry.brNom,  -- nom exact du modèle BR pour restauration fidèle
+            brNom     = entry.brNom,
+            isMutant  = entry.isMutant,
         }
     end
     return result
