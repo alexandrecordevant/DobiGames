@@ -739,13 +739,9 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     local IS = getIncomeSystem()
     if IS then
         IS.RecalculerIncome(player, construireSpotsTable(player))
+        -- Afficher $offline dès le dépôt (montant = 0, income/s = valeurSec)
+        IS.MettreAJourVisuel(touchPart, 0, valeurSec)
         IS.ConnecterButton(player, touchPart, spotKey)
-    end
-
-    -- Mettre à jour le HUD
-    local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
-    if UpdateHUD then
-        -- On n'a pas accès à playerData ici → Main le mettra à jour via IncomeSystem
     end
 
     print("[DropSystem] " .. player.Name .. " a déposé " .. rarete .. " sur spot " .. spotKey)
@@ -948,6 +944,7 @@ function DropSystem.DeposerBRDirect(player, touchPart, rarete)
     local IS = getIncomeSystem()
     if IS then
         IS.RecalculerIncome(player, construireSpotsTable(player))
+        IS.MettreAJourVisuel(touchPart, 0, valeurSec)
         IS.ConnecterButton(player, touchPart, spotKey)
     end
 

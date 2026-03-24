@@ -67,7 +67,7 @@ local function getDropSystem()
 end
 
 -- ============================================================
--- Utilitaires visuels — BillboardGui vert style Steal a Brainrot
+-- Utilitaires visuels — BillboardGui Studio existant ($amount / $offline)
 -- ============================================================
 
 local function FormatCoins(n)
@@ -79,97 +79,93 @@ local function FormatCoins(n)
     end
 end
 
--- Trouve le Button vert du slot (Part verte au sol dans spotModel)
--- Structure : spotModel/Button (Part verte) et spotModel/TouchPart
--- Fallback : touchPart lui-même si Button absent
-local function trouverButton(touchPart)
-    if not touchPart or not touchPart.Parent then return touchPart end
-    local btn = touchPart.Parent:FindFirstChild("Button")
-    return btn or touchPart
+-- Remonte au Model spot depuis une touchPart (BasePart ou Model)
+-- Structure : spot_X / TouchPart(Model) / BasePart
+--             spot_X / Button(Model)    / Part
+local function trouverSpotModel(touchPart)
+    if not touchPart or not touchPart.Parent then return nil end
+    local parent = touchPart.Parent
+    -- Si touchPart est à l'intérieur d'un sous-modèle (ex : Model "TouchPart"), remonter
+    if parent:IsA("Model") and (parent.Name == "TouchPart" or parent.Name == "Button") then
+        return parent.Parent
+    end
+    return parent
 end
 
--- Crée ou met à jour le BillboardGui vert sur un slot
-local function creerOuMettreAJourPanneau(touchPart, montant, playerName)
-    if not touchPart or not touchPart.Parent then return end
-    -- Placer le billboard sur le Button existant du slot (Part verte au sol)
-    local cible = trouverButton(touchPart)
-    if not cible or not cible.Parent then return end
-
-    local bb = cible:FindFirstChild("IncomeBillboard")
-    if not bb then
-        bb          = Instance.new("BillboardGui")
-        bb.Name     = "IncomeBillboard"
-        bb.Size     = UDim2.new(0, 180, 0, 80)
-        bb.StudsOffset  = Vector3.new(0, 3, 0)
-        bb.AlwaysOnTop  = false
-        bb.MaxDistance  = 40
-        bb.Parent       = cible
-
-        -- Fond vert
-        local fond = Instance.new("Frame", bb)
-        fond.Name                   = "Fond"
-        fond.Size                   = UDim2.new(1, 0, 1, 0)
-        fond.BackgroundColor3       = Color3.fromRGB(50, 180, 50)
-        fond.BackgroundTransparency = 0
-        fond.BorderSizePixel        = 0
-        Instance.new("UICorner", fond).CornerRadius = UDim.new(0, 8)
-
-        local stroke = Instance.new("UIStroke", fond)
-        stroke.Color     = Color3.fromRGB(0, 0, 0)
-        stroke.Thickness = 3
-
-        -- Montant (blanc gros)
-        local lblM = Instance.new("TextLabel", fond)
-        lblM.Name                   = "Montant"
-        lblM.Size                   = UDim2.new(1, -10, 0.6, 0)
-        lblM.Position               = UDim2.new(0, 5, 0, 2)
-        lblM.BackgroundTransparency = 1
-        lblM.TextColor3             = Color3.fromRGB(255, 255, 255)
-        lblM.Font                   = Enum.Font.GothamBold
-        lblM.TextScaled             = true
-        local s1 = Instance.new("UIStroke", lblM)
-        s1.Color     = Color3.fromRGB(0, 80, 0)
-        s1.Thickness = 2
-
-        -- Nom joueur (rouge)
-        local lblN = Instance.new("TextLabel", fond)
-        lblN.Name                   = "NomJoueur"
-        lblN.Size                   = UDim2.new(1, -10, 0.4, 0)
-        lblN.Position               = UDim2.new(0, 5, 0.6, 0)
-        lblN.BackgroundTransparency = 1
-        lblN.TextColor3             = Color3.fromRGB(220, 30, 30)
-        lblN.Font                   = Enum.Font.GothamBold
-        lblN.TextScaled             = true
-        local s2 = Instance.new("UIStroke", lblN)
-        s2.Color     = Color3.fromRGB(0, 0, 0)
-        s2.Thickness = 1.5
-    end
-
-    local fond = bb:FindFirstChild("Fond")
-    if fond then
-        local lblM = fond:FindFirstChild("Montant")
-        local lblN = fond:FindFirstChild("NomJoueur")
-        if lblM then pcall(function() lblM.Text = "$" .. FormatCoins(montant) end) end
-        if lblN then pcall(function() lblN.Text = playerName or ""             end) end
-    end
+-- Trouve la BasePart dans le Model "Button" du slot (Part verte — Touched collecte)
+-- Structure : spot_X / Button(Model) / Part(BasePart)
+local function trouverButtonPart(touchPart)
+    local spotModel = trouverSpotModel(touchPart)
+    if not spotModel then return nil end
+    local buttonModel = spotModel:FindFirstChild("Button")
+    if not buttonModel then return nil end
+    if buttonModel:IsA("BasePart") then return buttonModel end
+    return buttonModel:FindFirstChildWhichIsA("BasePart")
 end
 
--- Connecte le Touched du Button existant (Part verte au sol) pour la collecte manuelle
--- Le Button est un enfant du spotModel (parent du TouchPart).
--- Garde : CollectConnected BoolValue sur Button pour éviter la double connexion.
+-- Trouve le BillboardGui "Text" dans le Model "TouchPart" du slot
+-- Structure : spot_X / TouchPart(Model) / Text(BillboardGui) / $amount + $offline
+local function trouverBillboard(touchPart)
+    local spotModel = trouverSpotModel(touchPart)
+    if not spotModel then return nil end
+    local touchPartModel = spotModel:FindFirstChild("TouchPart")
+    if not touchPartModel then return nil end
+    return touchPartModel:FindFirstChild("Text")
+        or touchPartModel:FindFirstChildOfClass("BillboardGui")
+end
+
+-- Met à jour les TextLabels $amount et $offline du BillboardGui Studio
+-- NE crée PAS de nouveaux BillboardGui — utilise uniquement celui posé dans Studio
+local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
+    local bb = trouverBillboard(touchPart)
+    if not bb then return end
+
+    local lblAmount  = bb:FindFirstChild("$amount")
+    local lblOffline = bb:FindFirstChild("$offline")
+
+    -- $amount : montant accumulé (caché si 0)
+    if lblAmount then
+        pcall(function()
+            lblAmount.Text    = "$" .. FormatCoins(montant or 0)
+            lblAmount.Visible = (montant or 0) > 0
+        end)
+    end
+
+    -- $offline : revenu par seconde (affiché dès qu'un BR est déposé)
+    if lblOffline and incomeParSeconde ~= nil then
+        pcall(function()
+            lblOffline.Text    = "$" .. FormatCoins(incomeParSeconde) .. "/s"
+            lblOffline.Visible = incomeParSeconde > 0
+        end)
+    end
+
+    -- Activer le billboard si income actif ou montant en attente
+    pcall(function()
+        bb.Enabled = ((montant or 0) > 0)
+            or (incomeParSeconde ~= nil and incomeParSeconde > 0)
+    end)
+end
+
+-- Connecte le Touched de la BasePart dans le Model "Button" pour la collecte manuelle
+-- Garde : CollectConnected BoolValue sur buttonPart pour éviter la double connexion.
 local function connecterButton(player, uid, touchPart, spotKey)
     if not touchPart or not touchPart.Parent then return end
-    local button = touchPart.Parent:FindFirstChild("Button")
-    if not button then return end  -- Button absent → pas de collecte par Touched
+
+    -- Trouver la BasePart dans le Model "Button" (structure : spot/Button(Model)/Part)
+    local buttonPart = trouverButtonPart(touchPart)
+    if not buttonPart then
+        warn("[IncomeSystem] BasePart introuvable dans Button → " .. tostring(touchPart.Parent))
+        return
+    end
 
     -- Éviter double connexion
-    if button:FindFirstChild("CollectConnected") then return end
-    local tag = Instance.new("BoolValue", button)
+    if buttonPart:FindFirstChild("CollectConnected") then return end
+    local tag = Instance.new("BoolValue", buttonPart)
     tag.Name  = "CollectConnected"
 
     local debounce = false
 
-    button.Touched:Connect(function(hit)
+    buttonPart.Touched:Connect(function(hit)
         if debounce then return end
         local character   = hit.Parent
         local touchPlayer = Players:GetPlayerFromCharacter(character)
@@ -205,9 +201,9 @@ local function connecterButton(player, uid, touchPart, spotKey)
             end
         end
 
-        -- Réinitialiser accumulateur et panneau
+        -- Réinitialiser accumulateur + reset $amount dans le BillboardGui Studio
         if coinsEnAttente[uid] then coinsEnAttente[uid][spotKey] = 0 end
-        pcall(creerOuMettreAJourPanneau, touchPart, 0, touchPlayer.Name)
+        pcall(mettreAJourVisuel, touchPart, 0, nil)
 
         print("[IncomeSystem] " .. touchPlayer.Name
             .. " collecte $" .. FormatCoins(pending) .. " → slot " .. spotKey)
@@ -268,7 +264,8 @@ local function calculerRevenu(player, spotsTable, playerData)
 end
 
 -- ============================================================
--- Mise à jour des SurfaceGui sur les spots
+-- Mise à jour du $offline sur les spots (revenu/s après recalcul multiplicateurs)
+-- $amount est géré par l'accumulateur — ne pas l'écraser ici
 -- ============================================================
 
 local function mettreAJourGuiSpots(spotsTable, multTotal)
@@ -276,22 +273,25 @@ local function mettreAJourGuiSpots(spotsTable, multTotal)
         local tp = spot.touchPart
         if not tp or not tp.Parent then continue end
 
-        local baseValeur = INCOME_PAR_RARETE[spot.rarete] or 0
+        local baseValeur   = INCOME_PAR_RARETE[spot.rarete] or 0
         local valeurReelle = math.floor(baseValeur * multTotal)
-        local valeurOffline = math.max(1, math.floor(valeurReelle * 0.1))
 
-        local gui = tp:FindFirstChild("Text")
-        if not gui then gui = tp:FindFirstChildOfClass("SurfaceGui") end
-        if not gui then continue end
+        -- Utiliser le BillboardGui "Text" existant dans le Model TouchPart
+        local bb = trouverBillboard(tp)
+        if not bb then continue end
 
-        local amountLabel  = gui:FindFirstChild("$amount")
-        local offlineLabel = gui:FindFirstChild("$offline")
-
-        if amountLabel  then
-            pcall(function() amountLabel.Text  = "+" .. valeurReelle .. "/s" end)
-        end
+        -- Mettre à jour uniquement $offline (revenu/s affiché en permanence)
+        local offlineLabel = bb:FindFirstChild("$offline")
         if offlineLabel then
-            pcall(function() offlineLabel.Text = "⏱ +" .. valeurOffline .. "/s" end)
+            pcall(function()
+                offlineLabel.Text    = "$" .. FormatCoins(valeurReelle) .. "/s"
+                offlineLabel.Visible = valeurReelle > 0
+            end)
+        end
+
+        -- Activer le billboard si income actif (même si $amount = 0)
+        if valeurReelle > 0 then
+            pcall(function() bb.Enabled = true end)
         end
     end
 end
@@ -403,11 +403,11 @@ function IncomeSystem.Init(player, getData)
                             (coinsEnAttente[uid][spot.spotKey] or 0) + incomeSpot
                         revenuTotal = revenuTotal + incomeSpot
 
-                        -- Mise à jour du panneau vert
-                        pcall(creerOuMettreAJourPanneau,
+                        -- Mettre à jour $amount dans le BillboardGui Studio
+                        pcall(mettreAJourVisuel,
                             spot.touchPart,
                             coinsEnAttente[uid][spot.spotKey],
-                            player.Name)
+                            spot.valeurSec)
 
                         -- Connecter Button.Touched si pas encore fait
                         if spot.touchPart and spot.touchPart.Parent then
@@ -517,7 +517,7 @@ end
 -- API publique — Visuels slots
 -- ============================================================
 
--- Supprime le BillboardGui vert + tag CollectConnected du Button d'un slot
+-- Remet à zéro les visuels $amount/$offline + tag CollectConnected du slot
 -- Crédite automatiquement les coins en attente avant la suppression (Retrieve, Sell, Eject)
 -- Appelé par DropSystem lors d'un Retrieve, Sell ou Eject
 function IncomeSystem.SupprimerSlotVisuel(player, touchPart, spotKey)
@@ -541,16 +541,25 @@ function IncomeSystem.SupprimerSlotVisuel(player, touchPart, spotKey)
 
     if not touchPart then return end
 
-    -- Supprimer le billboard sur le Button (ou sur touchPart en fallback)
-    local button = touchPart.Parent and touchPart.Parent:FindFirstChild("Button")
-    local cible  = button or touchPart
-    local bb     = cible:FindFirstChild("IncomeBillboard")
-    if bb then pcall(function() bb:Destroy() end) end
+    -- Reset visuel : $amount = 0, $offline = 0, billboard caché
+    pcall(mettreAJourVisuel, touchPart, 0, 0)
 
-    -- Supprimer le tag de connexion (permet re-connexion lors du prochain dépôt)
-    if button then
-        local tag = button:FindFirstChild("CollectConnected")
+    -- Supprimer le tag CollectConnected sur la BasePart du Button
+    -- (permet re-connexion lors du prochain dépôt sur ce slot)
+    local buttonPart = trouverButtonPart(touchPart)
+    if buttonPart then
+        local tag = buttonPart:FindFirstChild("CollectConnected")
         if tag then pcall(function() tag:Destroy() end) end
+    end
+
+    -- Compatibilité : IncomeBillboard dynamique créé par une session précédente
+    local spotModel = trouverSpotModel(touchPart)
+    if spotModel then
+        local buttonModel = spotModel:FindFirstChild("Button")
+        if buttonModel then
+            local oldBB = buttonModel:FindFirstChild("IncomeBillboard")
+            if oldBB then pcall(function() oldBB:Destroy() end) end
+        end
     end
 
     -- Compatibilité : CollectPart créée par une session précédente
@@ -583,6 +592,12 @@ end
 function IncomeSystem.ConnecterButton(player, touchPart, spotKey)
     local uid = player.UserId
     connecterButton(player, uid, touchPart, spotKey)
+end
+
+-- Met à jour les TextLabels $amount et $offline du BillboardGui Studio
+-- Appelé par DropSystem après un dépôt (initialiser $offline) ou reset
+function IncomeSystem.MettreAJourVisuel(touchPart, montant, incomeParSeconde)
+    mettreAJourVisuel(touchPart, montant, incomeParSeconde)
 end
 
 -- Ajoute des coins directement au joueur (utilisé par VendreBR dans DropSystem)
