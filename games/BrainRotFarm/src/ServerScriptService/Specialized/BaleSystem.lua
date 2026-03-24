@@ -126,13 +126,14 @@ local function DemarrerBale(bale, delai)
                 local angle = angleTotal * t
 
                 -- Déplacer le Model en combinant :
-                --   1. orientation originale préservée (rx0, ry0, rz0)
-                --   2. roulement ajouté par dessus (angle sur X)
+                --   1. roulement autour de l'axe X MONDE (appliqué en premier)
+                --   2. orientation originale préservée (rx0, ry0, rz0) appliquée après
+                -- Ordre critique : roulement avant orientation pour rester en espace monde
                 -- posActuelle.X et posActuelle.Y fixes — seul Z varie
                 bale:SetPrimaryPartCFrame(
                     CFrame.new(posActuelle.X, posActuelle.Y, newZ)
-                    * CFrame.Angles(rx0, ry0, rz0)
                     * CFrame.Angles(angle, 0, 0)
+                    * CFrame.Angles(rx0, ry0, rz0)
                 )
 
                 task.wait(0.03)
