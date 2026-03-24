@@ -316,24 +316,29 @@ end
 -- Utilitaires — ProximityPrompts
 -- ============================================================
 
--- Ajoute le prompt "Retrieve" ET le prompt "Sell" sur un slot occupé
+-- PP unique "Manage" sur TouchPart : ouvre menu Retrieve/Sell côté client
 local function creerPromptRecuperer(touchPart, player)
-    -- Supprimer les anciens prompts
-    local ancien = touchPart:FindFirstChild("RecupererPrompt")
-    if ancien then ancien:Destroy() end
-    local ancienVente = touchPart:FindFirstChild("VendrePrompt")
-    if ancienVente then ancienVente:Destroy() end
+    -- Supprimer les anciens prompts (Manage, Retrieve, Vendre — compatibilité)
+    for _, child in ipairs(touchPart:GetChildren()) do
+        if child:IsA("ProximityPrompt")
+            and child.Name ~= "DepotPrompt"
+            and child.Name ~= "RemplacerPrompt" then
+            pcall(function() child:Destroy() end)
+        end
+    end
 
-    -- Lire la rareté pour l'objectText du Sell
-    local uid       = player.UserId
-    local entree    = spotsData[uid] and spotsData[uid][touchPart]
-    local rareteNom = entree and entree.rarete or "BR"
+    local uid    = player.UserId
+    local entree = spotsData[uid] and spotsData[uid][touchPart]
+    if not entree then return end
 
-    -- PP Retrieve (touche E, instantané)
+    local rareteNom = entree.rarete or "BR"
+    local spotKey   = entree.spotKey
+
+    -- PP unique "Manage" (touche E, instant) → envoie menu au client
     local prompt = Instance.new("ProximityPrompt")
-    prompt.Name                  = "RecupererPrompt"
-    prompt.ActionText            = "Retrieve"
-    prompt.ObjectText            = "↩️ " .. rareteNom
+    prompt.Name                  = "ManagePrompt"
+    prompt.ActionText            = "Manage"
+    prompt.ObjectText            = "🎮 " .. rareteNom
     prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 10
     prompt.KeyboardKeyCode       = Enum.KeyCode.E
@@ -342,28 +347,23 @@ local function creerPromptRecuperer(touchPart, player)
 
     prompt.Triggered:Connect(function(triggerPlayer)
         if triggerPlayer ~= player then return end
-        DropSystem.RecupererBrainRot(player, touchPart)
-    end)
-
-    -- PP Sell (touche G, 1s de maintien)
-    local promptVente = Instance.new("ProximityPrompt")
-    promptVente.Name                  = "VendrePrompt"
-    promptVente.ActionText            = "Sell"
-    promptVente.ObjectText            = "💰 " .. rareteNom
-    promptVente.HoldDuration          = 1.0
-    promptVente.MaxActivationDistance = 10
-    promptVente.KeyboardKeyCode       = Enum.KeyCode.G
-    promptVente.RequiresLineOfSight   = false
-    promptVente.Parent                = touchPart
-
-    promptVente.Triggered:Connect(function(triggerPlayer)
-        if triggerPlayer ~= player then return end
-        DropSystem.VendreBR(player, touchPart)
+        local OuvrirMenuSlot = ReplicatedStorage:FindFirstChild("OuvrirMenuSlot")
+        if OuvrirMenuSlot then
+            pcall(function()
+                OuvrirMenuSlot:FireClient(triggerPlayer, {
+                    spotKey  = spotKey,
+                    rarete   = entree.rarete,
+                    brNom    = entree.brNom or rareteNom,
+                    income   = entree.valeurSec or 0,
+                })
+            end)
+        end
     end)
 
     local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
     if depotPrompt then pcall(function() depotPrompt.Enabled = false end) end
 end
+
 
 -- Prompt "Remplacer" : éjecte le BR actuel et dépose le BR porté
 local function creerPromptRemplacer(touchPart, player, rarete)
@@ -396,12 +396,11 @@ local function creerPromptRemplacer(touchPart, player, rarete)
 end
 
 local function supprimerPromptRecuperer(touchPart)
-    local r = touchPart:FindFirstChild("RecupererPrompt")
-    if r then pcall(function() r:Destroy() end) end
-    local v = touchPart:FindFirstChild("VendrePrompt")
-    if v then pcall(function() v:Destroy() end) end
-    local rp = touchPart:FindFirstChild("RemplacerPrompt")
-    if rp then pcall(function() rp:Destroy() end) end
+    -- Supprimer tous les PP de gestion (compatibilité ancien nommage inclus)
+    for _, name in ipairs({ "ManagePrompt", "RecupererPrompt", "VendrePrompt", "RemplacerPrompt" }) do
+        local p = touchPart:FindFirstChild(name)
+        if p then pcall(function() p:Destroy() end) end
+    end
 
     local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
     if depotPrompt then pcall(function() depotPrompt.Enabled = true end) end
@@ -736,10 +735,11 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     notifierJoueur(player, "INFO",
         "✅ Brain Rot [" .. rarete .. "] deposited! +" .. valeurSec .. " coins/sec")
 
-    -- Recalculer l'income total du joueur
+    -- Recalculer l'income total du joueur + connecter Button immédiatement
     local IS = getIncomeSystem()
     if IS then
         IS.RecalculerIncome(player, construireSpotsTable(player))
+        IS.ConnecterButton(player, touchPart, spotKey)
     end
 
     -- Mettre à jour le HUD
@@ -946,7 +946,10 @@ function DropSystem.DeposerBRDirect(player, touchPart, rarete)
     creerPromptRemplacer(touchPart, player, rarete)
 
     local IS = getIncomeSystem()
-    if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
+    if IS then
+        IS.RecalculerIncome(player, construireSpotsTable(player))
+        IS.ConnecterButton(player, touchPart, spotKey)
+    end
 
     print("[DropSystem] Tracteur a déposé " .. rarete .. " sur spot " .. spotKey)
     return true
@@ -1033,6 +1036,12 @@ function DropSystem.EjecterBR(player, touchPart)
     if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
 
     print("[DropSystem] BR éjecté : " .. rarete .. " du spot " .. spotKey)
+end
+
+-- Retourne la touchPart d'un slot depuis sa clé (utilisé par ActionSlot handler dans Main)
+function DropSystem.GetTouchPart(player, spotKey)
+    local idx = spotIndex[player.UserId]
+    return idx and idx[spotKey] or nil
 end
 
 -- ============================================================

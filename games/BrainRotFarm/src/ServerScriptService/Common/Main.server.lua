@@ -66,6 +66,8 @@ local SecretRevealNotif  = CreerRemoteEvent("SecretRevealNotif")
 local CollectVFX         = CreerRemoteEvent("CollectVFX")
 local OuvrirRebirth      = CreerRemoteEvent("OuvrirRebirth")
 local UpdateGraines      = CreerRemoteEvent("UpdateGraines")
+local OuvrirMenuSlot     = CreerRemoteEvent("OuvrirMenuSlot")  -- serveur → client : ouvre menu slot
+local ActionSlot         = CreerRemoteEvent("ActionSlot")      -- client → serveur : Retrieve / Sell
 
 -- Events client → serveur (actions joueur)
 local DemandeUpgrade     = CreerRemoteEvent("DemandeUpgrade")
@@ -381,7 +383,7 @@ end)
 DemandePrestige.OnServerEvent:Connect(function(player)
     local data = GetData(player)
     if not data then return end
-    
+
     local success, result = UpgradeSystem.AppliquerPrestige(data)
     if success then
         SetData(player, result)
@@ -389,6 +391,26 @@ DemandePrestige.OnServerEvent:Connect(function(player)
         NotifEvent:FireClient(player, "PRESTIGE", "Prestige " .. result.prestige .. " reached! Multiplier x" .. (result.prestige * (Config.PrestigeMultiplier - 1) + 1))
     else
         NotifEvent:FireClient(player, "ERREUR", result)
+    end
+end)
+
+-- Gestion slot occupé : Retrieve ou Sell via menu client
+ActionSlot.OnServerEvent:Connect(function(player, action, spotKey)
+    -- Validation anti-exploit
+    if action ~= "retrieve" and action ~= "sell" then return end
+    if type(spotKey) ~= "string" then return end
+
+    -- Retrouver la touchPart depuis la clé de slot
+    local touchPart = DropSystem.GetTouchPart(player, spotKey)
+    if not touchPart then
+        warn("[ActionSlot] touchPart introuvable pour " .. player.Name .. " slot=" .. spotKey)
+        return
+    end
+
+    if action == "retrieve" then
+        DropSystem.RecupererBrainRot(player, touchPart)
+    elseif action == "sell" then
+        DropSystem.VendreBR(player, touchPart)
     end
 end)
 

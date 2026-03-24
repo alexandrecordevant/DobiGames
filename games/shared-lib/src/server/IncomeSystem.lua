@@ -79,11 +79,23 @@ local function FormatCoins(n)
     end
 end
 
+-- Trouve le Button vert du slot (Part verte au sol dans spotModel)
+-- Structure : spotModel/Button (Part verte) et spotModel/TouchPart
+-- Fallback : touchPart lui-même si Button absent
+local function trouverButton(touchPart)
+    if not touchPart or not touchPart.Parent then return touchPart end
+    local btn = touchPart.Parent:FindFirstChild("Button")
+    return btn or touchPart
+end
+
 -- Crée ou met à jour le BillboardGui vert sur un slot
 local function creerOuMettreAJourPanneau(touchPart, montant, playerName)
     if not touchPart or not touchPart.Parent then return end
+    -- Placer le billboard sur le Button existant du slot (Part verte au sol)
+    local cible = trouverButton(touchPart)
+    if not cible or not cible.Parent then return end
 
-    local bb = touchPart:FindFirstChild("IncomeBillboard")
+    local bb = cible:FindFirstChild("IncomeBillboard")
     if not bb then
         bb          = Instance.new("BillboardGui")
         bb.Name     = "IncomeBillboard"
@@ -91,7 +103,7 @@ local function creerOuMettreAJourPanneau(touchPart, montant, playerName)
         bb.StudsOffset  = Vector3.new(0, 3, 0)
         bb.AlwaysOnTop  = false
         bb.MaxDistance  = 40
-        bb.Parent       = touchPart
+        bb.Parent       = cible
 
         -- Fond vert
         local fond = Instance.new("Frame", bb)
@@ -142,27 +154,24 @@ local function creerOuMettreAJourPanneau(touchPart, montant, playerName)
     end
 end
 
--- Crée la CollectPart au sol sous le slot pour la collecte manuelle (Touched)
-local function creerCollectPart(player, uid, touchPart, spotKey)
+-- Connecte le Touched du Button existant (Part verte au sol) pour la collecte manuelle
+-- Le Button est un enfant du spotModel (parent du TouchPart).
+-- Garde : CollectConnected BoolValue sur Button pour éviter la double connexion.
+local function connecterButton(player, uid, touchPart, spotKey)
     if not touchPart or not touchPart.Parent then return end
-    if touchPart:FindFirstChild("CollectPart") then return end  -- déjà créée
+    local button = touchPart.Parent:FindFirstChild("Button")
+    if not button then return end  -- Button absent → pas de collecte par Touched
 
-    local cp = Instance.new("Part")
-    cp.Name         = "CollectPart"
-    cp.Size         = Vector3.new(touchPart.Size.X, 0.2, touchPart.Size.Z)
-    cp.CFrame       = touchPart.CFrame * CFrame.new(0, -(touchPart.Size.Y / 2 + 0.1), 0)
-    cp.Transparency = 0.6
-    cp.Color        = Color3.fromRGB(50, 200, 50)
-    cp.Material     = Enum.Material.Neon
-    cp.Anchored     = true
-    cp.CanCollide   = false
-    cp.Parent       = touchPart
+    -- Éviter double connexion
+    if button:FindFirstChild("CollectConnected") then return end
+    local tag = Instance.new("BoolValue", button)
+    tag.Name  = "CollectConnected"
 
     local debounce = false
 
-    cp.Touched:Connect(function(hit)
+    button.Touched:Connect(function(hit)
         if debounce then return end
-        local character  = hit.Parent
+        local character   = hit.Parent
         local touchPlayer = Players:GetPlayerFromCharacter(character)
         -- Seul le propriétaire de la base collecte
         if not touchPlayer or touchPlayer.UserId ~= uid then return end
@@ -196,7 +205,7 @@ local function creerCollectPart(player, uid, touchPart, spotKey)
             end
         end
 
-        -- Réinitialiser l'accumulateur et le panneau
+        -- Réinitialiser accumulateur et panneau
         if coinsEnAttente[uid] then coinsEnAttente[uid][spotKey] = 0 end
         pcall(creerOuMettreAJourPanneau, touchPart, 0, touchPlayer.Name)
 
@@ -205,6 +214,8 @@ local function creerCollectPart(player, uid, touchPart, spotKey)
 
         task.delay(0.5, function() debounce = false end)
     end)
+
+    print("[IncomeSystem] Button connecté → slot " .. spotKey)
 end
 
 -- ============================================================
@@ -398,10 +409,9 @@ function IncomeSystem.Init(player, getData)
                             coinsEnAttente[uid][spot.spotKey],
                             player.Name)
 
-                        -- Créer CollectPart si absente
-                        if spot.touchPart and spot.touchPart.Parent
-                            and not spot.touchPart:FindFirstChild("CollectPart") then
-                            creerCollectPart(player, uid, spot.touchPart, spot.spotKey)
+                        -- Connecter Button.Touched si pas encore fait
+                        if spot.touchPart and spot.touchPart.Parent then
+                            connecterButton(player, uid, spot.touchPart, spot.spotKey)
                         end
                     end
                 end
@@ -507,19 +517,43 @@ end
 -- API publique — Visuels slots
 -- ============================================================
 
--- Supprime le BillboardGui vert + CollectPart d'un slot
+-- Supprime le BillboardGui vert + tag CollectConnected du Button d'un slot
+-- Crédite automatiquement les coins en attente avant la suppression (Retrieve, Sell, Eject)
 -- Appelé par DropSystem lors d'un Retrieve, Sell ou Eject
 function IncomeSystem.SupprimerSlotVisuel(player, touchPart, spotKey)
     local uid = player.UserId
 
-    -- Remettre à zéro les coins en attente pour ce slot
+    -- Créditer les coins en attente avant suppression (pas de coins perdus)
     if coinsEnAttente[uid] and spotKey then
+        local pending = coinsEnAttente[uid][spotKey] or 0
+        if pending > 0 then
+            local getData = getDataFns[uid]
+            if getData then
+                local pd = getData()
+                if pd then
+                    pd.coins            = (pd.coins or 0) + pending
+                    pd.totalCoinsGagnes = (pd.totalCoinsGagnes or 0) + pending
+                end
+            end
+        end
         coinsEnAttente[uid][spotKey] = nil
     end
 
     if not touchPart then return end
-    local bb = touchPart:FindFirstChild("IncomeBillboard")
+
+    -- Supprimer le billboard sur le Button (ou sur touchPart en fallback)
+    local button = touchPart.Parent and touchPart.Parent:FindFirstChild("Button")
+    local cible  = button or touchPart
+    local bb     = cible:FindFirstChild("IncomeBillboard")
     if bb then pcall(function() bb:Destroy() end) end
+
+    -- Supprimer le tag de connexion (permet re-connexion lors du prochain dépôt)
+    if button then
+        local tag = button:FindFirstChild("CollectConnected")
+        if tag then pcall(function() tag:Destroy() end) end
+    end
+
+    -- Compatibilité : CollectPart créée par une session précédente
     local cp = touchPart:FindFirstChild("CollectPart")
     if cp then pcall(function() cp:Destroy() end) end
 end
@@ -542,6 +576,13 @@ function IncomeSystem.CollecterSlot(player, spotKey)
     end
     coinsEnAttente[uid][spotKey] = 0
     print("[IncomeSystem] Slot " .. spotKey .. " collecté avant vente : $" .. FormatCoins(montant))
+end
+
+-- Connecte manuellement le Button d'un slot pour la collecte
+-- Appelé par DropSystem après un dépôt pour une réactivité immédiate
+function IncomeSystem.ConnecterButton(player, touchPart, spotKey)
+    local uid = player.UserId
+    connecterButton(player, uid, touchPart, spotKey)
 end
 
 -- Ajoute des coins directement au joueur (utilisé par VendreBR dans DropSystem)
