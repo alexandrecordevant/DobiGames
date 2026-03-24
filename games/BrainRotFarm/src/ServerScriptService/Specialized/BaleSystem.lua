@@ -104,19 +104,22 @@ local function DemarrerBale(bale, delai)
         local rayon     = part.Size.X / 2  -- ~20 studs
         local direction = 1  -- 1 = vers Z_MAX, -1 = vers Z_MIN
 
-        print("[BaleSystem] " .. bale.Name .. " démarre (délai " .. delai .. "s)")
+        -- Vitesse légèrement variée par balot pour désynchronisation naturelle (±15 %)
+        local vitesse = VITESSE * (0.85 + math.random() * 0.30)
+
+        print(string.format("[BaleSystem] %s démarre (délai %.1fs, vitesse %.1f)", bale.Name, delai, vitesse))
 
         -- ═══ BOUCLE ALLERS-RETOURS ═══
         while bale.Parent do
             local posActuelle = part.Position
             local targetZ     = direction == 1 and Z_MAX or Z_MIN
             local distance    = math.abs(targetZ - posActuelle.Z)
-            local duree       = distance / VITESSE
+            local duree       = distance / vitesse
             local steps       = math.max(1, math.floor(duree / 0.03))
 
-            -- Angle total de rotation (roulement)
+            -- Angle total de rotation (roulement dans le sens du déplacement)
             local angleTotal = (distance / (2 * math.pi * rayon))
-                * 2 * math.pi * direction * -1
+                * 2 * math.pi * direction
 
             for s = 1, steps do
                 if not bale.Parent then break end
