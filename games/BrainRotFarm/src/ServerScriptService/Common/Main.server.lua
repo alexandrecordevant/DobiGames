@@ -567,6 +567,9 @@ SprinklerSystem.Init()
 -- TracteurSystem : prêt (aucun tracteur actif au démarrage)
 TracteurSystem.Init()
 
+-- MonetizationHandler : injecter l'accesseur de données (pour ProcessReceipt)
+MonetizationHandler.SetGetData(GetData)
+
 -- FlowerPotSystem : connecter la source de données et initialiser
 FlowerPotSystem.SetGetData(GetData)
 FlowerPotSystem.InitServeur()

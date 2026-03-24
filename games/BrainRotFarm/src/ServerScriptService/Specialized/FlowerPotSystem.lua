@@ -1513,4 +1513,25 @@ function FlowerPotSystem.InitServeur()
     print("[FlowerPotSystem] ✓ Server initialized")
 end
 
+-- ============================================================
+-- NotifierGraineDispo — appelé par MonetizationHandler (SkipSeedTimer)
+-- ============================================================
+function FlowerPotSystem.NotifierGraineDispo(player)
+    notifier(player, "INFO", "🎁 Daily Seed is now available! Check your Shop!")
+    majHUD(player)
+end
+
+-- ============================================================
+-- NotifierStock — appelé par MonetizationHandler (SeedPackx3 / SecretSeed)
+-- ============================================================
+function FlowerPotSystem.NotifierStock(player)
+    local data = GetData(player)
+    if not data or not data.graines then return end
+    local mythic = data.graines.MYTHIC or 0
+    local secret = data.graines.SECRET or 0
+    notifier(player, "SUCCESS",
+        string.format("🌱 Seed stock: %d MYTHIC · %d SECRET", mythic, secret))
+    majHUD(player)
+end
+
 return FlowerPotSystem

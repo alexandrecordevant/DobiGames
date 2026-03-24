@@ -4,6 +4,10 @@ local MarketplaceService  = game:GetService("MarketplaceService")
 local Config              = require(game.ReplicatedStorage.Specialized.GameConfig)
 local CollectSystem       = require(game.ReplicatedStorage.SharedLib.Shared.CollectSystem)
 
+-- Injecté depuis Main.server.lua via MonetizationHandler.SetGetData(GetData)
+local _GetData = nil
+function MonetizationHandler.SetGetData(fn) _GetData = fn end
+
 -- Chargement différé — ShopSystem dépend de MonetizationHandler (via Main), évite la circularité
 local _ShopSystem = nil
 local function getShopSystem()
@@ -14,18 +18,69 @@ local function getShopSystem()
     return _ShopSystem
 end
 
+-- Chargement différé de FlowerPotSystem (même raison)
+local _FlowerPotSystem = nil
+local function getFlowerPotSystem()
+    if not _FlowerPotSystem then
+        local ok, m = pcall(require, game:GetService("ServerScriptService").Specialized.FlowerPotSystem)
+        if ok and m then _FlowerPotSystem = m end
+    end
+    return _FlowerPotSystem
+end
+
 MarketplaceService.ProcessReceipt = function(receiptInfo)
     local player = game:GetService("Players"):GetPlayerByUserId(receiptInfo.PlayerId)
     if not player then return Enum.ProductPurchaseDecision.NotProcessedYet end
-    local pid = receiptInfo.ProductId
-    if pid == Config.ProduitLuckyHour.Id then
+
+    local pid  = receiptInfo.ProductId
+    local devP = Config.DevProductIds or {}
+    local data = _GetData and _GetData(player)
+
+    -- Lucky Hour : ×5 income pendant 30 min
+    if pid == Config.ProduitLuckyHour.Id or pid == devP.LuckyHour then
         CollectSystem.SetEventMultiplier(5)
         task.delay(1800, function() CollectSystem.SetEventMultiplier(1) end)
+
+    -- Skip Tier : avancer d'un tier (réservé pour usage futur, tier non utilisé actuellement)
     elseif pid == Config.ProduitSkipTier.Id then
-        local UpgradeSystem = require(game.ReplicatedStorage.SharedLib.Shared.UpgradeSystem)
-        local data = player:FindFirstChild("_data")  -- géré par Main
-        if data and data.tier < Config.TotalTiers then data.tier = data.tier + 1 end
+        if data and (data.tier or 0) < Config.TotalTiers then
+            data.tier = (data.tier or 0) + 1
+        end
+
+    -- Skip Seed Timer : rend la graine quotidienne disponible immédiatement
+    elseif pid == devP.SkipSeedTimer then
+        if data and data.dailySeed then
+            data.dailySeed.graineDispo    = true
+            data.dailySeed.dernieresClaim = 0  -- force le timer à repartir après claim
+            local FPS = getFlowerPotSystem()
+            if FPS and FPS.NotifierGraineDispo then
+                pcall(FPS.NotifierGraineDispo, player)
+            end
+        end
+
+    -- Seed Pack ×3 : ajoute 3 graines MYTHIC au stock du joueur
+    elseif pid == devP.SeedPackx3 then
+        if data then
+            data.graines = data.graines or {}
+            data.graines.MYTHIC = (data.graines.MYTHIC or 0) + 3
+            local FPS = getFlowerPotSystem()
+            if FPS and FPS.NotifierStock then
+                pcall(FPS.NotifierStock, player)
+            end
+        end
+
+    -- Secret Seed : ajoute 1 graine SECRET au stock du joueur
+    elseif pid == devP.SecretSeed then
+        if data then
+            data.graines = data.graines or {}
+            data.graines.SECRET = (data.graines.SECRET or 0) + 1
+            local FPS = getFlowerPotSystem()
+            if FPS and FPS.NotifierStock then
+                pcall(FPS.NotifierStock, player)
+            end
+        end
     end
+
     return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 

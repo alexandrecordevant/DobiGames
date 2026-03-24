@@ -17,6 +17,27 @@ GameConfig.ProduitLuckyHour       = { Id = 0, Prix = 35  }
 GameConfig.ProduitSecretReveal    = { Id = 0, Prix = 25  }
 GameConfig.ProduitSkipTier        = { Id = 0, Prix = 50  }
 
+-- === GAME PASS IDs (table structurée — remplir après création sur Roblox) ===
+GameConfig.GamePassIds = {
+    VIP          = 0,   -- Accès VIP (features premium)
+    Tracteur     = 0,   -- Tracteur auto-collect
+    AutoCollect  = 0,   -- Auto-collecte dans le champ
+    Protection   = 0,   -- Protection offline (pas de perte)
+    OfflineVault = 0,   -- Revenus offline x1 (vault)
+    ArroseurMAX  = 0,   -- Arroseur niveau MAX (×5 spawn rate)
+    SpeedMAX     = 0,   -- Speed niveau MAX (walkspeed 36)
+    CarryMAX     = 0,   -- Carry niveau MAX (5 BR)
+    FlowerPot4   = 0,   -- Débloquer FlowerPot 4 (149 R$)
+}
+
+-- === DEV PRODUCT IDs (table structurée — remplir après création sur Roblox) ===
+GameConfig.DevProductIds = {
+    LuckyHour     = 0,  -- 30 min × 5 income  (35 R$)
+    SkipSeedTimer = 0,  -- Skip timer daily seed (25 R$)
+    SeedPackx3    = 0,  -- +3 graines MYTHIC   (99 R$)
+    SecretSeed    = 0,  -- +1 graine SECRET    (149 R$)
+}
+
 -- === DISCORD WEBHOOK ===
 -- Remplir depuis discord_webhooks.json après setup_discord.py
 GameConfig.DiscordWebhooks = {
