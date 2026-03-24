@@ -391,7 +391,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 		-- Sac plein → interrompre immédiatement
 		local pData = donneesJoueurs[player.UserId]
-		local max   = pData and (CARRY_CONFIG.niveaux[pData.niveauCarry] or 1) or 1
+		local max   = CarrySystem.GetCapaciteMax(player)
 		if pData and #pData.portes >= max then
 			prompt.Enabled = false
 			messageSacPlein(player, pData)
@@ -445,7 +445,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 		-- Double-check sac plein (cas rare où la capacité change pendant le hold)
 		local pData = donneesJoueurs[player.UserId]
-		local max   = pData and (CARRY_CONFIG.niveaux[pData.niveauCarry] or 1) or 1
+		local max   = CarrySystem.GetCapaciteMax(player)
 		if pData and #pData.portes >= max then
 			messageSacPlein(player, pData)
 			return
