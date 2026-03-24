@@ -171,9 +171,64 @@ local function NettoyerPot(baseIndex, potIndex)
 end
 
 -- ============================================================
+-- FallbackPlante — visuels simples quand PlantModels absent
+-- ============================================================
+local function FallbackPlante(potModel, basePos, stage)
+    local model = Instance.new("Model")
+    model.Name = "PlantModel"
+
+    -- Hauteur et couleur selon stage
+    local hauteurs = { [0]=0.25, [1]=0.5, [2]=1.0, [3]=1.8, [4]=3.0 }
+    local couleurs = {
+        [0] = Color3.fromRGB(139, 90,  43),   -- brun   (graine)
+        [1] = Color3.fromRGB(120, 220, 60),   -- vert clair (pousse)
+        [2] = Color3.fromRGB(80,  190, 30),   -- vert
+        [3] = Color3.fromRGB(50,  160, 20),   -- vert foncé
+        [4] = Color3.fromRGB(255, 215, 0),    -- or (mûr)
+    }
+
+    local h = hauteurs[stage] or 0.5
+    local c = couleurs[stage] or Color3.fromRGB(80, 190, 30)
+
+    -- Tige
+    local tige = Instance.new("Part", model)
+    tige.Size         = Vector3.new(0.25, h, 0.25)
+    tige.Position     = basePos + Vector3.new(0, h / 2, 0)
+    tige.Anchored     = true
+    tige.CanCollide   = false
+    tige.Color        = c
+    tige.Material     = Enum.Material.SmoothPlastic
+    tige.Transparency = 1
+
+    -- Tête ronde (stages 1-4)
+    if stage > 0 then
+        local tete = Instance.new("Part", model)
+        tete.Size         = Vector3.new(h * 0.7, h * 0.5, h * 0.7)
+        tete.Position     = basePos + Vector3.new(0, h + h * 0.25, 0)
+        tete.Anchored     = true
+        tete.CanCollide   = false
+        tete.Color        = c
+        tete.Material     = Enum.Material.SmoothPlastic
+        tete.Transparency = 1
+        Instance.new("SpecialMesh", tete).MeshType = Enum.MeshType.Sphere
+
+        TweenService:Create(tete,
+            TweenInfo.new(0.5, Enum.EasingStyle.Quad),
+            { Transparency = 0 }):Play()
+    end
+
+    model.Parent = potModel
+
+    TweenService:Create(tige,
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad),
+        { Transparency = 0 }):Play()
+end
+
+-- ============================================================
 -- GererVisuelsPlante — Graine (stage 0) ou Tree scalé (stages 1-4)
 -- ServerStorage.PlantModels.Graine → Part + SpecialMesh
 -- ServerStorage.PlantModels.Tree   → Model (~86 parts)
+-- Si PlantModels absent → FallbackPlante (parts colorées)
 -- ============================================================
 local function GererVisuelsPlante(baseIndex, potIndex, stage)
     pcall(function()
@@ -186,15 +241,22 @@ local function GererVisuelsPlante(baseIndex, potIndex, stage)
                      or potModel:FindFirstChildWhichIsA("BasePart")
         if not potPart then return end
 
-        local plantModels = ServerStorage:FindFirstChild("PlantModels")
-        if not plantModels then return end
-
         local basePos = potPart.Position + Vector3.new(0, potPart.Size.Y / 2, 0)
+
+        -- Fallback si PlantModels absent
+        local plantModels = ServerStorage:FindFirstChild("PlantModels")
+        if not plantModels then
+            FallbackPlante(potModel, basePos, stage or 0)
+            return
+        end
 
         if stage == 0 then
             -- Graine : fade in depuis l'invisible
             local graineSrc = plantModels:FindFirstChild("Graine")
-            if not graineSrc then return end
+            if not graineSrc then
+                FallbackPlante(potModel, basePos, 0)
+                return
+            end
             local clone = graineSrc:Clone()
 
             if clone:IsA("Model") then
@@ -226,7 +288,10 @@ local function GererVisuelsPlante(baseIndex, potIndex, stage)
         else
             -- Tree scalé selon stage : 0.05 / 0.2 / 0.5 / 1.0
             local treeSrc = plantModels:FindFirstChild("Tree")
-            if not treeSrc then return end
+            if not treeSrc then
+                FallbackPlante(potModel, basePos, stage)
+                return
+            end
 
             local scales      = { [1]=0.05, [2]=0.2, [3]=0.5, [4]=1.0 }
             local targetScale = scales[stage] or 0.05
