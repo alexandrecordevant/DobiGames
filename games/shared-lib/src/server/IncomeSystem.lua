@@ -443,7 +443,7 @@ function IncomeSystem.Init(player, getData)
             if tickProgression >= 10 then
                 tickProgression = 0
                 local BPS = getBPS()
-                if BPS and revenu > 0 then
+                if BPS and revenuTotal > 0 then
                     pcall(BPS.VerifierDeblocages, player, playerData)
                 end
             end
