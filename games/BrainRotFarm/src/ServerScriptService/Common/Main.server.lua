@@ -33,6 +33,7 @@ local FlowerPotSystem       = require(ServerScriptService.Specialized.FlowerPotS
 local DiscordWebhook        = require(ServerScriptService.Common.DiscordWebhook)
 local BoardSystem           = require(ServerScriptService.Common.BoardSystem)
 local ArbreSystem           = require(ServerScriptService.Common.ArbreSystem)
+local BaleSystem            = require(ServerScriptService.Specialized.BaleSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -200,6 +201,9 @@ local function OnPlayerAdded(player)
             pcall(TracteurSystem.Activer, player, baseIndex)
         end
 
+        -- BaleSystem 
+        BaleSystem.Init();
+
         -- Initialiser les pots de fleurs
         FlowerPotSystem.Init(player, baseIndex, data)
 
@@ -234,7 +238,6 @@ local function OnPlayerAdded(player)
             end)
         end
         RebirthSystem.Init(player, data, baseIndex)
-
         -- Afficher les données Rebirth actuelles sur le board de la base
         task.delay(2, function()
             if not GetData(player) then return end
