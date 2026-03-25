@@ -79,49 +79,76 @@ local function FormatCoins(n)
     end
 end
 
--- Remonte au Model spot depuis une touchPart (BasePart ou Model)
--- Structure : spot_X / TouchPart(Model) / BasePart
---             spot_X / Button(Model)    / Part
+-- Remonte au Model spot depuis une touchPart
+-- Gère les cas : Part dans Button(Model), BasePart directe dans spot, etc.
 local function trouverSpotModel(touchPart)
     if not touchPart or not touchPart.Parent then return nil end
     local parent = touchPart.Parent
-    -- Si touchPart est à l'intérieur d'un sous-modèle (ex : Model "TouchPart"), remonter
+    -- Si parent est un sous-modèle intermédiaire ("Button" ou "TouchPart"), remonter
     if parent:IsA("Model") and (parent.Name == "TouchPart" or parent.Name == "Button") then
         return parent.Parent
     end
     return parent
 end
 
--- Trouve la BasePart dans le Model "Button" du slot (Part verte — Touched collecte)
--- Structure : spot_X / Button(Model) / Part(BasePart)
+-- Trouve la BasePart du Button (Part verte — Touched déclenche la collecte)
+-- Chemins : 1) touchPart est déjà dans Button → c'est elle-même
+--           2) spotModel/Button(Model)/BasePart
 local function trouverButtonPart(touchPart)
+    if not touchPart or not touchPart.Parent then return nil end
+    -- Chemin 1 : touchPart est la Part à l'intérieur du Model "Button"
+    if touchPart.Parent:IsA("Model") and touchPart.Parent.Name == "Button" then
+        return touchPart
+    end
+    -- Chemin 2 : chercher Button dans le spotModel
     local spotModel = trouverSpotModel(touchPart)
     if not spotModel then return nil end
-    local buttonModel = spotModel:FindFirstChild("Button")
-    if not buttonModel then return nil end
-    if buttonModel:IsA("BasePart") then return buttonModel end
-    return buttonModel:FindFirstChildWhichIsA("BasePart")
+    local btn = spotModel:FindFirstChild("Button")
+    if not btn then return nil end
+    if btn:IsA("BasePart") then return btn end
+    return btn:FindFirstChildWhichIsA("BasePart")
 end
 
--- Trouve le BillboardGui "Text" dans le Model "TouchPart" du slot
--- Structure : spot_X / TouchPart(Model) / Text(BillboardGui) / $amount + $offline
+-- Trouve le BillboardGui contenant $amount/$offline
+-- Chemins : 1) "Text" enfant direct de touchPart (structure legacy)
+--           2) spotModel/TouchPart(Model ou BasePart)/Text(BillboardGui)
+--           3) premier BillboardGui descendant du spotModel (fallback)
 local function trouverBillboard(touchPart)
+    if not touchPart or not touchPart.Parent then return nil end
+    -- Chemin 1 : Text directement sur touchPart (structure legacy TouchPart/Text)
+    local bb = touchPart:FindFirstChild("Text")
+           or touchPart:FindFirstChildOfClass("BillboardGui")
+    if bb then return bb end
+    -- Chemin 2 : via spotModel → child "TouchPart"
     local spotModel = trouverSpotModel(touchPart)
-    if not spotModel then return nil end
-    local touchPartModel = spotModel:FindFirstChild("TouchPart")
-    if not touchPartModel then return nil end
-    return touchPartModel:FindFirstChild("Text")
-        or touchPartModel:FindFirstChildOfClass("BillboardGui")
+    if spotModel then
+        local tpChild = spotModel:FindFirstChild("TouchPart")
+        if tpChild then
+            bb = tpChild:FindFirstChild("Text")
+              or tpChild:FindFirstChildOfClass("BillboardGui")
+            if bb then return bb end
+        end
+        -- Chemin 3 : premier BillboardGui n'importe où dans le spot
+        bb = spotModel:FindFirstChildOfClass("BillboardGui", true)
+        if bb then return bb end
+    end
+    return nil
 end
 
 -- Met à jour les TextLabels $amount et $offline du BillboardGui Studio
--- NE crée PAS de nouveaux BillboardGui — utilise uniquement celui posé dans Studio
+-- NE crée PAS de nouveaux BillboardGui — utilise uniquement ceux posés dans Studio
+-- Recherche récursive pour $amount/$offline (tolère un Frame intermédiaire)
 local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
     local bb = trouverBillboard(touchPart)
-    if not bb then return end
+    if not bb then
+        warn("[IncomeSystem] BillboardGui introuvable pour : "
+            .. tostring(touchPart and touchPart:GetFullName()))
+        return
+    end
 
-    local lblAmount  = bb:FindFirstChild("$amount")
-    local lblOffline = bb:FindFirstChild("$offline")
+    -- Recherche récursive — tolère Frame intermédiaire dans le BillboardGui
+    local lblAmount  = bb:FindFirstChild("$amount",  true)
+    local lblOffline = bb:FindFirstChild("$offline", true)
 
     -- $amount : montant accumulé (caché si 0)
     if lblAmount then
@@ -151,10 +178,11 @@ end
 local function connecterButton(player, uid, touchPart, spotKey)
     if not touchPart or not touchPart.Parent then return end
 
-    -- Trouver la BasePart dans le Model "Button" (structure : spot/Button(Model)/Part)
+    -- Trouver la BasePart du Button (peut être touchPart elle-même si elle est dans Button)
     local buttonPart = trouverButtonPart(touchPart)
     if not buttonPart then
-        warn("[IncomeSystem] BasePart introuvable dans Button → " .. tostring(touchPart.Parent))
+        warn("[IncomeSystem] Button BasePart introuvable pour slot "
+            .. tostring(spotKey) .. " → " .. tostring(touchPart:GetFullName()))
         return
     end
 
