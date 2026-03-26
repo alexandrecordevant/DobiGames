@@ -117,11 +117,11 @@ local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
         end)
     end
 
-    -- $offline : revenu par seconde (affiché dès qu'un BR est déposé)
+    -- $offline : revenu par seconde (toujours visible — $0/s quand slot vide)
     if lblOffline and incomeParSeconde ~= nil then
         pcall(function()
             lblOffline.Text    = "Earns $" .. FormatCoins(incomeParSeconde) .. "/s"
-            lblOffline.Visible = incomeParSeconde > 0
+            lblOffline.Visible = true
         end)
     end
 end
@@ -265,7 +265,7 @@ local function mettreAJourGuiSpots(spotsTable, multTotal)
 
         pcall(function()
             lblOffline.Text    = "Earns $" .. FormatCoins(valeurReelle) .. "/s"
-            lblOffline.Visible = valeurReelle > 0
+            lblOffline.Visible = true
         end)
     end
 end
