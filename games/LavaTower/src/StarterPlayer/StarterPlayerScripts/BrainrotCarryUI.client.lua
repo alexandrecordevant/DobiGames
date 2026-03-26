@@ -4,6 +4,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
+local UserInputService  = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -134,10 +135,11 @@ errorCorner.Parent       = errorLabel
 -- ÉTAT LOCAL
 -- ─────────────────────────────────────────────────────────────
 
-local currentCarried = 0
+local currentCarried  = 0
 local currentCapacity = 1
-local menuOpen = false
-local errorTween = nil
+local menuOpen        = false
+local errorTween      = nil
+local errorTweenConn  = nil   -- connexion Completed de l'errorTween courant
 
 -- ─────────────────────────────────────────────────────────────
 -- HELPERS
@@ -156,19 +158,24 @@ local function RefreshUI()
 end
 
 local function ShowError(msg)
-    if errorTween then errorTween:Cancel() end
-    errorLabel.Text            = msg
-    errorLabel.Visible         = true
+    -- Annuler l'ancien tween et déconnecter son handler Completed
+    -- (évite qu'un Completed différé cache le nouveau message)
+    if errorTween     then errorTween:Cancel() end
+    if errorTweenConn then errorTweenConn:Disconnect(); errorTweenConn = nil end
+
+    errorLabel.Text                   = msg
+    errorLabel.Visible                = true
     errorLabel.BackgroundTransparency = 0.15
-    errorLabel.TextTransparency      = 0
+    errorLabel.TextTransparency       = 0
 
     errorTween = TweenService:Create(errorLabel,
         TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 2.2),
         { BackgroundTransparency = 1, TextTransparency = 1 }
     )
     errorTween:Play()
-    errorTween.Completed:Connect(function()
+    errorTweenConn = errorTween.Completed:Connect(function()
         errorLabel.Visible = false
+        errorTweenConn     = nil
     end)
 end
 
@@ -189,18 +196,15 @@ upgradeBtn.MouseButton1Click:Connect(function()
     UpgradeCarryEvent:FireServer()
 end)
 
--- Fermer le menu en cliquant en dehors (clic sur le fond du ScreenGui)
-gui.InputBegan:Connect(function(input)
+-- Fermer le menu en cliquant en dehors (clic global, hors panel/bouton)
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         if menuOpen then
-            -- Ferme seulement si le clic n'est pas sur le panel ou le bouton
             SetMenuOpen(false)
         end
     end
 end)
--- Empêcher la propagation depuis le panel et le bouton principal
-panel.InputBegan:Connect(function(input) input:Handled() end)
-mainBtn.InputBegan:Connect(function(input) input:Handled() end)
 
 -- ─────────────────────────────────────────────────────────────
 -- ÉVÉNEMENTS SERVEUR

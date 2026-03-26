@@ -46,6 +46,7 @@ local PICKUP_HOLD_DURATION = 3                        -- secondes à maintenir
 local PICKUP_MAX_DISTANCE  = 10                       -- studs d'activation du ProximityPrompt
 local DEFAULT_LIFETIME     = 60                       -- durée (s) si attribut "LifeTime" absent
 local BILLBOARD_STUDS_Y    = 7                        -- hauteur du billboard au-dessus du brainrot
+local ERROR_COOLDOWN       = 1.5                      -- secondes minimum entre deux messages d'erreur inventaire plein
 
 -- ─────────────────────────────────────────────────────────────
 -- 🎨 COULEURS PAR RARETÉ
@@ -271,7 +272,9 @@ end
 local DEFAULT_CARRY_CAPACITY = 1   -- capacité de départ
 
 -- capacité max de chaque joueur  { [userId] = number }
-local carryCapacity = {}
+local carryCapacity  = {}
+-- horodatage du dernier message d'erreur envoyé à chaque joueur { [userId] = os.clock() }
+local lastErrorTime  = {}
 
 local function GetCapacity(player)
     return carryCapacity[player.UserId] or DEFAULT_CARRY_CAPACITY
@@ -316,6 +319,17 @@ end
 local CarryUpdateEvent  = GetOrCreate("RemoteEvent", "BrainrotCarryUpdate")   -- serveur → client : {carried, capacity}
 local CarryErrorEvent   = GetOrCreate("RemoteEvent", "BrainrotCarryError")    -- serveur → client : message
 local UpgradeCarryEvent = GetOrCreate("RemoteEvent", "BrainrotUpgradeCarry")  -- client → serveur : demande upgrade
+
+-- Envoie le message d'erreur "inventaire plein" avec anti-spam par joueur.
+-- Déclaré APRÈS CarryErrorEvent pour qu'il soit dans le scope de la closure.
+-- Le message se réaffiche à chaque tentative, mais pas plus d'une fois par ERROR_COOLDOWN.
+local function FireCarryError(player, msg)
+    local now = os.clock()
+    local last = lastErrorTime[player.UserId] or 0
+    if now - last < ERROR_COOLDOWN then return end
+    lastErrorTime[player.UserId] = now
+    CarryErrorEvent:FireClient(player, msg)
+end
 
 -- Traitement de la demande d'upgrade (gratuit pour l'instant)
 UpgradeCarryEvent.OnServerEvent:Connect(function(player)
@@ -378,17 +392,12 @@ local function SetupPickup(brainrot)
     prompt.RequiresLineOfSight   = false
     prompt.Parent                = root
 
-    -- Dès que le joueur commence à maintenir : bloquer immédiatement
-    -- si la capacité est atteinte (feedback immédiat + prompt masqué brièvement)
+    -- Dès que le joueur commence à maintenir : afficher le message si inventaire plein.
+    -- Ne plus désactiver le prompt — cela interrompait le hold et empêchait le message
+    -- de réapparaître (le joueur retentait dans la fenêtre du cooldown).
     prompt.PromptButtonHoldBegan:Connect(function(player)
         if IsAtCapacity(player) then
-            CarryErrorEvent:FireClient(player, "Vous ne pouvez pas porter plus de Brainrots")
-            prompt.Enabled = false
-            task.delay(0.15, function()
-                if prompt and prompt.Parent then
-                    prompt.Enabled = true
-                end
-            end)
+            FireCarryError(player, "Vous ne pouvez pas porter plus de Brainrots")
         end
     end)
 
@@ -401,7 +410,7 @@ local function SetupPickup(brainrot)
         -- Guard 3 : capacité de portage atteinte
         if IsAtCapacity(player) then
             local cap = GetCapacity(player)
-            CarryErrorEvent:FireClient(player,
+            FireCarryError(player,
                 ("Vous ne pouvez pas porter plus de Brainrots (%d/%d)"):format(CountCarried(player), cap))
             brainrot:SetAttribute("_Collecting", nil)
             return
@@ -456,6 +465,10 @@ local function SetupBrainrot(brainrot)
     -- (les spawners posent souvent le tag juste avant SetAttribute)
     task.wait()
     if not brainrot or not brainrot.Parent then return end
+    -- Guard critique : ignorer tout ce qui n'est pas dans workspace.
+    -- Empêche les templates de ReplicatedStorage d'être détruits si le tag
+    -- "BrainrotCollectible" leur a été posé par erreur depuis Studio.
+    if not brainrot:IsDescendantOf(workspace) then return end
 
     local duration = brainrot:GetAttribute("LifeTime") or DEFAULT_LIFETIME
     SetupBillboard(brainrot, duration)
@@ -514,6 +527,7 @@ function BrainrotPickupModule.Init(config)
     -- Nettoyage à la déconnexion
     Players.PlayerRemoving:Connect(function(player)
         carryCapacity[player.UserId] = nil
+        lastErrorTime[player.UserId] = nil
     end)
     print("[BrainrotPickup] ✓ Démarré — tag : '" .. TAG .. "'"
         .. " | hold:" .. PICKUP_HOLD_DURATION .. "s"

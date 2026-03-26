@@ -1,95 +1,46 @@
--- TourCycle.lua
--- Script -> ServerScriptService
+-- TourCycle.server.lua
+-- Gère le cycle complet (attente → ouverture → TP → lave) pour TourCommune et TourVIP.
+-- Chaque tour tourne dans sa propre coroutine indépendante via lancerCycleTour().
 
-local Players   = game:GetService("Players")
+local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- ============================================================
--- CONFIGURATION
+-- CONFIGURATION PARTAGÉE
+-- Les deux tours utilisent les mêmes timings.
 -- ============================================================
 local CONFIG = {
-    DUREE_ATTENTE    = 300,   -- 5 minutes
-    DUREE_OUVERTURE  = 3,    -- 30 secondes
-    DELAI_LAVA       = 10,    -- secondes avant que la lave démarre
-    VITESSE_BASE     = 3,     -- studs/seconde
+    DUREE_ATTENTE    = 300,   -- secondes d'attente entre deux cycles
+    DUREE_OUVERTURE  = 3,     -- secondes pendant lesquelles la porte est ouverte
+    DELAI_LAVA       = 10,    -- secondes après le TP avant que la lave démarre
+    VITESSE_BASE     = 3,     -- studs/seconde (vitesse initiale de la lave)
     ACCELERATION     = 0.5,   -- studs/s ajoutés par palier
-    INTERVALLE_ACCEL = 10,    -- secondes entre chaque palier
-    HAUTEUR_MAX      = 2000,  -- hauteur Y de reset
+    INTERVALLE_ACCEL = 10,    -- secondes entre chaque palier d'accélération
+    HAUTEUR_MAX      = 2000,  -- hauteur Y de reset de la lave
 }
 
 -- ============================================================
--- Références
+-- UTILITAIRES
 -- ============================================================
-local startZone     = workspace:WaitForChild("TourCommune"):WaitForChild("Triggers"):WaitForChild("StartZone")
-local interiorSpawn = workspace:WaitForChild("TourCommune"):WaitForChild("InterriorSpawn")
-local lava          = workspace:WaitForChild("TourCommune"):WaitForChild("Lava")
 
-if not lava then warn("[Tour] Part 'Lava' introuvable !") return end
-
--- ============================================================
--- Variables
--- ============================================================
-local lavaActive        = false
-local laveConnexion     = nil
-local lavaVitesse       = CONFIG.VITESSE_BASE
-local hauteurDepart     = lava.Position.Y
-local joueursTeleportes = 0
-
--- ============================================================
--- Billboard au-dessus de StartZone
--- ============================================================
-local billboard = Instance.new("BillboardGui")
-billboard.Name             = "TimerBillboard"
-billboard.Size             = UDim2.new(0, 500, 0, 100)
-billboard.StudsOffset      = Vector3.new(0, 10, 0)
-billboard.AlwaysOnTop      = false
-billboard.MaxDistance      = 200     -- disparaît au-delà de 300 studs
-billboard.ClipsDescendants = true
-billboard.SizeOffset       = Vector2.new(0, 0)
-billboard.LightInfluence   = 1
-billboard.Parent           = startZone
-
-local timerLabel = Instance.new("TextLabel")
-timerLabel.Size                   = UDim2.new(1, 0, 1, 0)
-timerLabel.BackgroundTransparency = 1
-timerLabel.TextScaled             = true
-timerLabel.Font                   = Enum.Font.GothamBold
-timerLabel.TextColor3             = Color3.fromRGB(255, 80, 80)
-timerLabel.TextStrokeTransparency = 0.4
-timerLabel.Text                   = "Tour dans 5:00"
-timerLabel.Parent                 = billboard
-timerLabel.TextScaled = false          -- désactive le TextScaled
-timerLabel.TextSize   = 50             -- taille fixe en pixels
-
--- ============================================================
--- Utilitaire : MM:SS
--- ============================================================
 local function formatTimer(secondes)
-    local m = math.floor(secondes / 60)
-    local s = secondes % 60
-    return string.format("%d:%02d", m, s)
+    return ("%d:%02d"):format(math.floor(secondes / 60), secondes % 60)
 end
 
--- ============================================================
--- Utilitaire : joueurs sur StartZone
--- ============================================================
-local function getJoueursZone()
+-- Renvoie la liste des joueurs dont le HumanoidRootPart est dans la zone.
+local function getJoueursZone(startZone)
     local liste = {}
     for _, player in ipairs(Players:GetPlayers()) do
-        local character = player.Character
-        if not character then continue end
-        local hrp = character:FindFirstChild("HumanoidRootPart")
+        local char = player.Character
+        if not char then continue end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then continue end
-
-        local pos      = hrp.Position
-        local zPos     = startZone.Position
-        local zSize    = startZone.Size
-
-        local dansX = math.abs(pos.X - zPos.X) <= zSize.X / 2 + 2
-        local dansZ = math.abs(pos.Z - zPos.Z) <= zSize.Z / 2 + 2
-        local dansY = pos.Y >= zPos.Y - 1 and pos.Y <= zPos.Y + 15
-
-        if dansX and dansZ and dansY then
+        local pos   = hrp.Position
+        local zPos  = startZone.Position
+        local zSize = startZone.Size
+        if math.abs(pos.X - zPos.X) <= zSize.X / 2 + 2
+        and math.abs(pos.Z - zPos.Z) <= zSize.Z / 2 + 2
+        and pos.Y >= zPos.Y - 1 and pos.Y <= zPos.Y + 15 then
             table.insert(liste, player)
         end
     end
@@ -97,184 +48,247 @@ local function getJoueursZone()
 end
 
 -- ============================================================
--- Reset lave
+-- CYCLE GÉNÉRIQUE
+--
+-- cfg = {
+--   nomTour          : string   — préfixe pour les logs et le billboard
+--   startZone        : BasePart — pad d'entrée de la tour
+--   interiorSpawn    : BasePart — point d'arrivée du TP
+--   lava             : BasePart — la part de lave
+--   couleurAttente   : Color3   — couleur du texte pendant l'attente
+--   couleurOuverture : Color3   — couleur du texte pendant la fenêtre d'ouverture
+-- }
 -- ============================================================
-local function resetLava()
-    lavaActive = false
-    if laveConnexion then
-        laveConnexion:Disconnect()
-        laveConnexion = nil
-    end
-    lavaVitesse = CONFIG.VITESSE_BASE
-    lava.Anchored = true
-    lava.Position = Vector3.new(lava.Position.X, hauteurDepart, lava.Position.Z)
-    print("[Lava] Reset a Y=" .. hauteurDepart)
-end
+local function lancerCycleTour(cfg)
+    local tag           = "[" .. cfg.nomTour .. "]"
+    local startZone     = cfg.startZone
+    local interiorSpawn = cfg.interiorSpawn
+    local lava          = cfg.lava
 
--- ============================================================
--- Démarrer la lave
--- ============================================================
-local function demarrerLava(nbJoueurs)
-    if lavaActive then return end
-    lavaActive   = true
-    lavaVitesse  = CONFIG.VITESSE_BASE
-    joueursTeleportes = nbJoueurs
-    print("[Lava] Demarrage | " .. nbJoueurs .. " joueurs dans la tour")
+    local lavaActive    = false
+    local laveConnexion = nil
+    local lavaVitesse   = CONFIG.VITESSE_BASE
+    local hauteurDepart = lava.Position.Y
 
-    local tempsAccel   = 0
-    local dernierTemps = os.clock()
-    local joueursElimines = 0
-    local tempsVerifJoueurs = 0
+    -- ── Billboard au-dessus de StartZone ──────────────────────────
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name             = "TimerBillboard"
+    billboard.Size             = UDim2.new(0, 500, 0, 100)
+    billboard.StudsOffset      = Vector3.new(0, 10, 0)
+    billboard.AlwaysOnTop      = false
+    billboard.MaxDistance      = 200
+    billboard.ClipsDescendants = true
+    billboard.LightInfluence   = 1
+    billboard.Parent           = startZone
 
-    laveConnexion = RunService.Heartbeat:Connect(function()
-        if not lavaActive then return end
+    local timerLabel = Instance.new("TextLabel")
+    timerLabel.Size                   = UDim2.new(1, 0, 1, 0)
+    timerLabel.BackgroundTransparency = 1
+    timerLabel.Font                   = Enum.Font.GothamBold
+    timerLabel.TextStrokeTransparency = 0.4
+    timerLabel.TextScaled             = false
+    timerLabel.TextSize               = 50
+    timerLabel.TextColor3             = cfg.couleurAttente
+    timerLabel.Text                   = cfg.nomTour .. " dans 5:00"
+    timerLabel.Parent                 = billboard
 
-        local now   = os.clock()
-        local delta = now - dernierTemps
-        dernierTemps = now
-
-        -- Monter
-        lava.Anchored = true
-        lava.Position = lava.Position + Vector3.new(0, lavaVitesse * delta, 0)
-
-        -- Accélération
-        tempsAccel = tempsAccel + delta
-        if tempsAccel >= CONFIG.INTERVALLE_ACCEL then
-            tempsAccel  = 0
-            lavaVitesse = lavaVitesse + CONFIG.ACCELERATION
-            print("[Lava] Vitesse -> " .. string.format("%.1f", lavaVitesse) .. " studs/s")
+    -- ── Reset lave ────────────────────────────────────────────────
+    local function resetLava()
+        lavaActive = false
+        if laveConnexion then
+            laveConnexion:Disconnect()
+            laveConnexion = nil
         end
+        lavaVitesse   = CONFIG.VITESSE_BASE
+        lava.Anchored = true
+        lava.Position = Vector3.new(lava.Position.X, hauteurDepart, lava.Position.Z)
+        print(tag .. " Lave reset à Y=" .. hauteurDepart)
+    end
 
-        -- Vérification périodique : plus personne dans la tour ?
-        tempsVerifJoueurs = tempsVerifJoueurs + delta
-        if tempsVerifJoueurs >= 2 then
-            tempsVerifJoueurs = 0
-            local joueursVivants = 0
+    -- ── Démarrer la lave ──────────────────────────────────────────
+    local function demarrerLava(nbJoueurs)
+        if lavaActive then return end
+        lavaActive  = true
+        lavaVitesse = CONFIG.VITESSE_BASE
+        print(tag .. " Lave démarrée | " .. nbJoueurs .. " joueur(s)")
+
+        local tempsAccel = 0
+        local dernierTemps = os.clock()
+        local tempsVerif = 0
+
+        laveConnexion = RunService.Heartbeat:Connect(function()
+            if not lavaActive then return end
+            local now   = os.clock()
+            local delta = now - dernierTemps
+            dernierTemps = now
+
+            lava.Anchored = true
+            lava.Position = lava.Position + Vector3.new(0, lavaVitesse * delta, 0)
+
+            tempsAccel = tempsAccel + delta
+            if tempsAccel >= CONFIG.INTERVALLE_ACCEL then
+                tempsAccel  = 0
+                lavaVitesse = lavaVitesse + CONFIG.ACCELERATION
+            end
+
+            tempsVerif = tempsVerif + delta
+            if tempsVerif >= 2 then
+                tempsVerif = 0
+                local vivants = 0
+                for _, p in ipairs(Players:GetPlayers()) do
+                    local c = p.Character
+                    if c then
+                        local h   = c:FindFirstChildOfClass("Humanoid")
+                        local hrp = c:FindFirstChild("HumanoidRootPart")
+                        if h and h.Health > 0 and hrp and hrp.Position.Y > hauteurDepart + 5 then
+                            vivants += 1
+                        end
+                    end
+                end
+                if vivants == 0 then
+                    print(tag .. " Plus personne → Reset lave")
+                    resetLava()
+                end
+            end
+
+            if lava.Position.Y >= CONFIG.HAUTEUR_MAX then
+                print(tag .. " Hauteur max → Reset lave")
+                resetLava()
+            end
+        end)
+    end
+
+    -- ── Lave : toucher = mort ──────────────────────────────────────
+    lava.Touched:Connect(function(hit)
+        if not lavaActive then return end
+        local char   = hit.Parent
+        local player = Players:GetPlayerFromCharacter(char)
+        if not player then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then return end
+        print(tag .. " " .. player.Name .. " éliminé")
+        hum.Health = 0
+        task.delay(1, function()
+            local vivants = 0
             for _, p in ipairs(Players:GetPlayers()) do
                 local c = p.Character
                 if c then
                     local h   = c:FindFirstChildOfClass("Humanoid")
                     local hrp = c:FindFirstChild("HumanoidRootPart")
                     if h and h.Health > 0 and hrp and hrp.Position.Y > hauteurDepart + 5 then
-                        joueursVivants = joueursVivants + 1
+                        vivants += 1
                     end
                 end
             end
-            if joueursVivants == 0 then
-                print("[Lava] Plus personne dans la tour -> Reset")
+            if vivants == 0 then
+                print(tag .. " Tous éliminés → Reset lave")
                 resetLava()
-                return
             end
-        end
+        end)
+    end)
 
-        -- Hauteur max atteinte
-        if lava.Position.Y >= CONFIG.HAUTEUR_MAX then
-            print("[Lava] Hauteur max atteinte -> Reset")
-            resetLava()
+    -- ── Cycle principal ────────────────────────────────────────────
+    task.spawn(function()
+        while true do
+            -- Phase 1 : Attente
+            startZone.BrickColor = BrickColor.new("Really red")
+            startZone.CanCollide = true
+            startZone:SetAttribute("Locked", true)
+            timerLabel.TextColor3 = cfg.couleurAttente
+
+            for t = CONFIG.DUREE_ATTENTE, 1, -1 do
+                timerLabel.Text = cfg.nomTour .. " dans " .. formatTimer(t)
+                task.wait(1)
+            end
+
+            -- Phase 2 : Ouverture
+            startZone.BrickColor = BrickColor.new("Lime green")
+            startZone:SetAttribute("Locked", false)
+            timerLabel.TextColor3 = cfg.couleurOuverture
+
+            for t = CONFIG.DUREE_OUVERTURE, 1, -1 do
+                local n = #getJoueursZone(startZone)
+                timerLabel.Text = "ENTRER ! " .. t .. "s | " .. n .. " joueur(s)"
+                task.wait(1)
+            end
+
+            -- Phase 3 : Fermeture + TP
+            startZone.BrickColor = BrickColor.new("Really red")
+            startZone:SetAttribute("Locked", true)
+            timerLabel.TextColor3 = cfg.couleurAttente
+            timerLabel.Text       = "FERMÉ"
+
+            local joueurs = getJoueursZone(startZone)
+            local nbTP    = #joueurs
+            print(tag .. " Téléportation de " .. nbTP .. " joueur(s)")
+
+            for _, player in ipairs(joueurs) do
+                local char = player.Character
+                if char then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.CFrame = interiorSpawn.CFrame + Vector3.new(0, 3, 0)
+                    end
+                end
+            end
+
+            -- Phase 4 : Lave (uniquement si des joueurs ont été téléportés)
+            if nbTP > 0 then
+                timerLabel.Text = "Lave dans " .. CONFIG.DELAI_LAVA .. "s"
+                task.wait(CONFIG.DELAI_LAVA)
+                resetLava()
+                demarrerLava(nbTP)
+                while lavaActive do task.wait(1) end
+            end
+
+            print(tag .. " Nouveau cycle")
         end
     end)
+
+    print(tag .. " ✓ Cycle lancé")
 end
 
 -- ============================================================
--- Détection joueur touché par la lave
+-- LANCEMENT DES TOURS
 -- ============================================================
-lava.Touched:Connect(function(hit)
-    if not lavaActive then return end
-    local character = hit.Parent
-    local player    = Players:GetPlayerFromCharacter(character)
-    if not player then return end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then return end
 
-    print("[Lava] " .. player.Name .. " elimine")
-    humanoid.Health = 0
-
-    -- Vérifier si tous les joueurs dans la tour sont éliminés
-    -- (on reset si plus personne n'est vivant à l'intérieur)
-    task.delay(1, function()
-        local joueursVivants = 0
-        for _, p in ipairs(Players:GetPlayers()) do
-            local c = p.Character
-            if c then
-                local h = c:FindFirstChildOfClass("Humanoid")
-                local hrp = c:FindFirstChild("HumanoidRootPart")
-                if h and h.Health > 0 and hrp then
-                    -- Vérifier si proche de la zone intérieure (heuristique)
-                    if hrp.Position.Y > hauteurDepart + 5 then
-                        joueursVivants = joueursVivants + 1
-                    end
-                end
-            end
-        end
-        if joueursVivants == 0 then
-            print("[Lava] Tous elimines -> Reset")
-            resetLava()
-        end
-    end)
+-- TourCommune — texte d'ouverture vert
+task.spawn(function()
+    local tour = workspace:WaitForChild("TourCommune")
+    lancerCycleTour({
+        nomTour          = "TourCommune",
+        startZone        = tour:WaitForChild("Triggers"):WaitForChild("StartZone"),
+        interiorSpawn    = tour:WaitForChild("InterriorSpawn"),
+        lava             = tour:WaitForChild("Lava"),
+        couleurAttente   = Color3.fromRGB(255,  80,  80),  -- rouge
+        couleurOuverture = Color3.fromRGB( 80, 255,  80),  -- vert
+    })
 end)
 
--- ============================================================
--- CYCLE PRINCIPAL
--- ============================================================
+-- TourVIP — texte d'ouverture doré (même logique, style visuel différent)
 task.spawn(function()
-    while true do
-
-        -- == PHASE 1 : ATTENTE 5 minutes ==
-        startZone.BrickColor         = BrickColor.new("Really red")
-        startZone.CanCollide         = true
-        startZone:SetAttribute("Locked", true)
-        timerLabel.TextColor3        = Color3.fromRGB(255, 80, 80)
-
-        for t = CONFIG.DUREE_ATTENTE, 1, -1 do
-            timerLabel.Text = "Tour dans " .. formatTimer(t)
-            task.wait(1)
-        end
-
-        -- == PHASE 2 : OUVERTURE 30 secondes ==
-        startZone.BrickColor         = BrickColor.new("Lime green")
-        startZone:SetAttribute("Locked", false)
-        timerLabel.TextColor3        = Color3.fromRGB(80, 255, 80)
-
-        for t = CONFIG.DUREE_OUVERTURE, 1, -1 do
-            local joueursZone = getJoueursZone()
-            timerLabel.Text = "ENTRER ! " .. t .. "s | " .. #joueursZone .. " joueur(s)"
-            task.wait(1)
-        end
-
-        -- == PHASE 3 : FERMETURE + TP ==
-        startZone.BrickColor         = BrickColor.new("Really red")
-        startZone:SetAttribute("Locked", true)
-        timerLabel.TextColor3        = Color3.fromRGB(255, 80, 80)
-        timerLabel.Text              = "FERME"
-
-        local joueursATP = getJoueursZone()
-        local nbTP = #joueursATP
-        print("[Tour] Teleportation de " .. nbTP .. " joueurs")
-
-        for _, player in ipairs(joueursATP) do
-            local character = player.Character
-            if character then
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.CFrame = interiorSpawn.CFrame + Vector3.new(0, 3, 0)
-                end
-            end
-        end
-
-        -- == PHASE 4 : DÉLAI PUIS LAVE ==
-        if nbTP > 0 then
-            timerLabel.Text = "Lave dans " .. CONFIG.DELAI_LAVA .. "s"
-            task.wait(CONFIG.DELAI_LAVA)
-            resetLava()
-            demarrerLava(nbTP)
-
-            -- Attendre que la lave se reset avant de relancer
-            while lavaActive do
-                task.wait(1)
-            end
-        end
-
-        -- Cycle repart
-        print("[Tour] Nouveau cycle")
+    local tour = workspace:FindFirstChild("TourVIP")
+    if not tour then
+        warn("[TourCycle] TourVIP introuvable dans workspace — ignorée.")
+        return
     end
+
+    local triggers    = tour:FindFirstChild("Triggers")
+    local startZone   = triggers and triggers:FindFirstChild("StartZone")
+    local spawn       = tour:FindFirstChild("InterriorSpawn")
+    local lava        = tour:FindFirstChild("Lava")
+
+    if not startZone or not spawn or not lava then
+        warn("[TourCycle] TourVIP : structure incomplète (Triggers/StartZone, InterriorSpawn ou Lava manquant).")
+        return
+    end
+
+    lancerCycleTour({
+        nomTour          = "TourVIP",
+        startZone        = startZone,
+        interiorSpawn    = spawn,
+        lava             = lava,
+        couleurAttente   = Color3.fromRGB(255, 215, 0),  -- orange (attente VIP)
+        couleurOuverture = Color3.fromRGB(255, 215, 0),  -- doré  (ouverture VIP)
+    })
 end)

@@ -62,9 +62,11 @@ local NOMS_DOSSIERS_RARETE = {
 -- │  3.  PARAMÈTRES DE SPAWN                                     │
 -- └──────────────────────────────────────────────────────────────┘
 local CONFIG = {
-	DUREE_VIE     = 60,  -- secondes avant auto-despawn du Brainrot
-	DELAI_RESPAWN = 60,  -- secondes d'attente entre la disparition et le respawn
-	HAUTEUR_OFFSET = 0,  -- studs au-dessus de la surface de la plateforme
+	DUREE_VIE_MIN    = 30,  -- durée de vie minimale d'un Brainrot (secondes)
+	DUREE_VIE_MAX    = 90,  -- durée de vie maximale d'un Brainrot (secondes)
+	INTERVALLE_CYCLE = 15,  -- secondes entre chaque passe de spawn
+	CHANCE_SPAWN     = 5,   -- 1 chance sur N de faire spawn sur une plateforme libre
+	HAUTEUR_OFFSET   = 0,   -- studs au-dessus de la surface de la plateforme
 }
 
 -- ════════════════════════════════════════════════════════════════
@@ -148,7 +150,6 @@ if brainrotsRoot then
 end
 
 -- Dossier workspace.Brainrots — destination des clones
--- (BrainrotBillboard.server.lua écoutera DescendantAdded dessus)
 local workspaceBrainrots = workspace:FindFirstChild("Brainrots")
 if not workspaceBrainrots then
 	warn("[PlatformSpawner] ⚠️ workspace.Brainrots introuvable — les clones seront parentés à workspace")
@@ -157,6 +158,7 @@ end
 -- ════════════════════════════════════════════════════════════════
 -- ÉTAT
 -- platformState[basePart] = clone actif dans le monde | nil
+-- Lecture seule depuis l'extérieur ; écrit uniquement par runPlatformCycle.
 -- ════════════════════════════════════════════════════════════════
 
 local platformState = {}
@@ -184,23 +186,29 @@ local function tirerRarete(poids)
 		cumul += p
 		if r <= cumul then return rarete end
 	end
-	-- Fallback (ne devrait pas arriver)
 	return next(poids)
 end
 
--- Choisit un modèle aléatoire dans le dossier de la rareté
-local function choisirModele(rarete)
-	local dossier = DOSSIERS_RARETE[rarete]
-	if not dossier then
-		warn("[PlatformSpawner] Dossier introuvable pour rareté : " .. tostring(rarete))
-		return nil
+-- Choisit une rareté ET un modèle en ne considérant que les dossiers non vides.
+-- Évite le cas où tirerRarete() sélectionne une rareté sans modèles disponibles.
+local function choisirRareteEtModele(zone)
+	-- Construire un sous-tableau de poids limité aux raretés avec des modèles
+	local poisdsValides = {}
+	for rarete, poids in pairs(zone.poids) do
+		local dossier = DOSSIERS_RARETE[rarete]
+		if dossier and #dossier:GetChildren() > 0 then
+			poisdsValides[rarete] = poids
+		end
 	end
-	local modeles = dossier:GetChildren()
-	if #modeles == 0 then
-		warn("[PlatformSpawner] Dossier vide pour rareté : " .. rarete)
-		return nil
+
+	if not next(poisdsValides) then
+		warn("[PlatformSpawner] Aucun modèle disponible pour cette zone (hauteur " .. zone.hauteurMin .. "+)")
+		return nil, nil
 	end
-	return modeles[math.random(1, #modeles)]
+
+	local rarete  = tirerRarete(poisdsValides)
+	local modeles = DOSSIERS_RARETE[rarete]:GetChildren()
+	return modeles[math.random(1, #modeles)], rarete
 end
 
 -- ════════════════════════════════════════════════════════════════
@@ -212,19 +220,21 @@ local TAG_COLLECTIBLE = "BrainrotCollectible"
 
 -- ════════════════════════════════════════════════════════════════
 -- SPAWN D'UN BRAINROT SUR UNE PLATEFORME
+--
+-- ⚠️  SOURCE : toujours le template dans ReplicatedStorage.
+--     Le clone actif dans workspace n'est JAMAIS utilisé comme source.
+--     Cette fonction ne gère PAS le cycle de vie — c'est runPlatformCycle
+--     qui en est responsable.
 -- ════════════════════════════════════════════════════════════════
 
 local function spawnBrainrot(plateforme)
-	-- 1. Déterminer la rareté selon la hauteur
-	local hauteur = plateforme.Position.Y
-	local zone    = getZone(hauteur)
-	local rarete  = tirerRarete(zone.poids)
+	-- 1. Déterminer la rareté selon la hauteur et choisir un modèle disponible
+	local hauteur        = plateforme.Position.Y
+	local zone           = getZone(hauteur)
+	local modele, rarete = choisirRareteEtModele(zone)
+	if not modele then return nil end
 
-	-- 2. Récupérer un modèle source
-	local modele = choisirModele(rarete)
-	if not modele then return end
-
-	-- 3. Cloner
+	-- 3. Cloner depuis le template (jamais depuis un clone actif)
 	local clone = modele:Clone()
 
 	-- 4. Positionner le clone sur la surface de la plateforme
@@ -238,44 +248,23 @@ local function spawnBrainrot(plateforme)
 	))
 
 	-- 5. Attributs requis par BrainrotService (billboard + Tool)
+	-- Durée de vie aléatoire : lisse les disparitions dans le temps
+	local lifetime = math.random(CONFIG.DUREE_VIE_MIN, CONFIG.DUREE_VIE_MAX)
 	clone:SetAttribute("Rarete",          rarete)
-	clone:SetAttribute("LifeTime",        CONFIG.DUREE_VIE)
+	clone:SetAttribute("LifeTime",        lifetime)
 	clone:SetAttribute("OriginalName",    modele.Name)
-	-- Prix et CPS : copier depuis le modèle source si définis, sinon 0
 	local prixSrc = modele:GetAttribute("Prix")
 	local cpsSrc  = modele:GetAttribute("CashParSeconde")
 	if prixSrc then clone:SetAttribute("Prix",           prixSrc) end
 	if cpsSrc  then clone:SetAttribute("CashParSeconde", cpsSrc)  end
 
 	-- 6. Parenter dans workspace.Brainrots AVANT le tag
-	--    (BrainrotService doit voir le parent correct pour GetRootPart)
 	clone.Parent = workspaceBrainrots or workspace
 
-	-- 7. Enregistrer l'état de la plateforme
-	pendingRespawn[plateforme]  = nil   -- reset : ce spawn commence un nouveau cycle
-	platformState[plateforme]   = clone
-
-	-- 8. Tagguer → déclenche BrainrotService (billboard + pickup + countdown)
+	-- 7. Tagguer → déclenche BrainrotService (billboard + pickup + countdown)
 	CollectionService:AddTag(clone, TAG_COLLECTIBLE)
 
-	-- 9. Respawn réactif : dès que le clone est détruit (pickup ou auto-despawn),
-	--    on schedule un nouveau spawn sur la même plateforme.
-	clone.AncestryChanged:Connect(function(_, newParent)
-		if newParent ~= nil then return end                         -- pas une destruction
-		if platformState[plateforme] ~= clone then return end       -- déjà remplacé
-		if pendingRespawn[plateforme] then return end               -- respawn déjà schedulé
-
-		platformState[plateforme] = nil
-		pendingRespawn[plateforme] = true
-
-		task.delay(CONFIG.DELAI_RESPAWN, function()
-			if not pendingRespawn[plateforme] then return end       -- annulé (ex : cycle rapide)
-			pendingRespawn[plateforme] = nil
-			if plateforme and plateforme.Parent then
-				spawnBrainrot(plateforme)
-			end
-		end)
-	end)
+	return clone
 end
 
 -- ════════════════════════════════════════════════════════════════
@@ -296,16 +285,9 @@ end
 local function scannerTours()
 	local tours = {}
 	for _, enfant in ipairs(workspace:GetChildren()) do
-		-- Filtrer : doit être un Model dont le nom commence par le préfixe
 		if not enfant:IsA("Model") then continue end
 		if enfant.Name:sub(1, #TOWER_NAME_PREFIX) ~= TOWER_NAME_PREFIX then continue end
-
-		-- Doit contenir le dossier de plateformes
-		if not enfant:FindFirstChild(NOM_DOSSIER_PLATEFORMES) then
-			-- Pas un warn bloquant : certains modèles "Tour..." peuvent ne pas être des tours jouables
-			continue
-		end
-
+		if not enfant:FindFirstChild(NOM_DOSSIER_PLATEFORMES) then continue end
 		table.insert(tours, enfant)
 	end
 	return tours
@@ -322,14 +304,12 @@ local function getPlatefformes()
 
 	for _, tour in ipairs(tours) do
 		local dossier = tour:FindFirstChild(NOM_DOSSIER_PLATEFORMES)
-		if not dossier then continue end  -- déjà filtré par scannerTours, garde-fou
+		if not dossier then continue end
 
-		-- GetDescendants pour gérer les sous-dossiers éventuels
 		for _, enfant in ipairs(dossier:GetDescendants()) do
 			if enfant:IsA("BasePart") then
 				table.insert(liste, enfant)
 			elseif enfant:IsA("Model") then
-				-- Modèle de plateforme → PrimaryPart ou première BasePart trouvée
 				local part = enfant.PrimaryPart or enfant:FindFirstChildOfClass("BasePart")
 				if part then
 					table.insert(liste, part)
@@ -344,41 +324,46 @@ local function getPlatefformes()
 end
 
 -- ════════════════════════════════════════════════════════════════
--- ÉVALUATION D'UNE PLATEFORME (appelée chaque cycle)
+-- SPAWN SUR UNE PLATEFORME LIBRE
+--
+-- Crée le clone, enregistre l'état, et connecte AncestryChanged pour
+-- libérer platformState dès que le clone quitte workspace (pickup ou timer).
+-- Pas de boucle bloquante : toute la gestion d'état est réactive.
 -- ════════════════════════════════════════════════════════════════
 
-local function evaluerPlateforme(plateforme)
-	if not plateforme or not plateforme.Parent then return end
+local function spawnSurPlateforme(plateforme)
+	local clone = spawnBrainrot(plateforme)
+	if not clone then return end
 
-	-- Respawn déjà schedulé par AncestryChanged → ne pas interférer
-	if pendingRespawn[plateforme] then return end
+	platformState[plateforme] = clone
 
-	local actuel = platformState[plateforme]
-
-	-- Nettoyer si le Brainrot a été détruit mais que AncestryChanged n'a pas encore tiré
-	if actuel and not actuel.Parent then
-		platformState[plateforme] = nil
-		actuel = nil
-	end
-
-	-- Plateforme déjà occupée → skip
-	if actuel then return end
-
-	-- Tirage de chance de spawn (fallback du cycle — le respawn réactif prend normalement le dessus)
-	if math.random() > CONFIG.CHANCE_SPAWN then return end
-
-	spawnBrainrot(plateforme)
+	-- Libère la plateforme dès que le clone disparaît du monde.
+	-- Couvre : destruction par StartCountdown, pickup par un joueur, ou tout autre cas.
+	clone.AncestryChanged:Connect(function()
+		if not clone:IsDescendantOf(workspace) then
+			if platformState[plateforme] == clone then
+				platformState[plateforme] = nil
+			end
+		end
+	end)
 end
 
 -- ════════════════════════════════════════════════════════════════
 -- BOUCLE PRINCIPALE
+--
+-- Toutes les INTERVALLE_CYCLE secondes :
+--   • parcourt toutes les plateformes
+--   • pour chaque plateforme libre → 1 chance sur CHANCE_SPAWN de spawner
+--
+-- Avantages :
+--   - pas de tâche parallèle par plateforme (léger)
+--   - spawn progressif, tour jamais totalement vide ni totalement pleine
+--   - une seule source de vérité pour l'état : platformState[]
 -- ════════════════════════════════════════════════════════════════
 
 task.spawn(function()
-	-- Attendre le chargement complet du jeu
-	task.wait(3)
+	task.wait(3)  -- laisser le jeu terminer son chargement
 
-	-- Vérification critique
 	if not brainrotsRoot then
 		warn("[PlatformSpawner] ❌ Arrêt — dossier Brainrots manquant dans ReplicatedStorage.")
 		return
@@ -390,17 +375,28 @@ task.spawn(function()
 
 	local plateformes = getPlatefformes()
 	if #plateformes == 0 then
-		warn("[PlatformSpawner] ❌ Arrêt — aucune plateforme. Vérifier NOMS_TOURS et NOM_DOSSIER_PLATEFORMES.")
+		warn("[PlatformSpawner] ❌ Arrêt — aucune plateforme. Vérifier TOWER_NAME_PREFIX et NOM_DOSSIER_PLATEFORMES.")
 		return
 	end
 
-	-- Premier cycle immédiat, puis toutes les INTERVALLE_CYCLE secondes
-	-- Toutes les plateformes sont évaluées dans la même passe, sans wait entre elles.
-	-- spawnBrainrot est synchrone ; seul le timer billboard tourne en tâche de fond.
 	while true do
 		for _, plateforme in ipairs(plateformes) do
-			evaluerPlateforme(plateforme)
+			-- Ignorer les plateformes supprimées (sécurité)
+			if not plateforme.Parent then continue end
+
+			-- Plateforme occupée par un clone encore vivant → skip
+			local current = platformState[plateforme]
+			if current and current:IsDescendantOf(workspace) then continue end
+
+			-- L'état est éventuellement périmé (AncestryChanged pas encore tiré) → nettoyer
+			platformState[plateforme] = nil
+
+			-- 1 chance sur CHANCE_SPAWN de spawner sur cette plateforme libre
+			if math.random(CONFIG.CHANCE_SPAWN) == 1 then
+				spawnSurPlateforme(plateforme)
+			end
 		end
+
 		task.wait(CONFIG.INTERVALLE_CYCLE)
 	end
 end)
