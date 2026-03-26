@@ -67,7 +67,8 @@ local function getDropSystem()
 end
 
 -- ============================================================
--- Utilitaires visuels — BillboardGui Studio existant ($amount / $offline)
+-- Utilitaires visuels — SurfaceGui Studio existant ($amount / $offline)
+-- Structure : spot_X / Button (Model) / TouchPart (Part) / Text (SurfaceGui)
 -- ============================================================
 
 local function FormatCoins(n)
@@ -79,76 +80,34 @@ local function FormatCoins(n)
     end
 end
 
--- Remonte au Model spot depuis une touchPart
--- Gère les cas : Part dans Button(Model), BasePart directe dans spot, etc.
-local function trouverSpotModel(touchPart)
-    if not touchPart or not touchPart.Parent then return nil end
-    local parent = touchPart.Parent
-    -- Si parent est un sous-modèle intermédiaire ("Button" ou "TouchPart"), remonter
-    if parent:IsA("Model") and (parent.Name == "TouchPart" or parent.Name == "Button") then
-        return parent.Parent
-    end
-    return parent
+-- Retourne la BasePart Button/TouchPart du spot (Part avec le SurfaceGui + Touched collecte)
+-- spotModel = le Model spot_X parent direct des slots
+local function GetButtonTouchPart(spotModel)
+    local buttonModel = spotModel:FindFirstChild("Button")
+    if not buttonModel then return nil end
+    local tp = buttonModel:FindFirstChild("TouchPart")
+    if tp and tp:IsA("BasePart") then return tp end
+    return buttonModel:FindFirstChildWhichIsA("BasePart")
 end
 
--- Trouve la BasePart du Button (Part verte — Touched déclenche la collecte)
--- Chemins : 1) touchPart est déjà dans Button → c'est elle-même
---           2) spotModel/Button(Model)/BasePart
-local function trouverButtonPart(touchPart)
-    if not touchPart or not touchPart.Parent then return nil end
-    -- Chemin 1 : touchPart est la Part à l'intérieur du Model "Button"
-    if touchPart.Parent:IsA("Model") and touchPart.Parent.Name == "Button" then
-        return touchPart
-    end
-    -- Chemin 2 : chercher Button dans le spotModel
-    local spotModel = trouverSpotModel(touchPart)
-    if not spotModel then return nil end
-    local btn = spotModel:FindFirstChild("Button")
-    if not btn then return nil end
-    if btn:IsA("BasePart") then return btn end
-    return btn:FindFirstChildWhichIsA("BasePart")
+-- Retourne les TextBox $amount et $offline depuis le SurfaceGui "Text"
+-- situé sur Button/TouchPart
+local function GetTextLabels(spotModel)
+    local tp = GetButtonTouchPart(spotModel)
+    if not tp then return nil, nil end
+    local surfGui = tp:FindFirstChild("Text")
+    if not surfGui then return nil, nil end
+    return surfGui:FindFirstChild("$amount"), surfGui:FindFirstChild("$offline")
 end
 
--- Trouve le BillboardGui contenant $amount/$offline
--- Chemins : 1) "Text" enfant direct de touchPart (structure legacy)
---           2) spotModel/TouchPart(Model ou BasePart)/Text(BillboardGui)
---           3) premier BillboardGui descendant du spotModel (fallback)
-local function trouverBillboard(touchPart)
-    if not touchPart or not touchPart.Parent then return nil end
-    -- Chemin 1 : Text directement sur touchPart (structure legacy TouchPart/Text)
-    local bb = touchPart:FindFirstChild("Text")
-           or touchPart:FindFirstChildOfClass("BillboardGui")
-    if bb then return bb end
-    -- Chemin 2 : via spotModel → child "TouchPart"
-    local spotModel = trouverSpotModel(touchPart)
-    if spotModel then
-        local tpChild = spotModel:FindFirstChild("TouchPart")
-        if tpChild then
-            bb = tpChild:FindFirstChild("Text")
-              or tpChild:FindFirstChildOfClass("BillboardGui")
-            if bb then return bb end
-        end
-        -- Chemin 3 : premier BillboardGui n'importe où dans le spot
-        bb = spotModel:FindFirstChildOfClass("BillboardGui", true)
-        if bb then return bb end
-    end
-    return nil
-end
-
--- Met à jour les TextLabels $amount et $offline du BillboardGui Studio
--- NE crée PAS de nouveaux BillboardGui — utilise uniquement ceux posés dans Studio
--- Recherche récursive pour $amount/$offline (tolère un Frame intermédiaire)
+-- Met à jour les TextBox $amount et $offline du SurfaceGui Studio
+-- NE crée PAS de nouveaux SurfaceGui — utilise uniquement ceux posés dans Studio
+-- touchPart = ProximityPrompt TouchPart (outer) ; son parent = spotModel
 local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
-    local bb = trouverBillboard(touchPart)
-    if not bb then
-        warn("[IncomeSystem] BillboardGui introuvable pour : "
-            .. tostring(touchPart and touchPart:GetFullName()))
-        return
-    end
+    if not touchPart or not touchPart.Parent then return end
+    local spotModel = touchPart.Parent
 
-    -- Recherche récursive — tolère Frame intermédiaire dans le BillboardGui
-    local lblAmount  = bb:FindFirstChild("$amount",  true)
-    local lblOffline = bb:FindFirstChild("$offline", true)
+    local lblAmount, lblOffline = GetTextLabels(spotModel)
 
     -- $amount : montant accumulé (caché si 0)
     if lblAmount then
@@ -161,39 +120,34 @@ local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
     -- $offline : revenu par seconde (affiché dès qu'un BR est déposé)
     if lblOffline and incomeParSeconde ~= nil then
         pcall(function()
-            lblOffline.Text    = "$" .. FormatCoins(incomeParSeconde) .. "/s"
+            lblOffline.Text    = "Earns $" .. FormatCoins(incomeParSeconde) .. "/s"
             lblOffline.Visible = incomeParSeconde > 0
         end)
     end
-
-    -- Activer le billboard si income actif ou montant en attente
-    pcall(function()
-        bb.Enabled = ((montant or 0) > 0)
-            or (incomeParSeconde ~= nil and incomeParSeconde > 0)
-    end)
 end
 
--- Connecte le Touched de la BasePart dans le Model "Button" pour la collecte manuelle
--- Garde : CollectConnected BoolValue sur buttonPart pour éviter la double connexion.
+-- Connecte le Touched de Button/TouchPart pour la collecte manuelle
+-- Garde : CollectConnected BoolValue sur buttonTouchPart pour éviter la double connexion.
+-- touchPart = ProximityPrompt TouchPart (outer) ; son parent = spotModel
 local function connecterButton(player, uid, touchPart, spotKey)
     if not touchPart or not touchPart.Parent then return end
+    local spotModel = touchPart.Parent
 
-    -- Trouver la BasePart du Button (peut être touchPart elle-même si elle est dans Button)
-    local buttonPart = trouverButtonPart(touchPart)
-    if not buttonPart then
-        warn("[IncomeSystem] Button BasePart introuvable pour slot "
-            .. tostring(spotKey) .. " → " .. tostring(touchPart:GetFullName()))
+    -- Trouver Button/TouchPart (Part avec SurfaceGui + Touched collecte)
+    local buttonTouchPart = GetButtonTouchPart(spotModel)
+    if not buttonTouchPart then
+        warn("[IncomeSystem] Button/TouchPart introuvable : " .. spotModel:GetFullName())
         return
     end
 
     -- Éviter double connexion
-    if buttonPart:FindFirstChild("CollectConnected") then return end
-    local tag = Instance.new("BoolValue", buttonPart)
+    if buttonTouchPart:FindFirstChild("CollectConnected") then return end
+    local tag = Instance.new("BoolValue", buttonTouchPart)
     tag.Name  = "CollectConnected"
 
     local debounce = false
 
-    buttonPart.Touched:Connect(function(hit)
+    buttonTouchPart.Touched:Connect(function(hit)
         if debounce then return end
         local character   = hit.Parent
         local touchPlayer = Players:GetPlayerFromCharacter(character)
@@ -229,7 +183,7 @@ local function connecterButton(player, uid, touchPart, spotKey)
             end
         end
 
-        -- Réinitialiser accumulateur + reset $amount dans le BillboardGui Studio
+        -- Réinitialiser accumulateur + reset $amount dans le SurfaceGui Studio
         if coinsEnAttente[uid] then coinsEnAttente[uid][spotKey] = 0 end
         pcall(mettreAJourVisuel, touchPart, 0, nil)
 
@@ -239,7 +193,7 @@ local function connecterButton(player, uid, touchPart, spotKey)
         task.delay(0.5, function() debounce = false end)
     end)
 
-    print("[IncomeSystem] Button connecté → slot " .. spotKey)
+    print("[IncomeSystem] Button/TouchPart connecté → slot " .. spotKey)
 end
 
 -- ============================================================
@@ -300,27 +254,19 @@ local function mettreAJourGuiSpots(spotsTable, multTotal)
     for _, spot in ipairs(spotsTable) do
         local tp = spot.touchPart
         if not tp or not tp.Parent then continue end
+        local spotModel = tp.Parent
 
         local baseValeur   = INCOME_PAR_RARETE[spot.rarete] or 0
         local valeurReelle = math.floor(baseValeur * multTotal)
 
-        -- Utiliser le BillboardGui "Text" existant dans le Model TouchPart
-        local bb = trouverBillboard(tp)
-        if not bb then continue end
-
         -- Mettre à jour uniquement $offline (revenu/s affiché en permanence)
-        local offlineLabel = bb:FindFirstChild("$offline")
-        if offlineLabel then
-            pcall(function()
-                offlineLabel.Text    = "$" .. FormatCoins(valeurReelle) .. "/s"
-                offlineLabel.Visible = valeurReelle > 0
-            end)
-        end
+        local _, lblOffline = GetTextLabels(spotModel)
+        if not lblOffline then continue end
 
-        -- Activer le billboard si income actif (même si $amount = 0)
-        if valeurReelle > 0 then
-            pcall(function() bb.Enabled = true end)
-        end
+        pcall(function()
+            lblOffline.Text    = "Earns $" .. FormatCoins(valeurReelle) .. "/s"
+            lblOffline.Visible = valeurReelle > 0
+        end)
     end
 end
 
@@ -567,32 +513,19 @@ function IncomeSystem.SupprimerSlotVisuel(player, touchPart, spotKey)
         coinsEnAttente[uid][spotKey] = nil
     end
 
-    if not touchPart then return end
+    if not touchPart or not touchPart.Parent then return end
+    local spotModel = touchPart.Parent
 
-    -- Reset visuel : $amount = 0, $offline = 0, billboard caché
+    -- Reset visuel : $amount = 0, $offline = 0
     pcall(mettreAJourVisuel, touchPart, 0, 0)
 
-    -- Supprimer le tag CollectConnected sur la BasePart du Button
+    -- Supprimer le tag CollectConnected sur Button/TouchPart
     -- (permet re-connexion lors du prochain dépôt sur ce slot)
-    local buttonPart = trouverButtonPart(touchPart)
-    if buttonPart then
-        local tag = buttonPart:FindFirstChild("CollectConnected")
+    local buttonTouchPart = GetButtonTouchPart(spotModel)
+    if buttonTouchPart then
+        local tag = buttonTouchPart:FindFirstChild("CollectConnected")
         if tag then pcall(function() tag:Destroy() end) end
     end
-
-    -- Compatibilité : IncomeBillboard dynamique créé par une session précédente
-    local spotModel = trouverSpotModel(touchPart)
-    if spotModel then
-        local buttonModel = spotModel:FindFirstChild("Button")
-        if buttonModel then
-            local oldBB = buttonModel:FindFirstChild("IncomeBillboard")
-            if oldBB then pcall(function() oldBB:Destroy() end) end
-        end
-    end
-
-    -- Compatibilité : CollectPart créée par une session précédente
-    local cp = touchPart:FindFirstChild("CollectPart")
-    if cp then pcall(function() cp:Destroy() end) end
 end
 
 -- Collecte les coins en attente d'un slot et les crédite immédiatement
