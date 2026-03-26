@@ -13,6 +13,10 @@ local Config              = require(ReplicatedStorage.Modules.GameConfig)
 local UpgradeSystem       = require(ReplicatedStorage.Modules.UpgradeSystem)
 local DataStoreManager    = require(ServerScriptService.DataStoreManager)
 local MonetizationHandler = require(ServerScriptService.MonetizationHandler)
+local RebirthCallbacks    = require(ServerScriptService._RebirthCallbacks)
+
+-- DataStore — nom explicite (garde la clé existante des joueurs)
+DataStoreManager.Setup("BrainRotIdleV1")
 
 -- ═══════════════════════════════════════════════
 -- 2. REMOTEEVENTS
@@ -59,6 +63,34 @@ end
 local function SetData(player, data)
     playerDataCache[player.UserId] = data
 end
+
+-- Injection des callbacks pour RebirthServer
+RebirthCallbacks.SetCallbacks(
+    -- GetMoney
+    function(player)
+        local data = GetData(player)
+        return data and data.coins or 0
+    end,
+    -- DeductMoney
+    function(player, amount)
+        local data = GetData(player)
+        if data then
+            data.coins = math.max(0, data.coins - amount)
+            UpdateHUD:FireClient(player, data)
+        end
+    end,
+    -- ConsumeRarity : délégué à BrainrotInventoryService si disponible
+    function(player, rarity)
+        local ok, BrainrotInventoryService = pcall(function()
+            return require(ServerScriptService:WaitForChild("BrainrotInventoryService", 1))
+        end)
+        if ok and BrainrotInventoryService and BrainrotInventoryService.RemoveOneOfRarity then
+            BrainrotInventoryService.RemoveOneOfRarity(player, rarity)
+        else
+            warn("[Main] ConsumeRarity: BrainrotInventoryService.RemoveOneOfRarity indisponible")
+        end
+    end
+)
 
 -- ═══════════════════════════════════════════════
 -- 4. CONNEXION JOUEUR

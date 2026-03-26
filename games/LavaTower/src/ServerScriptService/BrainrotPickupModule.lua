@@ -33,6 +33,7 @@ local BrainrotPickupModule = {}
 
 local CollectionService = game:GetService("CollectionService")
 local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
 local TweenService      = game:GetService("TweenService")
 
@@ -41,7 +42,7 @@ local TweenService      = game:GetService("TweenService")
 -- ─────────────────────────────────────────────────────────────
 
 local TAG                  = "BrainrotCollectible"   -- tag CollectionService à poser sur chaque brainrot
-local PICKUP_HOLD_DURATION = 0                        -- secondes à maintenir (0 = clic simple)
+local PICKUP_HOLD_DURATION = 3                        -- secondes à maintenir
 local PICKUP_MAX_DISTANCE  = 10                       -- studs d'activation du ProximityPrompt
 local DEFAULT_LIFETIME     = 60                       -- durée (s) si attribut "LifeTime" absent
 local BILLBOARD_STUDS_Y    = 7                        -- hauteur du billboard au-dessus du brainrot
@@ -102,7 +103,7 @@ local function MakeLabel(parent, name, text, posY, color)
     local label = Instance.new("TextLabel")
     label.Name                   = name
     label.Text                   = text
-    label.Size                   = UDim2.new(1, 0, 0.25, 0)
+    label.Size                   = UDim2.new(1, 0, 0.20, 0)
     label.Position               = UDim2.new(0, 0, posY, 0)
     label.TextColor3             = color or Color3.new(1, 1, 1)
     label.TextScaled             = true
@@ -125,6 +126,7 @@ local function SetupBillboard(brainrot, duration)
 
     local rarete  = brainrot:GetAttribute("Rarete")         or "COMMON"
     local nomAff  = brainrot:GetAttribute("OriginalName")   or brainrot.Name
+    local prix    = brainrot:GetAttribute("Prix")           or 0
     local cps     = brainrot:GetAttribute("CashParSeconde") or 0
     local couleur = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
 
@@ -136,21 +138,23 @@ local function SetupBillboard(brainrot, duration)
     bb.ResetOnSpawn = false
     bb.Parent       = root
 
-    MakeLabel(bb, "LNom",   nomAff,                               0,    Color3.fromRGB(0, 0, 0))
+    -- 5 lignes (chacune 20 % de hauteur) : Nom / Rarete / Prix / CPS / Timer
+    MakeLabel(bb, "LNom",   nomAff,                              0,    Color3.fromRGB(0, 0, 0))
     local lRarete =
-    MakeLabel(bb, "LRarete","✦ " .. rarete .. " ✦",              0.25, couleur)
-    MakeLabel(bb, "LCPS",   "⚡ " .. FormatNombre(cps) .. "/s",  0.50, Color3.fromRGB(255, 215, 0))
-    MakeLabel(bb, "LTimer", "⏱ " .. FormatTimer(duration),       0.75, Color3.fromRGB(220, 60, 60))
+    MakeLabel(bb, "LRarete", rarete,                             0.20, couleur)
+    MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),           0.40, Color3.fromRGB(0, 220, 0))
+    MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",   0.60, Color3.fromRGB(255, 215, 0))
+    MakeLabel(bb, "LTimer", FormatTimer(duration),               0.80, Color3.fromRGB(220, 60, 60))
 
-    -- Animation arc-en-ciel (GOD)
-    if rarete == "GOD" then
+    -- Animation arc-en-ciel (GOD ou BRAINROT_GOD)
+    if rarete == "GOD" or rarete == "BRAINROT_GOD" then
         local hue, conn = 0, nil
         conn = RunService.Heartbeat:Connect(function(dt)
             if not lRarete or not lRarete.Parent then conn:Disconnect() return end
             hue = (hue + dt * 0.5) % 1
             lRarete.TextColor3 = Color3.fromHSV(hue, 1, 1)
         end)
-    -- Animation blanc↔noir (SECRET)
+    -- Animation blanc/noir (SECRET)
     elseif rarete == "SECRET" then
         lRarete.TextColor3 = Color3.fromRGB(255, 255, 255)
         TweenService:Create(lRarete,
@@ -169,7 +173,7 @@ local function UpdateBillboardTimer(brainrot, t)
     if not bb then return end
     local label = bb:FindFirstChild("LTimer")
     if not label then return end
-    label.Text = "⏱ " .. FormatTimer(t)
+    label.Text = FormatTimer(t)
     if t <= 10 then label.TextColor3 = Color3.fromRGB(255, 30, 30) end
 end
 
@@ -201,7 +205,7 @@ local function CreateBrainrotTool(brainrot)
     handle.Size         = Vector3.new(1, 1, 1)
     handle.Color        = couleur
     handle.Material     = Enum.Material.Neon
-    handle.Transparency = 0
+    handle.Transparency = 1   -- invisible : seul le visuel cloné est affiché dans la main
     handle.Anchored     = false
     handle.CanCollide   = false
     handle.CFrame       = CFrame.new(0, 0, 0)
@@ -220,6 +224,13 @@ local function CreateBrainrotTool(brainrot)
     end
 
     if visualClone then
+        -- Retirer le tag BrainrotCollectible du clone et de tous ses descendants
+        -- pour éviter que CollectionService ne re-déclenche SetupBrainrot sur le Tool
+        CollectionService:RemoveTag(visualClone, TAG)
+        for _, desc in ipairs(visualClone:GetDescendants()) do
+            CollectionService:RemoveTag(desc, TAG)
+        end
+
         -- Nettoyer billboards, prompts et scripts du clone
         for _, desc in ipairs(visualClone:GetDescendants()) do
             if desc:IsA("BillboardGui")
@@ -254,7 +265,68 @@ local function CreateBrainrotTool(brainrot)
 end
 
 -- ─────────────────────────────────────────────────────────────
+-- CARRY CAPACITY — état par joueur
+-- ─────────────────────────────────────────────────────────────
+
+local DEFAULT_CARRY_CAPACITY = 1   -- capacité de départ
+
+-- capacité max de chaque joueur  { [userId] = number }
+local carryCapacity = {}
+
+local function GetCapacity(player)
+    return carryCapacity[player.UserId] or DEFAULT_CARRY_CAPACITY
+end
+
+-- Compte les Brainrots Tools portés (Backpack + main)
+local function CountCarried(player)
+    local count = 0
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    if backpack then
+        for _, item in ipairs(backpack:GetChildren()) do
+            if item:IsA("Tool") and item:GetAttribute("Rarete") then
+                count += 1
+            end
+        end
+    end
+    local char = player.Character
+    if char then
+        for _, item in ipairs(char:GetChildren()) do
+            if item:IsA("Tool") and item:GetAttribute("Rarete") then
+                count += 1
+            end
+        end
+    end
+    return count
+end
+
+local function IsAtCapacity(player)
+    return CountCarried(player) >= GetCapacity(player)
+end
+
+-- RemoteEvents partagés avec le client
+local function GetOrCreate(class, name)
+    local e = ReplicatedStorage:FindFirstChild(name)
+    if e then return e end
+    local inst = Instance.new(class)
+    inst.Name   = name
+    inst.Parent = ReplicatedStorage
+    return inst
+end
+
+local CarryUpdateEvent  = GetOrCreate("RemoteEvent", "BrainrotCarryUpdate")   -- serveur → client : {carried, capacity}
+local CarryErrorEvent   = GetOrCreate("RemoteEvent", "BrainrotCarryError")    -- serveur → client : message
+local UpgradeCarryEvent = GetOrCreate("RemoteEvent", "BrainrotUpgradeCarry")  -- client → serveur : demande upgrade
+
+-- Traitement de la demande d'upgrade (gratuit pour l'instant)
+UpgradeCarryEvent.OnServerEvent:Connect(function(player)
+    carryCapacity[player.UserId] = GetCapacity(player) + 1
+    CarryUpdateEvent:FireClient(player, CountCarried(player), GetCapacity(player))
+    print(("[BrainrotPickup] %s : capacité → %d"):format(player.Name, GetCapacity(player)))
+end)
+
+-- ─────────────────────────────────────────────────────────────
 -- TOOL — DONNER AU JOUEUR
+-- (déclaré ici pour accéder à CarryUpdateEvent, CountCarried, GetCapacity)
 -- ─────────────────────────────────────────────────────────────
 
 local function GiveBrainrotTool(player, brainrot)
@@ -274,6 +346,8 @@ local function GiveBrainrotTool(player, brainrot)
     result.Parent = backpack
     print(("[BrainrotPickup] %s a collecté %s [%s]")
         :format(player.Name, result.Name, result:GetAttribute("Rarete") or "?"))
+    -- Mettre à jour la jauge côté client
+    CarryUpdateEvent:FireClient(player, CountCarried(player), GetCapacity(player))
     return true
 end
 
@@ -304,13 +378,35 @@ local function SetupPickup(brainrot)
     prompt.RequiresLineOfSight   = false
     prompt.Parent                = root
 
+    -- Dès que le joueur commence à maintenir : bloquer immédiatement
+    -- si la capacité est atteinte (feedback immédiat + prompt masqué brièvement)
+    prompt.PromptButtonHoldBegan:Connect(function(player)
+        if IsAtCapacity(player) then
+            CarryErrorEvent:FireClient(player, "Vous ne pouvez pas porter plus de Brainrots")
+            prompt.Enabled = false
+            task.delay(0.15, function()
+                if prompt and prompt.Parent then
+                    prompt.Enabled = true
+                end
+            end)
+        end
+    end)
+
     prompt.Triggered:Connect(function(player)
         -- Guard 1 : brainrot encore présent
         if not brainrot or not brainrot.Parent then return end
         -- Guard 2 : anti-race (deux joueurs ou double-clic)
         if brainrot:GetAttribute("_Collecting") then return end
         brainrot:SetAttribute("_Collecting", true)
-        -- Guard 3 : validation distance (anti-exploit téléportation)
+        -- Guard 3 : capacité de portage atteinte
+        if IsAtCapacity(player) then
+            local cap = GetCapacity(player)
+            CarryErrorEvent:FireClient(player,
+                ("Vous ne pouvez pas porter plus de Brainrots (%d/%d)"):format(CountCarried(player), cap))
+            brainrot:SetAttribute("_Collecting", nil)
+            return
+        end
+        -- Guard 4 : validation distance (anti-exploit téléportation)
         local char = player.Character
         if char and char.PrimaryPart then
             local dist = (char.PrimaryPart.Position - root.Position).Magnitude
@@ -319,7 +415,7 @@ local function SetupPickup(brainrot)
                 return
             end
         end
-        -- Guard 4 : Backpack présent (joueur pas en train de respawn)
+        -- Guard 5 : Backpack présent (joueur pas en train de respawn)
         if not player:FindFirstChildOfClass("Backpack") then
             brainrot:SetAttribute("_Collecting", nil)
             return
@@ -372,12 +468,33 @@ end
 -- ─────────────────────────────────────────────────────────────
 
 --[[
-    BrainrotPickupModule.Init()
-    À appeler une seule fois depuis un ServerScript (ex: Main.server.lua).
-    Démarre l'écoute du tag "BrainrotCollectible" pour les instances
-    déjà présentes ET les futures (spawn dynamique).
+    BrainrotPickupModule.Init(config)
+
+    À appeler une seule fois depuis un ServerScript ou un ModuleScript boot.
+    Toutes les clés de `config` sont optionnelles — les valeurs par défaut
+    définies en haut de ce fichier sont utilisées si absentes.
+
+    config = {
+        Tag                  = "BrainrotCollectible",  -- tag CollectionService
+        HoldDuration         = 3,        -- secondes à maintenir le prompt
+        MaxDistance          = 10,       -- studs d'activation
+        DefaultLifetime      = 60,       -- secondes avant auto-despawn
+        BillboardStudsY      = 7,        -- hauteur du billboard
+        DefaultCarryCapacity = 1,        -- slots de portage initiaux
+        RarityColors         = { ... },  -- table { RARETE = Color3 }
+    }
 --]]
-function BrainrotPickupModule.Init()
+function BrainrotPickupModule.Init(config)
+    -- Appliquer les overrides de config (toutes les clés sont optionnelles)
+    config = config or {}
+    if config.Tag                  then TAG                   = config.Tag                  end
+    if config.HoldDuration         ~= nil then PICKUP_HOLD_DURATION  = config.HoldDuration  end
+    if config.MaxDistance          ~= nil then PICKUP_MAX_DISTANCE   = config.MaxDistance   end
+    if config.DefaultLifetime      ~= nil then DEFAULT_LIFETIME      = config.DefaultLifetime end
+    if config.BillboardStudsY      ~= nil then BILLBOARD_STUDS_Y     = config.BillboardStudsY end
+    if config.DefaultCarryCapacity ~= nil then DEFAULT_CARRY_CAPACITY = config.DefaultCarryCapacity end
+    if config.RarityColors              then RARETE_COULEURS         = config.RarityColors  end
+
     -- Instances déjà taggées (placées en Studio)
     for _, inst in ipairs(CollectionService:GetTagged(TAG)) do
         task.spawn(SetupBrainrot, inst)
@@ -386,7 +503,21 @@ function BrainrotPickupModule.Init()
     CollectionService:GetInstanceAddedSignal(TAG):Connect(function(inst)
         task.spawn(SetupBrainrot, inst)
     end)
-    print("[BrainrotPickup] ✓ Démarré — tag : '" .. TAG .. "'")
+    -- Envoyer la capacité initiale dès qu'un joueur arrive
+    Players.PlayerAdded:Connect(function(player)
+        task.delay(1, function()
+            if player and player.Parent then
+                CarryUpdateEvent:FireClient(player, CountCarried(player), GetCapacity(player))
+            end
+        end)
+    end)
+    -- Nettoyage à la déconnexion
+    Players.PlayerRemoving:Connect(function(player)
+        carryCapacity[player.UserId] = nil
+    end)
+    print("[BrainrotPickup] ✓ Démarré — tag : '" .. TAG .. "'"
+        .. " | hold:" .. PICKUP_HOLD_DURATION .. "s"
+        .. " | dist:" .. PICKUP_MAX_DISTANCE .. " studs")
 end
 
 return BrainrotPickupModule

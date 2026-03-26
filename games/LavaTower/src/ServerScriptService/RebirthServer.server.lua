@@ -3,7 +3,7 @@
 -- DataStore séparé pour ne pas interférer avec le DataStore principal
 
 local Players             = game:GetService("Players")
-local DataStoreService    = game:GetService("DataStoreService")
+local DataStoreService    = game:GetService("DataStoreService")  -- utilisé pour le DataStore Rebirth local
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
@@ -11,8 +11,9 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- 1. CONFIG + INVENTAIRE
 -- ═══════════════════════════════════════════════
 
-local RebirthConfig          = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RebirthConfig"))
+local RebirthConfig            = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("RebirthConfig"))
 local BrainrotInventoryService = require(ServerScriptService:WaitForChild("BrainrotInventoryService"))
+local RebirthCallbacks         = require(ServerScriptService:WaitForChild("_RebirthCallbacks"))
 
 -- ═══════════════════════════════════════════════
 -- 2. DATASTORE
@@ -44,31 +45,16 @@ local reRebirthResult  = getOrCreate("RemoteEvent",    "RebirthResult")
 print("[RebirthServer] Remotes créés ✓")
 
 -- ═══════════════════════════════════════════════
--- 4. STUBS — CONNECTER AUX VRAIS SYSTÈMES
+-- 4. DÉLÉGATION — via _RebirthCallbacks
 -- ═══════════════════════════════════════════════
--- Ces fonctions isolent les dépendances externes.
--- Remplacer leur corps quand les vrais systèmes sont prêts.
+-- Main.server.lua injecte les vraies implémentations via RebirthCallbacks.SetCallbacks().
 
--- TODO: Retourner les vraies coins du joueur depuis le cache de Main.server.lua
--- Exemple : return MainCache[player.UserId].coins
 local function getPlayerMoney(player)
-	-- Stub : lit le DataStore principal pour récupérer les coins
-	-- En production, utiliser le cache mémoire de Main.server.lua via BindableFunction
-	local ok, data = pcall(function()
-		return DataStoreService:GetDataStore("BrainRotIdleV1"):GetAsync("player_" .. player.UserId)
-	end)
-	if ok and data and data.coins then
-		return data.coins
-	end
-	return 0
+	return RebirthCallbacks.GetMoney(player)
 end
 
--- TODO: Déduire les coins depuis le cache de Main.server.lua
--- Exemple : MainCache[player.UserId].coins -= amount
 local function deductMoney(player, amount)
-	-- Stub : avertissement seulement, pas de déduction réelle sans accès au cache principal
-	-- Pour connecter : exposer une BindableFunction "Rebirth_DeductMoney" dans Main.server.lua
-	warn(string.format("[RebirthServer] STUB deductMoney: %s doit perdre %d coins", player.Name, amount))
+	RebirthCallbacks.DeductMoney(player, amount)
 end
 
 -- Vérifie si le joueur possède au moins un BrainRot de la rareté requise (ou supérieure)
@@ -82,10 +68,8 @@ local function playerHasRarity(player, requiredRarity)
 	return false
 end
 
--- TODO: Consommer un BrainRot de la rareté requise de l'inventaire
--- Exemple : BrainrotInventoryService.RemoveOneOfRarity(player, rarity)
 local function consumeRarity(player, rarity)
-	warn(string.format("[RebirthServer] STUB consumeRarity: %s doit perdre un BrainRot %s", player.Name, rarity))
+	RebirthCallbacks.ConsumeRarity(player, rarity)
 end
 
 -- ═══════════════════════════════════════════════

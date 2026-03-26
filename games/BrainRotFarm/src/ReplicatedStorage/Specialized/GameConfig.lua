@@ -71,6 +71,11 @@ GameConfig.AdminAbuseHebdo = {
     dureeMinutes    = 45,
     spawnMultiplier = 50,
 }
+-- Types d'events aléatoires déclenchés par EventManager.
+-- Modifier cette liste pour ajouter/retirer des events selon le jeu.
+GameConfig.EventTypes = {
+    "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins",
+}
 
 -- === RARETÉS ===
 GameConfig.Raretes = {

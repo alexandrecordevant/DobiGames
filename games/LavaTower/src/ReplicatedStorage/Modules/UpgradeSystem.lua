@@ -23,8 +23,10 @@ function UpgradeSystem.AppliquerPrestige(data)
 end
 
 function UpgradeSystem.ZoneDebloquee(data, zoneIndex)
-    local seuils = { [1]=0, [2]=3, [3]=6, [4]=1 }
-    if zoneIndex == 4 then return data.prestige >= 1 end
+    -- Seuils lus depuis GameConfig (fallback sur valeurs par défaut si absents)
+    local seuils = Config.ZoneUnlockSeuils or { [1]=0, [2]=3, [3]=6 }
+    local prestigeSeuil = Config.ZonePrestigeSeuil or 1
+    if zoneIndex == 4 then return data.prestige >= prestigeSeuil end
     return data.tier >= (seuils[zoneIndex] or 999)
 end
 

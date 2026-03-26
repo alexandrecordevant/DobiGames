@@ -68,4 +68,11 @@ GameConfig.SonUpgrade  = 0
 -- === BADGE ===
 GameConfig.BadgePremierPrestige = 0
 
+-- === PROGRESSION DES ZONES ===
+-- Seuils de tier requis pour débloquer chaque zone (index = numéro de zone).
+-- ZonePrestigeSeuil : niveau de prestige minimum pour la zone spéciale (4).
+-- Modifiez ces valeurs ici plutôt que dans UpgradeSystem.
+GameConfig.ZoneUnlockSeuils  = { [1] = 0, [2] = 3, [3] = 6 }
+GameConfig.ZonePrestigeSeuil = 1   -- prestige requis pour zone 4
+
 return GameConfig

@@ -62,10 +62,9 @@ local NOMS_DOSSIERS_RARETE = {
 -- │  3.  PARAMÈTRES DE SPAWN                                     │
 -- └──────────────────────────────────────────────────────────────┘
 local CONFIG = {
-	INTERVALLE_CYCLE = 60,   -- secondes entre chaque évaluation de toutes les plateformes
-	DUREE_VIE        = 60,   -- secondes avant auto-despawn du Brainrot
-	CHANCE_SPAWN     = 0.5,  -- probabilité qu'une plateforme vide spawn (0.0 → 1.0)
-	HAUTEUR_OFFSET   = 0,    -- studs au-dessus de la surface de la plateforme
+	DUREE_VIE     = 60,  -- secondes avant auto-despawn du Brainrot
+	DELAI_RESPAWN = 60,  -- secondes d'attente entre la disparition et le respawn
+	HAUTEUR_OFFSET = 0,  -- studs au-dessus de la surface de la plateforme
 }
 
 -- ════════════════════════════════════════════════════════════════
@@ -157,7 +156,7 @@ end
 
 -- ════════════════════════════════════════════════════════════════
 -- ÉTAT
--- platformState[basePart] = brainrotModel en cours | nil
+-- platformState[basePart] = clone actif dans le monde | nil
 -- ════════════════════════════════════════════════════════════════
 
 local platformState = {}
@@ -253,16 +252,29 @@ local function spawnBrainrot(plateforme)
 	clone.Parent = workspaceBrainrots or workspace
 
 	-- 7. Enregistrer l'état de la plateforme
-	platformState[plateforme] = clone
+	pendingRespawn[plateforme]  = nil   -- reset : ce spawn commence un nouveau cycle
+	platformState[plateforme]   = clone
 
 	-- 8. Tagguer → déclenche BrainrotService (billboard + pickup + countdown)
 	CollectionService:AddTag(clone, TAG_COLLECTIBLE)
 
-	-- 9. Sécurité : si BrainrotService ne détruit pas (erreur), on nettoie quand même
-	task.delay(CONFIG.DUREE_VIE + 10, function()
-		if platformState[plateforme] ~= clone then return end
+	-- 9. Respawn réactif : dès que le clone est détruit (pickup ou auto-despawn),
+	--    on schedule un nouveau spawn sur la même plateforme.
+	clone.AncestryChanged:Connect(function(_, newParent)
+		if newParent ~= nil then return end                         -- pas une destruction
+		if platformState[plateforme] ~= clone then return end       -- déjà remplacé
+		if pendingRespawn[plateforme] then return end               -- respawn déjà schedulé
+
 		platformState[plateforme] = nil
-		if clone and clone.Parent then clone:Destroy() end
+		pendingRespawn[plateforme] = true
+
+		task.delay(CONFIG.DELAI_RESPAWN, function()
+			if not pendingRespawn[plateforme] then return end       -- annulé (ex : cycle rapide)
+			pendingRespawn[plateforme] = nil
+			if plateforme and plateforme.Parent then
+				spawnBrainrot(plateforme)
+			end
+		end)
 	end)
 end
 
@@ -338,9 +350,12 @@ end
 local function evaluerPlateforme(plateforme)
 	if not plateforme or not plateforme.Parent then return end
 
+	-- Respawn déjà schedulé par AncestryChanged → ne pas interférer
+	if pendingRespawn[plateforme] then return end
+
 	local actuel = platformState[plateforme]
 
-	-- Nettoyer si le Brainrot a été détruit manuellement (ramassé, exploité, etc.)
+	-- Nettoyer si le Brainrot a été détruit mais que AncestryChanged n'a pas encore tiré
 	if actuel and not actuel.Parent then
 		platformState[plateforme] = nil
 		actuel = nil
@@ -349,7 +364,7 @@ local function evaluerPlateforme(plateforme)
 	-- Plateforme déjà occupée → skip
 	if actuel then return end
 
-	-- Tirage de chance de spawn
+	-- Tirage de chance de spawn (fallback du cycle — le respawn réactif prend normalement le dessus)
 	if math.random() > CONFIG.CHANCE_SPAWN then return end
 
 	spawnBrainrot(plateforme)

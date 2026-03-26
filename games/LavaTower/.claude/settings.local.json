@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Admin/Documents/Developpement/DobiGames/games/LavaTower/**)",
+      "Read(//c/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"
+    ]
+  }
+}
