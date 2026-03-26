@@ -69,6 +69,7 @@ end
 -- ============================================================
 -- Utilitaires visuels — SurfaceGui Studio existant ($amount / $offline)
 -- Structure : spot_X / Button (Model) / TouchPart (Part) / Text (SurfaceGui)
+-- Et : spot_X / BillboardGui / TextLabel  +  spot_X / SurfaceGui / Frame / CoinsText
 -- ============================================================
 
 local function FormatCoins(n)
@@ -78,6 +79,84 @@ local function FormatCoins(n)
     elseif n >= 1e3  then return string.format("%.0fK", n / 1e3)
     else                  return tostring(n)
     end
+end
+
+-- Remet à zéro l'affichage d'un slot (BillboardGui + SurfaceGui/Frame/CoinsText)
+-- Utilisé au boot serveur, au PlayerAdded, et après chaque vente/retrait de BR
+local function ResetSlotDisplay(slotPart)
+    if not slotPart then return end
+
+    -- Réinitialiser le BillboardGui (texte flottant au-dessus du slot)
+    local billboard = slotPart:FindFirstChild("BillboardGui")
+    if billboard then
+        local textLabel = billboard:FindFirstChild("TextLabel")
+        if textLabel then
+            pcall(function()
+                textLabel.Text    = ""
+                textLabel.Visible = false
+            end)
+        end
+    end
+
+    -- Réinitialiser le SurfaceGui (affichage au sol)
+    local surfaceGui = slotPart:FindFirstChild("SurfaceGui")
+    if surfaceGui then
+        local frame = surfaceGui:FindFirstChild("Frame")
+        if frame then
+            local coinText = frame:FindFirstChild("CoinsText")
+            if coinText then
+                pcall(function()
+                    coinText.Text = "$0"
+                end)
+            end
+        end
+    end
+end
+
+-- Réinitialise tous les slots d'une base au PlayerAdded
+-- Structure réelle Studio : "Floor 1" à "Floor 4" (simple espace)
+local function InitializeAllSlots(baseFolder)
+    if not baseFolder then return end
+
+    for floorNum = 1, 4 do
+        local floorName = "Floor " .. floorNum  -- simple espace (vérifié en Studio)
+        local floor = baseFolder:FindFirstChild(floorName)
+
+        if floor then
+            for spotNum = 1, 10 do
+                local spotName = "spot_" .. spotNum
+                local spot = floor:FindFirstChild(spotName)
+
+                if spot then
+                    ResetSlotDisplay(spot)
+                end
+            end
+        end
+    end
+end
+
+-- Nettoie toutes les bases au démarrage du serveur
+-- Supprime les valeurs résiduelles laissées par Studio ("$999999999", "+119 coins", etc.)
+local function CleanupDefaultValues()
+    local basesFolder = workspace:FindFirstChild("Bases")
+    if not basesFolder then
+        warn("[IncomeSystem] workspace.Bases introuvable — CleanupDefaultValues ignoré")
+        return
+    end
+
+    for _, base in ipairs(basesFolder:GetChildren()) do
+        for _, floor in ipairs(base:GetChildren()) do
+            if floor.Name:match("^Floor") then
+                for _, spot in ipairs(floor:GetChildren()) do
+                    if spot.Name:match("^spot_") then
+                        ResetSlotDisplay(spot)
+                    end
+                end
+            end
+        end
+    end
+
+    print("[IncomeSystem] CleanupDefaultValues — slots réinitialisés")
 end
 
 -- Retourne la BasePart Button/TouchPart du spot (Part avec le SurfaceGui + Touched collecte)
@@ -281,6 +360,13 @@ local function syncSpotsOccupes(player, playerData)
     local serialisable = DS.GetSpotsOccupesSerialisables(player)
     playerData.spotsOccupes = serialisable
 end
+
+-- Nettoyage des valeurs Studio résiduelles au démarrage serveur
+-- Délai court pour laisser Workspace se peupler avant de parcourir les bases
+task.spawn(function()
+    task.wait(1)
+    CleanupDefaultValues()
+end)
 
 -- ============================================================
 -- API publique — RecalculerIncome
@@ -519,6 +605,9 @@ function IncomeSystem.SupprimerSlotVisuel(player, touchPart, spotKey)
     -- Reset visuel : $amount = 0, $offline = 0
     pcall(mettreAJourVisuel, touchPart, 0, 0)
 
+    -- Reset BillboardGui + SurfaceGui/Frame/CoinsText du spot parent
+    ResetSlotDisplay(spotModel)
+
     -- Supprimer le tag CollectConnected sur Button/TouchPart
     -- (permet re-connexion lors du prochain dépôt sur ce slot)
     local buttonTouchPart = GetButtonTouchPart(spotModel)
@@ -559,6 +648,22 @@ end
 -- Appelé par DropSystem après un dépôt (initialiser $offline) ou reset
 function IncomeSystem.MettreAJourVisuel(touchPart, montant, incomeParSeconde)
     mettreAJourVisuel(touchPart, montant, incomeParSeconde)
+end
+
+-- Remet à zéro l'affichage d'un slot individuel (BillboardGui + SurfaceGui)
+-- Appelé par DropSystem ou depuis l'extérieur après vente/retrait de BR
+function IncomeSystem.ResetSlotDisplay(slotPart)
+    ResetSlotDisplay(slotPart)
+end
+
+-- Réinitialise tous les slots d'une base (à appeler au PlayerAdded avec la baseFolder du joueur)
+function IncomeSystem.InitializeAllSlots(baseFolder)
+    InitializeAllSlots(baseFolder)
+end
+
+-- Nettoie toutes les bases (utile si appelé manuellement depuis un autre script)
+function IncomeSystem.CleanupDefaultValues()
+    CleanupDefaultValues()
 end
 
 -- Ajoute des coins directement au joueur (utilisé par VendreBR dans DropSystem)

@@ -284,7 +284,7 @@ Comparaison + partage:
 Quand un système devient trop complexe:
 
 **Step 1:** Identifier point bloquant
-- Ex: "BaseProgressionSystem bug car 'Floor  1' a double space"
+- Ex: "BaseProgressionSystem bug car 'Floor 1' (simple espace — vérifié Studio mars 2026)"
 
 **Step 2:** Proposer plan progressif
 - Ex: "Step 1: extract floor unlock logic → FloorUnlocker.lua"

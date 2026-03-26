@@ -316,13 +316,18 @@ end
 -- Utilitaires — ProximityPrompts
 -- ============================================================
 
--- PP unique "Manage" sur TouchPart : ouvre menu Retrieve/Sell côté client
+-- Deux prompts Default sur des ancres décalées gauche/droite du slot
+-- E = Sell (bord gauche), R = Retrieve (bord droit) — déclenchés côté serveur
 local function creerPromptRecuperer(touchPart, player)
-    -- Supprimer les anciens prompts (Manage, Retrieve, Vendre — compatibilité)
+    -- Supprimer anciens prompts et ancres (compatibilité)
     for _, child in ipairs(touchPart:GetChildren()) do
         if child:IsA("ProximityPrompt")
             and child.Name ~= "DepotPrompt"
             and child.Name ~= "RemplacerPrompt" then
+            pcall(function() child:Destroy() end)
+        end
+        if child:IsA("BasePart")
+            and (child.Name == "AnchorSell" or child.Name == "AnchorRetrieve") then
             pcall(function() child:Destroy() end)
         end
     end
@@ -332,32 +337,57 @@ local function creerPromptRecuperer(touchPart, player)
     if not entree then return end
 
     local rareteNom = entree.rarete or "BR"
-    local spotKey   = entree.spotKey
+    local brNom     = entree.brNom and entree.brNom:gsub("_", " ") or rareteNom
 
-    -- PP unique "Manage" (touche E, instant) → envoie menu au client
-    local prompt = Instance.new("ProximityPrompt")
-    prompt.Name                  = "ManagePrompt"
-    prompt.ActionText            = "Manage"
-    prompt.ObjectText            = "🎮 " .. rareteNom
-    prompt.HoldDuration          = 0
-    prompt.MaxActivationDistance = 10
-    prompt.KeyboardKeyCode       = Enum.KeyCode.E
-    prompt.RequiresLineOfSight   = false
-    prompt.Parent                = touchPart
+    -- Créer une Part-ancre invisible décalée en X par rapport au slot
+    local halfW = (touchPart.Size.X / 2) + 1
+    local function creerAncre(name, offsetX)
+        local part = Instance.new("Part")
+        part.Name         = name
+        part.Size         = Vector3.new(0.1, 0.1, 0.1)
+        part.Anchored     = true
+        part.CanCollide   = false
+        part.Transparency = 1
+        part.CFrame       = touchPart.CFrame * CFrame.new(offsetX, 0, 0)
+        part.Parent       = touchPart
+        return part
+    end
 
-    prompt.Triggered:Connect(function(triggerPlayer)
+    local ancreLeft  = creerAncre("AnchorSell",     -halfW)
+    local ancreRight = creerAncre("AnchorRetrieve",  halfW)
+
+    -- Prompt E = Sell (bord gauche)
+    local promptSell = Instance.new("ProximityPrompt")
+    promptSell.Name                  = "SellPrompt"
+    promptSell.ActionText            = "Sell"
+    promptSell.ObjectText            = brNom
+    promptSell.HoldDuration          = 0
+    promptSell.MaxActivationDistance = 10
+    promptSell.KeyboardKeyCode       = Enum.KeyCode.E
+    promptSell.RequiresLineOfSight   = false
+    promptSell:SetAttribute("SpotKey", entree.spotKey)
+    promptSell.Parent                = ancreLeft
+
+    promptSell.Triggered:Connect(function(triggerPlayer)
         if triggerPlayer ~= player then return end
-        local OuvrirMenuSlot = ReplicatedStorage:FindFirstChild("OuvrirMenuSlot")
-        if OuvrirMenuSlot then
-            pcall(function()
-                OuvrirMenuSlot:FireClient(triggerPlayer, {
-                    spotKey  = spotKey,
-                    rarete   = entree.rarete,
-                    brNom    = entree.brNom or rareteNom,
-                    income   = entree.valeurSec or 0,
-                })
-            end)
-        end
+        DropSystem.VendreBR(player, touchPart)
+    end)
+
+    -- Prompt R = Retrieve (bord droit)
+    local promptRetrieve = Instance.new("ProximityPrompt")
+    promptRetrieve.Name                  = "RetrievePrompt"
+    promptRetrieve.ActionText            = "Retrieve"
+    promptRetrieve.ObjectText            = brNom
+    promptRetrieve.HoldDuration          = 0
+    promptRetrieve.MaxActivationDistance = 10
+    promptRetrieve.KeyboardKeyCode       = Enum.KeyCode.R
+    promptRetrieve.RequiresLineOfSight   = false
+    promptRetrieve:SetAttribute("SpotKey", entree.spotKey)
+    promptRetrieve.Parent                = ancreRight
+
+    promptRetrieve.Triggered:Connect(function(triggerPlayer)
+        if triggerPlayer ~= player then return end
+        DropSystem.RecupererBrainRot(player, touchPart)
     end)
 
     local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
@@ -396,8 +426,8 @@ local function creerPromptRemplacer(touchPart, player, rarete)
 end
 
 local function supprimerPromptRecuperer(touchPart)
-    -- Supprimer tous les PP de gestion (compatibilité ancien nommage inclus)
-    for _, name in ipairs({ "ManagePrompt", "RecupererPrompt", "VendrePrompt", "RemplacerPrompt" }) do
+    for _, name in ipairs({ "SellPrompt", "RetrievePrompt", "AnchorSell", "AnchorRetrieve",
+                             "SlotPrompt", "ManagePrompt", "RecupererPrompt", "VendrePrompt", "RemplacerPrompt" }) do
         local p = touchPart:FindFirstChild(name)
         if p then pcall(function() p:Destroy() end) end
     end
