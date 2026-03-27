@@ -15,6 +15,20 @@ local Workspace           = game:GetService("Workspace")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 
+-- Chargement différé FilterManager (système de filtres centralisé)
+local _FilterManager = nil
+local function getFilterManager()
+    if not _FilterManager then
+        local ok, m = pcall(function()
+            return require(ReplicatedStorage:WaitForChild("SharedLib")
+                :WaitForChild("BRFilterSystem")
+                :WaitForChild("FilterManager"))
+        end)
+        if ok then _FilterManager = m end
+    end
+    return _FilterManager
+end
+
 -- ============================================================
 -- Config
 -- ============================================================
@@ -442,68 +456,39 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	local parts = obtenirBaseParts(clone)
 	fadeIn(parts, 0.6)
 
-	-- ── Billboard sur le Brain Rot ────────────────────────────
-	local brBB = Instance.new("BillboardGui")
-	brBB.Name        = "BR_Label"
-	brBB.Size        = UDim2.new(0, 220, 0, 75)
-	brBB.StudsOffset = Vector3.new(0, 10, 0)
-	brBB.AlwaysOnTop = false
-	brBB.Adornee     = racine
-	brBB.Parent      = racine
-
-	local brCadre = Instance.new("Frame")
-	brCadre.Size                   = UDim2.new(1, 0, 1, 0)
-	brCadre.BackgroundColor3       = typeConfig.couleur
-	brCadre.BackgroundTransparency = 0.3
-	brCadre.BorderSizePixel        = 0
-	brCadre.Parent                 = brBB
-
-	Instance.new("UICorner", brCadre).CornerRadius = UDim.new(0, 8)
-
-	local brLabel = Instance.new("TextLabel")
-	brLabel.Size                   = UDim2.new(1, 0, 0.6, 0)
-	brLabel.BackgroundTransparency = 1
-	brLabel.Text                   = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
-	brLabel.Font                   = Enum.Font.GothamBold
-	brLabel.TextColor3             = Color3.new(1, 1, 1)
-	brLabel.TextScaled             = true
-	brLabel.Parent                 = brCadre
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Color     = Color3.new(0, 0, 0)
-	stroke.Thickness = 1.5
-	stroke.Parent    = brLabel
-
-	-- Timer "avant disparition"
-	local labelTimer = Instance.new("TextLabel")
-	labelTimer.Size                   = UDim2.new(1, 0, 0.4, 0)
-	labelTimer.Position               = UDim2.new(0, 0, 0.6, 0)
-	labelTimer.BackgroundTransparency = 1
-	labelTimer.Font                   = Enum.Font.GothamBold
-	labelTimer.TextColor3             = Color3.new(1, 1, 0)
-	labelTimer.TextScaled             = true
-	labelTimer.Text                   = "⏳ " .. typeConfig.despawnSecondes .. "s"
-	labelTimer.Parent                 = brCadre
-
-	local strokeTimer = Instance.new("UIStroke")
-	strokeTimer.Color     = Color3.new(0, 0, 0)
-	strokeTimer.Thickness = 1.5
-	strokeTimer.Parent    = labelTimer
+	-- ── Billboard sur le BR via FilterManager (ZERO instance directe) ──
+	local FM = getFilterManager()
+	if FM then
+		FM.Apply(clone, {
+			{Name = "Billboard", Params = {
+				Text    = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
+				          .. "  ⏳ " .. typeConfig.despawnSecondes .. "s",
+				Color   = typeConfig.couleur,
+				OffsetY = 10,
+				Taille  = UDim2.new(0, 260, 0, 70),
+			}}
+		})
+	end
 
 	-- ── ProximityPrompt via CarrySystem ───────────────────────
 	local collected = false
 
-	-- Countdown "avant disparition" — mis à jour chaque seconde
+	-- Countdown "avant disparition" — mis à jour chaque seconde dans BRBillboard/Label
 	task.spawn(function()
 		local restant = typeConfig.despawnSecondes
-		while not collected and restant > 0 and labelTimer and labelTimer.Parent do
+		while not collected and restant > 0 do
 			task.wait(1)
 			restant = restant - 1
-			if labelTimer and labelTimer.Parent then
-				if restant <= 10 then
-					labelTimer.TextColor3 = Color3.new(1, 0.2, 0.2) -- rouge urgent
-				end
-				labelTimer.Text = "⏳ " .. restant .. "s"
+			if not racine or not racine.Parent then return end
+			local bb = racine:FindFirstChild("BRBillboard")
+			if not bb then return end
+			local labelBB = bb:FindFirstChild("Label")
+			if not labelBB then return end
+			-- Mise à jour texte + couleur urgence
+			labelBB.Text = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
+			               .. "  ⏳ " .. restant .. "s"
+			if restant <= 10 then
+				labelBB.TextColor3 = Color3.new(1, 0.2, 0.2) -- rouge urgent
 			end
 		end
 	end)

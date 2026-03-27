@@ -44,6 +44,28 @@ local function getCarry()
     return _CarrySystem
 end
 
+-- Chargement différé SeedInventory
+local _SeedInventory = nil
+local function getSeedInventory()
+    if not _SeedInventory then
+        local ok, m = pcall(require,
+            ServerScriptService.Specialized.SeedInventory)
+        if ok then _SeedInventory = m end
+    end
+    return _SeedInventory
+end
+
+-- Chargement différé MutantGenerator
+local _MutantGenerator = nil
+local function getMutantGenerator()
+    if not _MutantGenerator then
+        local ok, m = pcall(require,
+            ServerScriptService.Specialized.MutantGenerator)
+        if ok then _MutantGenerator = m end
+    end
+    return _MutantGenerator
+end
+
 -- ============================================================
 -- RemoteEvents (créés dans InitServeur)
 -- ============================================================
@@ -483,28 +505,19 @@ function FlowerPotSystem.OnTrigger(player, potIndex, etat)
         end
 
     elseif etat == "empty" then
-        -- Vérifier si le joueur porte un BR plantable
-        local CS = getCarry()
-        local portes = CS and CS.GetPortes(player) or {}
-        local hasBRPlantable = false
-        for _, br in ipairs(portes) do
-            if br.rarete then
-                for _, r in ipairs(FPConfig.brPlantables) do
-                    if br.rarete.nom == r then
-                        hasBRPlantable = true
-                        break
-                    end
-                end
-            end
-            if hasBRPlantable then break end
+        -- Vérifier si le joueur a des graines disponibles dans son inventaire
+        local SI   = getSeedInventory()
+        local data = GetData(player)
+        local hasSeed = false
+        if SI and data then
+            hasSeed, _ = SI.HasAny(data)
         end
 
-        if hasBRPlantable then
+        if hasSeed then
             FlowerPotSystem.Planter(player, potIndex)
         else
-            -- Ouvrir menu daily seed / info
+            -- Pas de graines → ouvrir menu daily seed
             if OuvrirPot then
-                local data = GetData(player)
                 pcall(function()
                     OuvrirPot:FireClient(player, potIndex, "empty",
                         data and data.dailySeed or {})
@@ -588,21 +601,15 @@ function FlowerPotSystem.OnCarryChange(player, portes)
     local baseIndex = AS and AS.GetBaseIndex(player)
     if not baseIndex then return end
 
-    local portePlantable = false
-    for _, br in ipairs(portes) do
-        if br.rarete then
-            for _, r in ipairs(FPConfig.brPlantables) do
-                if br.rarete.nom == r then
-                    portePlantable = true
-                    break
-                end
-            end
-        end
-        if portePlantable then break end
+    -- Illuminer les pots si le joueur a des graines disponibles
+    local SI = getSeedInventory()
+    local hasSeed = false
+    if SI then
+        hasSeed, _ = SI.HasAny(data)
     end
 
     pcall(FlowerPotSystem.SetPotsIllumines,
-        player, baseIndex, portePlantable, data)
+        player, baseIndex, hasSeed, data)
 end
 
 -- ============================================================
@@ -756,47 +763,37 @@ function FlowerPotSystem.Planter(player, potIndex)
         return
     end
 
-    -- Trouver le meilleur BR plantable dans le carry
-    local CS = getCarry()
-    if not CS then return end
-    local portes = CS.GetPortes(player)
-
-    local brAPlanter = nil
-    local priorite   = { SECRET = 2, MYTHIC = 1 }
-
-    for _, br in ipairs(portes) do
-        if br.rarete then
-            local p = priorite[br.rarete.nom]
-            if p then
-                if not brAPlanter
-                    or p > (priorite[brAPlanter.rarete.nom] or 0) then
-                    brAPlanter = br
-                end
-            end
-        end
-    end
-
-    if not brAPlanter then
-        notifier(player, "ERROR",
-            "❌ No MYTHIC or SECRET in your carry!")
+    -- Utiliser une graine depuis l'inventaire (plus de BR depuis le carry)
+    local SI = getSeedInventory()
+    if not SI then
+        notifier(player, "ERROR", "❌ SeedInventory indisponible!")
         return
     end
 
-    -- Retirer le BR du carry
-    -- On utilise ViderCarry puis on remet les autres
-    local tous = CS.ViderCarry(player)
-    local rarete = brAPlanter.rarete.nom
-    local modeleDepose = nil
-    for _, e in ipairs(tous) do
-        if e.rarete and e.rarete.nom == rarete and not modeleDepose then
-            modeleDepose = e.modele  -- garder le premier du bon type
-        else
-            -- Remettre les autres dans le carry
-            if e.rarete then
-                pcall(CS.AjouterAuCarry, player, e.modele, e.rarete)
-            end
+    local hasSeed, bestRarity = SI.HasAny(data)
+    if not hasSeed then
+        notifier(player, "ERROR",
+            "❌ Aucune graine! Collecte des graines sur les arbres ou via le Daily Seed.")
+        -- Ouvrir menu daily seed en fallback
+        if OuvrirPot then
+            pcall(function()
+                OuvrirPot:FireClient(player, potIndex, "empty",
+                    data.dailySeed or {})
+            end)
         end
+        return
     end
+
+    -- Consommer la graine (SECRET prioritaire sur MYTHIC)
+    if not SI.Use(data, bestRarity) then
+        notifier(player, "ERROR", "❌ Erreur lors de la consommation de la graine!")
+        return
+    end
+
+    local rarete = bestRarity
+
+    -- Notifier le client du stock mis à jour
+    SI.NotifyClient(player, data)
 
     -- Planter
     potData.rarete       = rarete
@@ -808,17 +805,14 @@ function FlowerPotSystem.Planter(player, potIndex)
     local baseIndex = AS and AS.GetBaseIndex(player)
     if not baseIndex then
         notifier(player, "ERROR", "❌ No base assigned!")
+        -- Rembourser la graine consommée
+        local SI2 = getSeedInventory()
+        if SI2 then SI2.Add(data, rarete) end
         potData.rarete = nil
-        if modeleDepose then pcall(CS.AjouterAuCarry, player, modeleDepose, brAPlanter.rarete) end
         return
     end
 
-    -- Détruire le modèle porté
-    if modeleDepose then
-        pcall(function() modeleDepose:Destroy() end)
-    end
-
-    -- Animation transformation
+    -- Animation transformation (graine → pot)
     task.spawn(function()
         pcall(FlowerPotSystem.AnimerTransformation, baseIndex, potIndex, rarete)
     end)
@@ -871,8 +865,17 @@ function FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
 
             local duree = durees[stage] or 225
 
+            -- Reprendre depuis le temps restant sauvegardé si rejoin en cours de stage
+            local dureeEffective = duree
+            if stage == (potData.stage + 1) and (pot.tempsRestant or 0) > 0 and pot.tempsRestant < duree then
+                dureeEffective = pot.tempsRestant
+            end
+
+            -- Initialiser tempsRestant immédiatement (fix: timer visible dès le début)
+            pot.tempsRestant = dureeEffective
+
             -- Boucle seconde par seconde
-            for t = 1, duree do
+            for t = 1, dureeEffective do
                 if not player.Parent then aborted = true break end
 
                 local pd2 = GetData(player)
@@ -888,10 +891,10 @@ function FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
                     break
                 end
 
-                pot2.tempsRestant = duree - t
+                pot2.tempsRestant = dureeEffective - t
 
-                -- Mise à jour HUD et billboard toutes les 10s
-                if t % 10 == 0 then
+                -- Mise à jour billboard toutes les 5s (fix: was 10s — trop lent)
+                if t % 5 == 0 or t == 1 then
                     local bases = Workspace:FindFirstChild("Bases")
                     local base  = bases and bases:FindFirstChild(
                         "Base_" .. baseIndex)
@@ -907,10 +910,18 @@ function FlowerPotSystem.LancerCroissance(player, baseIndex, potIndex, data)
                                 .. pot2.stage .. "/4  ⏱ " .. t2)
                         end
                     end
+                end
+
+                -- Mise à jour HUD toutes les 10s (garde le rythme raisonnable)
+                if t % 10 == 0 then
                     if PotUpdate then
-                        pcall(function()
-                            PotUpdate:FireClient(player, potIndex, pot2)
-                        end)
+                        local pd3check = GetData(player)
+                        local pot3check = pd3check and pd3check.pots and pd3check.pots[potIndex]
+                        if pot3check then
+                            pcall(function()
+                                PotUpdate:FireClient(player, potIndex, pot3check)
+                            end)
+                        end
                     end
                 end
 
@@ -1033,78 +1044,46 @@ function FlowerPotSystem.Recolter(player, potIndex)
     local rarete  = potData.rarete
     local multVal = graineCfg.multiplicateur
 
-    -- Cloner depuis Brainrots existants avec effets Mutant
-    local brainrots = ServerStorage:FindFirstChild("Brainrots")
-    local dossier   = brainrots and brainrots:FindFirstChild(rarete)
-
+    -- Générer un BR Mutant élémentaire (COMMON/OG/RARE) via MutantGenerator
+    -- La graine MYTHIC/SECRET détermine les probabilités — jamais le BR final
+    local MG = getMutantGenerator()
     local CS = getCarry()
-    if CS and dossier then
-        local modeles = dossier:GetChildren()
-        if #modeles > 0 then
-            local clone = nil
-            pcall(function()
-                clone = modeles[math.random(1, #modeles)]:Clone()
-            end)
-            if clone then
-                -- Scale ×2
-                for _, part in ipairs(clone:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        pcall(function()
-                            part.Size       = part.Size * 2
-                            part.Anchored   = true
-                            part.CanCollide = false
-                        end)
-                    end
-                end
 
-                -- PointLight + particules couleur rareté
-                local rootPart = nil
-                if clone:IsA("Model") then
-                    rootPart = clone.PrimaryPart
-                            or clone:FindFirstChildWhichIsA("BasePart")
-                elseif clone:IsA("BasePart") then
-                    rootPart = clone
-                end
-                if rootPart then
-                    pcall(function()
-                        local light = Instance.new("PointLight", rootPart)
-                        light.Brightness = 5
-                        light.Range      = 20
-                        light.Color      = graineCfg.couleurStage4
+    if not MG then
+        warn("[FlowerPotSystem] MutantGenerator indisponible — harvest annulé")
+        return
+    end
 
-                        local particles = Instance.new("ParticleEmitter", rootPart)
-                        particles.Rate     = 20
-                        particles.Lifetime = NumberRange.new(0.5, 1.5)
-                        particles.Speed    = NumberRange.new(5, 10)
-                        particles.Color    = ColorSequence.new(
-                            graineCfg.couleurStage4)
-                    end)
-                end
+    if CS then
+        local clone, finalRarity, elementType = MG.Generate(rarete)
+        if clone then
+            local elemCfg = MG.GetElementConfig(elementType)
 
-                -- Tag Mutant pour IncomeSystem
-                local tag = Instance.new("StringValue")
-                tag.Name   = "MutantTag"
-                tag.Value  = tostring(multVal)
-                tag.Parent = clone
-                clone.Name = rarete .. "_MUTANT"
+            -- Tag Mutant pour IncomeSystem
+            local tag = Instance.new("StringValue")
+            tag.Name   = "MutantTag"
+            tag.Value  = tostring(multVal)
+            tag.Parent = clone
 
-                local rareteObj = {
-                    nom      = rarete,
-                    dossier  = rarete,
-                    isMutant = true,
-                    valeur   = multVal,
-                    couleur  = graineCfg.couleurStage4,
-                }
-                -- Ajouter le Mutant au carry (retourne false si carry plein)
-                local ok2, success = pcall(CS.AjouterAuCarry, player, clone, rareteObj)
-                if not ok2 or not success then
-                    -- Carry plein → ne pas réinitialiser le pot, joueur peut réessayer
-                    notifier(player, "WARNING",
-                        "🎒 Carry full! Deposit your Brain Rots first, then harvest.")
-                    pcall(function() clone:Destroy() end)
-                    return
-                end
+            local rareteObj = {
+                nom      = finalRarity,
+                dossier  = finalRarity,
+                isMutant = true,
+                valeur   = multVal,
+                couleur  = (elemCfg and elemCfg.couleur) or graineCfg.couleurStage4,
+            }
+
+            -- Ajouter le Mutant au carry (retourne false si carry plein)
+            local ok2, success = pcall(CS.AjouterAuCarry, player, clone, rareteObj)
+            if not ok2 or not success then
+                -- Carry plein → ne pas réinitialiser le pot, joueur réessaie
+                notifier(player, "WARNING",
+                    "🎒 Carry full! Deposit your Brain Rots first, then harvest.")
+                pcall(function() clone:Destroy() end)
+                return
             end
+        else
+            warn("[FlowerPotSystem] Génération mutant échouée pour graine " .. rarete)
         end
     end
 
@@ -1184,6 +1163,16 @@ function FlowerPotSystem.DebloquerPot(player, potIndex)
         local AS = getAssignation()
         local baseIndex = AS and AS.GetBaseIndex(player)
         if baseIndex then
+            -- Supprimer les visuels cadenas/prix placés dans Studio
+            local bases    = Workspace:FindFirstChild("Bases")
+            local base     = bases and bases:FindFirstChild("Base_" .. baseIndex)
+            local potModel = base and base:FindFirstChild("FlowerPot_" .. potIndex)
+            if potModel then
+                local lockIcon   = potModel:FindFirstChild("LockIcon")
+                local priceLabel = potModel:FindFirstChild("PriceLabel")
+                if lockIcon   then pcall(function() lockIcon:Destroy()   end) end
+                if priceLabel then pcall(function() priceLabel:Destroy() end) end
+            end
             pcall(FlowerPotSystem.ActualiserPot,
                 player, baseIndex, potIndex, data)
         end
@@ -1437,6 +1426,24 @@ function FlowerPotSystem.Init(player, baseIndex, playerData)
         }
     end
 
+    -- Supprimer LockIcon/PriceLabel des pots déjà débloqués (bug rejoin)
+    local bases = Workspace:FindFirstChild("Bases")
+    local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
+    if base then
+        for i = 1, 4 do
+            local pot = playerData.pots[i]
+            if pot and pot.debloque then
+                local potModel = base:FindFirstChild("FlowerPot_" .. i)
+                if potModel then
+                    local lockIcon   = potModel:FindFirstChild("LockIcon")
+                    local priceLabel = potModel:FindFirstChild("PriceLabel")
+                    if lockIcon   then pcall(function() lockIcon:Destroy()   end) end
+                    if priceLabel then pcall(function() priceLabel:Destroy() end) end
+                end
+            end
+        end
+    end
+
     -- Actualiser visuels de tous les pots
     for i = 1, 4 do
         pcall(FlowerPotSystem.ActualiserPot,
@@ -1446,7 +1453,7 @@ function FlowerPotSystem.Init(player, baseIndex, playerData)
     -- Reprendre croissances en cours
     for i = 1, 4 do
         local pot = playerData.pots[i]
-        if pot and pot.rarete and pot.stage > 0 and pot.stage < 4 then
+        if pot and pot.rarete and pot.stage < 4 then
             FlowerPotSystem.LancerCroissance(
                 player, baseIndex, i, playerData)
         end

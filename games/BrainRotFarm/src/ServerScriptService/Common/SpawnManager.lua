@@ -14,6 +14,21 @@ local Players        = game:GetService("Players")
 local ServerStorage  = game:GetService("ServerStorage")
 local Workspace      = game:GetService("Workspace")
 
+-- Chargement différé FilterManager (système de filtres centralisé)
+local _FilterManager = nil
+local function getFilterManager()
+    if not _FilterManager then
+        local ok, m = pcall(function()
+            return require(game:GetService("ReplicatedStorage")
+                :WaitForChild("SharedLib")
+                :WaitForChild("BRFilterSystem")
+                :WaitForChild("FilterManager"))
+        end)
+        if ok then _FilterManager = m end
+    end
+    return _FilterManager
+end
+
 -- ============================================================
 -- Config — lue depuis GameConfig
 -- ============================================================
@@ -192,38 +207,21 @@ local function tweenTransparence(parts, cible, duree, extraProps)
 end
 
 -- ─────────────────────────────────────────────────────────────
--- BILLBOARD — couleurs et utilitaires
+-- BILLBOARD — via FilterManager (système de filtres centralisé)
 -- ─────────────────────────────────────────────────────────────
 
+-- Couleurs par rareté (conservées pour animations spéciales GOD/SECRET)
 local RARETE_COULEURS_BB = {
-	COMMON      = Color3.fromRGB(200, 200, 200),
-	OG          = Color3.fromRGB(100, 220, 255),
-	RARE        = Color3.fromRGB(0,   120, 255),
-	EPIC        = Color3.fromRGB(150, 0,   255),
-	LEGENDARY   = Color3.fromRGB(255, 200, 0  ),
-	MYTHIC      = Color3.fromRGB(255, 50,  50 ),
-	GOD         = Color3.fromRGB(255, 140, 0  ),
-	SECRET      = Color3.fromRGB(255, 255, 255),
-	BRAINROT_GOD = Color3.fromRGB(255, 140, 0 ),
+	COMMON       = Color3.fromRGB(200, 200, 200),
+	OG           = Color3.fromRGB(100, 220, 255),
+	RARE         = Color3.fromRGB(0,   120, 255),
+	EPIC         = Color3.fromRGB(150, 0,   255),
+	LEGENDARY    = Color3.fromRGB(255, 200, 0  ),
+	MYTHIC       = Color3.fromRGB(148, 0,   211),
+	GOD          = Color3.fromRGB(255, 140, 0  ),
+	SECRET       = Color3.fromRGB(255, 255, 255),
+	BRAINROT_GOD = Color3.fromRGB(255, 140, 0  ),
 }
-
-local BILLBOARD_NAME = "_BRBillboard"
-
-local function makeBBLabel(parent, name, text, posY, color)
-	local label = Instance.new("TextLabel")
-	label.Name                  = name
-	label.Text                  = text
-	label.Size                  = UDim2.new(1, 0, 0.25, 0)
-	label.Position              = UDim2.new(0, 0, posY, 0)
-	label.TextColor3            = color or Color3.new(1, 1, 1)
-	label.TextScaled            = true
-	label.Font                  = Enum.Font.GothamBold
-	label.BackgroundTransparency = 1
-	label.TextStrokeTransparency = 0.4
-	label.TextStrokeColor3      = Color3.new(0, 0, 0)
-	label.Parent                = parent
-	return label
-end
 
 local function formatTimer(t)
 	t = math.max(0, math.floor(t))
@@ -233,61 +231,65 @@ local function formatTimer(t)
 	else return ("%ds"):format(s) end
 end
 
--- Ajouter le BillboardGui sur la racine du modèle
--- 4 lignes : Nom / Rareté (colorée + animée) / CPS / Timer
-local function ajouterBillboard(racine, nomRarete, nomModele, dureeInitiale)
-	-- Supprimer les anciens billboards (évite doublons)
-	for _, child in ipairs(racine:GetChildren()) do
-		if child:IsA("BillboardGui") then child:Destroy() end
-	end
-
-	local couleur = RARETE_COULEURS_BB[nomRarete] or Color3.new(1, 1, 1)
+-- Applique le Billboard via FilterManager + animations spéciales (GOD/SECRET)
+-- brModel = Model complet (clone), racine = PrimaryPart pour animations post-hoc
+local function ajouterBillboard(clone, racine, nomRarete, nomModele, dureeInitiale)
 	dureeInitiale = dureeInitiale or CONFIG.DUREE_DESPAWN
+	local couleur = RARETE_COULEURS_BB[nomRarete] or Color3.new(1, 1, 1)
 
-	local bb = Instance.new("BillboardGui")
-	bb.Name         = BILLBOARD_NAME
-	bb.Size         = UDim2.new(5, 0, 2.5, 0)
-	bb.StudsOffset  = Vector3.new(0, 6, 0)
-	bb.AlwaysOnTop  = false
-	bb.ResetOnSpawn = false
-	bb.Parent       = racine
+	-- Texte combiné : nom modele + rareté + timer initial
+	local texte = string.format("%s  ✦ %s ✦  ⏱ %s",
+		nomModele, nomRarete, formatTimer(dureeInitiale))
 
-	makeBBLabel(bb, "LNom",    nomModele,                        0,    Color3.new(1, 1, 1))
-	local lRarete = makeBBLabel(bb, "LRarete", "✦ "..nomRarete.." ✦", 0.25, couleur)
-	makeBBLabel(bb, "LCPS",   "⚡ 0/s",                         0.50, Color3.fromRGB(255, 215, 0))
-	makeBBLabel(bb, "LTimer", "⏱ "..formatTimer(dureeInitiale), 0.75, Color3.fromRGB(220, 60, 60))
-
-	-- Animation arc-en-ciel pour GOD / BRAINROT_GOD
-	if nomRarete == "GOD" or nomRarete == "BRAINROT_GOD" then
-		local hue = 0
-		local conn
-		conn = RunService.Heartbeat:Connect(function(dt)
-			if not lRarete or not lRarete.Parent then conn:Disconnect(); return end
-			hue = (hue + dt * 0.5) % 1
-			lRarete.TextColor3 = Color3.fromHSV(hue, 1, 1)
-		end)
-	-- Animation clignotante blanc/noir pour SECRET
-	elseif nomRarete == "SECRET" then
-		lRarete.TextColor3 = Color3.fromRGB(255, 255, 255)
-		local ti = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, true)
-		TweenService:Create(lRarete, ti, { TextColor3 = Color3.fromRGB(20, 20, 20) }):Play()
+	-- Appliquer via FilterManager (ZERO instance directe)
+	local FM = getFilterManager()
+	if FM then
+		FM.Apply(clone, {
+			{Name = "Billboard", Params = {
+				Text    = texte,
+				Color   = couleur,
+				OffsetY = 6,
+				Taille  = UDim2.new(5, 0, 1.2, 0),
+			}}
+		})
 	end
 
-	return bb
+	-- Animations spéciales sur le label "Label" du BRBillboard
+	local bb     = racine:FindFirstChild("BRBillboard")
+	local lLabel = bb and bb:FindFirstChild("Label")
+	if lLabel then
+		if nomRarete == "GOD" or nomRarete == "BRAINROT_GOD" then
+			-- Arc-en-ciel
+			local hue = 0
+			local conn
+			conn = RunService.Heartbeat:Connect(function(dt)
+				if not lLabel or not lLabel.Parent then conn:Disconnect(); return end
+				hue = (hue + dt * 0.5) % 1
+				lLabel.TextColor3 = Color3.fromHSV(hue, 1, 1)
+			end)
+		elseif nomRarete == "SECRET" then
+			-- Clignotement blanc/noir
+			local ti = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, true)
+			TweenService:Create(lLabel, ti, { TextColor3 = Color3.fromRGB(20, 20, 20) }):Play()
+		end
+	end
 end
 
--- Countdown visible dans le label LTimer du billboard
-local function lancerCountdownBillboard(racine, duree)
+-- Countdown mis à jour dans le label "BRBillboard/Label"
+local function lancerCountdownBillboard(racine, duree, nomRarete, couleur)
 	task.spawn(function()
 		for t = duree, 0, -1 do
 			if not racine or not racine.Parent then return end
-			local bb = racine:FindFirstChild(BILLBOARD_NAME)
+			local bb = racine:FindFirstChild("BRBillboard")
 			if not bb then return end
-			local label = bb:FindFirstChild("LTimer")
+			local label = bb:FindFirstChild("Label")
 			if not label then return end
-			label.Text = "⏱ " .. formatTimer(t)
+			-- Mettre à jour le texte (conserver nom modele serait complexe — on affiche rareté + timer)
+			label.Text = string.format("✦ %s ✦  ⏱ %s", nomRarete, formatTimer(t))
 			if t <= 10 then
 				label.TextColor3 = Color3.fromRGB(255, 30, 30)
+			elseif t > 10 and nomRarete ~= "SECRET" and nomRarete ~= "GOD" and nomRarete ~= "BRAINROT_GOD" then
+				label.TextColor3 = couleur
 			end
 			if t > 0 then task.wait(1) end
 		end
@@ -476,8 +478,9 @@ local function spawnerUnBrainRot(baseIndex)
 		-- Billboard affiché uniquement après que le BR soit sorti de terre
 		if clone and clone.Parent then
 			local dureeRestante = math.floor(CONFIG.DUREE_DESPAWN - CONFIG.DUREE_POUSSE)
-			pcall(ajouterBillboard, racine, rarete.nom, modeleSource.Name, dureeRestante)
-			pcall(lancerCountdownBillboard, racine, dureeRestante)
+			local couleur = RARETE_COULEURS_BB[rarete.nom] or Color3.new(1, 1, 1)
+			pcall(ajouterBillboard, clone, racine, rarete.nom, modeleSource.Name, dureeRestante)
+			pcall(lancerCountdownBillboard, racine, dureeRestante, rarete.nom, couleur)
 		end
 
 		-- Ancrer les parts pour qu'elles ne tombent pas
@@ -749,9 +752,10 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
         end
     end)
 
-    -- Billboard
-    pcall(ajouterBillboard, racine, rareteNom, source.Name, CONFIG.DUREE_DESPAWN)
-    pcall(lancerCountdownBillboard, racine, CONFIG.DUREE_DESPAWN)
+    -- Billboard via FilterManager
+    local couleurMeteor = RARETE_COULEURS_BB[rareteNom] or Color3.new(1, 1, 1)
+    pcall(ajouterBillboard, clone, racine, rareteNom, source.Name, CONFIG.DUREE_DESPAWN)
+    pcall(lancerCountdownBillboard, racine, CONFIG.DUREE_DESPAWN, rareteNom, couleurMeteor)
 
     -- ProximityPrompt via hook OnBRSpawned (baseIndex = nil → tout le monde peut capturer)
     local rareteObj = { nom = rareteNom, dossier = rareteNom }

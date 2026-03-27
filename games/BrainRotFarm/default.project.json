@@ -2,12 +2,17 @@
     "name": "Brain Rot Farm",
     "tree": {
         "$className": "DataModel",
+        "ServerStorage": {
+            "$className": "ServerStorage",
+            "Modules": { "$path": "src/ServerStorage/Modules" }
+        },
         "ReplicatedStorage": {
             "$className": "ReplicatedStorage",
             "SharedLib": {
                 "$className": "Folder",
                 "Server": { "$path": "../shared-lib/src/server" },
-                "Shared": { "$path": "../shared-lib/src/shared" }
+                "Shared": { "$path": "../shared-lib/src/shared" },
+                "BRFilterSystem": { "$path": "../shared-lib/src/BRFilterSystem" }
             },
             "Specialized": { "$path": "src/ReplicatedStorage/Specialized" }
         },
