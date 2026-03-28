@@ -1,5 +1,7 @@
 -- StarterPlayerScripts/BrainrotCarryUI.client.lua
--- UI : jauge de portage Brainrots + menu d'amélioration
+-- DobiGames shared-lib — UI : jauge de portage Brainrots
+-- Compatible CarrySystem (Tool/Backpack) et PickupSystem.
+-- Écoute BrainrotCarryUpdate { carried, capacity } et BrainrotCarryError { message }.
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,46 +10,42 @@ local UserInputService  = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
--- ─────────────────────────────────────────────────────────────
--- RemoteEvents (créés par BrainrotPickupModule côté serveur)
--- ─────────────────────────────────────────────────────────────
-
 local function WaitRemote(name)
-    return ReplicatedStorage:WaitForChild(name, 10)
+	return ReplicatedStorage:WaitForChild(name, 15)
 end
 
 local CarryUpdateEvent  = WaitRemote("BrainrotCarryUpdate")
 local CarryErrorEvent   = WaitRemote("BrainrotCarryError")
-local UpgradeCarryEvent = WaitRemote("BrainrotUpgradeCarry")
+local UpgradeCarryEvent = ReplicatedStorage:FindFirstChild("BrainrotUpgradeCarry")
 
 -- ─────────────────────────────────────────────────────────────
 -- ÉCRAN
 -- ─────────────────────────────────────────────────────────────
 
 local gui = Instance.new("ScreenGui")
-gui.Name         = "BrainrotCarryGui"
-gui.ResetOnSpawn = false
+gui.Name           = "BrainrotCarryGui"
+gui.ResetOnSpawn   = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent       = player.PlayerGui
+gui.Parent         = player.PlayerGui
 
 -- ─────────────────────────────────────────────────────────────
 -- BOUTON PRINCIPAL (coin bas droite)
 -- ─────────────────────────────────────────────────────────────
 
 local mainBtn = Instance.new("TextButton")
-mainBtn.Name                  = "CarryButton"
-mainBtn.Size                  = UDim2.new(0, 160, 0, 48)
-mainBtn.Position              = UDim2.new(1, -170, 1, -220)
-mainBtn.AnchorPoint           = Vector2.new(0, 0)
-mainBtn.BackgroundColor3      = Color3.fromRGB(20, 20, 20)
+mainBtn.Name                   = "CarryButton"
+mainBtn.Size                   = UDim2.new(0, 160, 0, 48)
+mainBtn.Position               = UDim2.new(1, -170, 1, -220)
+mainBtn.AnchorPoint            = Vector2.new(0, 0)
+mainBtn.BackgroundColor3       = Color3.fromRGB(20, 20, 20)
 mainBtn.BackgroundTransparency = 0.2
-mainBtn.BorderSizePixel       = 0
-mainBtn.Text                  = "Carry 0/1"
-mainBtn.TextColor3            = Color3.fromRGB(255, 255, 255)
-mainBtn.TextScaled            = true
-mainBtn.TextWrapped           = false
-mainBtn.Font                  = Enum.Font.GothamBold
-mainBtn.Parent                = gui
+mainBtn.BorderSizePixel        = 0
+mainBtn.Text                   = "Carry 0/1"
+mainBtn.TextColor3             = Color3.fromRGB(255, 255, 255)
+mainBtn.TextScaled             = true
+mainBtn.TextWrapped            = false
+mainBtn.Font                   = Enum.Font.GothamBold
+mainBtn.Parent                 = gui
 
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 10)
@@ -71,29 +69,26 @@ local panelCorner = Instance.new("UICorner")
 panelCorner.CornerRadius = UDim.new(0, 12)
 panelCorner.Parent       = panel
 
--- Titre du panneau
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size                  = UDim2.new(1, 0, 0, 32)
-titleLabel.Position              = UDim2.new(0, 0, 0, 8)
+titleLabel.Size                   = UDim2.new(1, 0, 0, 32)
+titleLabel.Position               = UDim2.new(0, 0, 0, 8)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text                  = "Carry Upgrade"
-titleLabel.TextColor3            = Color3.fromRGB(255, 220, 80)
-titleLabel.TextScaled            = true
-titleLabel.Font                  = Enum.Font.GothamBold
-titleLabel.Parent                = panel
+titleLabel.Text                   = "Carry Upgrade"
+titleLabel.TextColor3             = Color3.fromRGB(255, 220, 80)
+titleLabel.TextScaled             = true
+titleLabel.Font                   = Enum.Font.GothamBold
+titleLabel.Parent                 = panel
 
--- Info capacité actuelle
 local infoLabel = Instance.new("TextLabel")
-infoLabel.Size                  = UDim2.new(1, -20, 0, 24)
-infoLabel.Position              = UDim2.new(0, 10, 0, 42)
+infoLabel.Size                   = UDim2.new(1, -20, 0, 24)
+infoLabel.Position               = UDim2.new(0, 10, 0, 42)
 infoLabel.BackgroundTransparency = 1
-infoLabel.Text                  = "Capacity : 1"
-infoLabel.TextColor3            = Color3.fromRGB(200, 200, 200)
-infoLabel.TextScaled            = true
-infoLabel.Font                  = Enum.Font.Gotham
-infoLabel.Parent                = panel
+infoLabel.Text                   = "Capacity : 1"
+infoLabel.TextColor3             = Color3.fromRGB(200, 200, 200)
+infoLabel.TextScaled             = true
+infoLabel.Font                   = Enum.Font.Gotham
+infoLabel.Parent                 = panel
 
--- Bouton Upgrade
 local upgradeBtn = Instance.new("TextButton")
 upgradeBtn.Size                  = UDim2.new(1, -20, 0, 36)
 upgradeBtn.Position              = UDim2.new(0, 10, 1, -46)
@@ -114,18 +109,18 @@ upgradeBtnCorner.Parent       = upgradeBtn
 -- ─────────────────────────────────────────────────────────────
 
 local errorLabel = Instance.new("TextLabel")
-errorLabel.Name                  = "ErrorLabel"
-errorLabel.Size                  = UDim2.new(0, 380, 0, 44)
-errorLabel.Position              = UDim2.new(0.5, -190, 0, 80)
-errorLabel.BackgroundColor3      = Color3.fromRGB(180, 30, 30)
+errorLabel.Name                   = "ErrorLabel"
+errorLabel.Size                   = UDim2.new(0, 380, 0, 44)
+errorLabel.Position               = UDim2.new(0.5, -190, 0, 80)
+errorLabel.BackgroundColor3       = Color3.fromRGB(180, 30, 30)
 errorLabel.BackgroundTransparency = 0.15
-errorLabel.BorderSizePixel       = 0
-errorLabel.Text                  = ""
-errorLabel.TextColor3            = Color3.fromRGB(255, 255, 255)
-errorLabel.TextScaled            = true
-errorLabel.Font                  = Enum.Font.GothamBold
-errorLabel.Visible               = false
-errorLabel.Parent                = gui
+errorLabel.BorderSizePixel        = 0
+errorLabel.Text                   = ""
+errorLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
+errorLabel.TextScaled             = true
+errorLabel.Font                   = Enum.Font.GothamBold
+errorLabel.Visible                = false
+errorLabel.Parent                 = gui
 
 local errorCorner = Instance.new("UICorner")
 errorCorner.CornerRadius = UDim.new(0, 10)
@@ -139,49 +134,46 @@ local currentCarried  = 0
 local currentCapacity = 1
 local menuOpen        = false
 local errorTween      = nil
-local errorTweenConn  = nil   -- connexion Completed de l'errorTween courant
+local errorTweenConn  = nil
 
 -- ─────────────────────────────────────────────────────────────
 -- HELPERS
 -- ─────────────────────────────────────────────────────────────
 
 local function RefreshUI()
-    mainBtn.Text = ("Carry %d/%d"):format(currentCarried, currentCapacity)
-    infoLabel.Text = ("Capacity : %d"):format(currentCapacity)
+	mainBtn.Text      = ("Carry %d/%d"):format(currentCarried, currentCapacity)
+	infoLabel.Text    = ("Capacity : %d"):format(currentCapacity)
 
-    -- Couleur du bouton principal : vert si place libre, rouge si plein
-    if currentCarried >= currentCapacity then
-        mainBtn.BackgroundColor3 = Color3.fromRGB(120, 20, 20)
-    else
-        mainBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    end
+	if currentCarried >= currentCapacity then
+		mainBtn.BackgroundColor3 = Color3.fromRGB(120, 20, 20)
+	else
+		mainBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	end
 end
 
 local function ShowError(msg)
-    -- Annuler l'ancien tween et déconnecter son handler Completed
-    -- (évite qu'un Completed différé cache le nouveau message)
-    if errorTween     then errorTween:Cancel() end
-    if errorTweenConn then errorTweenConn:Disconnect(); errorTweenConn = nil end
+	if errorTween     then errorTween:Cancel() end
+	if errorTweenConn then errorTweenConn:Disconnect(); errorTweenConn = nil end
 
-    errorLabel.Text                   = msg
-    errorLabel.Visible                = true
-    errorLabel.BackgroundTransparency = 0.15
-    errorLabel.TextTransparency       = 0
+	errorLabel.Text                   = msg
+	errorLabel.Visible                = true
+	errorLabel.BackgroundTransparency = 0.15
+	errorLabel.TextTransparency       = 0
 
-    errorTween = TweenService:Create(errorLabel,
-        TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 2.2),
-        { BackgroundTransparency = 1, TextTransparency = 1 }
-    )
-    errorTween:Play()
-    errorTweenConn = errorTween.Completed:Connect(function()
-        errorLabel.Visible = false
-        errorTweenConn     = nil
-    end)
+	errorTween = TweenService:Create(errorLabel,
+		TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 2.2),
+		{ BackgroundTransparency = 1, TextTransparency = 1 }
+	)
+	errorTween:Play()
+	errorTweenConn = errorTween.Completed:Connect(function()
+		errorLabel.Visible = false
+		errorTweenConn     = nil
+	end)
 end
 
 local function SetMenuOpen(open)
-    menuOpen = open
-    panel.Visible = open
+	menuOpen      = open
+	panel.Visible = open
 end
 
 -- ─────────────────────────────────────────────────────────────
@@ -189,21 +181,21 @@ end
 -- ─────────────────────────────────────────────────────────────
 
 mainBtn.MouseButton1Click:Connect(function()
-    SetMenuOpen(not menuOpen)
+	SetMenuOpen(not menuOpen)
 end)
 
 upgradeBtn.MouseButton1Click:Connect(function()
-    UpgradeCarryEvent:FireServer()
+	-- Envoyer uniquement si l'event existe (PickupSystem ou CarrySystem le gère)
+	if UpgradeCarryEvent then
+		UpgradeCarryEvent:FireServer()
+	end
 end)
 
--- Fermer le menu en cliquant en dehors (clic global, hors panel/bouton)
 UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if menuOpen then
-            SetMenuOpen(false)
-        end
-    end
+	if processed then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if menuOpen then SetMenuOpen(false) end
+	end
 end)
 
 -- ─────────────────────────────────────────────────────────────
@@ -211,13 +203,13 @@ end)
 -- ─────────────────────────────────────────────────────────────
 
 CarryUpdateEvent.OnClientEvent:Connect(function(carried, capacity)
-    currentCarried  = carried
-    currentCapacity = capacity
-    RefreshUI()
+	currentCarried  = carried
+	currentCapacity = capacity
+	RefreshUI()
 end)
 
 CarryErrorEvent.OnClientEvent:Connect(function(msg)
-    ShowError(msg)
+	ShowError(msg)
 end)
 
 -- ─────────────────────────────────────────────────────────────

@@ -1,8 +1,7 @@
 -- ServerScriptService/CarrySystem.lua
--- BrainRotFarm — Transport + Capture des Brain Rots
--- ProximityPrompt pour tous les BR
--- ProximityPrompt avec HoldDuration progressif pour EPIC → BRAINROT_GOD
--- ProximityPrompt instantané pour dépôt à la base
+-- DobiGames shared-lib — Transport via Roblox Backpack (Tools)
+-- Remplace le système Motor6D flottant par des Tools dans le Backpack du joueur.
+-- ProximityPrompt pour capture (BrainRotFarm) — voir aussi PickupSystem pour LavaTower.
 
 local CarrySystem = {}
 
@@ -44,36 +43,29 @@ local CARRY_CONFIG = {
 		[2] = CARRY_PRICES[2],
 		[3] = CARRY_PRICES[3],
 	},
-	-- Offsets {x, y, z} par slot — spirale étagée autour du joueur
-	slotOffsets = {
-		[1]  = { x =  0.0, y =  5.5, z =  0.0 },
-		[2]  = { x =  0.0, y =  7.0, z =  3.5 },
-		[3]  = { x =  0.0, y =  7.0, z = -3.5 },
-		[4]  = { x =  3.5, y =  8.5, z =  0.0 },
-		[5]  = { x = -3.5, y =  8.5, z =  0.0 },
-		[6]  = { x =  3.0, y = 10.5, z =  3.0 },
-		[7]  = { x = -3.0, y = 10.5, z =  3.0 },
-		[8]  = { x =  0.0, y = 12.0, z =  0.0 },
-		[9]  = { x =  3.0, y = 13.5, z = -3.0 },
-		[10] = { x = -3.0, y = 13.5, z = -3.0 },
-		[11] = { x =  3.5, y = 15.0, z =  0.0 },
-		[12] = { x = -3.5, y = 15.0, z =  0.0 },
-		[13] = { x =  0.0, y = 16.5, z =  3.5 },
-		[14] = { x =  0.0, y = 16.5, z = -3.5 },
-		[15] = { x =  0.0, y = 18.5, z =  0.0 },
-	},
 	rayonDrop         = 3,
 	dureeDropSecondes = 15,
-	bobbingAmplitude  = 0.3,
-	bobbingVitesse    = 1.0,
 	sonCollecte       = 0,
 	depotMaxDistance  = 8,
+}
+
+-- Couleurs du handle Tool par rareté (handle Transparency=1, valeur cosmétique uniquement)
+local RARETE_COULEURS = {
+	COMMON       = Color3.fromRGB(200, 200, 200),
+	RARE         = Color3.fromRGB(0,   120, 255),
+	EPIC         = Color3.fromRGB(150,   0, 255),
+	LEGENDARY    = Color3.fromRGB(255, 200,   0),
+	MYTHIC       = Color3.fromRGB(255,  50,  50),
+	GOD          = Color3.fromRGB(255, 140,   0),
+	SECRET       = Color3.fromRGB(255, 255, 255),
+	OG           = Color3.fromRGB(100, 220, 255),
+	BRAINROT_GOD = Color3.fromRGB(255,  80, 200),
 }
 
 -- ============================================================
 -- État interne par joueur
 -- ============================================================
--- { portes, niveauCarry, hasProtection, depotPrompts = {touchPart→prompt} }
+-- portes = { { rarete = rareteObj, toolRef = Tool } }
 local donneesJoueurs = {}
 -- Bonus de slots carry par joueur (shopUpgrade Carry)
 local carryBonuses   = {}
@@ -90,7 +82,6 @@ local BRAINROTS_FOLDER = nil
 local function obtenirRacine(instance)
 	if instance:IsA("BasePart") then return instance end
 	if instance.PrimaryPart then return instance.PrimaryPart end
-	-- Fallback : part la plus grande par volume (évite les hitbox invisibles)
 	local bestPart, bestVol = nil, 0
 	for _, v in ipairs(instance:GetDescendants()) do
 		if v:IsA("BasePart") then
@@ -102,15 +93,6 @@ local function obtenirRacine(instance)
 		end
 	end
 	return bestPart
-end
-
-local function obtenirBaseParts(instance)
-	local parts = {}
-	if instance:IsA("BasePart") then table.insert(parts, instance) end
-	for _, v in ipairs(instance:GetDescendants()) do
-		if v:IsA("BasePart") then table.insert(parts, v) end
-	end
-	return parts
 end
 
 local function choisirModele(nomDossier)
@@ -129,10 +111,17 @@ local function envoyerCarryUpdate(player)
 	if not CarryUpdate then return end
 	local data = donneesJoueurs[player.UserId]
 	if not data then return end
-	local max = CARRY_CONFIG.niveaux[data.niveauCarry] or 1
+	local max = CarrySystem.GetCapaciteMax(player)
 	pcall(function()
 		CarryUpdate:FireClient(player, { portes = #data.portes, max = max })
 	end)
+	-- Compatibilité BrainrotCarryUI (LavaTower)
+	local brEvent = ReplicatedStorage:FindFirstChild("BrainrotCarryUpdate")
+	if brEvent then
+		pcall(function()
+			brEvent:FireClient(player, #data.portes, max)
+		end)
+	end
 	if CarrySystem.OnCarryChange then
 		local portes = data and data.portes or {}
 		pcall(CarrySystem.OnCarryChange, player, portes)
@@ -185,96 +174,152 @@ local function calculerCoinsPortes(data)
 end
 
 -- ============================================================
--- Attachement visuel (Motor6D + bobbing)
+-- Gestion Tools (remplace Motor6D)
 -- ============================================================
 
-local function attacherModele(player, modele, slotIndex)
-	local char = player.Character
-	if not char then modele:Destroy() return nil end
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then modele:Destroy() return nil end
+-- Crée un Tool Roblox avec le visuel du BR soudé à un Handle invisible,
+-- puis l'ajoute au Backpack du joueur.
+-- Retourne le Tool créé, ou nil en cas d'échec.
+local function creerTool(player, clone, rarete)
+	local nomRarete = rarete and rarete.nom or "COMMON"
+	local couleur   = RARETE_COULEURS[nomRarete] or Color3.fromRGB(200, 200, 200)
+	local nomBR     = (clone and clone.Name) or nomRarete
 
-	local racine = obtenirRacine(modele)
-	if not racine then modele:Destroy() return nil end
-
-	local parts = obtenirBaseParts(modele)
-	for _, part in ipairs(parts) do
-		part.CanCollide = false
-		part.Anchored   = false
+	local tool = Instance.new("Tool")
+	tool.Name           = nomBR
+	tool.ToolTip        = "[" .. nomRarete .. "] " .. nomBR
+	tool.CanBeDropped   = false
+	tool.RequiresHandle = true
+	tool:SetAttribute("Rarete",       nomRarete)
+	tool:SetAttribute("BrainrotName", nomBR)
+	if rarete and rarete.isMutant then
+		tool:SetAttribute("IsMutant", true)
 	end
-	modele.Parent = Workspace
 
-	local off  = CARRY_CONFIG.slotOffsets[slotIndex]
-	           or { x = 0, y = 5 + (slotIndex - 1) * 2, z = 0 }
-	local rotY = math.random() * math.pi * 2
+	-- Handle invisible — jamais lâché (CanBeDropped = false)
+	local handle = Instance.new("Part")
+	handle.Name         = "Handle"
+	handle.Shape        = Enum.PartType.Ball
+	handle.Size         = Vector3.new(1, 1, 1)
+	handle.Color        = couleur
+	handle.Material     = Enum.Material.Neon
+	handle.Transparency = 1
+	handle.Anchored     = false
+	handle.CanCollide   = false
+	handle.Parent       = tool
 
-	local motor = nil
-	local ok = pcall(function()
-		motor        = Instance.new("Motor6D")
-		motor.Name   = "CarryMotor_" .. slotIndex
-		motor.Part0  = hrp
-		motor.Part1  = racine
-		motor.C0     = CFrame.new(off.x, off.y, off.z) * CFrame.Angles(0, rotY, 0)
-		motor.C1     = CFrame.new()
-		motor.Parent = hrp
-	end)
-	if not ok or not motor then
-		pcall(function() modele:Destroy() end)
+	-- Visuel soudé au Handle
+	if clone then
+		-- Nettoyer billboards/prompts résiduels du monde
+		for _, desc in ipairs(clone:GetDescendants()) do
+			if desc:IsA("BillboardGui") or desc:IsA("ProximityPrompt") then
+				pcall(function() desc:Destroy() end)
+			end
+		end
+
+		-- Centrer le visuel à l'origine avant de souder
+		local ok = pcall(function() clone:PivotTo(CFrame.new(0, 0, 0)) end)
+		if ok then
+			for _, part in ipairs(clone:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.Anchored   = false
+					part.CanCollide = false
+					local wc  = Instance.new("WeldConstraint")
+					wc.Part0  = handle
+					wc.Part1  = part
+					wc.Parent = handle
+				end
+			end
+			clone.Parent = tool
+		else
+			warn("[CarrySystem] PivotTo échoué pour " .. nomBR .. " — Tool sans visuel")
+		end
+	end
+
+	-- Ajouter dans le Backpack
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then
+		pcall(function() tool:Destroy() end)
 		return nil
 	end
-
-	-- Bobbing via loop Motor6D.C0
-	local bobbingThread = task.spawn(function()
-		local t = 0
-		while motor and motor.Parent do
-			t = t + task.wait(0.03)
-			local bob = math.sin(t * math.pi * 2 * CARRY_CONFIG.bobbingVitesse) * CARRY_CONFIG.bobbingAmplitude
-			pcall(function()
-				motor.C0 = CFrame.new(off.x, off.y + bob, off.z) * CFrame.Angles(0, rotY, 0)
-			end)
-		end
-	end)
-
-	return {
-		modele        = modele,
-		racine        = racine,
-		motor         = motor,
-		bobbingThread = bobbingThread,
-		off           = off,
-		rotY          = rotY,
-	}
+	tool.Parent = backpack
+	return tool
 end
+
+-- Extrait le visuel du Tool (Model ou BasePart non-Handle) vers Workspace,
+-- supprime les WeldConstraints, puis détruit le Tool.
+-- Retourne le modèle extrait ou nil.
+local function extraireVisuel(tool)
+	if not tool or not tool.Parent then return nil end
+
+	local visuel = nil
+	for _, child in ipairs(tool:GetChildren()) do
+		if (child:IsA("Model") or child:IsA("BasePart")) and child.Name ~= "Handle" then
+			visuel = child
+			break
+		end
+	end
+
+	if visuel then
+		-- Supprimer les welds du Handle
+		local handle = tool:FindFirstChild("Handle")
+		if handle then
+			for _, wc in ipairs(handle:GetChildren()) do
+				if wc:IsA("WeldConstraint") then
+					pcall(function() wc:Destroy() end)
+				end
+			end
+		end
+		-- Libérer les parts
+		for _, v in ipairs(visuel:GetDescendants()) do
+			if v:IsA("BasePart") then
+				pcall(function()
+					v.Anchored   = false
+					v.CanCollide = false
+				end)
+			end
+		end
+		visuel.Parent = Workspace
+	end
+
+	pcall(function() tool:Destroy() end)
+	return visuel
+end
+
+-- ============================================================
+-- Message sac plein
+-- ============================================================
 
 local function messageSacPlein(player, pData)
 	local niveau    = pData and pData.niveauCarry or 0
 	local max       = CARRY_CONFIG.niveaux[niveau] or 1
 	local niveauMax = CARRY_CONFIG.niveaux[niveau + 1] == nil
 
+	-- Envoyer via BrainrotCarryError si disponible (BrainrotCarryUI)
+	local brErrEvent = ReplicatedStorage:FindFirstChild("BrainrotCarryError")
+
+	local msg
 	if niveauMax then
-		notifierJoueur(player, "INFO",
-			"🎒 Carry full! (" .. max .. "/" .. max .. ") — Drop your Brain Rots at the base first.")
+		msg = "🎒 Carry full! (" .. max .. "/" .. max .. ") — Deposit your Brain Rots first."
 	else
 		local prochainMax = CARRY_CONFIG.niveaux[niveau + 1]
 		local prix        = CARRY_CONFIG.prixUpgrade[niveau + 1] or 0
-		notifierJoueur(player, "INFO",
-			"🎒 Carry full! (" .. max .. "/" .. max .. ") — "
-			.. "💡 Upgrade your carry capacity to " .. prochainMax .. " slots for "
-			.. prix .. " coins at the Shop!")
+		msg = "🎒 Carry full! (" .. max .. "/" .. max .. ") — "
+			.. "💡 Upgrade carry to " .. prochainMax .. " slots for " .. prix .. " coins!"
+	end
+
+	if brErrEvent then
+		pcall(function() brErrEvent:FireClient(player, msg) end)
+	else
+		notifierJoueur(player, "INFO", msg)
 	end
 end
 
-local function detacherModele(entree)
-	if entree.bobbingThread then
-		pcall(function() task.cancel(entree.bobbingThread) end)
-		entree.bobbingThread = nil
-	end
-	if entree.motor and entree.motor.Parent then
-		pcall(function() entree.motor:Destroy() end)
-		entree.motor = nil
-	end
-end
+-- ============================================================
+-- Logique commune de ramassage
+-- ============================================================
 
--- Logique commune : utilise modeleExistant s'il est fourni, sinon clone depuis ServerStorage
+-- Utilise modeleExistant s'il est fourni, sinon clone depuis ServerStorage
 local function effectuerRamassage(player, rarete, modeleExistant)
 	local data = donneesJoueurs[player.UserId]
 	if not data then return false end
@@ -288,14 +333,6 @@ local function effectuerRamassage(player, rarete, modeleExistant)
 	local clone
 	if modeleExistant and modeleExistant.Parent then
 		clone = modeleExistant
-		-- Supprimer le billboard du monde et le ProximityPrompt s'ils existent encore
-		pcall(function()
-			for _, child in ipairs(clone:GetDescendants()) do
-				if child:IsA("BillboardGui") or child:IsA("ProximityPrompt") then
-					child:Destroy()
-				end
-			end
-		end)
 	else
 		local nomDossier   = rarete and rarete.dossier or "COMMON"
 		local modeleSource = choisirModele(nomDossier)
@@ -304,12 +341,12 @@ local function effectuerRamassage(player, rarete, modeleExistant)
 		if not ok or not clone then return false end
 	end
 
-	local slotIndex = #data.portes + 1
-	local entree    = attacherModele(player, clone, slotIndex)
-	if not entree then return false end
+	local tool = creerTool(player, clone, rarete)
+	if not tool then return false end
 
-	entree.rarete = rarete
+	local entree = { rarete = rarete, toolRef = tool }
 	table.insert(data.portes, entree)
+
 	jouerSon(player)
 	envoyerCarryUpdate(player)
 	CarrySystem.UpdateDepotPrompts(player)
@@ -319,10 +356,8 @@ end
 -- ============================================================
 -- ProximityPrompt — Capture des Brain Rots EPIC+
 -- ============================================================
--- ⚠️  Pour fonctionner, BrainRotSpawner doit exposer :
---      BrainRotSpawner.OnBRSpawned = nil
---      → Appeler pcall(BrainRotSpawner.OnBRSpawned, clone, baseIndex, rarete)
---        à la fin de spawnerUnBrainRot(), après l'animation de pousse de terre.
+-- ⚠️ Utilisé par BrainRotFarm (spawner appelle CarrySystem.OnBRSpawned).
+-- Pour LavaTower (CollectionService), utiliser PickupSystem à la place.
 
 local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 	local cfg = CAPTURE_CONFIG[rarete.nom]
@@ -336,7 +371,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		return
 	end
 
-	-- Ancre au centre du bounding box (Bug 2 : gros modèles comme LEGENDARY elephant)
+	-- Ancre au centre du bounding box (gros modèles type LEGENDARY)
 	local ancre = racine
 	if brModel:IsA("Model") then
 		local ok, cf = pcall(function() local c, _ = brModel:GetBoundingBox(); return c end)
@@ -357,16 +392,15 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 	prompt.ActionText            = cfg.actionText or "Capturer"
 	prompt.ObjectText            = brModel.Name or rarete.nom
 	prompt.HoldDuration          = cfg.holdDuration
-	prompt.MaxActivationDistance = 20  -- Bug 2 : distance augmentée (était 10)
+	prompt.MaxActivationDistance = 20
 	prompt.KeyboardKeyCode       = Enum.KeyCode.E
 	prompt.RequiresLineOfSight   = false
 	prompt.Style                 = Enum.ProximityPromptStyle.Default
 	prompt.Parent                = ancre
 
-	local holdingPlayer = nil  -- joueur en train de tenir le prompt
+	local holdingPlayer = nil
 	local nomModele     = brModel.Name
 
-	-- Progression toutes les 0.5s pendant un hold
 	local function notifProgression(player, duree)
 		task.spawn(function()
 			local restant = duree
@@ -378,9 +412,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		end)
 	end
 
-	-- Début de hold
 	prompt.PromptButtonHoldBegan:Connect(function(player)
-		-- Bug 1 : vérification base (nil = ChampCommun, tout le monde peut capturer)
 		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
 			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
 				notifierJoueur(player, "INFO", "❌ This Brain Rot is not in your field!")
@@ -392,7 +424,6 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 			end
 		end
 
-		-- Sac plein → interrompre immédiatement
 		local pData = donneesJoueurs[player.UserId]
 		local max   = CarrySystem.GetCapaciteMax(player)
 		if pData and #pData.portes >= max then
@@ -405,17 +436,13 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		end
 
 		if holdingPlayer and holdingPlayer ~= player then
-			-- Compétition : annuler le hold du joueur précédent
 			local precedent = holdingPlayer
 			holdingPlayer   = nil
-
-			-- Désactiver le prompt cancel le hold côté client
-			prompt.Enabled = false
+			prompt.Enabled  = false
 			notifierJoueur(precedent, "INFO", "❌ " .. player.Name .. " interrupted you!")
 			notifierJoueur(player,    "INFO", "⚡ You can try to capture!")
 			notifierAutresJoueurs(player, "INFO",
 				"⚠️ " .. player.Name .. " is trying to grab a " .. rarete.nom .. "!")
-
 			task.delay(0.1, function()
 				if prompt and prompt.Parent then prompt.Enabled = true end
 			end)
@@ -427,18 +454,15 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		end
 	end)
 
-	-- Fin de hold (annulé ou lâché)
 	prompt.PromptButtonHoldEnded:Connect(function(player)
 		if holdingPlayer == player then
 			holdingPlayer = nil
 		end
 	end)
 
-	-- Capture réussie
 	prompt.Triggered:Connect(function(player)
 		if not brModel or not brModel.Parent then return end
 
-		-- Bug 1 : vérification base dans Triggered aussi
 		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
 			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
 				notifierJoueur(player, "INFO", "❌ This Brain Rot is not in your field!")
@@ -446,7 +470,6 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 			end
 		end
 
-		-- Double-check sac plein (cas rare où la capacité change pendant le hold)
 		local pData = donneesJoueurs[player.UserId]
 		local max   = CarrySystem.GetCapaciteMax(player)
 		if pData and #pData.portes >= max then
@@ -456,18 +479,12 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 		prompt.Enabled = false
 		holdingPlayer  = nil
-
-		-- Marquer comme capturé pour que le despawn timer de BrainRotSpawner l'ignore
 		pcall(function() brModel:SetAttribute("Captured", true) end)
 
 		notifierTous("🏆 " .. player.Name .. " grabbed [" .. nomModele .. "] " .. rarete.nom .. "!")
 
-		-- Passer le modèle monde directement (pas de clone depuis ServerStorage)
 		local success = effectuerRamassage(player, rarete, brModel)
-		if success then
-			if onCapture then pcall(onCapture, player) end
-		else
-			-- Échec ramassage : re-permettre capture
+		if not success then
 			pcall(function() brModel:SetAttribute("Captured", false) end)
 			if prompt and prompt.Parent then prompt.Enabled = true end
 		end
@@ -479,7 +496,6 @@ end
 -- ============================================================
 
 local function creerPromptDepot(player, touchPart)
-	-- Supprimer l'ancien prompt si présent
 	local ancien = touchPart:FindFirstChild("DepotPrompt")
 	if ancien then ancien:Destroy() end
 
@@ -491,16 +507,14 @@ local function creerPromptDepot(player, touchPart)
 	prompt.MaxActivationDistance = CARRY_CONFIG.depotMaxDistance
 	prompt.KeyboardKeyCode       = Enum.KeyCode.E
 	prompt.RequiresLineOfSight   = false
-	prompt.Enabled               = false  -- activé seulement si carry > 0
+	prompt.Enabled               = false
 	prompt.Parent                = touchPart
 
 	prompt.Triggered:Connect(function(triggerPlayer)
-		-- Seul le propriétaire de la base peut déposer
 		if triggerPlayer ~= player then return end
 		local data = donneesJoueurs[player.UserId]
 		if not data or #data.portes == 0 then return end
 
-		-- Appeler DropSystem si disponible
 		local ok, DropSystem = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.DropSystem)
 		if ok and DropSystem and DropSystem.DeposerBrainRots then
 			DropSystem.DeposerBrainRots(player, touchPart)
@@ -521,9 +535,9 @@ function CarrySystem.UpdateDepotPrompts(player)
 	local data = donneesJoueurs[player.UserId]
 	if not data or not data.depotPrompts then return end
 
-	local nb     = #data.portes
-	local coins  = calculerCoinsPortes(data)
-	local texte  = nb .. " Brain Rot" .. (nb > 1 and "s" or "") .. " · +" .. coins .. " coins"
+	local nb    = #data.portes
+	local coins = calculerCoinsPortes(data)
+	local texte = nb .. " Brain Rot" .. (nb > 1 and "s" or "") .. " · +" .. coins .. " coins"
 
 	for _, prompt in pairs(data.depotPrompts) do
 		if prompt and prompt.Parent then
@@ -539,14 +553,11 @@ end
 -- Initialisation des spots de dépôt (appelé depuis Main.server.lua)
 -- ============================================================
 
--- Crée les prompts de dépôt pour tous les spots actifs d'un joueur
 function CarrySystem.InitDepotSpotsBase(player, spotsActifs)
-	-- Auto-init si appelé avant CarrySystem.Init() (ordre PlayerAdded dans Main)
 	if not donneesJoueurs[player.UserId] then initJoueur(player) end
 	local data = donneesJoueurs[player.UserId]
 	if not data then return end
 
-	-- Nettoyer les anciens prompts
 	if data.depotPrompts then
 		for _, prompt in pairs(data.depotPrompts) do
 			if prompt and prompt.Parent then pcall(function() prompt:Destroy() end) end
@@ -560,15 +571,12 @@ function CarrySystem.InitDepotSpotsBase(player, spotsActifs)
 	CarrySystem.UpdateDepotPrompts(player)
 end
 
--- Ajoute un prompt pour un nouveau spot débloqué après Init
 function CarrySystem.AjouterDepotSpot(player, touchPart)
-	-- Auto-init si appelé avant CarrySystem.Init()
 	if not donneesJoueurs[player.UserId] then initJoueur(player) end
 	local data = donneesJoueurs[player.UserId]
 	if not data then return end
 	if not data.depotPrompts then data.depotPrompts = {} end
-	if data.depotPrompts[touchPart] then return end  -- déjà existant
-
+	if data.depotPrompts[touchPart] then return end
 	data.depotPrompts[touchPart] = creerPromptDepot(player, touchPart)
 	CarrySystem.UpdateDepotPrompts(player)
 end
@@ -579,9 +587,22 @@ end
 
 local function dropBrainRot(entree, positionMort)
 	local modele = entree.modele
-	if not modele or not modele.Parent then return end
+	if not modele then return end
 
-	local parts   = obtenirBaseParts(modele)
+	-- Assurer que le modèle est dans Workspace
+	if modele.Parent ~= Workspace then
+		modele.Parent = Workspace
+	end
+
+	local parts = {}
+	if modele:IsA("BasePart") then
+		table.insert(parts, modele)
+	else
+		for _, v in ipairs(modele:GetDescendants()) do
+			if v:IsA("BasePart") then table.insert(parts, v) end
+		end
+	end
+
 	local angle   = math.random() * math.pi * 2
 	local rayon   = math.random() * CARRY_CONFIG.rayonDrop
 	local posDrop = positionMort + Vector3.new(math.cos(angle) * rayon, 0.5, math.sin(angle) * rayon)
@@ -589,10 +610,11 @@ local function dropBrainRot(entree, positionMort)
 	pcall(function()
 		if modele:IsA("Model") and modele.PrimaryPart then
 			modele:PivotTo(CFrame.new(posDrop))
-		elseif entree.racine then
-			entree.racine.CFrame = CFrame.new(posDrop)
+		elseif parts[1] then
+			parts[1].CFrame = CFrame.new(posDrop)
 		end
 	end)
+
 	for _, part in ipairs(parts) do
 		part.CanCollide = false
 		part.Anchored   = false
@@ -604,19 +626,14 @@ local function dropBrainRot(entree, positionMort)
 		if collected then return end
 		local data = donneesJoueurs[player.UserId]
 		if not data then return end
-		local max = CARRY_CONFIG.niveaux[data.niveauCarry] or 1
+		local max = CarrySystem.GetCapaciteMax(player)
 		if #data.portes >= max then
 			messageSacPlein(player, data)
 			return
 		end
 		collected = true
-		local slotIndex      = #data.portes + 1
-		local nouvelleEntree = attacherModele(player, modele, slotIndex)
-		if not nouvelleEntree then collected = false return end
-		nouvelleEntree.rarete = entree.rarete
-		table.insert(data.portes, nouvelleEntree)
-		envoyerCarryUpdate(player)
-		CarrySystem.UpdateDepotPrompts(player)
+		local success = effectuerRamassage(player, entree.rarete, modele)
+		if not success then collected = false end
 	end
 
 	for _, part in ipairs(parts) do
@@ -665,8 +682,14 @@ local function onMort(player)
 	data.portes = {}
 
 	for _, entree in ipairs(portesADrop) do
-		detacherModele(entree)
-		dropBrainRot(entree, posMort)
+		local modele = nil
+		if entree.toolRef and entree.toolRef.Parent then
+			-- extraireVisuel détache le visuel du Tool ET détruit le Tool
+			modele = extraireVisuel(entree.toolRef)
+		end
+		if modele then
+			dropBrainRot({ modele = modele, rarete = entree.rarete }, posMort)
+		end
 	end
 
 	envoyerCarryUpdate(player)
@@ -684,8 +707,7 @@ end
 -- ============================================================
 
 local function initJoueur(player)
-	-- Idempotent : si déjà initialisé (ex: appelé par InitDepotSpotsBase avant PlayerAdded),
-	-- ne pas écraser les données existantes (depotPrompts déjà créés).
+	-- Idempotent
 	if donneesJoueurs[player.UserId] then return end
 	donneesJoueurs[player.UserId] = {
 		portes        = {},
@@ -698,24 +720,10 @@ local function initJoueur(player)
 		local data = donneesJoueurs[player.UserId]
 		if not data then return end
 		task.wait(0.5)
-
-		-- Game Pass Protection : re-attacher après respawn
-		if data.hasProtection and #data.portes > 0 then
-			local ancien = data.portes
-			data.portes  = {}
-			for _, entree in ipairs(ancien) do
-				if entree.modele and entree.modele.Parent then
-					local slotIndex      = #data.portes + 1
-					local nouvelleEntree = attacherModele(player, entree.modele, slotIndex)
-					if nouvelleEntree then
-						nouvelleEntree.rarete = entree.rarete
-						table.insert(data.portes, nouvelleEntree)
-					end
-				end
-			end
-			envoyerCarryUpdate(player)
-			CarrySystem.UpdateDepotPrompts(player)
-		end
+		-- Les Tools dans le Backpack persistent naturellement entre respawns (Roblox).
+		-- On re-synchronise juste l'UI et la détection de mort.
+		envoyerCarryUpdate(player)
+		CarrySystem.UpdateDepotPrompts(player)
 		configurerMort(player, char)
 	end)
 
@@ -730,9 +738,8 @@ local function nettoyerJoueur(player)
 	local data = donneesJoueurs[player.UserId]
 	if data then
 		for _, entree in ipairs(data.portes) do
-			detacherModele(entree)
-			if entree.modele and entree.modele.Parent then
-				pcall(function() entree.modele:Destroy() end)
+			if entree.toolRef and entree.toolRef.Parent then
+				pcall(function() entree.toolRef:Destroy() end)
 			end
 		end
 		if data.depotPrompts then
@@ -782,14 +789,18 @@ function CarrySystem.UpgraderCarry(player)
 	return true, "Carry niveau " .. niveauSuivant .. " débloqué"
 end
 
--- Vide le carry et retourne la liste des BR déposés (appelé par DropSystem)
+-- Vide le carry et retourne la liste des BR : { modele, rarete }
+-- Le visuel est extrait du Tool et placé dans Workspace (prêt pour placerMiniModele du DropSystem).
 function CarrySystem.ViderCarry(player)
 	local data = donneesJoueurs[player.UserId]
 	if not data then return {} end
 	local deposes = {}
 	for _, entree in ipairs(data.portes) do
-		detacherModele(entree)
-		table.insert(deposes, { modele = entree.modele, rarete = entree.rarete })
+		local modele = nil
+		if entree.toolRef and entree.toolRef.Parent then
+			modele = extraireVisuel(entree.toolRef)
+		end
+		table.insert(deposes, { modele = modele, rarete = entree.rarete })
 	end
 	data.portes = {}
 	envoyerCarryUpdate(player)
@@ -797,12 +808,12 @@ function CarrySystem.ViderCarry(player)
 	return deposes
 end
 
--- Ajouter un BR directement au carry (utilisé par FlowerPotSystem, DropSystem)
--- clone  : Model ou BasePart déjà cloné (nil → clone depuis ServerStorage via rarete.dossier)
+-- Ajouter un BR directement au carry (utilisé par FlowerPotSystem, DropSystem, PickupSystem)
+-- clone  : Model ou BasePart existant (nil → clone depuis ServerStorage via rarete.dossier)
 -- rarete : table { nom=string, dossier=string?, isMutant=bool?, valeur=number? }
 -- Retourne true si succès, false si carry plein
 function CarrySystem.AjouterAuCarry(player, clone, rarete)
-    return effectuerRamassage(player, rarete, clone)
+	return effectuerRamassage(player, rarete, clone)
 end
 
 function CarrySystem.SetProtection(player, valeur)
@@ -811,25 +822,22 @@ function CarrySystem.SetProtection(player, valeur)
 end
 
 -- Définit le bonus de slots carry (shopUpgrade Carry)
--- bonusSlots = nombre de slots en plus de la capacité de base
 function CarrySystem.SetCapacite(player, bonusSlots)
 	carryBonuses[player.UserId] = math.max(0, bonusSlots or 0)
 	envoyerCarryUpdate(player)
 end
 
 -- Définit le rayon aimant du joueur (shopUpgrade Aimant)
--- rayon = distance en studs (utilisé par BrainRotSpawner pour auto-capture)
 function CarrySystem.SetRayonAimant(player, rayon)
 	rayonAimant[player.UserId] = math.max(0, rayon or 0)
 end
 
--- Retourne le rayon aimant actuel du joueur
 function CarrySystem.GetRayonAimant(player)
 	return rayonAimant[player.UserId] or 0
 end
 
--- Appelé depuis Main.server.lua, connecté à SpawnManager.OnBRSpawned.
--- Attache un ProximityPrompt au modèle monde pour tous les BR.
+-- Appelé depuis Main.server.lua / SpawnManager pour attacher un ProximityPrompt au BR.
+-- ⚠️ Spécifique BrainRotFarm — pour LavaTower, utiliser PickupSystem.
 function CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, onCapture)
 	if not rarete then
 		warn("[CarrySystem] OnBRSpawned : rarete nil")
@@ -853,13 +861,25 @@ function CarrySystem.Init()
 		CarryUpdate.Parent = ReplicatedStorage
 	end
 
+	-- RemoteEvents compatibles BrainrotCarryUI (LavaTower / PickupSystem)
+	local function getOrCreate(name)
+		local e = ReplicatedStorage:FindFirstChild(name)
+		if e then return e end
+		local re = Instance.new("RemoteEvent")
+		re.Name   = name
+		re.Parent = ReplicatedStorage
+		return re
+	end
+	getOrCreate("BrainrotCarryUpdate")
+	getOrCreate("BrainrotCarryError")
+
 	for _, player in ipairs(Players:GetPlayers()) do
 		initJoueur(player)
 	end
 	Players.PlayerAdded:Connect(initJoueur)
 	Players.PlayerRemoving:Connect(nettoyerJoueur)
 
-	print("[CarrySystem] ✓ Initialisé (ProximityPrompt pour tous les BR)")
+	print("[CarrySystem] ✓ Initialisé (Tool/Backpack)")
 end
 
 return CarrySystem

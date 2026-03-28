@@ -82,7 +82,7 @@ RebirthCallbacks.SetCallbacks(
     -- ConsumeRarity : délégué à BrainrotInventoryService si disponible
     function(player, rarity)
         local ok, BrainrotInventoryService = pcall(function()
-            return require(ServerScriptService:WaitForChild("BrainrotInventoryService", 1))
+            return require(ServerScriptService.SharedLib.Server.BrainrotInventoryService)
         end)
         if ok and BrainrotInventoryService and BrainrotInventoryService.RemoveOneOfRarity then
             BrainrotInventoryService.RemoveOneOfRarity(player, rarity)

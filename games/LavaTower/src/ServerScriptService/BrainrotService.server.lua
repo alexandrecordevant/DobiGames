@@ -1,3 +1,3 @@
 -- BrainrotService.server.lua
--- Point d'entrée — délègue tout à BrainrotPickupModule
-require(script.Parent.BrainrotPickupModule).Init()
+-- Point d'entrée pickup — délègue à PickupSystem (shared-lib)
+require(game:GetService("ServerScriptService").SharedLib.Server.PickupSystem).Init()
