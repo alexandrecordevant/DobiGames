@@ -14,19 +14,23 @@
                 "Shared": { "$path": "../shared-lib/src/shared" },
                 "BRFilterSystem": { "$path": "../shared-lib/src/BRFilterSystem" }
             },
-            "Specialized": { "$path": "src/ReplicatedStorage/Specialized" }
+            "Modules": { "$path": "src/ReplicatedStorage/Modules" },
+            "GameConfig": { "$path": "src/ReplicatedStorage/GameConfig.lua" },
+            "BrainrotSpawnConfig": { "$path": "src/ReplicatedStorage/BrainrotSpawnConfig.lua" }
         },
         "ServerScriptService": {
             "$className": "ServerScriptService",
-            "Common": { "$path": "src/ServerScriptService/Common" },
-            "Specialized": { "$path": "src/ServerScriptService/Specialized" }
+            "$path": "src/ServerScriptService"
         },
         "StarterPlayer": {
             "$className": "StarterPlayer",
             "StarterPlayerScripts": {
                 "$className": "StarterPlayerScripts",
                 "Shared": { "$path": "../shared-lib/src/client" },
-                "Common": { "$path": "src/StarterPlayer/StarterPlayerScripts/Common" }
+                "FlowerPotHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua" },
+                "RebirthHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/RebirthHUD.client.lua" },
+                "ShopHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua" },
+                "SlotMenuHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SlotMenuHUD.client.lua" }
             }
         }
     }

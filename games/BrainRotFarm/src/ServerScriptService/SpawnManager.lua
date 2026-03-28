@@ -32,7 +32,7 @@ end
 -- ============================================================
 -- Config — lue depuis GameConfig
 -- ============================================================
-local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _GameConfig = require(game.ReplicatedStorage.GameConfig)
 -- Valeurs animation depuis AnimationConfig (fallback si absent)
 local _animCfg = _GameConfig.AnimationConfig or {}
 
@@ -118,7 +118,7 @@ local _FlowerPotSystem = nil
 local function getFlowerPotSystem()
     if not _FlowerPotSystem then
         local ok, m = pcall(require,
-            game:GetService("ServerScriptService").Specialized.FlowerPotSystem)
+            game:GetService("ServerScriptService").FlowerPotSystem)
         if ok then _FlowerPotSystem = m end
     end
     return _FlowerPotSystem

@@ -18,7 +18,7 @@ local MarketplaceService  = game:GetService("MarketplaceService")
 -- ============================================================
 -- Config
 -- ============================================================
-local Config   = require(ReplicatedStorage.Specialized.GameConfig)
+local Config   = require(ReplicatedStorage.GameConfig)
 local FPConfig = Config.FlowerPotConfig
 
 -- ============================================================
@@ -49,7 +49,7 @@ local _SeedInventory = nil
 local function getSeedInventory()
     if not _SeedInventory then
         local ok, m = pcall(require,
-            ServerScriptService.Specialized.SeedInventory)
+            ServerScriptService.SeedInventory)
         if ok then _SeedInventory = m end
     end
     return _SeedInventory
@@ -60,7 +60,7 @@ local _MutantGenerator = nil
 local function getMutantGenerator()
     if not _MutantGenerator then
         local ok, m = pcall(require,
-            ServerScriptService.Specialized.MutantGenerator)
+            ServerScriptService.MutantGenerator)
         if ok then _MutantGenerator = m end
     end
     return _MutantGenerator

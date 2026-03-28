@@ -163,7 +163,7 @@ end
 -- ═══════════════════════════════════════
 
 local function ActiverGraine(sommetPart, typeGraine, onCollect)
-    local Config    = require(game.ReplicatedStorage.Specialized.GameConfig)
+    local Config    = require(game.ReplicatedStorage.GameConfig)
     local graineCfg = Config.FlowerPotConfig.graines[typeGraine]
     local couleur   = (graineCfg and graineCfg.couleurStage4)
                    or Color3.fromRGB(255, 215, 0)
@@ -302,7 +302,7 @@ end
 -- ═══════════════════════════════════════
 
 function ArbreSystem.Init()
-    local Config       = require(game.ReplicatedStorage.Specialized.GameConfig)
+    local Config       = require(game.ReplicatedStorage.GameConfig)
     local arbreCfg     = Config.FlowerPotConfig.arbresDropConfig
     local arbresConfig = Config.FlowerPotConfig.arbresConfig
 

@@ -16,7 +16,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 -- Config
 -- ============================================================
-local Config = require(ReplicatedStorage.Specialized.GameConfig)
+local Config = require(ReplicatedStorage.GameConfig)
 
 -- Position du panneau 3D custom (fallback si panneaux Studio absents)
 local PANNEAU_POSITION = Config.LeaderboardPosition or Vector3.new(0, 15, 0)
@@ -65,7 +65,7 @@ local textosLeaderboards = {}
 local _ChampCommunSpawner = nil
 local function getChampCommunSpawner()
     if not _ChampCommunSpawner then
-        local ok, m = pcall(require, ServerScriptService.Common.CommunSpawner)
+        local ok, m = pcall(require, ServerScriptService.CommunSpawner)
         if ok and m then _ChampCommunSpawner = m end
     end
     return _ChampCommunSpawner
@@ -74,7 +74,7 @@ end
 local _EventVisuals = nil
 local function getEventVisuals()
     if not _EventVisuals then
-        local ok, m = pcall(require, ServerScriptService.Common.EventVisuals)
+        local ok, m = pcall(require, ServerScriptService.EventVisuals)
         if ok and m then _EventVisuals = m end
     end
     return _EventVisuals
@@ -83,7 +83,7 @@ end
 local _SpawnManager = nil
 local function getSpawnManager()
     if not _SpawnManager then
-        local ok, m = pcall(require, ServerScriptService.Common.SpawnManager)
+        local ok, m = pcall(require, ServerScriptService.SpawnManager)
         if ok and m then _SpawnManager = m end
     end
     return _SpawnManager

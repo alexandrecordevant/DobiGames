@@ -16,7 +16,7 @@ local MarketplaceService  = game:GetService("MarketplaceService")
 -- ============================================================
 -- Config — données uniquement, aucune logique ici
 -- ============================================================
-local Config = require(ReplicatedStorage.Specialized.GameConfig)
+local Config = require(ReplicatedStorage.GameConfig)
 
 -- ============================================================
 -- Callback fourni par Main.server.lua (évite les dépendances circulaires)
@@ -67,7 +67,7 @@ end
 local _SprinklerSystem = nil
 local function getSprinklerSystem()
     if not _SprinklerSystem then
-        local ok, m = pcall(require, ServerScriptService.Common.SprinklerSystem)
+        local ok, m = pcall(require, ServerScriptService.SprinklerSystem)
         if ok and m then _SprinklerSystem = m end
     end
     return _SprinklerSystem
@@ -76,7 +76,7 @@ end
 local _TracteurSystem = nil
 local function getTracteurSystem()
     if not _TracteurSystem then
-        local ok, m = pcall(require, ServerScriptService.Common.TracteurSystem)
+        local ok, m = pcall(require, ServerScriptService.TracteurSystem)
         if ok and m then _TracteurSystem = m end
     end
     return _TracteurSystem
@@ -95,7 +95,7 @@ end
 local _SpawnManager = nil
 local function getBrainRotSpawner()
     if not _SpawnManager then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.SpawnManager)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SpawnManager)
         if ok and m then _SpawnManager = m end
     end
     return _SpawnManager
@@ -113,7 +113,7 @@ end
 local _CollectSystem = nil
 local function getCollectSystem()
     if not _CollectSystem then
-        local ok, m = pcall(require, ReplicatedStorage.Common.CollectSystem)
+        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Shared.CollectSystem)
         if ok and m then _CollectSystem = m end
     end
     return _CollectSystem

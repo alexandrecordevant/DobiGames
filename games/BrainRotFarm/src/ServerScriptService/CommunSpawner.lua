@@ -32,7 +32,7 @@ end
 -- ============================================================
 -- Config
 -- ============================================================
-local Config = require(game.ReplicatedStorage.Specialized.GameConfig)
+local Config = require(game.ReplicatedStorage.GameConfig)
 
 -- Points de spawn lus depuis GameConfig.CommunPoints
 local SPAWN_POINTS = {}
@@ -43,13 +43,13 @@ end
 -- ============================================================
 -- Dépendances
 -- ============================================================
-local DiscordWebhook = require(ServerScriptService:WaitForChild("Common"):WaitForChild("DiscordWebhook"))
+local DiscordWebhook = require(ServerScriptService:WaitForChild("DiscordWebhook"))
 
 -- Chargement différé (évite les dépendances circulaires)
 local _LeaderboardSystem = nil
 local function getLeaderboardSystem()
     if not _LeaderboardSystem then
-        local ok, m = pcall(require, ServerScriptService.Common.LeaderboardSystem)
+        local ok, m = pcall(require, ServerScriptService.LeaderboardSystem)
         if ok and m then _LeaderboardSystem = m end
     end
     return _LeaderboardSystem

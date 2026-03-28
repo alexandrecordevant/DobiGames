@@ -13,7 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Config — vitesses lues depuis GameConfig (0 valeur hardcodée)
 -- ============================================================
-local Config  = require(ReplicatedStorage.Specialized.GameConfig)
+local Config  = require(ReplicatedStorage.GameConfig)
 local VITESSES = Config.SprinklerVitesses or { [0]=0, [1]=30, [2]=60, [3]=120 }
 
 -- ============================================================

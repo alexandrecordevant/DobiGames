@@ -13,7 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Config — vitesse et espacement lus depuis GameConfig
 -- ============================================================
-local Config       = require(ReplicatedStorage.Specialized.GameConfig)
+local Config       = require(ReplicatedStorage.GameConfig)
 local VITESSE_DEF  = Config.TracteurVitesse    or 12  -- studs/seconde
 local ESPACEMENT   = Config.TracteurEspacement or 8   -- studs entre lignes
 

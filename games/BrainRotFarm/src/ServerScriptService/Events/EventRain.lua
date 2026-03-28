@@ -17,7 +17,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 -- Config
 -- ============================================================
-local Config = require(ReplicatedStorage.Specialized.GameConfig)
+local Config = require(ReplicatedStorage.GameConfig)
 
 -- ============================================================
 -- Chargement différé de ChampCommunSpawner
@@ -25,7 +25,7 @@ local Config = require(ReplicatedStorage.Specialized.GameConfig)
 local _CCS = nil
 local function getCCS()
     if not _CCS then
-        local ok, m = pcall(require, ServerScriptService.Specialized.ChampCommunSpawner)
+        local ok, m = pcall(require, ServerScriptService.CommunSpawner)
         if ok and m then _CCS = m end
     end
     return _CCS

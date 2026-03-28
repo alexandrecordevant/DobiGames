@@ -14,7 +14,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 -- Config
 -- ============================================================
-local Config = require(ReplicatedStorage.Specialized.GameConfig)
+local Config = require(ReplicatedStorage.GameConfig)
 
 -- ============================================================
 -- Chargement différé des modules visuels
@@ -24,8 +24,7 @@ local modulesCache = {}
 local function chargerModule(nomEvent)
     if modulesCache[nomEvent] ~= nil then return modulesCache[nomEvent] end
 
-    local Common = ServerScriptService:FindFirstChild("Common")
-    local Events = Common and Common:FindFirstChild("Events")
+    local Events = ServerScriptService:FindFirstChild("Events")
     if not Events then
         modulesCache[nomEvent] = false
         return false
@@ -54,7 +53,7 @@ end
 local _SpawnManager = nil
 local function getBrainRotSpawner()
     if not _SpawnManager then
-        local ok, m = pcall(require, ServerScriptService.Common.SpawnManager)
+        local ok, m = pcall(require, ServerScriptService.SpawnManager)
         if ok and m then _SpawnManager = m end
     end
     return _SpawnManager
@@ -63,7 +62,7 @@ end
 local _IncomeSystem = nil
 local function getIncomeSystem()
     if not _IncomeSystem then
-        local ok, m = pcall(require, ServerScriptService.Common.IncomeSystem)
+        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.IncomeSystem)
         if ok and m then _IncomeSystem = m end
     end
     return _IncomeSystem
@@ -72,7 +71,7 @@ end
 local _CollectSystem = nil
 local function getCollectSystem()
     if not _CollectSystem then
-        local ok, m = pcall(require, ReplicatedStorage.Common.CollectSystem)
+        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Shared.CollectSystem)
         if ok and m then _CollectSystem = m end
     end
     return _CollectSystem

@@ -4,7 +4,7 @@
 -- Pas de spam : rate limiting intégré
 
 local HttpService = game:GetService("HttpService")
-local Config      = require(game.ReplicatedStorage.Specialized.GameConfig)
+local Config      = require(game.ReplicatedStorage.GameConfig)
 
 local DiscordWebhook = {}
 

@@ -15,7 +15,7 @@ local Workspace         = game:GetService("Workspace")
 -- ============================================================
 -- Config (Specialized — aucune valeur hardcodée ici)
 -- ============================================================
-local Config   = require(ReplicatedStorage.Specialized.GameConfig)
+local Config   = require(ReplicatedStorage.GameConfig)
 local boardCfg = Config.BoardConfig or {
     texteDefaut   = "🔄 REBIRTH\nClick to view",
     distanceClick = 20,
