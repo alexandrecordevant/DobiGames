@@ -2,7 +2,25 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/**)",
-      "Read(//c/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib/**)"
+      "Read(//c/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib/**)",
+      "Bash(mv ServerScriptService/Common/ArbreSystem.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Common/BoardSystem.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Common/CommunSpawner.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Common/DataStoreManager.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Common/DiscordWebhook.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Specialized/BaleSystem.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Specialized/FlowerPotSystem.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Specialized/MutantGenerator.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Specialized/SeedInventory.lua ServerScriptService/)",
+      "Bash(mv ServerScriptService/Specialized/SprinklerSystem.lua ServerScriptService/)",
+      "Bash(mv ReplicatedStorage/Specialized/BrainrotSpawnConfig.lua ReplicatedStorage/)",
+      "Bash(mv ReplicatedStorage/Specialized/GameConfig.lua ReplicatedStorage/)",
+      "Bash(rmdir ReplicatedStorage/Specialized)",
+      "Bash(mv StarterPlayer/StarterPlayerScripts/Common/FlowerPotHUD.client.lua StarterPlayer/StarterPlayerScripts/)",
+      "Bash(mv StarterPlayer/StarterPlayerScripts/Common/RebirthHUD.client.lua StarterPlayer/StarterPlayerScripts/)",
+      "Bash(mv StarterPlayer/StarterPlayerScripts/Common/ShopHUD.client.lua StarterPlayer/StarterPlayerScripts/)",
+      "Bash(mv StarterPlayer/StarterPlayerScripts/Common/SlotMenuHUD.client.lua StarterPlayer/StarterPlayerScripts/)",
+      "Bash(rmdir StarterPlayer/StarterPlayerScripts/Common)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

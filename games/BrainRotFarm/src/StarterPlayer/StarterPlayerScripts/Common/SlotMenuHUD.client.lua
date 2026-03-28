@@ -1,4 +1,0 @@
--- StarterPlayerScripts/Common/SlotMenuHUD.client.lua
--- Sell (E) et Retrieve (R) sont désormais deux ProximityPrompts natifs
--- sur des ancres décalées gauche/droite du slot — gérés entièrement côté serveur.
--- Ce fichier est conservé pour compatibilité Rojo mais ne fait rien.
