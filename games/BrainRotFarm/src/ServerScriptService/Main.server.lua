@@ -31,9 +31,10 @@ local SprinklerSystem       = require(ServerScriptService.SprinklerSystem)
 local TracteurSystem        = require(ServerScriptService.TracteurSystem)
 local FlowerPotSystem       = require(ServerScriptService.FlowerPotSystem)
 local DiscordWebhook        = require(ServerScriptService.DiscordWebhook)
-local BoardSystem           = require(ServerScriptService.BoardSystem)
-local ArbreSystem           = require(ServerScriptService.ArbreSystem)
-local BaleSystem            = require(ServerScriptService.BaleSystem)
+local BoardSystem               = require(ServerScriptService.BoardSystem)
+local ArbreSystem               = require(ServerScriptService.ArbreSystem)
+local BaleSystem                = require(ServerScriptService.BaleSystem)
+local RebirthCosmeticsSystem    = require(ServerScriptService.RebirthCosmeticsSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -253,9 +254,11 @@ local function OnPlayerAdded(player)
         -- Toujours respawn devant la base assignée (spawn initial + respawns)
         if player.Character then
             TeleporterVersBaseAssignee(player, baseIndex, player.Character)
+            RebirthCosmeticsSystem.AppliquerPourJoueur(player, player.Character)
         end
         player.CharacterAdded:Connect(function(character)
             TeleporterVersBaseAssignee(player, baseIndex, character)
+            RebirthCosmeticsSystem.AppliquerPourJoueur(player, character)
         end)
     end
 
@@ -581,6 +584,10 @@ FlowerPotSystem.InitServeur()
 -- ArbreSystem : graines sur les arbres du ChampCommun
 ArbreSystem.GetData = GetData
 ArbreSystem.Init()
+
+-- RebirthCosmeticsSystem : auras + trails selon niveau rebirth
+RebirthCosmeticsSystem.GetData = GetData
+RebirthCosmeticsSystem.Init()
 
 -- ═══════════════════════════════════════════════
 -- 7. TOP FARMER HEBDOMADAIRE (chaque lundi minuit UTC)

@@ -223,6 +223,44 @@ local function notifierTous(typeNotif, message)
 end
 
 -- ============================================================
+-- Réduction des seuils par rebirth (optionnel)
+-- ============================================================
+
+-- Formate un entier avec séparateurs de milliers (ex: 12000 → "12 000")
+local function formaterNombre(n)
+	local s      = tostring(math.floor(n))
+	local result = ""
+	local count  = 0
+	for i = #s, 1, -1 do
+		if count > 0 and count % 3 == 0 then result = " " .. result end
+		result = s:sub(i, i) .. result
+		count  = count + 1
+	end
+	return result
+end
+
+-- Retourne un seuil avec coût réduit selon le niveau rebirth du joueur
+-- Réduction : -Config.RebirthFloorDiscount par rebirth, plafonnée à -90%
+-- Si la config ne définit pas de réduction, ou rebirthLevel = 0, retourne le seuil inchangé
+local function obtenirSeuilEffectif(seuil, rebirthLevel)
+	local discount = Config.RebirthFloorDiscount
+	if not discount or discount <= 0 then return seuil end
+	if not rebirthLevel or rebirthLevel <= 0 then return seuil end
+	if seuil.coins <= 0 then return seuil end  -- Seuils gratuits inchangés
+
+	local reduction   = math.min(rebirthLevel * discount, 0.90)
+	local coinsReduit = math.floor(seuil.coins * (1 - reduction))
+	local pct         = math.floor(reduction * 100)
+
+	return {
+		floor = seuil.floor,
+		spot  = seuil.spot,
+		coins = coinsReduit,
+		label = formaterNombre(coinsReduit) .. " coins (-" .. pct .. "%)",
+	}
+end
+
+-- ============================================================
 -- Visuels — billboard de verrouillage
 -- ============================================================
 
@@ -444,6 +482,7 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 	end
 
 	-- spot_2 à spot_10 → verrouillés (maintenant visibles à 0.7) ou déjà débloqués (cascade)
+	local rebirthLvl = (dd.playerData and dd.playerData.rebirthLevel) or 0
 	for _, seuil in ipairs(SEUILS) do
 		if seuil.floor == floorNum and seuil.spot > 1 then
 			local spotObj = trouverSpot(floorObj, seuil.spot)
@@ -454,7 +493,8 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 					appliquerEtatDebloque(spotObj, dd.spotsActifs)
 					activerDepotSpot(player, spotObj, cle)
 				else
-					appliquerEtatVerrouille(spotObj, seuil)
+					-- Afficher le prix réduit si le joueur a des rebirths
+					appliquerEtatVerrouille(spotObj, obtenirSeuilEffectif(seuil, rebirthLvl))
 				end
 			end
 		end
@@ -494,8 +534,9 @@ function BaseProgressionSystem.VerifierDeblocages(player, playerData)
 	end
 
 	for _, seuil in ipairs(SEUILS) do
-		local cle = seuil.floor .. "_" .. seuil.spot
-		if not dd.progression[cle] and coinsRef >= seuil.coins then
+		local cle      = seuil.floor .. "_" .. seuil.spot
+		local seuilEff = obtenirSeuilEffectif(seuil, playerData.rebirthLevel or 0)
+		if not dd.progression[cle] and coinsRef >= seuilEff.coins then
 			dd.progression[cle] = true
 
 			local floorObj = trouverFloor(dd.baseFolder, seuil.floor)
@@ -592,7 +633,8 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 						if dd.progression[cle] then
 							appliquerEtatDebloque(spotObj, dd.spotsActifs)
 						else
-							appliquerEtatVerrouille(spotObj, seuil)
+							-- Afficher le prix reduit selon le niveau rebirth du joueur
+							appliquerEtatVerrouille(spotObj, obtenirSeuilEffectif(seuil, playerData.rebirthLevel or 0))
 						end
 					end
 				end
@@ -729,6 +771,36 @@ function BaseProgressionSystem.DebloquerFloorApresRebirth(player, niveauRebirth)
             floorIndex, baseIndex, niveauRebirth, player.Name
         ))
     end)
+end
+
+-- ============================================================
+-- Calcul du coût réduit d'un floor selon le niveau rebirth
+-- ============================================================
+
+-- Retourne le coût d'unlock d'un floor après réduction rebirth
+-- Utilise Config.FloorUnlockCosts comme base si défini, sinon seuil spot_1 du floor
+-- Ex: GetFloorUnlockCost(2, 0) = 100000 ; GetFloorUnlockCost(2, 3) = 55000 (-45%)
+function BaseProgressionSystem.GetFloorUnlockCost(floorNumber, rebirthCount)
+    local costs = Config.FloorUnlockCosts
+    local base  = 0
+
+    if costs and costs[floorNumber] then
+        base = costs[floorNumber]
+    else
+        -- Fallback : chercher le seuil spot_1 du floor dans SEUILS
+        for _, seuil in ipairs(SEUILS) do
+            if seuil.floor == floorNumber and seuil.spot == 1 then
+                base = seuil.coins
+                break
+            end
+        end
+    end
+
+    if base <= 0 then return 0 end
+
+    local discount  = Config.RebirthFloorDiscount or 0
+    local reduction = math.min((rebirthCount or 0) * discount, 0.90)
+    return math.floor(base * (1 - reduction))
 end
 
 return BaseProgressionSystem

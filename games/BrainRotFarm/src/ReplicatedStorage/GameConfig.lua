@@ -508,6 +508,18 @@ GameConfig.RebirthConfig = {
     [4] = { coinsRequis=2000000, brainRotRequis={rarete="BRAINROT_GOD", quantite=1}, multiplicateur=5.0, slotsBonus=10 },
 }
 
+-- Réduction prix progression par rebirth (-15% cumulatif, cap -90%)
+-- Utilisé par BaseProgressionSystem pour alléger les seuils de déblocage
+GameConfig.RebirthFloorDiscount = 0.15
+
+-- Prix de référence pour déblocage manuel des floors (Rebirth 0)
+-- Utilisé par BaseProgressionSystem.GetFloorUnlockCost()
+GameConfig.FloorUnlockCosts = {
+    [2] = 100000,
+    [3] = 200000,
+    [4] = 300000,
+}
+
 -- === CAPTURE CONFIG ===
 GameConfig.CaptureConfig = {
     COMMON       = { mode="prompt", holdDuration=0   },
