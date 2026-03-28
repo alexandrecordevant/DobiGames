@@ -13,7 +13,7 @@ end
 
 task.wait(3)  -- Laisser les systèmes s'initialiser
 
-local BaseProgressionSystem = require(ReplicatedStorage.SharedLib.Server.BaseProgressionSystem)
+local BaseProgressionSystem = require(game:GetService("ServerScriptService").SharedLib.Server.BaseProgressionSystem)
 local NotifEvent            = ReplicatedStorage:FindFirstChild("NotifEvent")
 
 print("========================================")

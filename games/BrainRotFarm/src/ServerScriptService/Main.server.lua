@@ -16,15 +16,15 @@ local CollectSystem      = require(ReplicatedStorage.SharedLib.Shared.CollectSys
 local UpgradeSystem      = require(ReplicatedStorage.SharedLib.Shared.UpgradeSystem)
 
 local DataStoreManager      = require(ServerScriptService.DataStoreManager)
-local EventManager          = require(ReplicatedStorage.SharedLib.Server.EventManager)
-local MonetizationHandler   = require(ReplicatedStorage.SharedLib.Server.MonetizationHandler)
+local EventManager          = require(ServerScriptService.SharedLib.Server.EventManager)
+local MonetizationHandler   = require(ServerScriptService.SharedLib.Server.MonetizationHandler)
 local SpawnManager          = require(ServerScriptService.SpawnManager)
-local BaseProgressionSystem = require(ReplicatedStorage.SharedLib.Server.BaseProgressionSystem)
-local CarrySystem           = require(ReplicatedStorage.SharedLib.Server.CarrySystem)
-local RebirthSystem         = require(ReplicatedStorage.SharedLib.Server.RebirthSystem)
-local AssignationSystem     = require(ReplicatedStorage.SharedLib.Server.AssignationSystem)
-local DropSystem            = require(ReplicatedStorage.SharedLib.Server.DropSystem)
-local IncomeSystem          = require(ReplicatedStorage.SharedLib.Server.IncomeSystem)
+local BaseProgressionSystem = require(ServerScriptService.SharedLib.Server.BaseProgressionSystem)
+local CarrySystem           = require(ServerScriptService.SharedLib.Server.CarrySystem)
+local RebirthSystem         = require(ServerScriptService.SharedLib.Server.RebirthSystem)
+local AssignationSystem     = require(ServerScriptService.SharedLib.Server.AssignationSystem)
+local DropSystem            = require(ServerScriptService.SharedLib.Server.DropSystem)
+local IncomeSystem          = require(ServerScriptService.SharedLib.Server.IncomeSystem)
 local LeaderboardSystem     = require(ServerScriptService.LeaderboardSystem)
 local ShopSystem            = require(ServerScriptService.ShopSystem)
 local SprinklerSystem       = require(ServerScriptService.SprinklerSystem)
@@ -34,7 +34,7 @@ local DiscordWebhook        = require(ServerScriptService.DiscordWebhook)
 local BoardSystem               = require(ServerScriptService.BoardSystem)
 local ArbreSystem               = require(ServerScriptService.ArbreSystem)
 local BaleSystem                = require(ServerScriptService.BaleSystem)
-local RebirthCosmeticsSystem    = require(ServerScriptService.RebirthCosmeticsSystem)
+local RebirthCosmeticsSystem    = require(ServerScriptService.SharedLib.Server.RebirthCosmeticsSystem)
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -70,9 +70,10 @@ local OuvrirRebirth      = CreerRemoteEvent("OuvrirRebirth")
 local UpdateGraines      = CreerRemoteEvent("UpdateGraines")
 
 -- Events client → serveur (actions joueur)
-local DemandeUpgrade     = CreerRemoteEvent("DemandeUpgrade")
-local DemandePrestige    = CreerRemoteEvent("DemandePrestige")
-local DemandeCollecte    = CreerRemoteEvent("DemandeCollecte")
+local DemandeUpgrade        = CreerRemoteEvent("DemandeUpgrade")
+local DemandePrestige       = CreerRemoteEvent("DemandePrestige")
+local DemandeCollecte       = CreerRemoteEvent("DemandeCollecte")
+local DemandeOuvrirRebirth  = CreerRemoteEvent("DemandeOuvrirRebirth")
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -209,9 +210,13 @@ local function OnPlayerAdded(player)
         -- Initialiser le système de Rebirth (callbacks Farm injectés ici)
         RebirthSystem.Config = Config.RebirthConfig
         RebirthSystem.IsProgressionComplete = function(playerData)
-            return playerData.progression and playerData.progression["4_10"] == true
+            return true  -- TEST UNIQUEMENT — remettre avant publication
+            -- return playerData.progression and playerData.progression["4_10"] == true
         end
         RebirthSystem.OnRebirthComplete = function(player, niveau, cfg)
+            -- Recréer les ProximityPrompts pour les spots du floor 1 (après Init)
+            local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
+            CarrySystem.InitDepotSpotsBase(player, spotsActifs)
             -- Débloquer le floor suivant visuellement
             pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, player, niveau)
             -- Mettre à jour le board (etat minimal pour afficher le nouveau niveau)
@@ -236,20 +241,25 @@ local function OnPlayerAdded(player)
                 )
             end)
         end
+        RebirthSystem.GetExtraCoins = function(p)
+            return IncomeSystem.GetCoinsEnAttente(p)
+        end
+        RebirthSystem.OnButtonUpdate = function(p, etat)
+            BoardSystem.MettreAJourBoard(p, etat)
+        end
+        RebirthSystem.OnResetBase = function(p, bIndex, d)
+            -- Arrêter et vider DropSystem (mini BRs sur spots détruits)
+            DropSystem.Stop(p)
+            -- Vider les coinsEnAttente d'IncomeSystem (les slots sont maintenant vides)
+            IncomeSystem.Stop(p)
+            -- Réinitialiser DropSystem avec les données réinitialisées (spotsOccupes = {})
+            DropSystem.Init(p, bIndex, d)
+            -- Relancer IncomeSystem
+            IncomeSystem.Init(p, function() return GetData(p) end)
+            -- Note : CarrySystem.InitDepotSpotsBase est appelé APRÈS BaseProgressionSystem.Init
+            -- dans RebirthSystem.OnRebirthComplete (via GetSpotsActifs sur la nouvelle progression)
+        end
         RebirthSystem.Init(player, data, baseIndex)
-        -- Afficher les données Rebirth actuelles sur le board de la base
-        task.delay(2, function()
-            if not GetData(player) then return end
-            local ok2, manques = RebirthSystem.VerifierConditions(player)
-            pcall(BoardSystem.MettreAJourBoard, player, {
-                rebirthLevel   = data.rebirthLevel or 0,
-                coinsActuels   = data.coins or 0,
-                coinsRequis    = manques and manques.manqueCoins
-                    and (data.coins or 0) + manques.manqueCoins or 0,
-                brainRotRequis = manques and manques.manqueBR or nil,
-                manqueBR       = manques and manques.manqueBR or nil,
-            })
-        end)
 
         -- Toujours respawn devant la base assignée (spawn initial + respawns)
         if player.Character then
@@ -398,6 +408,13 @@ DemandePrestige.OnServerEvent:Connect(function(player)
     end
 end)
 
+
+-- Ouvrir panel Rebirth depuis le bouton permanent (actualise les données avant d'ouvrir)
+DemandeOuvrirRebirth.OnServerEvent:Connect(function(player)
+    RebirthSystem.MettreAJourBouton(player)  -- fire RebirthButtonUpdate avec données fraîches
+    local ouvrirEv = ReplicatedStorage:FindFirstChild("OuvrirRebirth")
+    if ouvrirEv then pcall(function() ouvrirEv:FireClient(player) end) end
+end)
 
 -- RemoteFunction : données joueur (pour HUD)
 GetPlayerData.OnServerInvoke = function(player)

@@ -10,7 +10,10 @@ local CarrySystem = {}
 -- function(player) → baseIndex ou nil
 CarrySystem.GetBaseJoueur = nil
 
-local _GameConfig = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _GameConfig = require(
+    game.ReplicatedStorage:FindFirstChild("GameConfig")
+    or game.ReplicatedStorage.Specialized.GameConfig
+)
 
 -- ============================================================
 -- Services
@@ -498,7 +501,7 @@ local function creerPromptDepot(player, touchPart)
 		if not data or #data.portes == 0 then return end
 
 		-- Appeler DropSystem si disponible
-		local ok, DropSystem = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.DropSystem)
+		local ok, DropSystem = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.DropSystem)
 		if ok and DropSystem and DropSystem.DeposerBrainRots then
 			DropSystem.DeposerBrainRots(player, touchPart)
 			return

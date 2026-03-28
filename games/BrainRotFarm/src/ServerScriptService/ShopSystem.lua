@@ -58,7 +58,7 @@ local RARETE_ORDRE = {
 local _AssignationSystem = nil
 local function getAssignationSystem()
     if not _AssignationSystem then
-        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.AssignationSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.AssignationSystem)
         if ok and m then _AssignationSystem = m end
     end
     return _AssignationSystem
@@ -85,7 +85,7 @@ end
 local _CarrySystem = nil
 local function getCarrySystem()
     if not _CarrySystem then
-        local ok, m = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.CarrySystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
         if ok and m then _CarrySystem = m end
     end
     return _CarrySystem
@@ -104,7 +104,7 @@ end
 local _DropSystem = nil
 local function getDropSystem()
     if not _DropSystem then
-        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.DropSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.DropSystem)
         if ok and m then _DropSystem = m end
     end
     return _DropSystem

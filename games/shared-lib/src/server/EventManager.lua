@@ -1,6 +1,9 @@
 -- ServerScriptService/EventManager.lua
 local EventManager = {}
-local Config        = require(game.ReplicatedStorage.Specialized.GameConfig)
+local Config = require(
+    game.ReplicatedStorage:FindFirstChild("GameConfig")
+    or game.ReplicatedStorage.Specialized.GameConfig
+)
 local CollectSystem = require(game.ReplicatedStorage.SharedLib.Shared.CollectSystem)
 
 -- Chargement différé de EventVisuals (coordinateur visuel+gameplay)
@@ -8,7 +11,7 @@ local _EventVisuals = nil
 local function getEventVisuals()
     if not _EventVisuals then
         local SSS = game:GetService("ServerScriptService")
-        local ok, m = pcall(require, SSS.Common.EventVisuals)
+        local ok, m = pcall(require, SSS.EventVisuals)
         if ok and m then _EventVisuals = m end
     end
     return _EventVisuals

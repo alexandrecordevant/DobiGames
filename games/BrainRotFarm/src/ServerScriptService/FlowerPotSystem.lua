@@ -28,7 +28,7 @@ local _AssignationSystem = nil
 local function getAssignation()
     if not _AssignationSystem then
         local ok, m = pcall(require,
-            ReplicatedStorage.SharedLib.Server.AssignationSystem)
+            game:GetService("ServerScriptService").SharedLib.Server.AssignationSystem)
         if ok then _AssignationSystem = m end
     end
     return _AssignationSystem
@@ -38,7 +38,7 @@ local _CarrySystem = nil
 local function getCarry()
     if not _CarrySystem then
         local ok, m = pcall(require,
-            ReplicatedStorage.SharedLib.Server.CarrySystem)
+            game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
         if ok then _CarrySystem = m end
     end
     return _CarrySystem

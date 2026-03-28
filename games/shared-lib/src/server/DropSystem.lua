@@ -17,7 +17,10 @@ local TweenService      = game:GetService("TweenService")
 -- ============================================================
 -- Config
 -- ============================================================
-local Config     = require(ReplicatedStorage.Specialized.GameConfig)
+local Config = require(
+    ReplicatedStorage:FindFirstChild("GameConfig")
+    or ReplicatedStorage.Specialized.GameConfig
+)
 local ProgConfig = Config.ProgressionConfig
 
 -- Valeur en coins par dépôt immédiat (one-shot, distinct du revenu/sec)
@@ -37,7 +40,7 @@ local MINI_SCALE = 0.35
 local _IncomeSystem = nil
 local function getIncomeSystem()
     if not _IncomeSystem then
-        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.IncomeSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.IncomeSystem)
         if ok and m then _IncomeSystem = m end
     end
     return _IncomeSystem
@@ -413,7 +416,7 @@ local function creerPromptRemplacer(touchPart, player, rarete)
 
     prompt.Triggered:Connect(function(triggerPlayer)
         if triggerPlayer ~= player then return end
-        local CS     = require(ReplicatedStorage.SharedLib.Server.CarrySystem)
+        local CS     = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
         local portes = CS.GetPortes(player)
         if #portes == 0 then
             notifierJoueur(player, "INFO", "🎒 You are not carrying any Brain Rot!")
@@ -662,7 +665,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     end
 
     -- Récupérer le carry du joueur via CarrySystem
-    local CarrySystem = require(ReplicatedStorage.SharedLib.Server.CarrySystem)
+    local CarrySystem = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
     local portes = CarrySystem.GetPortes(player)
     if #portes == 0 then return end
 
@@ -789,7 +792,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     if not entree then return end
 
     -- Vérifier si le joueur a de la place dans son carry
-    local CarrySystem = require(ReplicatedStorage.SharedLib.Server.CarrySystem)
+    local CarrySystem = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
     local portes = CarrySystem.GetPortes(player)
     local max    = CarrySystem.GetCapaciteMax(player)
 
@@ -864,7 +867,7 @@ function DropSystem.RecalculerPrompts(player)
     local index = spotIndex[uid]
     if not index then return end
 
-    local CarrySystem = require(ReplicatedStorage.SharedLib.Server.CarrySystem)
+    local CarrySystem = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
     local nbPortes = #CarrySystem.GetPortes(player)
 
     for _, touchPart in pairs(index) do
@@ -1043,7 +1046,7 @@ function DropSystem.EjecterBR(player, touchPart)
                     end
                     pickupPrompt.Triggered:Connect(function(triggerPlayer)
                         if triggerPlayer ~= player then return end
-                        local CS = require(ReplicatedStorage.SharedLib.Server.CarrySystem)
+                        local CS = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
                         local rareteObj = { nom = rarete, dossier = rarete }
                         pcall(CS.AjouterAuCarry, player, nil, rareteObj)
                         pcall(function() clone:Destroy() end)

@@ -3,7 +3,10 @@ local Players          = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService     = game:GetService("TweenService")
 local player           = Players.LocalPlayer
-local Config           = require(ReplicatedStorage.Specialized.GameConfig)
+local Config = require(
+    ReplicatedStorage:FindFirstChild("GameConfig")
+    or ReplicatedStorage.Specialized.GameConfig
+)
 local T                = require(ReplicatedStorage.SharedLib.Shared.UITheme)
 
 local gui = Instance.new("ScreenGui")
@@ -314,11 +317,23 @@ rebirthBarFill.BorderSizePixel  = 0
 Instance.new("UICorner", rebirthBarFill).CornerRadius = UDim.new(1, 0)
 
 -- Clic → ouvre/ferme le panel Rebirth détaillé (géré par RebirthHUD)
+-- À l'ouverture : demande une mise à jour fraîche au serveur (comme le Board click)
+-- À la fermeture : juste masquer localement
 btnRebirthLeft.MouseButton1Click:Connect(function()
     local rebirthFrame = gui:FindFirstChild("RebirthFrame")
         or player.PlayerGui:FindFirstChild("RebirthFrame", true)
-    if rebirthFrame then
-        rebirthFrame.Visible = not rebirthFrame.Visible
+    if not rebirthFrame then return end
+
+    if rebirthFrame.Visible then
+        rebirthFrame.Visible = false
+    else
+        -- Demander mise à jour serveur → OuvrirRebirth rouvrira le frame avec données fraîches
+        local ev = ReplicatedStorage:FindFirstChild("DemandeOuvrirRebirth")
+        if ev then
+            pcall(function() ev:FireServer() end)
+        else
+            rebirthFrame.Visible = true  -- fallback si RemoteEvent absent
+        end
     end
 end)
 

@@ -21,7 +21,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local _IncomeSystem = nil
 local function getIncomeSystem()
     if not _IncomeSystem then
-        local ok, m = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.IncomeSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.IncomeSystem)
         if ok and m then _IncomeSystem = m end
     end
     return _IncomeSystem

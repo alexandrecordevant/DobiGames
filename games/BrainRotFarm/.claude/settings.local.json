@@ -20,7 +20,8 @@
       "Bash(mv StarterPlayer/StarterPlayerScripts/Common/RebirthHUD.client.lua StarterPlayer/StarterPlayerScripts/)",
       "Bash(mv StarterPlayer/StarterPlayerScripts/Common/ShopHUD.client.lua StarterPlayer/StarterPlayerScripts/)",
       "Bash(mv StarterPlayer/StarterPlayerScripts/Common/SlotMenuHUD.client.lua StarterPlayer/StarterPlayerScripts/)",
-      "Bash(rmdir StarterPlayer/StarterPlayerScripts/Common)"
+      "Bash(rmdir StarterPlayer/StarterPlayerScripts/Common)",
+      "Bash(grep -r \"BRFilterSystem\\\\|CollectSystem\\\\|UITheme\\\\|UpgradeSystem\\\\|BrainrotSpawnConfig\\\\|GameConfig\" /c/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/ServerScriptService/ --include=*.lua -l)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

@@ -1,5 +1,5 @@
--- StarterPlayer/StarterPlayerScripts/Common/RebirthHUD.client.lua
--- BrainRotFarm — Interface Rebirth côté client
+-- shared-lib/src/client/RebirthHUD.client.lua
+-- DobiGames — Interface Rebirth côté client (générique, tous jeux)
 -- Écoute RebirthButtonUpdate + RebirthAnimation
 -- Envoie DemandeRebirth au clic
 
@@ -105,7 +105,7 @@ lblCoins.TextXAlignment         = Enum.TextXAlignment.Left
 lblCoins.RichText               = true
 lblCoins.Text                   = "💰 0 / 300 000"
 
--- Brain Rot requis
+-- Collectible requis (générique : "LEGENDARY", "MYTHIC", etc.)
 local lblBR = Instance.new("TextLabel", rebirthFrame)
 lblBR.Name                   = "BRRequis"
 lblBR.Size                   = UDim2.new(1, -20, 0, 18)
@@ -136,7 +136,6 @@ Instance.new("UICorner", btnRebirth).CornerRadius = UDim.new(0, 8)
 -- HELPERS
 -- ═══════════════════════════════════════
 
--- Formate un nombre avec espaces milliers : 1234567 → "1 234 567"
 local function FormatCoins(n)
     local s      = tostring(math.floor(n))
     local result = ""
@@ -163,7 +162,6 @@ local iconeParRarete = {
 local pulseTween = nil
 local isReady    = false
 
--- Active ou désactive le pulse du bouton selon disponibilité
 local function SetBoutonPret(ready)
     isReady = ready
     if pulseTween then
@@ -177,7 +175,6 @@ local function SetBoutonPret(ready)
         btnRebirth.BackgroundTransparency = 0
         stroke.Color                      = T.bordureAccent
         stroke.Thickness                  = 2.5
-        -- Pulse jaune blé ↔ transparent
         pulseTween = TweenService:Create(
             btnRebirth,
             TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
@@ -195,34 +192,29 @@ end
 
 -- ═══════════════════════════════════════
 -- ÉCOUTER RebirthButtonUpdate
--- Champs réels envoyés par RebirthSystem.lua :
---   visible, disponible, prochainLevel, rebirthLevel
---   coinsActuels, coinsRequis, brainRotRequis (string rarete)
---   manqueCoins, manqueBR, multiplicateur, label
 -- ═══════════════════════════════════════
 
 RebirthButtonUpdate.OnClientEvent:Connect(function(data)
     if not data then return end
 
-    rebirthFrame.Visible = data.visible == true
-    if not data.visible then return end
+    -- Auto-afficher si progression complète (ne jamais masquer ici — fermeture via bouton)
+    if data.visible == true then
+        rebirthFrame.Visible = true
+    end
 
-    -- Titre
+    -- Toujours mettre à jour les labels, même si le frame est ouvert via le Board (visible=false)
     lblTitre.Text = "🔥 " .. (data.label or "REBIRTH")
 
-    -- Calcul du pourcentage coins côté client
     local coinsActuels = data.coinsActuels or 0
     local coinsRequis  = data.coinsRequis  or 1
     local pct = math.clamp(math.floor((coinsActuels / coinsRequis) * 100), 0, 100)
 
-    -- Animer la barre
     TweenService:Create(barFill,
         TweenInfo.new(0.5, Enum.EasingStyle.Quad),
         { Size = UDim2.new(pct / 100, 0, 1, 0) }
     ):Play()
     lblPourcent.Text = pct .. "%"
 
-    -- Couleur barre selon progression
     if pct >= 100 then
         barFill.BackgroundColor3 = T.barrePleine
     elseif pct >= 75 then
@@ -231,10 +223,8 @@ RebirthButtonUpdate.OnClientEvent:Connect(function(data)
         barFill.BackgroundColor3 = T.fondBoutonRebirth
     end
 
-    -- Coins
     lblCoins.Text = "💰 " .. FormatCoins(coinsActuels) .. " / " .. FormatCoins(coinsRequis)
 
-    -- BR requis (brainRotRequis = string rarete, manqueBR = nil si ok)
     local rarete = data.brainRotRequis or "LEGENDARY"
     local brOk   = data.manqueBR == nil
     local icone  = iconeParRarete[rarete] or "🌟"
@@ -244,15 +234,12 @@ RebirthButtonUpdate.OnClientEvent:Connect(function(data)
         and Color3.fromRGB(100, 255, 100)
         or  Color3.fromRGB(255, 100, 100)
 
-    -- Texte du bouton
-    local mult = data.multiplicateur or 1.0
-    -- Formater le multiplicateur : "2" si entier, "1.5" sinon
+    local mult    = data.multiplicateur or 1.0
     local multStr = (mult == math.floor(mult))
         and tostring(math.floor(mult))
         or  tostring(mult)
     btnRebirth.Text = "⚡ REBIRTH — ×" .. multStr .. " income"
 
-    -- Activer le pulse uniquement si 100% coins ET BR ok
     SetBoutonPret(pct >= 100 and brOk)
 end)
 
@@ -261,7 +248,6 @@ end)
 -- ═══════════════════════════════════════
 
 local function afficherConfirmation(multStr)
-    -- Supprimer un éventuel doublon
     local ancien = screenGui:FindFirstChild("ConfirmRebirth")
     if ancien then ancien:Destroy() end
 
@@ -325,13 +311,8 @@ local function afficherConfirmation(multStr)
     end)
 end
 
--- ═══════════════════════════════════════
--- CLIC BOUTON REBIRTH
--- ═══════════════════════════════════════
-
 btnRebirth.MouseButton1Click:Connect(function()
     if not isReady then return end
-    -- Extraire le multiplicateur du texte du bouton ("×1.5 income" → "1.5")
     local multStr = btnRebirth.Text:match("×(.+) income") or "?"
     afficherConfirmation(multStr)
 end)
@@ -343,7 +324,6 @@ end)
 RebirthAnimation.OnClientEvent:Connect(function(data)
     if not data then return end
 
-    -- Flash doré plein écran
     local flash = Instance.new("Frame", screenGui)
     flash.Name                   = "RebirthFlash"
     flash.Size                   = UDim2.new(1, 0, 1, 0)
@@ -360,10 +340,9 @@ RebirthAnimation.OnClientEvent:Connect(function(data)
         if flash and flash.Parent then flash:Destroy() end
     end)
 
-    -- Texte "REBIRTH !" centré à l'écran
-    local niveau   = data.niveau or ""
-    local mult     = data.multiplicateur or 1.0
-    local multStr  = (mult == math.floor(mult))
+    local niveau  = data.niveau or ""
+    local mult    = data.multiplicateur or 1.0
+    local multStr = (mult == math.floor(mult))
         and tostring(math.floor(mult))
         or  tostring(mult)
 
@@ -381,12 +360,10 @@ RebirthAnimation.OnClientEvent:Connect(function(data)
     lblAnim.Text = "🔥 REBIRTH " .. tostring(niveau)
         .. "\n<font size='22'>×" .. multStr .. " income!</font>"
 
-    -- Apparition
     TweenService:Create(lblAnim,
         TweenInfo.new(0.3), { TextTransparency = 0 }
     ):Play()
 
-    -- Disparition après 2.5s
     task.delay(2.5, function()
         TweenService:Create(lblAnim,
             TweenInfo.new(0.5), { TextTransparency = 1 }
@@ -397,9 +374,7 @@ RebirthAnimation.OnClientEvent:Connect(function(data)
     end)
 end)
 
--- ============================================================
--- OuvrirRebirth — déclenché par BoardSystem ou bouton gauche
--- ============================================================
+-- OuvrirRebirth — déclenché par BoardSystem
 if OuvrirRebirth then
     OuvrirRebirth.OnClientEvent:Connect(function()
         if rebirthFrame then

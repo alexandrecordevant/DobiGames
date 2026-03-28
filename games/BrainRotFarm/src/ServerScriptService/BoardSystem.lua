@@ -27,7 +27,7 @@ local boardCfg = Config.BoardConfig or {
 local _RebirthSystem = nil
 local function getRebirthSystem()
     if not _RebirthSystem then
-        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.RebirthSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.RebirthSystem)
         if ok and m then _RebirthSystem = m end
     end
     return _RebirthSystem
@@ -36,7 +36,7 @@ end
 local _AssignationSystem = nil
 local function getAssignationSystem()
     if not _AssignationSystem then
-        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.AssignationSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.AssignationSystem)
         if ok and m then _AssignationSystem = m end
     end
     return _AssignationSystem

@@ -14,7 +14,12 @@ local Workspace         = game:GetService("Workspace")
 -- ============================================================
 -- Config depuis GameConfig
 -- ============================================================
-local Config     = require(ReplicatedStorage.Specialized.GameConfig)
+-- Cherche GameConfig à la racine de ReplicatedStorage (nouveau standard)
+-- Fallback sur Specialized.GameConfig pour compatibilité anciens projets
+local Config = require(
+    game.ReplicatedStorage:FindFirstChild("GameConfig")
+    or game.ReplicatedStorage.Specialized.GameConfig
+)
 local ProgConfig = Config.ProgressionConfig
 
 local SEUILS = ProgConfig.seuils
@@ -25,7 +30,7 @@ local function GetFloorNom(index)
 	for _, f in ipairs(FLOORS) do
 		if f.index == index then return f.nom end
 	end
-	return "Floor " .. tostring(index)
+	return "Floor_" .. tostring(index)
 end
 
 -- ============================================================
@@ -34,7 +39,7 @@ end
 local _CarrySystem = nil
 local function getCarrySystem()
     if not _CarrySystem then
-        local ok, m = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.CarrySystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
         if ok and m then _CarrySystem = m end
     end
     return _CarrySystem
@@ -43,7 +48,7 @@ end
 local _DropSystem = nil
 local function getDropSystem()
     if not _DropSystem then
-        local ok, m = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.DropSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.DropSystem)
         if ok and m then _DropSystem = m end
     end
     return _DropSystem
@@ -728,7 +733,7 @@ end
 -- niveauRebirth = nouveau niveau (1 après 1er rebirth → débloque Floor 2)
 -- ============================================================
 function BaseProgressionSystem.DebloquerFloorApresRebirth(player, niveauRebirth)
-    local AssignationSystem = require(ReplicatedStorage.SharedLib.Server.AssignationSystem)
+    local AssignationSystem = require(game:GetService("ServerScriptService").SharedLib.Server.AssignationSystem)
     local baseIndex = AssignationSystem.GetBaseIndex(player)
     if not baseIndex then
         warn("[BaseProgressionSystem] DebloquerFloorApresRebirth : base introuvable pour " .. player.Name)

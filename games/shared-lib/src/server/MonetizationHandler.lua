@@ -1,7 +1,10 @@
 -- ServerScriptService/MonetizationHandler.lua
 local MonetizationHandler = {}
 local MarketplaceService  = game:GetService("MarketplaceService")
-local Config              = require(game.ReplicatedStorage.Specialized.GameConfig)
+local Config = require(
+    game.ReplicatedStorage:FindFirstChild("GameConfig")
+    or game.ReplicatedStorage.Specialized.GameConfig
+)
 local CollectSystem       = require(game.ReplicatedStorage.SharedLib.Shared.CollectSystem)
 
 -- Injecté depuis Main.server.lua via MonetizationHandler.SetGetData(GetData)
@@ -12,7 +15,7 @@ function MonetizationHandler.SetGetData(fn) _GetData = fn end
 local _ShopSystem = nil
 local function getShopSystem()
     if not _ShopSystem then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").Common.ShopSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").ShopSystem)
         if ok and m then _ShopSystem = m end
     end
     return _ShopSystem
@@ -22,7 +25,7 @@ end
 local _FlowerPotSystem = nil
 local function getFlowerPotSystem()
     if not _FlowerPotSystem then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").Specialized.FlowerPotSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").FlowerPotSystem)
         if ok and m then _FlowerPotSystem = m end
     end
     return _FlowerPotSystem

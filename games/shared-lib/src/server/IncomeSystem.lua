@@ -11,7 +11,10 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local _GameConfig  = require(game.ReplicatedStorage.Specialized.GameConfig)
+local _GameConfig = require(
+    game.ReplicatedStorage:FindFirstChild("GameConfig")
+    or game.ReplicatedStorage.Specialized.GameConfig
+)
 
 -- ============================================================
 -- Valeur de base par rareté (coins/sec par Brain Rot déposé)
@@ -42,7 +45,7 @@ local coinsEnAttente  = {}
 local _LeaderboardSystem = nil
 local function getLeaderboardSystem()
     if not _LeaderboardSystem then
-        local ok, m = pcall(require, ServerScriptService.Common.LeaderboardSystem)
+        local ok, m = pcall(require, ServerScriptService.LeaderboardSystem)
         if ok and m then _LeaderboardSystem = m end
     end
     return _LeaderboardSystem
@@ -51,7 +54,7 @@ end
 local _BaseProgressionSystem = nil
 local function getBPS()
     if not _BaseProgressionSystem then
-        local ok, m = pcall(require, game:GetService("ReplicatedStorage").SharedLib.Server.BaseProgressionSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.BaseProgressionSystem)
         if ok and m then _BaseProgressionSystem = m end
     end
     return _BaseProgressionSystem
@@ -60,7 +63,7 @@ end
 local _DropSystem = nil
 local function getDropSystem()
     if not _DropSystem then
-        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Server.DropSystem)
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.DropSystem)
         if ok and m then _DropSystem = m end
     end
     return _DropSystem
@@ -114,12 +117,11 @@ local function ResetSlotDisplay(slotPart)
 end
 
 -- Réinitialise tous les slots d'une base au PlayerAdded
--- Structure réelle Studio : "Floor 1" à "Floor 4" (simple espace)
 local function InitializeAllSlots(baseFolder)
     if not baseFolder then return end
 
     for floorNum = 1, 4 do
-        local floorName = "Floor " .. floorNum  -- simple espace (vérifié en Studio)
+        local floorName = "Floor_" .. floorNum
         local floor = baseFolder:FindFirstChild(floorName)
 
         if floor then
@@ -290,24 +292,9 @@ local function calculerRevenu(player, spotsTable, playerData)
 
     local total = 0
     for _, spot in ipairs(spotsTable) do
-        local base = INCOME_PAR_RARETE[spot.rarete] or 0
-        -- Multiplicateur Mutant : vérifier MutantTag sur le mini modèle du spot
-        local mutantMult = 1
-        if spot.touchPart and spot.touchPart.Parent then
-            for _, child in ipairs(spot.touchPart.Parent:GetChildren()) do
-                local tag = child:FindFirstChild("MutantTag")
-                if tag then
-                    mutantMult = tonumber(tag.Value) or 1
-                    break
-                end
-            end
-            -- Fallback : vérifier directement sous touchPart
-            if mutantMult == 1 then
-                local tag = spot.touchPart:FindFirstChild("MutantTag", true)
-                if tag then mutantMult = tonumber(tag.Value) or 1 end
-            end
-        end
-        total = total + base * mutantMult
+        -- Utiliser valeurSec (inclut ×mutant calculé par DropSystem) si disponible
+        local base = spot.valeurSec or (INCOME_PAR_RARETE[spot.rarete] or 0)
+        total = total + base
     end
 
     if total == 0 then return 0 end
@@ -335,7 +322,8 @@ local function mettreAJourGuiSpots(spotsTable, multTotal)
         if not tp or not tp.Parent then continue end
         local spotModel = tp.Parent
 
-        local baseValeur   = INCOME_PAR_RARETE[spot.rarete] or 0
+        -- Utiliser valeurSec (inclut ×mutant) si disponible, sinon fallback rareté
+        local baseValeur   = spot.valeurSec or (INCOME_PAR_RARETE[spot.rarete] or 0)
         local valeurReelle = math.floor(baseValeur * multTotal)
 
         -- Mettre à jour uniquement $offline (revenu/s affiché en permanence)
@@ -454,7 +442,8 @@ function IncomeSystem.Init(player, getData)
             local multVIP     = playerData.hasVIP and 2 or 1
 
             for _, spot in ipairs(spotsTable) do
-                local base = INCOME_PAR_RARETE[spot.rarete] or 0
+                -- Utiliser valeurSec (inclut ×mutant) si disponible, sinon fallback rareté
+                local base = spot.valeurSec or (INCOME_PAR_RARETE[spot.rarete] or 0)
                 if base > 0 then
                     local incomeSpot = math.floor(
                         base * multRebirth * multVIP * eventMultiplier)
@@ -664,6 +653,19 @@ end
 -- Nettoie toutes les bases (utile si appelé manuellement depuis un autre script)
 function IncomeSystem.CleanupDefaultValues()
     CleanupDefaultValues()
+end
+
+-- Retourne le total des coins accumulés dans les slots mais pas encore collectés manuellement
+-- Utilisé par RebirthSystem pour afficher le vrai solde joueur (data.coins + coinsEnAttente)
+function IncomeSystem.GetCoinsEnAttente(player)
+    local uid   = player.UserId
+    local total = 0
+    if coinsEnAttente[uid] then
+        for _, v in pairs(coinsEnAttente[uid]) do
+            total = total + (v or 0)
+        end
+    end
+    return total
 end
 
 -- Ajoute des coins directement au joueur (utilisé par VendreBR dans DropSystem)

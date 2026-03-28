@@ -19,7 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Dépendances
 -- ============================================================
-local BaseProgressionSystem = require(ReplicatedStorage.SharedLib.Server.BaseProgressionSystem)
+local BaseProgressionSystem = require(game:GetService("ServerScriptService").SharedLib.Server.BaseProgressionSystem)
 
 -- ============================================================
 -- Callbacks injectés par Main.server.lua
@@ -35,6 +35,18 @@ RebirthSystem.IsProgressionComplete = nil
 -- Appelé après la séquence complète (Discord, analytics, etc.)
 -- function(player, niveau, cfg)
 RebirthSystem.OnRebirthComplete = nil
+
+-- Retourne les coins non encore collectés manuellement (coinsEnAttente dans IncomeSystem)
+-- Injecter depuis Main : RebirthSystem.GetExtraCoins = function(p) return IncomeSystem.GetCoinsEnAttente(p) end
+RebirthSystem.GetExtraCoins = nil
+
+-- Appelé à chaque envoi de RebirthButtonUpdate (5s loop + collectes)
+-- Injecter depuis Main : RebirthSystem.OnButtonUpdate = function(player, etat) BoardSystem.MettreAJourBoard(player, etat) end
+RebirthSystem.OnButtonUpdate = nil
+
+-- Appelé pendant executerRebirth pour vider les spots + réinitialiser DropSystem/IncomeSystem
+-- Injecter depuis Main : RebirthSystem.OnResetBase = function(player, baseIndex, data) ... end
+RebirthSystem.OnResetBase = nil
 
 -- ============================================================
 -- Config des niveaux
@@ -139,7 +151,9 @@ function RebirthSystem.VerifierConditions(player)
     local manques = {}
     local ok      = true
 
-    local coins = data.coins or 0
+    -- Inclure les coins en attente dans les slots (pas encore collectés manuellement)
+    local extraCoins = RebirthSystem.GetExtraCoins and RebirthSystem.GetExtraCoins(player) or 0
+    local coins = (data.coins or 0) + extraCoins
     if coins < cfg.coinsRequis then
         ok = false
         manques.manqueCoins = cfg.coinsRequis - coins
@@ -182,11 +196,14 @@ local function envoyerEtatBouton(player)
     local cfg         = obtenirConfig(niveau)
     local ok, manques = RebirthSystem.VerifierConditions(player)
 
+    -- Inclure les coins en attente dans les slots (pas encore collectés manuellement)
+    local extraCoins2 = RebirthSystem.GetExtraCoins and RebirthSystem.GetExtraCoins(player) or 0
+
     local etat = {
         visible        = visible,
         disponible     = ok,
         prochainLevel  = niveau,
-        coinsActuels   = data.coins or 0,
+        coinsActuels   = (data.coins or 0) + extraCoins2,
         coinsRequis    = cfg.coinsRequis,
         brainRotRequis = cfg.brainRotRequis.rarete,
         label          = cfg.label,
@@ -196,10 +213,15 @@ local function envoyerEtatBouton(player)
         manqueBRActuel = manques.manqueBRActuel or 0,
         manqueBRRequis = manques.manqueBRRequis or 0,
         rebirthLevel   = niveauActuel(data),
-        multiplicateur = data.multiplicateurPermanent or 1.0,
+        multiplicateur = cfg.multiplicateur,  -- multiplicateur du PROCHAIN rebirth (pas l'actuel)
     }
 
     pcall(function() RebirthButtonUpdate:FireClient(player, etat) end)
+
+    -- Mettre à jour le Board de la base (toutes les 5s + après chaque collecte)
+    if RebirthSystem.OnButtonUpdate then
+        pcall(RebirthSystem.OnButtonUpdate, player, etat)
+    end
 end
 
 -- ============================================================
@@ -314,7 +336,12 @@ local function executerRebirth(player)
 
     -- Étape 5 : Reset progression + ré-init base
     task.wait(1.5)
-    data.progression = {}
+    data.progression   = {}
+    data.spotsOccupes  = {}  -- vider l'inventaire des spots (BRs déposés)
+    -- Vider les spots, DropSystem, IncomeSystem et recréer les prompts (injecté par Main)
+    if RebirthSystem.OnResetBase then
+        pcall(RebirthSystem.OnResetBase, player, baseIndex, data)
+    end
     BaseProgressionSystem.Reset(player)
     task.wait(0.1)
     BaseProgressionSystem.Init(player, baseIndex, data)

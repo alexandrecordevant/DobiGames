@@ -10,7 +10,6 @@
             "$className": "ReplicatedStorage",
             "SharedLib": {
                 "$className": "Folder",
-                "Server": { "$path": "../shared-lib/src/server" },
                 "Shared": { "$path": "../shared-lib/src/shared" },
                 "BRFilterSystem": { "$path": "../shared-lib/src/BRFilterSystem" }
             },
@@ -20,7 +19,11 @@
         },
         "ServerScriptService": {
             "$className": "ServerScriptService",
-            "$path": "src/ServerScriptService"
+            "$path": "src/ServerScriptService",
+            "SharedLib": {
+                "$className": "Folder",
+                "Server": { "$path": "../shared-lib/src/server" }
+            }
         },
         "StarterPlayer": {
             "$className": "StarterPlayer",
@@ -28,7 +31,6 @@
                 "$className": "StarterPlayerScripts",
                 "Shared": { "$path": "../shared-lib/src/client" },
                 "FlowerPotHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua" },
-                "RebirthHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/RebirthHUD.client.lua" },
                 "ShopHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua" },
                 "SlotMenuHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SlotMenuHUD.client.lua" }
             }

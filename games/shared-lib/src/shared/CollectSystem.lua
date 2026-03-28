@@ -1,6 +1,9 @@
 -- ReplicatedStorage/Modules/CollectSystem.lua
 local CollectSystem = {}
-local Config = require(game.ReplicatedStorage.Specialized.GameConfig)
+local Config = require(
+    game.ReplicatedStorage:FindFirstChild("GameConfig")
+    or game.ReplicatedStorage.Specialized.GameConfig
+)
 
 CollectSystem.EventMultiplier = 1
 

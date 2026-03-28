@@ -317,12 +317,11 @@ GameConfig.ChampCommunPoints = {
 GameConfig.ProgressionConfig = {
 
     -- Structure des floors
-    -- ATTENTION : Floor 1 a un double espace dans son nom Studio
     floors = {
-        { index = 1, nom = "Floor  1", type = "Part",  spots = 10 },
-        { index = 2, nom = "Floor 2",  type = "Model", spots = 10 },
-        { index = 3, nom = "Floor 3",  type = "Model", spots = 10 },
-        { index = 4, nom = "Floor 4",  type = "Model", spots = 10 },
+        { index = 1, nom = "Floor_1", type = "Part",  spots = 10 },
+        { index = 2, nom = "Floor_2", type = "Model", spots = 10 },
+        { index = 3, nom = "Floor_3", type = "Model", spots = 10 },
+        { index = 4, nom = "Floor_4", type = "Model", spots = 10 },
     },
 
     -- Seuils de déblocage (coins TOTAUX gagnés, pas le solde actuel)

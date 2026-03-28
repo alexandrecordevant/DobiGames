@@ -14,7 +14,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Config
 -- ============================================================
-local Config = require(ReplicatedStorage.Specialized.GameConfig)
+local Config = require(
+    ReplicatedStorage:FindFirstChild("GameConfig")
+    or ReplicatedStorage.Specialized.GameConfig
+)
 
 -- ============================================================
 -- Configuration
