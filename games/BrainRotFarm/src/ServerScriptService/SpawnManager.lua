@@ -19,7 +19,7 @@ local _FilterManager = nil
 local function getFilterManager()
     if not _FilterManager then
         local ok, m = pcall(function()
-            return require(game:GetService("ReplicatedStorage")
+            return require(game:GetService("ServerScriptService")
                 :WaitForChild("SharedLib")
                 :WaitForChild("BRFilterSystem")
                 :WaitForChild("FilterManager"))

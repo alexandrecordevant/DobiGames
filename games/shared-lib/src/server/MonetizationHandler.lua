@@ -5,7 +5,7 @@ local Config = require(
     game.ReplicatedStorage:FindFirstChild("GameConfig")
     or game.ReplicatedStorage.Specialized.GameConfig
 )
-local CollectSystem       = require(game.ReplicatedStorage.SharedLib.Shared.CollectSystem)
+local CollectSystem       = require(game:GetService("ServerScriptService").SharedLib.Shared.CollectSystem)
 
 -- Injecté depuis Main.server.lua via MonetizationHandler.SetGetData(GetData)
 local _GetData = nil

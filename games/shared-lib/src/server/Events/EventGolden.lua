@@ -30,7 +30,7 @@ end
 local _CollectSystem = nil
 local function getCollectSystem()
     if not _CollectSystem then
-        local ok, m = pcall(require, ReplicatedStorage.SharedLib.Shared.CollectSystem)
+        local ok, m = pcall(require, ServerScriptService.SharedLib.Shared.CollectSystem)
         if ok and m then _CollectSystem = m end
     end
     return _CollectSystem

@@ -12,8 +12,8 @@ local RunService         = game:GetService("RunService")
 -- ═══════════════════════════════════════════════
 
 local Config             = require(ReplicatedStorage.GameConfig)
-local CollectSystem      = require(ReplicatedStorage.SharedLib.Shared.CollectSystem)
-local UpgradeSystem      = require(ReplicatedStorage.SharedLib.Shared.UpgradeSystem)
+local CollectSystem      = require(ServerScriptService.SharedLib.Shared.CollectSystem)
+local UpgradeSystem      = require(ServerScriptService.SharedLib.Shared.UpgradeSystem)
 
 local DataStoreManager      = require(ServerScriptService.DataStoreManager)
 local EventManager          = require(ServerScriptService.SharedLib.Server.EventManager)

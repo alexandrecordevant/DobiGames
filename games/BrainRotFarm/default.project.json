@@ -10,19 +10,26 @@
             "$className": "ReplicatedStorage",
             "SharedLib": {
                 "$className": "Folder",
-                "Shared": { "$path": "../shared-lib/src/shared" },
-                "BRFilterSystem": { "$path": "../shared-lib/src/BRFilterSystem" }
+                "Shared": {
+                    "$className": "Folder",
+                    "UITheme": { "$path": "../shared-lib/src/shared/UITheme.lua" }
+                }
             },
             "Modules": { "$path": "src/ReplicatedStorage/Modules" },
-            "GameConfig": { "$path": "src/ReplicatedStorage/GameConfig.lua" },
-            "BrainrotSpawnConfig": { "$path": "src/ReplicatedStorage/BrainrotSpawnConfig.lua" }
+            "GameConfig": { "$path": "src/ReplicatedStorage/GameConfig.lua" }
         },
         "ServerScriptService": {
             "$className": "ServerScriptService",
             "$path": "src/ServerScriptService",
             "SharedLib": {
                 "$className": "Folder",
-                "Server": { "$path": "../shared-lib/src/server" }
+                "Server": { "$path": "../shared-lib/src/server" },
+                "Shared": {
+                    "$className": "Folder",
+                    "CollectSystem":  { "$path": "../shared-lib/src/shared/CollectSystem.lua" },
+                    "UpgradeSystem":  { "$path": "../shared-lib/src/shared/UpgradeSystem.lua" }
+                },
+                "BRFilterSystem": { "$path": "../shared-lib/src/BRFilterSystem" }
             }
         },
         "StarterPlayer": {

@@ -4,7 +4,7 @@ local Config = require(
     game.ReplicatedStorage:FindFirstChild("GameConfig")
     or game.ReplicatedStorage.Specialized.GameConfig
 )
-local CollectSystem = require(game.ReplicatedStorage.SharedLib.Shared.CollectSystem)
+local CollectSystem = require(game:GetService("ServerScriptService").SharedLib.Shared.CollectSystem)
 
 -- Chargement différé de EventVisuals (coordinateur visuel+gameplay)
 local _EventVisuals = nil
