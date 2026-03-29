@@ -36,10 +36,10 @@ local function DefaultData()
         walkSpeedActuel = 16,
         -- Flower Pots
         pots = {
-            [1] = { debloque=true,  rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
-            [2] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
-            [3] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
-            [4] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false },
+            [1] = { debloque=true,  rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
+            [2] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
+            [3] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
+            [4] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
         },
         dailySeed = {
             jourActuel     = 1,
@@ -65,6 +65,14 @@ function DataStoreManager.Load(player)
     if not data.dailySeed then data.dailySeed = defaults.dailySeed end
     if not data.upgrades then data.upgrades = defaults.upgrades end
     if not data.inventory then data.inventory = defaults.inventory end
+
+    -- Migration plantedAt : pots déjà en cours de croissance sans timestamp
+    -- Traité comme planté maintenant → timer repart de zéro (conservatif)
+    for _, pot in pairs(data.pots) do
+        if pot.rarete and not pot.plantedAt then
+            pot.plantedAt = os.time()
+        end
+    end
 
     local income = CollectSystem.CalculerOfflineIncome(data, data.derniereConnexion)
     if income > 0 then

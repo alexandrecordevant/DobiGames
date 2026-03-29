@@ -400,10 +400,20 @@ local function afficherMenuInfos(potIndex, potData)
     stageLbl.TextXAlignment         = Enum.TextXAlignment.Center
     stageLbl.ZIndex                 = 14
 
-    -- Temps restant / prêt
+    -- Temps restant / prêt (countdown local)
     if stage < 4 then
-        creerLigne("⏱ Ready in: " .. formatTemps(tRestant),
+        local timerLbl = creerLigne("⏱ Ready in: " .. formatTemps(tRestant),
             Color3.fromRGB(180, 230, 255), 26, 3)
+        local countdown = tRestant
+        task.spawn(function()
+            while mainFrame.Visible and timerLbl.Parent and countdown > 0 do
+                task.wait(1)
+                countdown = countdown - 1
+                if timerLbl.Parent then
+                    timerLbl.Text = "⏱ Ready in: " .. formatTemps(countdown)
+                end
+            end
+        end)
 
         -- Multiplicateur
         if graineCfg then

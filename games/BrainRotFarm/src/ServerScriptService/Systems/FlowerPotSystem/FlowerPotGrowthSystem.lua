@@ -370,7 +370,7 @@ end
     @param onHarvest  (function, optionnel) — callback après récolte réussie
                       signature: onHarvest(player, elementType, multiplier)
 ]]
-function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest)
+function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest, resumeOptions)
     -- Validation des paramètres
     if not potModel or not potModel.Parent then
         warn("[FlowerPotGrowthSystem] potModel invalide")
@@ -405,6 +405,10 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         "[FlowerPotGrowthSystem] Début croissance | Pot: %s | Graine: %s | Élément: %s %s | ×%d",
         potModel.Name, seedRarity, elementType, emoji, multiplier))
 
+    -- Étape courante pour la reprise (0=GenericSeed, 1-4=Plant_StageX, 5=terminé)
+    local etapeCourante   = (resumeOptions and resumeOptions.etapeCourante) or 0
+    local premiereAttente = (resumeOptions and resumeOptions.premiereAttente) or DUREE_PAR_STAGE
+
     -- ══════════════════════════════════════════════════════
     -- Thread principal de croissance
     -- ══════════════════════════════════════════════════════
@@ -413,20 +417,92 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         local mutantClone = nil   -- BR Mutant spawné au stage 2
 
         -- ────────────────────────────────────────────────
-        -- ÉTAPE INITIALE : Afficher GenericSeed (instant)
+        -- CAS REPRISE TERMINÉE : spawn mutant directement
         -- ────────────────────────────────────────────────
-        local graine = clonerGraine(potPart)
-        if graine then
-            plantActuel = graine
-            print("[FlowerPotGrowthSystem]", potModel.Name, "→ GenericSeed affiché")
+        if etapeCourante >= 5 then
+            mutantClone = clonerBRMutant(seedRarity)
+            if mutantClone then
+                local posSurPot = getSurfacePot(potPart) + Vector3.new(0, 0.5, 0)
+                positionnerClone(mutantClone, posSurPot)
+                pcall(function()
+                    mutantClone:SetAttribute("IsMutant",    true)
+                    mutantClone:SetAttribute("ElementType", elementType)
+                    mutantClone:SetAttribute("Rarity",      seedRarity)
+                    mutantClone:SetAttribute("Multiplier",  multiplier)
+                end)
+                appliquerParticulesElement(mutantClone, elementType)
+                mutantClone.Parent = Workspace
+                _mutants[potId] = {
+                    clone       = mutantClone,
+                    elementType = elementType,
+                    seedRarity  = seedRarity,
+                    multiplier  = multiplier,
+                }
+                local PH = getPickupHandler()
+                if PH then
+                    PH.Setup(mutantClone, potModel, player, {
+                        elementType = elementType,
+                        seedRarity  = seedRarity,
+                        multiplier  = multiplier,
+                        emoji       = emoji,
+                        potId       = potId,
+                        onHarvest   = onHarvest,
+                    })
+                end
+            end
+            _threads[potId] = nil
+            return
         end
 
         -- ────────────────────────────────────────────────
-        -- STAGES 0 à 3 (4 stages × DUREE_PAR_STAGE)
+        -- AFFICHAGE IMMÉDIAT selon l'étape courante
         -- ────────────────────────────────────────────────
-        for stage = 0, 3 do
-            -- Attendre la durée du stage
-            task.wait(DUREE_PAR_STAGE)
+        if etapeCourante == 0 then
+            -- Départ normal : GenericSeed
+            local graine = clonerGraine(potPart)
+            if graine then
+                plantActuel = graine
+                print("[FlowerPotGrowthSystem]", potModel.Name, "→ GenericSeed affiché")
+            end
+        else
+            -- Reprise : afficher le stage déjà atteint
+            local stageAffiche = etapeCourante - 1  -- 0 à 3
+            plantActuel = clonerPlantStage(stageAffiche, potPart)
+            if _plantages[potId] then _plantages[potId].stage = stageAffiche end
+            print(string.format("[FlowerPotGrowthSystem] %s → Plant_Stage%d (reprise étape %d)",
+                potModel.Name, stageAffiche, etapeCourante))
+
+            -- Si le mutant aurait déjà dû spawner (stage >= MUTANT_SPAWN_STAGE)
+            if stageAffiche >= MUTANT_SPAWN_STAGE then
+                mutantClone = clonerBRMutant(seedRarity)
+                if mutantClone then
+                    local posAuDessus = getSurfacePot(potPart) + Vector3.new(0, MUTANT_OFFSET_Y, 0)
+                    positionnerClone(mutantClone, posAuDessus)
+                    pcall(function()
+                        mutantClone:SetAttribute("IsMutant",    true)
+                        mutantClone:SetAttribute("ElementType", elementType)
+                        mutantClone:SetAttribute("Rarity",      seedRarity)
+                        mutantClone:SetAttribute("Multiplier",  multiplier)
+                    end)
+                    appliquerParticulesElement(mutantClone, elementType)
+                    mutantClone.Parent = Workspace
+                    _mutants[potId] = {
+                        clone       = mutantClone,
+                        elementType = elementType,
+                        seedRarity  = seedRarity,
+                        multiplier  = multiplier,
+                    }
+                end
+            end
+        end
+
+        -- ────────────────────────────────────────────────
+        -- STAGES (loop depuis etapeCourante jusqu'à 3)
+        -- ────────────────────────────────────────────────
+        for stage = etapeCourante, 3 do
+            -- Attente réduite pour le premier stage lors d'une reprise
+            local attente = (stage == etapeCourante) and premiereAttente or DUREE_PAR_STAGE
+            task.wait(attente)
 
             -- Vérifier validité du pot (peut être détruit si joueur quitte)
             if not potModel or not potModel.Parent then
@@ -449,8 +525,8 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
             print(string.format("[FlowerPotGrowthSystem] %s → Plant_Stage%d",
                 potModel.Name, stage))
 
-            -- ─── STAGE 2 : Spawn BR Mutant au-dessus ───
-            if stage == MUTANT_SPAWN_STAGE then
+            -- ─── STAGE 2 : Spawn BR Mutant au-dessus (seulement si pas déjà spawné) ───
+            if stage == MUTANT_SPAWN_STAGE and not mutantClone then
                 mutantClone = clonerBRMutant(seedRarity)
 
                 if mutantClone then
@@ -493,7 +569,9 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         -- ────────────────────────────────────────────────
         -- FIN DU DERNIER STAGE : Plante meurt
         -- ────────────────────────────────────────────────
-        task.wait(DUREE_PAR_STAGE)
+        -- Attente réduite si reprise à l'étape finale (etapeCourante=4)
+        local attenteFinal = (etapeCourante == 4) and premiereAttente or DUREE_PAR_STAGE
+        task.wait(attenteFinal)
 
         -- Détruire la plante (fondu vers invisible puis destroy)
         if plantActuel and plantActuel.Parent then
