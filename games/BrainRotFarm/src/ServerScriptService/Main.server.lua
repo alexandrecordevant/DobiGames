@@ -71,6 +71,7 @@ local OuvrirRebirth      = CreerRemoteEvent("OuvrirRebirth")
 local UpdateGraines      = CreerRemoteEvent("UpdateGraines")
 local OuvrirPot          = CreerRemoteEvent("OuvrirPot")
 local PotUpdate          = CreerRemoteEvent("PotUpdate")
+local PotBillboardUpdate = CreerRemoteEvent("PotBillboardUpdate")
 
 -- Events client → serveur (actions joueur)
 local DemandeUpgrade        = CreerRemoteEvent("DemandeUpgrade")
@@ -117,6 +118,26 @@ end
 -- INITIALISATION DES FLOWER POTS (remplace FlowerPotSystem.Init)
 -- Placé ici pour que GetData/SetData soient en portée (upvalues)
 -- ═══════════════════════════════════════════════
+
+-- Retourne un callback onElementChosen qui persiste l'élément dans data.pots
+local function makeOnElementChosen(player, potIndex)
+    return function(elem)
+        local d = GetData(player)
+        if d and d.pots and d.pots[potIndex] then
+            d.pots[potIndex].elementType = elem
+        end
+    end
+end
+
+-- Retourne un callback onBRNomChosen qui persiste le nom du modèle mutant
+local function makeOnBRNomChosen(player, potIndex)
+    return function(nom)
+        local d = GetData(player)
+        if d and d.pots and d.pots[potIndex] then
+            d.pots[potIndex].brNom = nom
+        end
+    end
+end
 
 local InitialiserPots  -- déclaration forward (la fonction s'appelle elle-même)
 InitialiserPots = function(player, baseIndex, playerData)
@@ -190,10 +211,10 @@ InitialiserPots = function(player, baseIndex, playerData)
         local function creerBillboardPot(texte, couleur)
             local bb = Instance.new("BillboardGui", potPart)
             bb.Name        = "PotBillboard"
-            bb.Size        = UDim2.new(0, 180, 0, 40)
-            bb.StudsOffset = Vector3.new(0, 5, 0)
+            bb.Size        = UDim2.new(0, 220, 0, 56)
+            bb.StudsOffset = Vector3.new(0, 12, 0)
             bb.AlwaysOnTop = false
-            bb.MaxDistance = 20
+            bb.MaxDistance = 60
             local bg = Instance.new("Frame", bb)
             bg.Size = UDim2.new(1,0,1,0)
             bg.BackgroundColor3 = Color3.fromRGB(10,10,20)
@@ -205,7 +226,7 @@ InitialiserPots = function(player, baseIndex, playerData)
             lbl.BackgroundTransparency = 1
             lbl.TextColor3 = couleur or Color3.fromRGB(255,255,255)
             lbl.Font = Enum.Font.GothamBold
-            lbl.TextSize = 12
+            lbl.TextSize = 17
             lbl.Text = texte
             lbl.TextWrapped = true
             lbl.RichText = true
@@ -213,6 +234,7 @@ InitialiserPots = function(player, baseIndex, playerData)
 
         -- ── Pot verrouillé ──
         if not potData.debloque then
+            PotBillboardUpdate:FireClient(player, potModel, nil)
             local prixCoins = potCfg.prixCoins or 0
             local prixRobux = potCfg.prixRobux or 0
             local prixLabel = prixCoins > 0
@@ -251,14 +273,23 @@ InitialiserPots = function(player, baseIndex, playerData)
                         function(tp, elem, mult)
                             local d = GetData(player)
                             if d and d.pots and d.pots[potIndex] then
-                                d.pots[potIndex].rarete    = nil
-                                d.pots[potIndex].stage     = 0
-                                d.pots[potIndex].plantedAt = nil
+                                d.pots[potIndex].rarete      = nil
+                                d.pots[potIndex].stage       = 0
+                                d.pots[potIndex].plantedAt   = nil
+                                d.pots[potIndex].elementType = nil
+                                d.pots[potIndex].brNom       = nil
                             end
                             local latest = GetData(player)
                             if latest then InitialiserPots(player, baseIndex, latest) end
                         end,
-                        { etapeCourante = etape, premiereAttente = premAttente })
+                        {
+                            etapeCourante   = etape,
+                            premiereAttente = premAttente,
+                            elementType     = potData.elementType,
+                            brNom           = potData.brNom,
+                            onElementChosen = makeOnElementChosen(player, potIndex),
+                            onBRNomChosen   = makeOnBRNomChosen(player, potIndex),
+                        })
                 end)
             end
 
@@ -270,6 +301,16 @@ InitialiserPots = function(player, baseIndex, playerData)
             promptInfos.MaxActivationDistance = 8
             promptInfos.RequiresLineOfSight   = false
             promptInfos.Parent                = potPart
+
+            -- Envoyer les données au client pour la BillboardGui 3D
+            do
+                local dureeStage = (FPCfg and FPCfg.GrowthDuration) or 120
+                PotBillboardUpdate:FireClient(player, potModel, {
+                    plantedAt  = potData.plantedAt or os.time(),
+                    dureeStage = dureeStage,
+                    rarete     = potData.rarete,
+                })
+            end
 
             promptInfos.Triggered:Connect(function(p)
                 if p ~= player then return end
@@ -305,6 +346,7 @@ InitialiserPots = function(player, baseIndex, playerData)
 
         -- ── Pot vide et débloqué → prompt "Planter" ──
         else
+            PotBillboardUpdate:FireClient(player, potModel, nil)
             creerBillboardPot(
                 FPCfg.labelPotVide or "🌱 Plant MYTHIC / SECRET",
                 Color3.fromRGB(120, 220, 100))
@@ -347,11 +389,20 @@ InitialiserPots = function(player, baseIndex, playerData)
                     if not freshData then return end
 
                     -- Mémoriser dans les données (persistance DataStore)
+                    local now = os.time()
                     if freshData.pots and freshData.pots[potIndex] then
                         freshData.pots[potIndex].rarete    = bestRarity
                         freshData.pots[potIndex].stage     = 0
-                        freshData.pots[potIndex].plantedAt = os.time()
+                        freshData.pots[potIndex].plantedAt = now
                     end
+
+                    -- Billboard 3D immédiatement
+                    local dureeStage = (FPCfg and FPCfg.GrowthDuration) or 120
+                    PotBillboardUpdate:FireClient(player, potModel, {
+                        plantedAt  = now,
+                        dureeStage = dureeStage,
+                        rarete     = bestRarity,
+                    })
 
                     -- Détruire le prompt "Plant" avant de lancer la croissance
                     if cnx then cnx:Disconnect() cnx = nil end
@@ -362,13 +413,19 @@ InitialiserPots = function(player, baseIndex, playerData)
                         function(tp, elem, mult)
                             local d = GetData(player)
                             if d and d.pots and d.pots[potIndex] then
-                                d.pots[potIndex].rarete    = nil
-                                d.pots[potIndex].stage     = 0
-                                d.pots[potIndex].plantedAt = nil
+                                d.pots[potIndex].rarete      = nil
+                                d.pots[potIndex].stage       = 0
+                                d.pots[potIndex].plantedAt   = nil
+                                d.pots[potIndex].elementType = nil
+                                d.pots[potIndex].brNom       = nil
                             end
                             local latest = GetData(player)
                             if latest then InitialiserPots(player, baseIndex, latest) end
-                        end)
+                        end,
+                        {
+                            onElementChosen = makeOnElementChosen(player, potIndex),
+                            onBRNomChosen   = makeOnBRNomChosen(player, potIndex),
+                        })
 
                     -- Recréer les prompts immédiatement (pot passe en mode "growing")
                     -- task.defer laisse le thread PlantSeed démarrer avant
@@ -498,6 +555,25 @@ local function OnPlayerAdded(player)
 
         -- Initialiser les pots de fleurs
         InitialiserPots(player, baseIndex, data)
+
+        -- Restaurer les graines sauvegardées dans CarriedSeeds (data.graines → dossier joueur)
+        local graines = data.graines
+        if graines then
+            local carriedSeeds = player:FindFirstChild("CarriedSeeds")
+            if not carriedSeeds then
+                carriedSeeds = Instance.new("Folder")
+                carriedSeeds.Name   = "CarriedSeeds"
+                carriedSeeds.Parent = player
+            end
+            for rarete, count in pairs(graines) do
+                for _ = 1, count do
+                    local sv       = Instance.new("StringValue")
+                    sv.Value       = rarete
+                    sv.Parent      = carriedSeeds
+                end
+            end
+            UpdateGraines:FireClient(player, graines)
+        end
 
         -- Initialiser le système de Rebirth (callbacks Farm injectés ici)
         RebirthSystem.Config = Config.RebirthConfig

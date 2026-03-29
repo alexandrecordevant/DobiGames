@@ -515,10 +515,9 @@ local function restaurerDepots(player, playerData)
             local valeur   = info.valeurSec or (VALEUR_PAR_RARETE[info.rarete] or 1)
             local isMutant = info.isMutant == true
 
-            -- Tenter de restaurer le modèle exact via brNom
-            -- Les modèles Mutant (_MUTANT) n'existent pas dans ServerStorage → fallback rareté
+            -- Tenter de restaurer le modèle exact via brNom (mutants inclus)
             local modeleSource = nil
-            if info.brNom and not isMutant then
+            if info.brNom then
                 local brainrots = ServerStorage:FindFirstChild("Brainrots")
                 local dossier   = brainrots and brainrots:FindFirstChild(info.rarete)
                 local brSource  = dossier and dossier:FindFirstChild(info.brNom)

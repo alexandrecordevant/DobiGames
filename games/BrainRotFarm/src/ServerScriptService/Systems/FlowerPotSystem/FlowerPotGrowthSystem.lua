@@ -241,37 +241,45 @@ local function clonerPlantStage(stageIndex, potPart)
 end
 
 -- Clone un BR Mutant depuis ServerStorage/Brainrots/MYTHIC/ ou /SECRET/
--- Choisit un modèle aléatoire dans le dossier de la rareté
-local function clonerBRMutant(seedRarity)
+-- nomModele optionnel : réutilise le même modèle (persistance rejoin)
+-- Retourne (clone, nomChoisi) ou (nil, nil)
+local function clonerBRMutant(seedRarity, nomModele)
     local brainrots = ServerStorage:FindFirstChild("Brainrots")
     if not brainrots then
         warn("[FlowerPotGrowthSystem] ServerStorage/Brainrots introuvable")
-        return nil
+        return nil, nil
     end
 
     local dossier = brainrots:FindFirstChild(seedRarity)
     if not dossier then
         warn("[FlowerPotGrowthSystem] Dossier rareté introuvable :", seedRarity)
-        return nil
+        return nil, nil
     end
 
     local modeles = dossier:GetChildren()
     if #modeles == 0 then
         warn("[FlowerPotGrowthSystem] Aucun modèle dans :", seedRarity)
-        return nil
+        return nil, nil
+    end
+
+    -- Utiliser le modèle sauvegardé si disponible, sinon aléatoire
+    local src = nomModele and dossier:FindFirstChild(nomModele)
+    if not src then
+        src = modeles[math.random(1, #modeles)]
     end
 
     local clone = nil
-    local ok = pcall(function()
-        clone = modeles[math.random(1, #modeles)]:Clone()
-    end)
+    local ok = pcall(function() clone = src:Clone() end)
     if not ok or not clone then
         warn("[FlowerPotGrowthSystem] Échec clone BR Mutant depuis :", seedRarity)
-        return nil
+        return nil, nil
     end
 
+    -- Attribut pour restauration fidèle par DropSystem
+    pcall(function() clone:SetAttribute("OriginalName", src.Name) end)
+
     ancrerClone(clone)
-    return clone
+    return clone, src.Name
 end
 
 -- ============================================================
@@ -396,10 +404,16 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
     -- Mémoriser rareté et stage courant (exposé via GetStatut)
     _plantages[potId] = { rarity = seedRarity, stage = -1 }
 
-    -- Choisir élément aléatoire
-    local elementType = ELEMENTS[math.random(1, #ELEMENTS)]
+    -- Choisir élément (réutiliser si reprise, sinon aléatoire)
+    local elementType = (resumeOptions and resumeOptions.elementType)
+        or ELEMENTS[math.random(1, #ELEMENTS)]
     local multiplier  = ELEMENT_MULTIPLIERS[elementType] or 2
     local emoji       = ELEMENT_EMOJIS[elementType] or "✨"
+
+    -- Notifier l'appelant de l'élément choisi (pour persistance DataStore)
+    if resumeOptions and resumeOptions.onElementChosen then
+        pcall(resumeOptions.onElementChosen, elementType)
+    end
 
     print(string.format(
         "[FlowerPotGrowthSystem] Début croissance | Pot: %s | Graine: %s | Élément: %s %s | ×%d",
@@ -408,6 +422,18 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
     -- Étape courante pour la reprise (0=GenericSeed, 1-4=Plant_StageX, 5=terminé)
     local etapeCourante   = (resumeOptions and resumeOptions.etapeCourante) or 0
     local premiereAttente = (resumeOptions and resumeOptions.premiereAttente) or DUREE_PAR_STAGE
+    -- Nom du modèle mutant sauvegardé (nil = choix aléatoire)
+    local brNomSauvegarde = resumeOptions and resumeOptions.brNom
+
+    -- Notifie l'appelant du nom choisi (une seule fois par PlantSeed)
+    local _brNomNotifie = false
+    local function notifierBRNom(nom)
+        if _brNomNotifie or not nom then return end
+        _brNomNotifie = true
+        if resumeOptions and resumeOptions.onBRNomChosen then
+            pcall(resumeOptions.onBRNomChosen, nom)
+        end
+    end
 
     -- ══════════════════════════════════════════════════════
     -- Thread principal de croissance
@@ -420,7 +446,9 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         -- CAS REPRISE TERMINÉE : spawn mutant directement
         -- ────────────────────────────────────────────────
         if etapeCourante >= 5 then
-            mutantClone = clonerBRMutant(seedRarity)
+            local brNomChoisi
+            mutantClone, brNomChoisi = clonerBRMutant(seedRarity, brNomSauvegarde)
+            notifierBRNom(brNomChoisi)
             if mutantClone then
                 local posSurPot = getSurfacePot(potPart) + Vector3.new(0, 0.5, 0)
                 positionnerClone(mutantClone, posSurPot)
@@ -474,7 +502,9 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
 
             -- Si le mutant aurait déjà dû spawner (stage >= MUTANT_SPAWN_STAGE)
             if stageAffiche >= MUTANT_SPAWN_STAGE then
-                mutantClone = clonerBRMutant(seedRarity)
+                local brNomChoisi
+                mutantClone, brNomChoisi = clonerBRMutant(seedRarity, brNomSauvegarde)
+                notifierBRNom(brNomChoisi)
                 if mutantClone then
                     local posAuDessus = getSurfacePot(potPart) + Vector3.new(0, MUTANT_OFFSET_Y, 0)
                     positionnerClone(mutantClone, posAuDessus)
@@ -527,7 +557,9 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
 
             -- ─── STAGE 2 : Spawn BR Mutant au-dessus (seulement si pas déjà spawné) ───
             if stage == MUTANT_SPAWN_STAGE and not mutantClone then
-                mutantClone = clonerBRMutant(seedRarity)
+                local brNomChoisi
+                mutantClone, brNomChoisi = clonerBRMutant(seedRarity, brNomSauvegarde)
+                notifierBRNom(brNomChoisi)
 
                 if mutantClone then
                     -- Position au-dessus du pot

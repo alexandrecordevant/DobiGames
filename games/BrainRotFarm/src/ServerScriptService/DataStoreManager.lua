@@ -36,10 +36,10 @@ local function DefaultData()
         walkSpeedActuel = 16,
         -- Flower Pots
         pots = {
-            [1] = { debloque=true,  rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
-            [2] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
-            [3] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
-            [4] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil },
+            [1] = { debloque=true,  rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil, elementType=nil, brNom=nil },
+            [2] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil, elementType=nil, brNom=nil },
+            [3] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil, elementType=nil, brNom=nil },
+            [4] = { debloque=false, rarete=nil, stage=0, tempsRestant=0, instantGrow=false, plantedAt=nil, elementType=nil, brNom=nil },
         },
         dailySeed = {
             jourActuel     = 1,
@@ -65,6 +65,9 @@ function DataStoreManager.Load(player)
     if not data.dailySeed then data.dailySeed = defaults.dailySeed end
     if not data.upgrades then data.upgrades = defaults.upgrades end
     if not data.inventory then data.inventory = defaults.inventory end
+
+    -- Migration : champ graines (compteur de graines sauvegardées)
+    if not data.graines then data.graines = { MYTHIC = 0, SECRET = 0 } end
 
     -- Migration plantedAt : pots déjà en cours de croissance sans timestamp
     -- Traité comme planté maintenant → timer repart de zéro (conservatif)

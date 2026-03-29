@@ -238,7 +238,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
 
     -- Instruction principale
     creerLigne(
-        "Carry a <b>MYTHIC</b> or <b>SECRET</b> Brain Rot to plant it here.",
+        "No seeds in your inventory. Collect seeds from the <b>Sacred Trees</b> or claim your Daily Seed below.",
         Color3.fromRGB(200, 200, 200), 40, 1)
 
     -- Séparateur Daily Seed
@@ -875,6 +875,112 @@ local _grainesLocales = {}
 if UpdateGraines then
     UpdateGraines.OnClientEvent:Connect(function(graines)
         _grainesLocales = graines or {}
+    end)
+end
+
+-- ============================================================
+-- BillboardGui 3D au-dessus des pots en cours de croissance
+-- ============================================================
+
+local PotBillboardUpdate = ReplicatedStorage:WaitForChild("PotBillboardUpdate", 10)
+
+local _billboardThreads = {}  -- [potFullName] = thread
+
+local function supprimerBillboard(potModel)
+    local key = potModel:GetFullName()
+    if _billboardThreads[key] then
+        pcall(task.cancel, _billboardThreads[key])
+        _billboardThreads[key] = nil
+    end
+    local potPart = potModel:FindFirstChildWhichIsA("BasePart", true)
+    if potPart then
+        local gui = potPart:FindFirstChild("PotStatusBillboard")
+        if gui then gui:Destroy() end
+    end
+end
+
+local function creerBillboard(potModel, plantedAt, dureeStage)
+    local potPart = potModel:FindFirstChildWhichIsA("BasePart", true)
+    if not potPart then return end
+
+    supprimerBillboard(potModel)
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name             = "PotStatusBillboard"
+    billboard.Size             = UDim2.new(0, 200, 0, 76)
+    billboard.StudsOffset      = Vector3.new(0, 10, 0) -- mis à jour dynamiquement par la boucle
+    billboard.AlwaysOnTop      = false
+    billboard.MaxDistance      = 60
+    billboard.ResetOnSpawn     = false
+    billboard.Parent           = potPart
+
+    -- Fond arrondi
+    local bg = Instance.new("Frame", billboard)
+    bg.Size                   = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3       = Color3.fromRGB(10, 10, 20)
+    bg.BackgroundTransparency = 0.35
+    bg.BorderSizePixel        = 0
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 8)
+
+    local stageLbl = Instance.new("TextLabel", bg)
+    stageLbl.Name                  = "StageLabel"
+    stageLbl.Size                  = UDim2.new(1, 0, 0.52, 0)
+    stageLbl.Position              = UDim2.new(0, 0, 0, 0)
+    stageLbl.BackgroundTransparency = 1
+    stageLbl.TextColor3            = Color3.fromRGB(255, 255, 255)
+    stageLbl.Font                  = Enum.Font.GothamBold
+    stageLbl.TextSize              = 20
+    stageLbl.TextStrokeTransparency = 0.4
+    stageLbl.TextStrokeColor3      = Color3.fromRGB(0, 0, 0)
+
+    local timerLbl = Instance.new("TextLabel", bg)
+    timerLbl.Name                  = "TimerLabel"
+    timerLbl.Size                  = UDim2.new(1, 0, 0.48, 0)
+    timerLbl.Position              = UDim2.new(0, 0, 0.52, 0)
+    timerLbl.BackgroundTransparency = 1
+    timerLbl.TextColor3            = Color3.fromRGB(150, 210, 255)
+    timerLbl.Font                  = Enum.Font.Gotham
+    timerLbl.TextSize              = 17
+    timerLbl.TextStrokeTransparency = 0.4
+    timerLbl.TextStrokeColor3      = Color3.fromRGB(0, 0, 0)
+
+    -- Offset Y par stage (monte avec la plante)
+    local offsetParStage = { [0]=10, [1]=13, [2]=16, [3]=19, [4]=23, [5]=23 }
+
+    local key = potModel:GetFullName()
+    _billboardThreads[key] = task.spawn(function()
+        while billboard.Parent do
+            local elapsed      = os.time() - plantedAt
+            local etape        = math.min(5, math.floor(elapsed / dureeStage))
+            local remaining    = math.max(0, dureeStage - (elapsed % dureeStage))
+            local stageAffiche = math.min(4, etape)
+
+            -- Ajuster la hauteur selon le stage courant
+            local offsetY = offsetParStage[etape] or 23
+            billboard.StudsOffset = Vector3.new(0, offsetY, 0)
+
+            if etape >= 5 then
+                stageLbl.Text = "🌱 Ready!"
+                timerLbl.Text = "Tap to collect"
+                task.wait(2)
+            else
+                stageLbl.Text = "🌱 Stage " .. stageAffiche .. " / 4"
+                timerLbl.Text = "⏱ " .. formatTemps(remaining)
+                task.wait(1)
+            end
+        end
+        _billboardThreads[key] = nil
+    end)
+end
+
+if PotBillboardUpdate then
+    PotBillboardUpdate.OnClientEvent:Connect(function(potModel, data)
+        if not potModel or not potModel.Parent then return end
+        if not data then
+            supprimerBillboard(potModel)
+        else
+            creerBillboard(potModel, data.plantedAt, data.dureeStage)
+        end
     end)
 end
 
