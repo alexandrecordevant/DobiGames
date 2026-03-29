@@ -29,8 +29,6 @@ local ProgConfig = Config.ProgressionConfig
 -- Cette table reste pour l'affichage texte du prompt avant dépôt.
 local VALEUR_PAR_RARETE = Config.ValeurParRarete
 
--- Facteur de miniaturisation du modèle déposé sur le spot
-local MINI_SCALE = 0.35
 
 -- ============================================================
 -- Chargement différé de IncomeSystem (évite la dépendance circulaire)
@@ -54,7 +52,7 @@ end
 --     spotKey   = "floor_spot" (ex : "1_3"),
 --     rarete    = "EPIC",
 --     valeurSec = 20,
---     miniModel = Model (instance dans Workspace),
+--     modeleSlot = Model (instance dans Workspace),
 --   }
 -- }
 -- spotIndex[userId] = {
@@ -168,9 +166,9 @@ end
 -- Utilitaires — mini modèle Brain Rot
 -- ============================================================
 
--- Clone un mini modèle depuis ServerStorage.Brainrots/[dossier]
+-- Clone un modèle depuis ServerStorage.Brainrots/[dossier]
 -- Décision : on clone un aléatoire parmi les modèles du dossier (cohérent avec CarrySystem)
-local function cloneMiniModele(rarete)
+local function clonerModeleSlot(rarete)
     local brainrots = ServerStorage:FindFirstChild("Brainrots")
     if not brainrots then return nil end
 
@@ -223,9 +221,9 @@ local function nettoyerParasites(clone)
     end
 end
 
--- Place et anime le mini modèle sur un spot
+-- Place et anime le modèle sur un spot (taille originale)
 -- modeleSource (optionnel) = le modèle exact porté par le joueur (prioritaire sur ServerStorage)
-local function placerMiniModele(touchPart, rarete, modeleSource)
+local function placerModeleSlot(touchPart, rarete, modeleSource)
     local clone
 
     -- Priorité : cloner le modèle porté (évite les cubes gris si ServerStorage mal configuré)
@@ -233,12 +231,12 @@ local function placerMiniModele(touchPart, rarete, modeleSource)
         pcall(function() clone = modeleSource:Clone() end)
         -- Supprimer le modèle détaché flottant dans le Workspace
         pcall(function() modeleSource:Destroy() end)
-        print("[DropSystem] Mini modèle issu du carry (modèle exact)")
+        print("[DropSystem] Modèle issu du carry (modèle exact)")
     end
 
     -- Fallback : clone aléatoire depuis ServerStorage
     if not clone then
-        clone = cloneMiniModele(rarete)
+        clone = clonerModeleSlot(rarete)
     end
 
     if not clone then return nil end
@@ -246,11 +244,6 @@ local function placerMiniModele(touchPart, rarete, modeleSource)
     -- Nettoyer les parasites AVANT tout autre traitement
     -- (PromptAnchor, VfxInstance, constraints → cubes gris si laissés)
     nettoyerParasites(clone)
-
-    -- Mise à l'échelle réduite
-    if clone:IsA("Model") then
-        pcall(function() clone:ScaleTo(MINI_SCALE) end)
-    end
 
     -- Position : au-dessus du TouchPart
     local pos = touchPart.Position + Vector3.new(0, touchPart.Size.Y * 0.5 + 0.6, 0)
@@ -295,12 +288,12 @@ local function placerMiniModele(touchPart, rarete, modeleSource)
     return clone
 end
 
--- Supprime le mini modèle avec un fade out
-local function supprimerMiniModele(miniModel)
-    if not miniModel or not miniModel.Parent then return end
+-- Supprime le modèle d'un slot avec un fade out
+local function supprimerModeleSlot(modeleSlot)
+    if not modeleSlot or not modeleSlot.Parent then return end
     local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
     local parts     = {}
-    for _, v in ipairs(miniModel:GetDescendants()) do
+    for _, v in ipairs(modeleSlot:GetDescendants()) do
         if v:IsA("BasePart") then table.insert(parts, v) end
     end
     for _, part in ipairs(parts) do
@@ -309,8 +302,8 @@ local function supprimerMiniModele(miniModel)
         end
     end
     task.delay(0.25, function()
-        if miniModel and miniModel.Parent then
-            pcall(function() miniModel:Destroy() end)
+        if modeleSlot and modeleSlot.Parent then
+            pcall(function() modeleSlot:Destroy() end)
         end
     end)
 end
@@ -366,7 +359,7 @@ local function creerPromptRecuperer(touchPart, player)
     promptSell.ObjectText            = brNom
     promptSell.HoldDuration          = 0
     promptSell.MaxActivationDistance = 10
-    promptSell.KeyboardKeyCode       = Enum.KeyCode.E
+    promptSell.KeyboardKeyCode       = Enum.KeyCode.S
     promptSell.RequiresLineOfSight   = false
     promptSell:SetAttribute("SpotKey", entree.spotKey)
     promptSell.Parent                = ancreLeft
@@ -523,11 +516,39 @@ local function restaurerDepots(player, playerData)
                 local dossier   = brainrots and brainrots:FindFirstChild(info.rarete)
                 local brSource  = dossier and dossier:FindFirstChild(info.brNom)
                 if brSource then
-                    pcall(function() modeleSource = brSource:Clone() end)
+                    pcall(function()
+                        modeleSource = brSource:Clone()
+                        -- CRITIQUE : Parent doit être non-nil sinon placerMiniModele
+                        -- interprète le modèle comme invalide et clone un BR aléatoire
+                        modeleSource.Parent = Workspace
+                    end)
+                else
+                    -- brNom sauvegardé mais modèle introuvable dans ServerStorage
+                    -- (renommage Studio ou modèle supprimé) → fallback déterministe
+                    warn("[DropSystem] Restauration : modèle '" .. tostring(info.brNom)
+                        .. "' introuvable dans ServerStorage/" .. tostring(info.rarete)
+                        .. " → fallback premier modèle du dossier")
+                end
+            elseif not isMutant then
+                -- brNom nil : donnée ancienne (sauvegardée avant le fix onCapture)
+                -- Fallback déterministe sur modeles[1] pour éviter le changement
+                -- de BR à chaque reconnexion (math.random dans clonerModeleSlot)
+                local brainrots = ServerStorage:FindFirstChild("Brainrots")
+                local dossier   = brainrots and brainrots:FindFirstChild(info.rarete)
+                if dossier then
+                    local modeles = dossier:GetChildren()
+                    if #modeles > 0 then
+                        pcall(function()
+                            modeleSource = modeles[1]:Clone()
+                            modeleSource.Parent = Workspace
+                        end)
+                        print("[DropSystem] Restauration : brNom nil pour " .. tostring(info.rarete)
+                            .. " → modèle fixe '" .. modeles[1].Name .. "' (donnée ancienne)")
+                    end
                 end
             end
 
-            local miniModel = placerMiniModele(touchPart, info.rarete, modeleSource)
+            local modeleSlot = placerModeleSlot(touchPart, info.rarete, modeleSource)
 
             -- Restaurer le visuel Mutant (spot doré + particules)
             if isMutant then
@@ -543,10 +564,10 @@ local function restaurerDepots(player, playerData)
                     light.Range      = 10
                     light.Color      = Color3.fromRGB(255, 215, 0)
                 end)
-                if miniModel then
+                if modeleSlot then
                     pcall(function()
-                        local root = miniModel.PrimaryPart
-                                  or miniModel:FindFirstChildWhichIsA("BasePart")
+                        local root = modeleSlot.PrimaryPart
+                                  or modeleSlot:FindFirstChildWhichIsA("BasePart")
                         if root then
                             local p = Instance.new("ParticleEmitter", root)
                             p.Rate     = 8
@@ -566,7 +587,7 @@ local function restaurerDepots(player, playerData)
                 brNom     = info.brNom,
                 isMutant  = isMutant,
                 valeurSec = valeur,
-                miniModel = miniModel,
+                modeleSlot = modeleSlot,
             }
 
             mettreAJourGui(touchPart, valeur)
@@ -708,7 +729,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     end
 
     -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
-    local miniModel = placerMiniModele(touchPart, rarete, modeleDepose)
+    local modeleSlot = placerModeleSlot(touchPart, rarete, modeleDepose)
     -- Détruire le modèle pleine taille extrait du carry (le mini clone suffit)
     if modeleDepose and modeleDepose.Parent then
         pcall(function() modeleDepose:Destroy() end)
@@ -728,10 +749,10 @@ function DropSystem.DeposerBrainRots(player, touchPart)
             light.Color      = Color3.fromRGB(255, 215, 0)
         end)
         -- Ajouter particules dorées sur le mini modèle
-        if miniModel then
+        if modeleSlot then
             pcall(function()
-                local root = miniModel.PrimaryPart
-                          or miniModel:FindFirstChildWhichIsA("BasePart")
+                local root = modeleSlot.PrimaryPart
+                          or modeleSlot:FindFirstChildWhichIsA("BasePart")
                 if root then
                     local p = Instance.new("ParticleEmitter", root)
                     p.Rate     = 8
@@ -752,7 +773,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         brNom     = brNom,      -- nom exact du modèle BR (ex: "Tralalero_Tralala")
         isMutant  = isMutant,   -- pour restauration fidèle après reconnexion
         valeurSec = valeurSec,
-        miniModel = miniModel,
+        modeleSlot = modeleSlot,
     }
 
     -- Persister dans playerData pour le DataStore
@@ -807,7 +828,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
 
     -- Retirer du spot
     local rarete    = entree.rarete
-    local miniModel = entree.miniModel
+    local modeleSlot = entree.modeleSlot
     local spotKey   = entree.spotKey
     spotsData[uid][touchPart] = nil
 
@@ -816,7 +837,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     if IS then IS.SupprimerSlotVisuel(player, touchPart, spotKey) end
 
     -- Supprimer le mini modèle
-    supprimerMiniModele(miniModel)
+    supprimerModeleSlot(modeleSlot)
 
     -- Supprimer le prompt de récupération et réactiver le DepotPrompt
     supprimerPromptRecuperer(touchPart)
@@ -830,22 +851,30 @@ function DropSystem.RecupererBrainRot(player, touchPart)
         if dossierRarete then
             local brSource = dossierRarete:FindFirstChild(brNom)
             if brSource then
-                pcall(function() modeleRestitue = brSource:Clone() end)
+                pcall(function()
+                    modeleRestitue = brSource:Clone()
+                    -- CRITIQUE : Parent doit être non-nil sinon InsererEnTeteCarry
+                    -- interprète le modèle comme invalide et clone un BR aléatoire
+                    modeleRestitue.Parent = Workspace
+                end)
             end
             -- Fallback : premier BR de la rareté si le modèle exact est introuvable
             if not modeleRestitue then
                 local premiers = dossierRarete:GetChildren()
                 if #premiers > 0 then
-                    pcall(function() modeleRestitue = premiers[1]:Clone() end)
+                    pcall(function()
+                        modeleRestitue = premiers[1]:Clone()
+                        modeleRestitue.Parent = Workspace
+                    end)
                 end
             end
         end
     end
 
-    -- Remettre le BR dans le carry du joueur (avec le bon modèle visuel)
+    -- Remettre le BR en TÊTE du carry (position 1) pour qu'il soit déposé en premier
     -- isMutant préservé pour que le re-dépôt calcule le bon income
     local rareteObj = { nom = rarete, dossier = rarete, isMutant = entree.isMutant }
-    pcall(CarrySystem.AjouterAuCarry, player, modeleRestitue, rareteObj)
+    pcall(CarrySystem.InsererEnTeteCarry, player, modeleRestitue, rareteObj)
 
     -- Remettre le SurfaceGui à vide
     viderGui(touchPart)
@@ -966,13 +995,13 @@ function DropSystem.DeposerBRDirect(player, touchPart, rarete)
     if spotsData[uid][touchPart] then return false end
 
     local valeurSec = VALEUR_PAR_RARETE[rarete] or 1
-    local miniModel = placerMiniModele(touchPart, rarete)
+    local modeleSlot = placerModeleSlot(touchPart, rarete)
 
     spotsData[uid][touchPart] = {
         spotKey   = spotKey,
         rarete    = rarete,
         valeurSec = valeurSec,
-        miniModel = miniModel,
+        modeleSlot = modeleSlot,
     }
 
     mettreAJourGui(touchPart, valeurSec)
@@ -1000,7 +1029,7 @@ function DropSystem.EjecterBR(player, touchPart)
     if not entree then return end
 
     local rarete    = entree.rarete
-    local miniModel = entree.miniModel
+    local modeleSlot = entree.modeleSlot
     local spotKey   = entree.spotKey
     spotsData[uid][touchPart] = nil
 
@@ -1008,7 +1037,7 @@ function DropSystem.EjecterBR(player, touchPart)
     local IS = getIncomeSystem()
     if IS then IS.SupprimerSlotVisuel(player, touchPart, spotKey) end
 
-    supprimerMiniModele(miniModel)
+    supprimerModeleSlot(modeleSlot)
     supprimerPromptRecuperer(touchPart)
     viderGui(touchPart)
 
@@ -1093,7 +1122,7 @@ function DropSystem.VendreBR(player, touchPart)
     if not entree then return end
 
     local rarete    = entree.rarete
-    local miniModel = entree.miniModel
+    local modeleSlot = entree.modeleSlot
     local spotKey   = entree.spotKey
     spotsData[uid][touchPart] = nil
 
@@ -1110,7 +1139,7 @@ function DropSystem.VendreBR(player, touchPart)
     end
 
     -- Supprimer le mini modèle et les prompts
-    supprimerMiniModele(miniModel)
+    supprimerModeleSlot(modeleSlot)
     supprimerPromptRecuperer(touchPart)
     viderGui(touchPart)
 
@@ -1128,8 +1157,8 @@ function DropSystem.Stop(player)
     if spotsData[uid] then
         -- Supprimer tous les mini modèles
         for _, entry in pairs(spotsData[uid]) do
-            if entry.miniModel then
-                pcall(function() entry.miniModel:Destroy() end)
+            if entry.modeleSlot then
+                pcall(function() entry.modeleSlot:Destroy() end)
             end
         end
     end

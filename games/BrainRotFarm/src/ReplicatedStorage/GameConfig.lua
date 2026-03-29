@@ -467,10 +467,12 @@ GameConfig.FlowerPotConfig = {
 
     -- Config des drops de graines sur les arbres
     arbresDropConfig = {
-        intervalleSecondes = 1800,  -- 30 min entre chaque graine
+        intervalleSecondes = 60,  -- 30 min entre chaque graine
+        --intervalleSecondes = 1800,  -- 30 min entre chaque graine
         chanceMYTHIC       = 70,    -- 70% MYTHIC
         chanceSECRET       = 30,    -- 30% SECRET
-        timeoutSecondes    = 300,   -- 5 min avant reset si non collectée
+        timeoutSecondes    = 30,   -- 5 min avant reset si non collectée
+        --timeoutSecondes    = 300,   -- 5 min avant reset si non collectée
     },
 
     -- Couleur dorée appliquée au spot quand un Mutant y est déposé
@@ -497,14 +499,43 @@ GameConfig.FlowerPotConfig = {
             effetSpecial   = "flames",
         },
     },
+
+    -- ─── FlowerPotGrowthSystem (nouveau système visuel) ───
+    -- Lu par FlowerPotGrowthSystem.lua — assets Plant_Stage0-3 + GenericSeed
+
+    -- Durée en secondes par stage (2 min × 4 stages = 8 min total)
+    GrowthDuration   = 120,
+    -- Stage à partir duquel le BR Mutant apparaît au-dessus du pot
+    MutantSpawnStage = 2,
+    -- Offset Y (studs) du BR Mutant au-dessus de la plante
+    MutantOffsetY    = 3,
+
+    -- Éléments disponibles pour les BR Mutants
+    ElementTypes = { "water", "fire", "earth", "wind" },
+
+    -- Multiplicateurs de revenu par élément (income = ValeurParRarete[rarity] × multiplier)
+    ElementMultipliers = {
+        water = 2,
+        fire  = 4,
+        earth = 6,
+        wind  = 8,
+    },
+
+    -- Config particules élémentaires (Color, Lifetime, SpeedMax)
+    ElementParticles = {
+        water = { Color=Color3.fromRGB(0,   150, 255), Lifetime=2.0, SpeedMax=3 },
+        fire  = { Color=Color3.fromRGB(255, 100, 0),   Lifetime=1.0, SpeedMax=5 },
+        earth = { Color=Color3.fromRGB(100, 200, 50),  Lifetime=3.0, SpeedMax=2 },
+        wind  = { Color=Color3.fromRGB(230, 230, 230), Lifetime=1.5, SpeedMax=6 },
+    },
 }
 
 -- === REBIRTH ===
 GameConfig.RebirthConfig = {
-    [1] = { coinsRequis=300000,  brainRotRequis={rarete="LEGENDARY",    quantite=1}, multiplicateur=1.5, slotsBonus=2  },
-    [2] = { coinsRequis=500000,  brainRotRequis={rarete="MYTHIC",       quantite=1}, multiplicateur=2.0, slotsBonus=4  },
-    [3] = { coinsRequis=1000000, brainRotRequis={rarete="SECRET",       quantite=1}, multiplicateur=3.0, slotsBonus=6  },
-    [4] = { coinsRequis=2000000, brainRotRequis={rarete="BRAINROT_GOD", quantite=1}, multiplicateur=5.0, slotsBonus=10 },
+    [1] = { coinsRequis=300000,  brainRotRequis={rarete="LEGENDARY",    quantite=1}, multiplicateur=1.5, slotsBonus=2,  label="Rebirth I",   couleur=Color3.fromRGB(255, 200, 50),  couleurHex=0xFFC832 },
+    [2] = { coinsRequis=500000,  brainRotRequis={rarete="MYTHIC",       quantite=1}, multiplicateur=2.0, slotsBonus=4,  label="Rebirth II",  couleur=Color3.fromRGB(180, 50,  255), couleurHex=0xB432FF },
+    [3] = { coinsRequis=1000000, brainRotRequis={rarete="SECRET",       quantite=1}, multiplicateur=3.0, slotsBonus=6,  label="Rebirth III", couleur=Color3.fromRGB(255, 50,  50),  couleurHex=0xFF3232 },
+    [4] = { coinsRequis=2000000, brainRotRequis={rarete="BRAINROT_GOD", quantite=1}, multiplicateur=5.0, slotsBonus=10, label="Rebirth IV",  couleur=Color3.fromRGB(255, 255, 255), couleurHex=0xFFFFFF },
 }
 
 -- Réduction prix progression par rebirth (-15% cumulatif, cap -90%)

@@ -196,11 +196,12 @@ local function envoyerEtatBouton(player)
     local cfg         = obtenirConfig(niveau)
     local ok, manques = RebirthSystem.VerifierConditions(player)
 
+    local extraCoins = RebirthSystem.GetExtraCoins and RebirthSystem.GetExtraCoins(player) or 0
     local etat = {
         visible        = visible,
         disponible     = ok,
         prochainLevel  = niveau,
-        coinsActuels   = data.coins or 0,
+        coinsActuels   = (data.coins or 0) + extraCoins,
         coinsRequis    = cfg.coinsRequis,
         brainRotRequis = cfg.brainRotRequis.rarete,
         label          = cfg.label,
@@ -309,9 +310,10 @@ local function executerRebirth(player)
     -- Étape 3 : Animation client + particules serveur
     pcall(function()
         RebirthAnimation:FireClient(player, {
-            niveau   = niveau,
-            label    = cfg.label,
-            couleur  = cfg.couleur,
+            niveau         = niveau,
+            label          = cfg.label,
+            couleur        = cfg.couleur,
+            multiplicateur = cfg.multiplicateur,
         })
     end)
     task.spawn(effetExplosionRebirth, player)

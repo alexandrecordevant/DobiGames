@@ -237,9 +237,13 @@ local function ajouterBillboard(clone, racine, nomRarete, nomModele, dureeInitia
 	dureeInitiale = dureeInitiale or CONFIG.DUREE_DESPAWN
 	local couleur = RARETE_COULEURS_BB[nomRarete] or Color3.new(1, 1, 1)
 
-	-- Texte combiné : nom modele + rareté + timer initial
-	local texte = string.format("%s  ✦ %s ✦  ⏱ %s",
-		nomModele, nomRarete, formatTimer(dureeInitiale))
+	-- Valeur coins depuis GameConfig
+	local valeur = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[nomRarete] or 0
+	local valeurTexte = valeur > 0 and ("  💰 " .. valeur .. "/s") or ""
+
+	-- Texte combiné : nom modele + rareté + valeur + timer initial
+	local texte = string.format("%s  ✦ %s ✦%s  ⏱ %s",
+		nomModele, nomRarete, valeurTexte, formatTimer(dureeInitiale))
 
 	-- Appliquer via FilterManager (ZERO instance directe)
 	local FM = getFilterManager()
@@ -276,16 +280,17 @@ local function ajouterBillboard(clone, racine, nomRarete, nomModele, dureeInitia
 end
 
 -- Countdown mis à jour dans le label "BRBillboard/Label"
-local function lancerCountdownBillboard(racine, duree, nomRarete, couleur)
+local function lancerCountdownBillboard(racine, duree, nomRarete, couleur, valeur)
 	task.spawn(function()
+		local valeurTexte = (valeur and valeur > 0) and ("  💰 " .. valeur .. "/s") or ""
 		for t = duree, 0, -1 do
 			if not racine or not racine.Parent then return end
 			local bb = racine:FindFirstChild("BRBillboard")
 			if not bb then return end
 			local label = bb:FindFirstChild("Label")
 			if not label then return end
-			-- Mettre à jour le texte (conserver nom modele serait complexe — on affiche rareté + timer)
-			label.Text = string.format("✦ %s ✦  ⏱ %s", nomRarete, formatTimer(t))
+			-- Mettre à jour le texte (conserver nom modele serait complexe — on affiche rareté + valeur + timer)
+			label.Text = string.format("✦ %s ✦%s  ⏱ %s", nomRarete, valeurTexte, formatTimer(t))
 			if t <= 10 then
 				label.TextColor3 = Color3.fromRGB(255, 30, 30)
 			elseif t > 10 and nomRarete ~= "SECRET" and nomRarete ~= "GOD" and nomRarete ~= "BRAINROT_GOD" then
@@ -479,8 +484,9 @@ local function spawnerUnBrainRot(baseIndex)
 		if clone and clone.Parent then
 			local dureeRestante = math.floor(CONFIG.DUREE_DESPAWN - CONFIG.DUREE_POUSSE)
 			local couleur = RARETE_COULEURS_BB[rarete.nom] or Color3.new(1, 1, 1)
+			local valeur  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rarete.nom] or 0
 			pcall(ajouterBillboard, clone, racine, rarete.nom, modeleSource.Name, dureeRestante)
-			pcall(lancerCountdownBillboard, racine, dureeRestante, rarete.nom, couleur)
+			pcall(lancerCountdownBillboard, racine, dureeRestante, rarete.nom, couleur, valeur)
 		end
 
 		-- Ancrer les parts pour qu'elles ne tombent pas
@@ -755,8 +761,9 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
 
     -- Billboard via FilterManager
     local couleurMeteor = RARETE_COULEURS_BB[rareteNom] or Color3.new(1, 1, 1)
+    local valeurMeteor  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rareteNom] or 0
     pcall(ajouterBillboard, clone, racine, rareteNom, source.Name, CONFIG.DUREE_DESPAWN)
-    pcall(lancerCountdownBillboard, racine, CONFIG.DUREE_DESPAWN, rareteNom, couleurMeteor)
+    pcall(lancerCountdownBillboard, racine, CONFIG.DUREE_DESPAWN, rareteNom, couleurMeteor, valeurMeteor)
 
     -- ProximityPrompt via hook OnBRSpawned (baseIndex = nil → tout le monde peut capturer)
     local rareteObj = { nom = rareteNom, dossier = rareteNom }

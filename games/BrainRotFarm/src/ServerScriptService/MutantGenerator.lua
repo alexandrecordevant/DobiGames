@@ -11,6 +11,7 @@ local MutantGenerator = {}
 -- ============================================================
 local ServerStorage     = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local _GameConfig       = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 -- Chargement différé FilterManager (évite erreur si BRFilterSystem pas encore chargé)
 local _FilterManager = nil
@@ -31,24 +32,28 @@ end
 -- ============================================================
 local ELEMENT_CONFIG = {
     EAU = {
-        nomFiltre  = "ElementEau",
-        nomDisplay = "🌊 BR Mutant EAU",
-        couleur    = Color3.fromRGB(0,   150, 255),
+        nomFiltre    = "ElementEau",
+        nomDisplay   = "🌊 BR Mutant EAU",
+        couleur      = Color3.fromRGB(0,   150, 255),
+        cleMultiplier = "water",
     },
     FEU = {
-        nomFiltre  = "ElementFeu",
-        nomDisplay = "🔥 BR Mutant FEU",
-        couleur    = Color3.fromRGB(255, 80,  0),
+        nomFiltre    = "ElementFeu",
+        nomDisplay   = "🔥 BR Mutant FEU",
+        couleur      = Color3.fromRGB(255, 80,  0),
+        cleMultiplier = "fire",
     },
     TERRE = {
-        nomFiltre  = "ElementTerre",
-        nomDisplay = "🌍 BR Mutant TERRE",
-        couleur    = Color3.fromRGB(100, 150, 50),
+        nomFiltre    = "ElementTerre",
+        nomDisplay   = "🌍 BR Mutant TERRE",
+        couleur      = Color3.fromRGB(100, 150, 50),
+        cleMultiplier = "earth",
     },
     VENT = {
-        nomFiltre  = "ElementVent",
-        nomDisplay = "💨 BR Mutant VENT",
-        couleur    = Color3.fromRGB(200, 200, 220),
+        nomFiltre    = "ElementVent",
+        nomDisplay   = "💨 BR Mutant VENT",
+        couleur      = Color3.fromRGB(200, 200, 220),
+        cleMultiplier = "wind",
     },
 }
 
@@ -160,15 +165,22 @@ function MutantGenerator.Generate(seedRarity, elementType)
         clone.Name = elemCfg.nomDisplay
     end)
 
-    -- NOUVEAU : Appliquer les effets visuels via FilterManager
-    -- (remplace : appliquerTheme() + BillboardHelper direct + part.Color direct)
+    -- Calculer la valeur du mutant (income base × multiplicateur élément)
+    local incomeBase   = (_GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[finalRarity]) or 0
+    local fpCfg        = _GameConfig.FlowerPotConfig
+    local multCle      = elemCfg.cleMultiplier
+    local multElement  = (fpCfg and fpCfg.ElementMultipliers and fpCfg.ElementMultipliers[multCle]) or 1
+    local valeurMutant = incomeBase * multElement
+    local valeurTexte  = valeurMutant > 0 and ("  💰 " .. valeurMutant .. "/s") or ""
+
+    -- Appliquer les effets visuels via FilterManager
     local FM = getFilterManager()
     if FM then
         FM.Apply(clone, {
             {Name = elemCfg.nomFiltre},   -- ElementEau / ElementFeu / ElementTerre / ElementVent
             {Name = "Normal"},             -- Scale 1×
             {Name = "Billboard", Params = {
-                Text    = elemCfg.nomDisplay,
+                Text    = elemCfg.nomDisplay .. valeurTexte,
                 Color   = elemCfg.couleur,
                 OffsetY = 3,
             }},

@@ -29,7 +29,8 @@ local LeaderboardSystem     = require(ServerScriptService.LeaderboardSystem)
 local ShopSystem            = require(ServerScriptService.ShopSystem)
 local SprinklerSystem       = require(ServerScriptService.SprinklerSystem)
 local TracteurSystem        = require(ServerScriptService.TracteurSystem)
-local FlowerPotSystem       = require(ServerScriptService.FlowerPotSystem)
+local FlowerPotGrowthSystem = require(ServerScriptService.Systems.FlowerPotSystem.FlowerPotGrowthSystem)
+local SeedInventory         = require(ServerScriptService.SeedInventory)
 local DiscordWebhook        = require(ServerScriptService.DiscordWebhook)
 local BoardSystem               = require(ServerScriptService.BoardSystem)
 local ArbreSystem               = require(ServerScriptService.ArbreSystem)
@@ -68,16 +69,22 @@ local SecretRevealNotif  = CreerRemoteEvent("SecretRevealNotif")
 local CollectVFX         = CreerRemoteEvent("CollectVFX")
 local OuvrirRebirth      = CreerRemoteEvent("OuvrirRebirth")
 local UpdateGraines      = CreerRemoteEvent("UpdateGraines")
+local OuvrirPot          = CreerRemoteEvent("OuvrirPot")
+local PotUpdate          = CreerRemoteEvent("PotUpdate")
 
 -- Events client → serveur (actions joueur)
 local DemandeUpgrade        = CreerRemoteEvent("DemandeUpgrade")
 local DemandePrestige       = CreerRemoteEvent("DemandePrestige")
 local DemandeCollecte       = CreerRemoteEvent("DemandeCollecte")
+local DebloquerPot          = CreerRemoteEvent("DebloquerPot")
+local InstantGrowPot        = CreerRemoteEvent("InstantGrowPot")
 local DemandeOuvrirRebirth  = CreerRemoteEvent("DemandeOuvrirRebirth")
+local ClaimDailySeed        = CreerRemoteEvent("ClaimDailySeed")
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
+local GetSeedInfo        = CreerRemoteFunction("GetSeedInfo")
 
 print("[" .. Config.NomDuJeu .. "] RemoteEvents créés ✓")
 
@@ -94,6 +101,201 @@ end
 
 local function SetData(player, data)
     playerDataCache[player.UserId] = data
+end
+
+-- ═══════════════════════════════════════════════
+-- INITIALISATION DES FLOWER POTS (remplace FlowerPotSystem.Init)
+-- Placé ici pour que GetData/SetData soient en portée (upvalues)
+-- ═══════════════════════════════════════════════
+
+local InitialiserPots  -- déclaration forward (la fonction s'appelle elle-même)
+InitialiserPots = function(player, baseIndex, playerData)
+    local bases = workspace:FindFirstChild("Bases")
+    local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
+    if not base then return end
+
+    local FPCfg = Config.FlowerPotConfig
+    if not FPCfg then return end
+
+    for potIndex = 1, 4 do
+        local potModel = base:FindFirstChild("FlowerPot_" .. potIndex)
+        if not potModel then continue end
+
+        local potData = playerData.pots and playerData.pots[potIndex]
+        local potCfg  = FPCfg.pots and FPCfg.pots[potIndex]
+        if not potData or not potCfg then continue end
+
+        local potPart = potModel:IsA("BasePart") and potModel
+            or potModel:FindFirstChildWhichIsA("BasePart")
+        if not potPart then continue end
+
+        -- Nettoyer ProximityPrompts ET BillboardGuis (évite le "🔒" persistant après déblocage)
+        for _, child in ipairs(potPart:GetChildren()) do
+            if child:IsA("ProximityPrompt") or child:IsA("BillboardGui") then
+                child:Destroy()
+            end
+        end
+
+        -- Helper billboard minimaliste pour l'état du pot
+        local function creerBillboardPot(texte, couleur)
+            local bb = Instance.new("BillboardGui", potPart)
+            bb.Name        = "PotBillboard"
+            bb.Size        = UDim2.new(0, 180, 0, 40)
+            bb.StudsOffset = Vector3.new(0, 5, 0)
+            bb.AlwaysOnTop = false
+            bb.MaxDistance = 20
+            local bg = Instance.new("Frame", bb)
+            bg.Size = UDim2.new(1,0,1,0)
+            bg.BackgroundColor3 = Color3.fromRGB(10,10,20)
+            bg.BackgroundTransparency = 0.3
+            bg.BorderSizePixel = 0
+            Instance.new("UICorner", bg).CornerRadius = UDim.new(0,6)
+            local lbl = Instance.new("TextLabel", bg)
+            lbl.Size = UDim2.new(1,0,1,0)
+            lbl.BackgroundTransparency = 1
+            lbl.TextColor3 = couleur or Color3.fromRGB(255,255,255)
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextSize = 12
+            lbl.Text = texte
+            lbl.TextWrapped = true
+            lbl.RichText = true
+        end
+
+        -- ── Pot verrouillé ──
+        if not potData.debloque then
+            local prixCoins = potCfg.prixCoins or 0
+            local prixRobux = potCfg.prixRobux or 0
+            local prixLabel = prixCoins > 0
+                and prixCoins .. " 💰"
+                or  prixRobux .. " R$"
+
+            creerBillboardPot("🔒 " .. prixLabel, Color3.fromRGB(255, 180, 50))
+
+            local prompt = Instance.new("ProximityPrompt")
+            prompt.ActionText            = "Unlock"
+            prompt.ObjectText            = "🔒 FlowerPot " .. potIndex .. " — " .. prixLabel
+            prompt.HoldDuration          = 0
+            prompt.MaxActivationDistance = 8
+            prompt.RequiresLineOfSight   = false
+            prompt.Parent                = potPart
+
+            -- Ouvrir la modal de déblocage (gérée via DebloquerPot RemoteEvent)
+            prompt.Triggered:Connect(function(p)
+                if p ~= player then return end
+                OuvrirPot:FireClient(p, potIndex, "debloque")
+            end)
+
+        -- ── Pot avec graine en cours (rejoin) → reprendre croissance depuis début ──
+        elseif potData.rarete then
+            if not FlowerPotGrowthSystem.EstEnCroissance(potModel) then
+                task.spawn(function()
+                    FlowerPotGrowthSystem.PlantSeed(potModel, potData.rarete, player,
+                        function(tp, elem, mult)
+                            local d = GetData(player)
+                            if d and d.pots and d.pots[potIndex] then
+                                d.pots[potIndex].rarete = nil
+                                d.pots[potIndex].stage  = 0
+                            end
+                            local latest = GetData(player)
+                            if latest then InitialiserPots(player, baseIndex, latest) end
+                        end)
+                end)
+            end
+
+            -- Prompt pour voir l'état du pot en cours de croissance
+            local promptInfos = Instance.new("ProximityPrompt")
+            promptInfos.ActionText            = "Info"
+            promptInfos.ObjectText            = "🌱 FlowerPot " .. potIndex .. " — Growing"
+            promptInfos.HoldDuration          = 0
+            promptInfos.MaxActivationDistance = 8
+            promptInfos.RequiresLineOfSight   = false
+            promptInfos.Parent                = potPart
+
+            promptInfos.Triggered:Connect(function(p)
+                if p ~= player then return end
+                local d = GetData(player)
+                if not d or not d.pots or not d.pots[potIndex] then return end
+                OuvrirPot:FireClient(p, potIndex, "infos", {
+                    rarete       = d.pots[potIndex].rarete,
+                    stage        = d.pots[potIndex].stage or 0,
+                    tempsRestant = 0,
+                })
+            end)
+
+        -- ── Pot vide et débloqué → prompt "Planter" ──
+        else
+            creerBillboardPot(
+                FPConfig.labelPotVide or "🌱 Plant MYTHIC / SECRET",
+                Color3.fromRGB(120, 220, 100))
+
+            local prompt = Instance.new("ProximityPrompt")
+            prompt.ActionText            = "Plant"
+            prompt.ObjectText            = "🌱 FlowerPot " .. potIndex
+            prompt.HoldDuration          = 0
+            prompt.MaxActivationDistance = 8
+            prompt.RequiresLineOfSight   = false
+            prompt.Parent                = potPart
+
+            local cnx = nil
+            cnx = prompt.Triggered:Connect(function(p)
+                if p ~= player then return end
+
+                -- Si le joueur a des graines → planter directement
+                local carriedSeeds = p:FindFirstChild("CarriedSeeds")
+                if carriedSeeds and #carriedSeeds:GetChildren() > 0 then
+
+                    -- Prendre la meilleure graine portée (SECRET prioritaire sur MYTHIC)
+                    local seedToUse = nil
+                    for _, sv in ipairs(carriedSeeds:GetChildren()) do
+                        if sv.Value == "SECRET" then seedToUse = sv; break end
+                    end
+                    if not seedToUse then
+                        for _, sv in ipairs(carriedSeeds:GetChildren()) do
+                            if sv.Value == "MYTHIC" then seedToUse = sv; break end
+                        end
+                    end
+                    if not seedToUse then seedToUse = carriedSeeds:GetChildren()[1] end
+                    if not seedToUse then return end
+
+                    local bestRarity = seedToUse.Value
+
+                    -- Retirer la graine des mains
+                    seedToUse:Destroy()
+
+                    local freshData = GetData(player)
+                    if not freshData then return end
+
+                    -- Mémoriser dans les données (persistance DataStore)
+                    if freshData.pots and freshData.pots[potIndex] then
+                        freshData.pots[potIndex].rarete = bestRarity
+                        freshData.pots[potIndex].stage  = 0
+                    end
+
+                    -- Détruire le prompt "Plant" avant de lancer la croissance
+                    if cnx then cnx:Disconnect() cnx = nil end
+                    if prompt.Parent then prompt:Destroy() end
+
+                    -- Lancer la séquence de croissance
+                    FlowerPotGrowthSystem.PlantSeed(potModel, bestRarity, player,
+                        function(tp, elem, mult)
+                            local d = GetData(player)
+                            if d and d.pots and d.pots[potIndex] then
+                                d.pots[potIndex].rarete = nil
+                                d.pots[potIndex].stage  = 0
+                            end
+                            local latest = GetData(player)
+                            if latest then InitialiserPots(player, baseIndex, latest) end
+                        end)
+
+                else
+                    -- Pas de graines → ouvrir la modal (daily seed, etc.)
+                    local d = GetData(p)
+                    local dailySeedData = d and d.dailySeed or {}
+                    OuvrirPot:FireClient(p, potIndex, "empty", dailySeedData)
+                end
+            end)
+        end
+    end
 end
 
 local function TrouverSpawnBase(baseIndex)
@@ -205,13 +407,12 @@ local function OnPlayerAdded(player)
         BaleSystem.Init();
 
         -- Initialiser les pots de fleurs
-        FlowerPotSystem.Init(player, baseIndex, data)
+        InitialiserPots(player, baseIndex, data)
 
         -- Initialiser le système de Rebirth (callbacks Farm injectés ici)
         RebirthSystem.Config = Config.RebirthConfig
         RebirthSystem.IsProgressionComplete = function(playerData)
-            return true  -- TEST UNIQUEMENT — remettre avant publication
-            -- return playerData.progression and playerData.progression["4_10"] == true
+            return playerData.progression and playerData.progression["4_10"] == true
         end
         RebirthSystem.OnRebirthComplete = function(player, niveau, cfg)
             -- Recréer les ProximityPrompts pour les spots du floor 1 (après Init)
@@ -335,6 +536,78 @@ end)
 -- 5. GESTION DES ACTIONS JOUEUR (validation serveur)
 -- ═══════════════════════════════════════════════
 
+-- Débloquer un pot via modal FlowerPotHUD
+DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
+    local data = GetData(player)
+    if not data or not data.pots or not data.pots[potIndex] then return end
+    if data.pots[potIndex].debloque then return end
+
+    local FPCfg  = Config.FlowerPotConfig
+    local potCfg = FPCfg and FPCfg.pots and FPCfg.pots[potIndex]
+    if not potCfg then return end
+
+    local prixCoins = potCfg.prixCoins or 0
+    local prixRobux = potCfg.prixRobux or 0
+
+    if prixCoins > 0 then
+        if data.coins < prixCoins then
+            NotifEvent:FireClient(player, "ERROR",
+                "❌ Pas assez de coins! Il te faut " .. prixCoins .. " 💰")
+            return
+        end
+        data.coins = data.coins - prixCoins
+        data.pots[potIndex].debloque = true
+        NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot " .. potIndex .. " débloqué!")
+        UpdateHUD:FireClient(player, data)
+        local baseIndex = AssignationSystem.GetBaseIndex(player)
+        if baseIndex then InitialiserPots(player, baseIndex, data) end
+
+    elseif prixRobux > 0 then
+        local gpId = potCfg.gamePassId or Config.GamePassIds.FlowerPot4 or 0
+        if gpId == 0 then
+            NotifEvent:FireClient(player, "ERROR", "❌ Game Pass non configuré")
+            return
+        end
+        local ok, owned = pcall(function()
+            return game:GetService("MarketplaceService"):UserOwnsGamePassAsync(player.UserId, gpId)
+        end)
+        if ok and owned then
+            data.pots[potIndex].debloque = true
+            NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot 4 débloqué via Game Pass!")
+            UpdateHUD:FireClient(player, data)
+            local baseIndex = AssignationSystem.GetBaseIndex(player)
+            if baseIndex then InitialiserPots(player, baseIndex, data) end
+        else
+            game:GetService("MarketplaceService"):PromptGamePassPurchase(player, gpId)
+        end
+    end
+end)
+
+-- Croissance instantanée via modal FlowerPotHUD (bouton Instant Grow)
+InstantGrowPot.OnServerEvent:Connect(function(player, potIndex)
+    local data = GetData(player)
+    if not data or not data.pots or not data.pots[potIndex] then return end
+    if not data.pots[potIndex].debloque or not data.pots[potIndex].rarete then
+        NotifEvent:FireClient(player, "ERROR", "❌ Aucune graine dans ce pot!")
+        return
+    end
+    local igCfg = Config.FlowerPotConfig and Config.FlowerPotConfig.instantGrow
+    local gpId  = igCfg and igCfg.gamePassId or 0
+    if gpId > 0 then
+        local ok, owned = pcall(function()
+            return game:GetService("MarketplaceService"):UserOwnsGamePassAsync(player.UserId, gpId)
+        end)
+        if ok and owned then
+            FlowerPotGrowthSystem.InstantGrow(player, potIndex)
+        else
+            game:GetService("MarketplaceService"):PromptGamePassPurchase(player, gpId)
+        end
+    else
+        -- DevProduct → géré dans MonetizationHandler via ProcessReceipt
+        NotifEvent:FireClient(player, "INFO", "⚡ Instant Grow : achat Robux requis.")
+    end
+end)
+
 -- Collecte manuelle (touch d'un collectible)
 DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
     local data = GetData(player)
@@ -416,6 +689,47 @@ DemandeOuvrirRebirth.OnServerEvent:Connect(function(player)
     if ouvrirEv then pcall(function() ouvrirEv:FireClient(player) end) end
 end)
 
+-- Réclamer la Daily Seed (cycle 7 jours)
+ClaimDailySeed.OnServerEvent:Connect(function(player)
+    local data = GetData(player)
+    if not data or not data.dailySeed then return end
+
+    if not data.dailySeed.graineDispo then
+        NotifEvent:FireClient(player, "INFO", "⏳ Daily Seed pas encore disponible!")
+        return
+    end
+
+    -- Rareté selon le cycle configuré dans GameConfig
+    local cfg         = Config.FlowerPotConfig and Config.FlowerPotConfig.dailySeed
+    local jourActuel  = data.dailySeed.jourActuel or 1
+    local rarity      = (cfg and cfg.cycle and cfg.cycle[jourActuel]) or "MYTHIC"
+
+    -- Compteur statistique permanent (jamais prélevé pour planter)
+    SeedInventory.Add(data, rarity, 1)
+    SeedInventory.NotifyClient(player, data)
+
+    -- Ajouter la graine dans les mains du joueur (CarriedSeeds)
+    local dCarriedSeeds = player:FindFirstChild("CarriedSeeds")
+    if not dCarriedSeeds then
+        dCarriedSeeds        = Instance.new("Folder")
+        dCarriedSeeds.Name   = "CarriedSeeds"
+        dCarriedSeeds.Parent = player
+    end
+    local dSeedVal       = Instance.new("StringValue")
+    dSeedVal.Name        = "Seed"
+    dSeedVal.Value       = rarity
+    dSeedVal.Parent      = dCarriedSeeds
+
+    -- Mettre à jour l'état daily seed
+    data.dailySeed.graineDispo    = false
+    data.dailySeed.dernieresClaim = os.time()
+    data.dailySeed.jourActuel     = (jourActuel % 7) + 1  -- cycle 1 → 7 → 1
+
+    NotifEvent:FireClient(player, "SUCCESS",
+        "🌱 Daily Seed " .. rarity .. " reçue ! (Jour " .. jourActuel .. "/7)")
+    UpdateHUD:FireClient(player, data)
+end)
+
 -- RemoteFunction : données joueur (pour HUD)
 GetPlayerData.OnServerInvoke = function(player)
     return GetData(player)
@@ -426,6 +740,47 @@ GetUpgradeCost.OnServerInvoke = function(player)
     local data = GetData(player)
     if not data then return 0 end
     return UpgradeSystem.GetCoutUpgrade(data.tier)
+end
+
+-- RemoteFunction : état complet des graines (daily seed + arbres + pots)
+GetSeedInfo.OnServerInvoke = function(player)
+    local data = GetData(player)
+    if not data then return nil end
+
+    local timerRestant, graineDispo = ArbreSystem.GetTimerRestant()
+
+    -- Statut des 4 pots de la base du joueur
+    local potsStatus = {}
+    local baseIndex  = AssignationSystem.GetBaseIndex(player)
+    if baseIndex then
+        local bases = workspace:FindFirstChild("Bases")
+        local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
+        for potIndex = 1, 4 do
+            local potData = data.pots and data.pots[potIndex]
+            local debloque = potData and potData.debloque or false
+            local statut = nil
+            if debloque and base then
+                local potModel = base:FindFirstChild("FlowerPot_" .. potIndex)
+                if potModel then
+                    statut = FlowerPotGrowthSystem.GetStatut(potModel)
+                end
+            end
+            potsStatus[potIndex] = {
+                debloque = debloque,
+                statut   = statut,  -- nil=vide, ou { statut, rarity, stage, elementType, ... }
+            }
+        end
+    end
+
+    return {
+        graines           = data.graines or { MYTHIC=0, SECRET=0 },
+        dailySeed         = data.dailySeed,
+        dailyCycle        = Config.FlowerPotConfig.dailySeed.cycle,
+        intervalleHeures  = Config.FlowerPotConfig.dailySeed.intervalleHeures,
+        arbreTimerRestant = timerRestant,
+        arbreGraineDispo  = graineDispo,
+        pots              = potsStatus,
+    }
 end
 
 -- ═══════════════════════════════════════════════
@@ -456,9 +811,7 @@ end
 
 -- CarrySystem utilise AssignationSystem comme source de vérité pour la base du joueur
 CarrySystem.GetBaseJoueur = function(player) return AssignationSystem.GetBaseIndex(player) end
-CarrySystem.OnCarryChange = function(player, portes)
-    FlowerPotSystem.OnCarryChange(player, portes)
-end
+CarrySystem.OnCarryChange = nil  -- FlowerPotSystem supprimé (illumination pots retirée)
 CarrySystem.Init()
 
 -- ZoneCommune (MYTHIC + SECRET)
@@ -593,10 +946,6 @@ TracteurSystem.Init()
 
 -- MonetizationHandler : injecter l'accesseur de données (pour ProcessReceipt)
 MonetizationHandler.SetGetData(GetData)
-
--- FlowerPotSystem : connecter la source de données et initialiser
-FlowerPotSystem.SetGetData(GetData)
-FlowerPotSystem.InitServeur()
 
 -- ArbreSystem : graines sur les arbres du ChampCommun
 ArbreSystem.GetData = GetData

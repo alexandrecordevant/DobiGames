@@ -484,7 +484,12 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		notifierTous("🏆 " .. player.Name .. " grabbed [" .. nomModele .. "] " .. rarete.nom .. "!")
 
 		local success = effectuerRamassage(player, rarete, brModel)
-		if not success then
+		if success then
+			-- Signaler à CommunSpawner (ou SpawnManager) que le BR a été capturé
+			-- CRITIQUE : sans cet appel, collected reste false → le timer despawn
+			-- détruit le clone à l'intérieur du Tool, corrompant le dépôt
+			if onCapture then pcall(onCapture, player) end
+		else
 			pcall(function() brModel:SetAttribute("Captured", false) end)
 			if prompt and prompt.Parent then prompt.Enabled = true end
 		end
@@ -814,6 +819,40 @@ end
 -- Retourne true si succès, false si carry plein
 function CarrySystem.AjouterAuCarry(player, clone, rarete)
 	return effectuerRamassage(player, rarete, clone)
+end
+
+-- Insère un BR en tête du carry (position 1) au lieu de l'ajouter en fin.
+-- Utilisé par DropSystem.RecupererBrainRot pour que le BR récupéré soit
+-- le prochain à être déposé (portes[1] dans DeposerBrainRots).
+function CarrySystem.InsererEnTeteCarry(player, clone, rarete)
+	local data = donneesJoueurs[player.UserId]
+	if not data then return false end
+
+	local max = CarrySystem.GetCapaciteMax(player)
+	if #data.portes >= max then
+		messageSacPlein(player, data)
+		return false
+	end
+
+	local source = clone
+	if not source or not source.Parent then
+		local nomDossier   = rarete and rarete.dossier or "COMMON"
+		local modeleSource = choisirModele(nomDossier)
+		if not modeleSource then return false end
+		local ok = pcall(function() source = modeleSource:Clone() end)
+		if not ok or not source then return false end
+	end
+
+	local tool = creerTool(player, source, rarete)
+	if not tool then return false end
+
+	local entree = { rarete = rarete, toolRef = tool }
+	table.insert(data.portes, 1, entree)  -- en tête, pas en fin
+
+	envoyerCarryUpdate(player)
+	jouerSon(player)
+	CarrySystem.UpdateDepotPrompts(player)
+	return true
 end
 
 function CarrySystem.SetProtection(player, valeur)

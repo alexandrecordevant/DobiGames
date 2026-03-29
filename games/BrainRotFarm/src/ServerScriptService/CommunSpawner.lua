@@ -60,20 +60,24 @@ end
 -- ============================================================
 local CONFIG = {
 	MYTHIC = {
-		intervalleSecondes   = 8 * 60,
-		compteurVisibleAvant = 3 * 60,
+		intervalleSecondes   = 2 * 30,
+		compteurVisibleAvant = 2 * 15,
+		-- intervalleSecondes   = 8 * 60,
+		-- compteurVisibleAvant = 3 * 60,
 		valeur               = 300,
-		despawnSecondes      = 60,
+		despawnSecondes      = 20,
 		couleur              = Color3.fromRGB(148, 0, 211),
 		couleurHex           = 9699539,  -- 0x9400D3
 		emoji                = "⚠️",
 		dossier              = "MYTHIC",
 	},
 	SECRET = {
-		intervalleSecondes   = 20 * 60,
-		compteurVisibleAvant = 5 * 60,
+		intervalleSecondes   = 2 * 60,
+		compteurVisibleAvant = 2 * 30,
+		--intervalleSecondes   = 20 * 60,
+		--compteurVisibleAvant = 5 * 60,
 		valeur               = 1000,
-		despawnSecondes      = 60,
+		despawnSecondes      = 20,
 		couleur              = Color3.fromRGB(255, 30, 30),
 		couleurHex           = 16718878, -- 0xFF1E1E
 		emoji                = "🔴",
@@ -314,8 +318,9 @@ end
 -- Retourne (billboard, labelCompteur, partCompteur)  — détruire les 3 après usage
 local function creerCompteurBillboard(spawnPos, typeConfig, typeNom)
 	-- Part invisible dédiée : positionnée au-dessus du sol pour que le billboard soit visible
-	local hauteur     = (_GameConfig.AnimationConfig and _GameConfig.AnimationConfig.timerHauteurY) or 8
-	local studsOffset = (_GameConfig.AnimationConfig and _GameConfig.AnimationConfig.timerStudsOffset) or 5
+	-- Utiliser Config (GameConfig chargé en haut du fichier) — _GameConfig n'existe pas
+	local hauteur     = (Config.AnimationConfig and Config.AnimationConfig.timerHauteurY) or 8
+	local studsOffset = (Config.AnimationConfig and Config.AnimationConfig.timerStudsOffset) or 5
 
 	local partCompteur = Instance.new("Part")
 	partCompteur.Name         = "CompteurPart"
@@ -456,17 +461,25 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	local parts = obtenirBaseParts(clone)
 	fadeIn(parts, 0.6)
 
-	-- ── Billboard sur le BR via FilterManager (ZERO instance directe) ──
+	-- Valeur coins depuis GameConfig (fallback : typeConfig.valeur)
+	local valeurCoins = (Config.IncomeParRarete and Config.IncomeParRarete[typeNom])
+	                     or typeConfig.valeur or 0
+	local valeurTexte = valeurCoins > 0 and ("  💰 " .. valeurCoins .. "/s") or ""
+
+	-- ── Filtres rareté + Billboard via FilterManager ────────────────
 	local FM = getFilterManager()
 	if FM then
 		FM.Apply(clone, {
-			{Name = "Billboard", Params = {
+			-- Filtre rareté : glow + particules spécifiques à MYTHIC/SECRET
+			{ Name = "Rarity" .. typeNom },
+			-- Billboard flottant au-dessus du BR
+			{ Name = "Billboard", Params = {
 				Text    = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
-				          .. "  ⏳ " .. typeConfig.despawnSecondes .. "s",
+				          .. valeurTexte .. "  ⏳ " .. typeConfig.despawnSecondes .. "s",
 				Color   = typeConfig.couleur,
 				OffsetY = 10,
 				Taille  = UDim2.new(0, 260, 0, 70),
-			}}
+			}},
 		})
 	end
 
@@ -486,7 +499,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 			if not labelBB then return end
 			-- Mise à jour texte + couleur urgence
 			labelBB.Text = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
-			               .. "  ⏳ " .. restant .. "s"
+			               .. valeurTexte .. "  ⏳ " .. restant .. "s"
 			if restant <= 10 then
 				labelBB.TextColor3 = Color3.new(1, 0.2, 0.2) -- rouge urgent
 			end

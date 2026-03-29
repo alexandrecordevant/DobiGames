@@ -10,6 +10,14 @@ local RS           = game:GetService("ReplicatedStorage")
 -- Callback données joueur — assigné par Main.server.lua
 ArbreSystem.GetData = nil
 
+-- Timer restant avant prochaine graine (secondes) — -1 si graine disponible actuellement
+ArbreSystem._timerRestant  = 0
+ArbreSystem._graineDispo   = false
+
+function ArbreSystem.GetTimerRestant()
+    return ArbreSystem._timerRestant, ArbreSystem._graineDispo
+end
+
 -- ═══════════════════════════════════════
 -- COULEURS FUMÉE
 -- ═══════════════════════════════════════
@@ -62,43 +70,53 @@ end
 -- CRÉER BILLBOARD
 -- ═══════════════════════════════════════
 
-local function CreerBillboard(sommetPart, texte, couleur)
+-- avecFond=true  → fond sombre + bordure colorée (graine READY)
+-- avecFond=false → texte seul, sans fond ni bordure (compteur)
+local function CreerBillboard(sommetPart, texte, couleur, avecFond)
     local existing = sommetPart:FindFirstChild("SeedBillboard")
     if existing then existing:Destroy() end
 
     local bb = Instance.new("BillboardGui", sommetPart)
     bb.Name        = "SeedBillboard"
-    bb.Size        = UDim2.new(0, 240, 0, 100)
-    bb.StudsOffset = Vector3.new(0, 8, 0)
-    bb.AlwaysOnTop = false
-    bb.MaxDistance = 150
+    -- Taille différente selon le mode : compteur grand, READY normal
+    bb.Size        = avecFond and UDim2.new(0, 220, 0, 80) or UDim2.new(0, 300, 0, 100)
+    bb.StudsOffset = Vector3.new(0, 10, 0)
+    bb.AlwaysOnTop = true   -- visible depuis le bas même derrière le feuillage
+    bb.MaxDistance = 300    -- visible de loin
 
-    local fond = Instance.new("Frame", bb)
-    fond.Size                   = UDim2.new(1, 0, 1, 0)
-    fond.BackgroundColor3       = Color3.fromRGB(15, 5, 30)
-    fond.BackgroundTransparency = 0.1
-    fond.BorderSizePixel        = 0
-    Instance.new("UICorner", fond).CornerRadius = UDim.new(0, 12)
+    local parent = bb
 
-    local stroke = Instance.new("UIStroke", fond)
-    stroke.Color     = couleur or Color3.fromRGB(180, 0, 255)
-    stroke.Thickness = 3
+    if avecFond then
+        local fond = Instance.new("Frame", bb)
+        fond.Size                   = UDim2.new(1, 0, 1, 0)
+        fond.BackgroundColor3       = Color3.fromRGB(15, 5, 30)
+        fond.BackgroundTransparency = 0.1
+        fond.BorderSizePixel        = 0
+        Instance.new("UICorner", fond).CornerRadius = UDim.new(0, 12)
 
-    local label = Instance.new("TextLabel", fond)
+        local stroke = Instance.new("UIStroke", fond)
+        stroke.Color     = couleur or Color3.fromRGB(180, 0, 255)
+        stroke.Thickness = 3
+
+        parent = fond
+    end
+
+    local label = Instance.new("TextLabel", parent)
     label.Name                   = "Label"
-    label.Size                   = UDim2.new(1, -12, 1, 0)
-    label.Position               = UDim2.new(0, 6, 0, 0)
+    label.Size                   = UDim2.new(1, 0, 1, 0)
+    label.Position               = UDim2.new(0, 0, 0, 0)
     label.BackgroundTransparency = 1
     label.TextColor3             = couleur or Color3.fromRGB(200, 100, 255)
     label.Font                   = Enum.Font.GothamBold
-    label.TextSize               = 17
+    label.TextSize               = avecFond and 28 or 52
+    label.TextScaled             = false
     label.TextWrapped            = true
     label.RichText               = true
     label.Text                   = texte
 
     local txtStroke = Instance.new("UIStroke", label)
     txtStroke.Color     = Color3.fromRGB(0, 0, 0)
-    txtStroke.Thickness = 1.5
+    txtStroke.Thickness = avecFond and 1.5 or 3
 
     return bb, label
 end
@@ -168,10 +186,10 @@ local function ActiverGraine(sommetPart, typeGraine, onCollect)
     local couleur   = (graineCfg and graineCfg.couleurStage4)
                    or Color3.fromRGB(255, 215, 0)
 
-    -- Billboard "SEED READY!"
+    -- Billboard "SEED READY!" — avec fond et bordure
     local bb, label = CreerBillboard(sommetPart,
         "🌱 " .. typeGraine .. " SEED\n✨ READY! Press E",
-        couleur)
+        couleur, true)
 
     -- Pulse du texte
     task.spawn(function()
@@ -255,9 +273,7 @@ local function MettreAJourCompteurs(sommetParts, secondes, texteOverride)
         local bb    = sommetPart:FindFirstChild("SeedBillboard")
         local label = bb and bb:FindFirstChild("Label")
         if label then
-            label.Text       = texteOverride
-                or ("⏳ Next seed:\n" .. FormatTimer(secondes))
-            label.TextColor3 = Color3.fromRGB(180, 140, 255)
+            label.Text = texteOverride or ("⏳ " .. FormatTimer(secondes))
         end
     end
 end
@@ -273,16 +289,30 @@ local function OnGraineCollectee(player, typeGraine)
         return
     end
 
+    -- Compteur statistique permanent (jamais prélevé pour planter)
     data.graines                  = data.graines or { MYTHIC = 0, SECRET = 0 }
     data.graines[typeGraine]      = (data.graines[typeGraine] or 0) + 1
     local total = data.graines[typeGraine]
+
+    -- Ajouter la graine dans les mains du joueur (CarriedSeeds)
+    -- Le joueur devra la porter physiquement pour planter dans un FlowerPot
+    local carriedSeeds = player:FindFirstChild("CarriedSeeds")
+    if not carriedSeeds then
+        carriedSeeds        = Instance.new("Folder")
+        carriedSeeds.Name   = "CarriedSeeds"
+        carriedSeeds.Parent = player
+    end
+    local seedVal       = Instance.new("StringValue")
+    seedVal.Name        = "Seed"
+    seedVal.Value       = typeGraine
+    seedVal.Parent      = carriedSeeds
 
     local NotifEvent = RS:FindFirstChild("NotifEvent")
     if NotifEvent then
         pcall(function()
             NotifEvent:FireClient(player, "SUCCESS",
                 "🌱 Got 1 " .. typeGraine .. " Seed! ("
-                .. total .. " total)")
+                .. total .. " total) — Va la planter dans ton FlowerPot!")
         end)
     end
 
@@ -293,7 +323,7 @@ local function OnGraineCollectee(player, typeGraine)
         end)
     end
 
-    print(string.format("[ArbreSystem] %s → +%s Seed (%d total)",
+    print(string.format("[ArbreSystem] %s → +%s Seed (%d total) → CarriedSeeds",
         player.Name, typeGraine, total))
 end
 
@@ -330,10 +360,10 @@ function ArbreSystem.Init()
             -- Lumière violette faible permanente
             AjouterLumiere(sommetPart, 1)
 
-            -- Billboard compteur initial
+            -- Billboard compteur initial — sans fond ni bordure
             CreerBillboard(sommetPart,
-                "⏳ Next seed:\n" .. FormatTimer(arbreCfg.intervalleSecondes),
-                Color3.fromRGB(180, 100, 255))
+                "⏳ " .. FormatTimer(arbreCfg.intervalleSecondes),
+                Color3.fromRGB(200, 150, 255), false)
 
             table.insert(arbresDonnees, {
                 arbre      = arbre,
@@ -363,12 +393,16 @@ function ArbreSystem.Init()
             end
 
             -- Countdown 30:00 → 00:00 sur tous les arbres
+            ArbreSystem._graineDispo = false
             for t = intervalle, 0, -1 do
+                ArbreSystem._timerRestant = t
                 MettreAJourCompteurs(toutesLesParts, t)
                 if t > 0 then task.wait(1) end
             end
 
             -- Activer une graine sur CHAQUE arbre simultanément
+            ArbreSystem._graineDispo  = true
+            ArbreSystem._timerRestant = 0
             local treeEtats = {}
             for _, d in ipairs(arbresDonnees) do
                 local rand       = math.random(1, 100)
@@ -412,6 +446,9 @@ function ArbreSystem.Init()
                 end
             end
 
+            -- Marquer graine non dispo pour le prochain cycle
+            ArbreSystem._graineDispo = false
+
             -- Reset visuels sur tous les arbres pour le prochain cycle
             for _, d in ipairs(arbresDonnees) do
                 local particles = d.sommetPart:FindFirstChild("SeedParticles")
@@ -426,8 +463,8 @@ function ArbreSystem.Init()
                         TweenInfo.new(0.5), { Brightness = 1 }):Play()
                 end
                 CreerBillboard(d.sommetPart,
-                    "⏳ Next seed:\n" .. FormatTimer(intervalle),
-                    Color3.fromRGB(180, 100, 255))
+                    "⏳ " .. FormatTimer(intervalle),
+                    Color3.fromRGB(200, 150, 255), false)
             end
         end
     end)
