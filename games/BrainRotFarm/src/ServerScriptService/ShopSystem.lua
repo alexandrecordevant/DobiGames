@@ -21,8 +21,10 @@ local Config = require(ReplicatedStorage.GameConfig)
 -- ============================================================
 -- Callback fourni par Main.server.lua (évite les dépendances circulaires)
 -- ShopSystem.GetPlayerData = function(player) → playerData ou nil
+-- ShopSystem.FireUpdateHUD = function(player, data) — envoie le HUD avec extraCoins inclus
 -- ============================================================
 ShopSystem.GetPlayerData = nil
+ShopSystem.FireUpdateHUD = nil
 
 -- ============================================================
 -- RemoteEvents (créés dans Init)
@@ -350,9 +352,8 @@ function ShopSystem.ConfirmerAchatGamePass(player, gamePassId)
                 end
 
                 -- Mettre à jour le HUD
-                local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
-                if UpdateHUD then
-                    pcall(function() UpdateHUD:FireClient(player, playerData) end)
+                if ShopSystem.FireUpdateHUD then
+                    pcall(ShopSystem.FireUpdateHUD, player, playerData)
                 end
 
                 return  -- trouvé, on arrête
@@ -607,9 +608,8 @@ function ShopSystem.Init()
             if notif then
                 pcall(function() notif:FireClient(player, "SUCCESS", "✅ " .. message) end)
             end
-            local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
-            if UpdateHUD and playerData then
-                pcall(function() UpdateHUD:FireClient(player, playerData) end)
+            if ShopSystem.FireUpdateHUD and playerData then
+                pcall(ShopSystem.FireUpdateHUD, player, playerData)
             end
             if playerData then
                 pcall(function()
@@ -723,9 +723,8 @@ function ShopSystem.Init()
                 ShopUpdate:FireClient(player, construireDonneesShop(player, playerData))
             end)
         end
-        local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
-        if UpdateHUD then
-            pcall(function() UpdateHUD:FireClient(player, playerData) end)
+        if ShopSystem.FireUpdateHUD then
+            pcall(ShopSystem.FireUpdateHUD, player, playerData)
         end
     end)
 

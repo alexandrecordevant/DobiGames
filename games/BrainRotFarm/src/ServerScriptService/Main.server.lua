@@ -103,6 +103,16 @@ local function SetData(player, data)
     playerDataCache[player.UserId] = data
 end
 
+-- Envoie le HUD avec les coins réels (données + coins en attente dans les slots)
+local function EnvoyerHUD(player, data)
+    local extraCoins = IncomeSystem.GetCoinsEnAttente(player) or 0
+    local coinsAffiches = (data.coins or 0) + extraCoins
+    local hudData = {}
+    for k, v in pairs(data) do hudData[k] = v end
+    hudData.coins = coinsAffiches
+    UpdateHUD:FireClient(player, hudData)
+end
+
 -- ═══════════════════════════════════════════════
 -- INITIALISATION DES FLOWER POTS (remplace FlowerPotSystem.Init)
 -- Placé ici pour que GetData/SetData soient en portée (upvalues)
@@ -225,20 +235,30 @@ InitialiserPots = function(player, baseIndex, playerData)
                 OuvrirPot:FireClient(p, potIndex, "debloque")
             end)
 
-        -- ── Pot avec graine en cours (rejoin) → reprendre croissance depuis début ──
+        -- ── Pot avec graine en cours (rejoin) → reprendre croissance au bon stage ──
         elseif potData.rarete then
             if not FlowerPotGrowthSystem.EstEnCroissance(potModel) then
+                -- Calculer l'avancement depuis le temps de plantation
+                local dureeStage  = (FPCfg and FPCfg.GrowthDuration) or 120
+                local plantedAt   = potData.plantedAt or os.time()
+                local elapsed     = os.time() - plantedAt
+                local etape       = math.min(5, math.floor(elapsed / dureeStage))
+                local premAttente = math.max(1, dureeStage - (elapsed % dureeStage))
+                print(string.format("[DEBUG FlowerPot] Pot%d rejoin | rarete=%s | plantedAt=%s | elapsed=%ds | etape=%d | premAttente=%ds",
+                    potIndex, tostring(potData.rarete), tostring(plantedAt), elapsed, etape, premAttente))
                 task.spawn(function()
                     FlowerPotGrowthSystem.PlantSeed(potModel, potData.rarete, player,
                         function(tp, elem, mult)
                             local d = GetData(player)
                             if d and d.pots and d.pots[potIndex] then
-                                d.pots[potIndex].rarete = nil
-                                d.pots[potIndex].stage  = 0
+                                d.pots[potIndex].rarete    = nil
+                                d.pots[potIndex].stage     = 0
+                                d.pots[potIndex].plantedAt = nil
                             end
                             local latest = GetData(player)
                             if latest then InitialiserPots(player, baseIndex, latest) end
-                        end)
+                        end,
+                        { etapeCourante = etape, premiereAttente = premAttente })
                 end)
             end
 
@@ -255,10 +275,31 @@ InitialiserPots = function(player, baseIndex, playerData)
                 if p ~= player then return end
                 local d = GetData(player)
                 if not d or not d.pots or not d.pots[potIndex] then return end
+                -- Lire le statut réel depuis le système de croissance
+                local statut = FlowerPotGrowthSystem.GetStatut(potModel)
+                local stageInterne = (statut and statut.stage) or d.pots[potIndex].stage or -1
+                local rarete = (statut and statut.rarity) or d.pots[potIndex].rarete or "MYTHIC"
+                -- Stage affiché : interne (-1 à 3) → display (0 à 4)
+                local stageAffiche = math.max(0, stageInterne + 1)
+                -- Calculer le temps restant réel depuis plantedAt
+                local dureeStage = (FPCfg and FPCfg.GrowthDuration) or 120
+                local tempsRestant = 0
+                if stageAffiche < 5 then
+                    local plantedAt = d.pots[potIndex].plantedAt
+                    if plantedAt then
+                        local elapsed = os.time() - plantedAt
+                        local etapeActuelle = math.min(5, math.floor(elapsed / dureeStage))
+                        tempsRestant = math.max(0, dureeStage - (elapsed % dureeStage))
+                        -- Si déjà terminé
+                        if etapeActuelle >= 5 then tempsRestant = 0 end
+                    else
+                        tempsRestant = dureeStage
+                    end
+                end
                 OuvrirPot:FireClient(p, potIndex, "infos", {
-                    rarete       = d.pots[potIndex].rarete,
-                    stage        = d.pots[potIndex].stage or 0,
-                    tempsRestant = 0,
+                    rarete       = rarete,
+                    stage        = stageAffiche,
+                    tempsRestant = tempsRestant,
                 })
             end)
 
@@ -307,8 +348,9 @@ InitialiserPots = function(player, baseIndex, playerData)
 
                     -- Mémoriser dans les données (persistance DataStore)
                     if freshData.pots and freshData.pots[potIndex] then
-                        freshData.pots[potIndex].rarete = bestRarity
-                        freshData.pots[potIndex].stage  = 0
+                        freshData.pots[potIndex].rarete    = bestRarity
+                        freshData.pots[potIndex].stage     = 0
+                        freshData.pots[potIndex].plantedAt = os.time()
                     end
 
                     -- Détruire le prompt "Plant" avant de lancer la croissance
@@ -320,12 +362,20 @@ InitialiserPots = function(player, baseIndex, playerData)
                         function(tp, elem, mult)
                             local d = GetData(player)
                             if d and d.pots and d.pots[potIndex] then
-                                d.pots[potIndex].rarete = nil
-                                d.pots[potIndex].stage  = 0
+                                d.pots[potIndex].rarete    = nil
+                                d.pots[potIndex].stage     = 0
+                                d.pots[potIndex].plantedAt = nil
                             end
                             local latest = GetData(player)
                             if latest then InitialiserPots(player, baseIndex, latest) end
                         end)
+
+                    -- Recréer les prompts immédiatement (pot passe en mode "growing")
+                    -- task.defer laisse le thread PlantSeed démarrer avant
+                    task.defer(function()
+                        local latest = GetData(player)
+                        if latest then InitialiserPots(player, baseIndex, latest) end
+                    end)
 
                 else
                     -- Pas de graines → ouvrir la modal (daily seed, etc.)
@@ -402,7 +452,7 @@ local function OnPlayerAdded(player)
 
     -- Envoyer HUD initial
     task.wait(1)  -- laisser le client charger
-    UpdateHUD:FireClient(player, data)
+    EnvoyerHUD(player, data)
 
     -- Assigner une base (AssignationSystem remplace SpawnManager.AssignerBase)
     local baseIndex = AssignationSystem.AssignerJoueur(player)
@@ -482,9 +532,7 @@ local function OnPlayerAdded(player)
                 )
             end)
         end
-        RebirthSystem.GetExtraCoins = function(p)
-            return IncomeSystem.GetCoinsEnAttente(p)
-        end
+        -- GetExtraCoins non injecté : le rebirth ne compte que data.coins (coins réellement collectés)
         RebirthSystem.OnButtonUpdate = function(p, etat)
             BoardSystem.MettreAJourBoard(p, etat)
         end
@@ -543,6 +591,12 @@ local function OnPlayerRemoving(player)
         local spotsSerial = DropSystem.GetSpotsOccupesSerialisables(player)
         data.spotsOccupes = spotsSerial
 
+        if data.pots then
+            for pi, pd in pairs(data.pots) do
+                print(string.format("[DEBUG FlowerPot] SAVE Pot%d | rarete=%s | plantedAt=%s",
+                    pi, tostring(pd.rarete), tostring(pd.plantedAt)))
+            end
+        end
         DataStoreManager.Save(player, data)
         playerDataCache[player.UserId] = nil
         BaseProgressionSystem.Reset(player)
@@ -598,7 +652,7 @@ DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
         data.coins = data.coins - prixCoins
         data.pots[potIndex].debloque = true
         NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot " .. potIndex .. " débloqué!")
-        UpdateHUD:FireClient(player, data)
+        EnvoyerHUD(player, data)
         local baseIndex = AssignationSystem.GetBaseIndex(player)
         if baseIndex then InitialiserPots(player, baseIndex, data) end
 
@@ -614,7 +668,7 @@ DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
         if ok and owned then
             data.pots[potIndex].debloque = true
             NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot 4 débloqué via Game Pass!")
-            UpdateHUD:FireClient(player, data)
+            EnvoyerHUD(player, data)
             local baseIndex = AssignationSystem.GetBaseIndex(player)
             if baseIndex then InitialiserPots(player, baseIndex, data) end
         else
@@ -681,7 +735,7 @@ DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
 
     -- Notifier le client (VFX + HUD)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
-    UpdateHUD:FireClient(player, data)
+    EnvoyerHUD(player, data)
     BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
 end)
@@ -694,8 +748,8 @@ DemandeUpgrade.OnServerEvent:Connect(function(player)
     local success, result = UpgradeSystem.AppliquerUpgrade(data)
     if success then
         SetData(player, result)
-        UpdateHUD:FireClient(player, result)
-        
+        EnvoyerHUD(player, result)
+
         -- Proposer monétisation au bon moment
         local rule = MonetizationHandler.CheckPromptRules(result)
         if rule then
@@ -714,7 +768,7 @@ DemandePrestige.OnServerEvent:Connect(function(player)
     local success, result = UpgradeSystem.AppliquerPrestige(data)
     if success then
         SetData(player, result)
-        UpdateHUD:FireClient(player, result)
+        EnvoyerHUD(player, result)
         NotifEvent:FireClient(player, "PRESTIGE", "Prestige " .. result.prestige .. " reached! Multiplier x" .. (result.prestige * (Config.PrestigeMultiplier - 1) + 1))
     else
         NotifEvent:FireClient(player, "ERREUR", result)
@@ -767,7 +821,7 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
 
     NotifEvent:FireClient(player, "SUCCESS",
         "🌱 Daily Seed " .. rarity .. " reçue ! (Jour " .. jourActuel .. "/7)")
-    UpdateHUD:FireClient(player, data)
+    EnvoyerHUD(player, data)
 end)
 
 -- RemoteFunction : données joueur (pour HUD)
@@ -866,7 +920,7 @@ CommunSpawner.OnCollecte = function(player, typeNom)
     data.coins              = data.coins + coinsGagnes
     data.totalCoinsGagnes   = (data.totalCoinsGagnes or 0) + coinsGagnes
     data.totalCollecte      = (data.totalCollecte or 0) + 1
-    UpdateHUD:FireClient(player, data)
+    EnvoyerHUD(player, data)
     CollectVFX:FireClient(player, coinsGagnes, { nom = typeNom, valeur = valeur })
     BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
@@ -898,7 +952,7 @@ BrainrotReward.Event:Connect(function(player, montant, rarete)
     data.coins            = data.coins + coinsGagnes
     data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coinsGagnes
     data.totalCollecte    = (data.totalCollecte or 0) + 1
-    UpdateHUD:FireClient(player, data)
+    EnvoyerHUD(player, data)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
     BaseProgressionSystem.VerifierDeblocages(player, data)
     RebirthSystem.MettreAJourBouton(player)
@@ -976,6 +1030,7 @@ LeaderboardSystem.Init()
 
 -- ShopSystem : connecter la source de données et démarrer les ProximityPrompts
 ShopSystem.GetPlayerData = GetData
+ShopSystem.FireUpdateHUD = function(player, data) EnvoyerHUD(player, data) end
 ShopSystem.Init()
 
 -- SprinklerSystem : désactiver tous les sprinklers par défaut
