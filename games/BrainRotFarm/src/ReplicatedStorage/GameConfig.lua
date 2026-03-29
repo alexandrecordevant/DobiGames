@@ -619,4 +619,28 @@ GameConfig.RaretesExcluesSpawn = {
     "OG",  -- jamais en spawn normal
 }
 
+-- === PVP / COMBAT ===
+-- Mettre PvPEnabled = false pour désactiver tout le système Combat (reskins pacifiques)
+GameConfig.PvPEnabled = true
+
+GameConfig.Combat = {
+	-- Batte de baseball
+	BatEnabled  = true,
+	BatCooldown = 1,     -- Secondes entre chaque frappe
+	BatRange    = 6,     -- Portée en studs (raycast depuis le handle)
+	BatDropRadius = 3,   -- Rayon de scatter des BRs lâchés (studs)
+
+	-- Zones safe (autour de chaque base — Part "SafeZone" à créer dans Studio)
+	SafeZoneEnabled          = true,
+	SafeZoneFeedbackCooldown = 5, -- Secondes entre chaque billboard "SAFE ZONE"
+
+	-- Invincibilité respawn (anti spawn-camp)
+	RespawnInvincibilityEnabled  = true,
+	RespawnInvincibilityDuration = 3, -- Secondes d'invincibilité après spawn
+
+	-- Game Pass Protection (bloque le drop des BRs)
+	-- Remplir avec le vrai ID après création sur Roblox
+	ProtectionGamePassId = 0,
+}
+
 return GameConfig

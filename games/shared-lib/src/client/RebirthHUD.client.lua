@@ -118,6 +118,20 @@ lblBR.TextXAlignment         = Enum.TextXAlignment.Left
 lblBR.RichText               = true
 lblBR.Text                   = "☄️ LEGENDARY requis ❌"
 
+-- Bouton fermeture (×)
+local btnFermer = Instance.new("TextButton", rebirthFrame)
+btnFermer.Name             = "BtnFermer"
+btnFermer.Size             = UDim2.new(0, 24, 0, 24)
+btnFermer.Position         = UDim2.new(1, -28, 0, 4)
+btnFermer.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+btnFermer.TextColor3       = Color3.fromRGB(255, 255, 255)
+btnFermer.Font             = Enum.Font.GothamBold
+btnFermer.TextSize         = 14
+btnFermer.Text             = "×"
+btnFermer.BorderSizePixel  = 0
+btnFermer.AutoButtonColor  = true
+Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 4)
+
 -- Bouton Rebirth
 local btnRebirth = Instance.new("TextButton", rebirthFrame)
 btnRebirth.Name                   = "BtnRebirth"
@@ -159,8 +173,9 @@ local iconeParRarete = {
     BRAINROT_GOD = "👑",
 }
 
-local pulseTween = nil
-local isReady    = false
+local pulseTween  = nil
+local isReady     = false
+local fermeManuel = false  -- true si le joueur a fermé le menu manuellement
 
 local function SetBoutonPret(ready)
     isReady = ready
@@ -197,8 +212,8 @@ end
 RebirthButtonUpdate.OnClientEvent:Connect(function(data)
     if not data then return end
 
-    -- Auto-afficher si progression complète (ne jamais masquer ici — fermeture via bouton)
-    if data.visible == true then
+    -- Auto-afficher si progression complète, sauf si le joueur a fermé manuellement
+    if data.visible == true and not fermeManuel then
         rebirthFrame.Visible = true
     end
 
@@ -311,6 +326,11 @@ local function afficherConfirmation(multStr)
     end)
 end
 
+btnFermer.MouseButton1Click:Connect(function()
+    rebirthFrame.Visible = false
+    fermeManuel = true  -- empêche la réouverture automatique
+end)
+
 btnRebirth.MouseButton1Click:Connect(function()
     if not isReady then return end
     local multStr = btnRebirth.Text:match("×(.+) income") or "?"
@@ -323,6 +343,8 @@ end)
 
 RebirthAnimation.OnClientEvent:Connect(function(data)
     if not data then return end
+
+    fermeManuel = false  -- réinitialise pour permettre l'affichage au prochain rebirth
 
     local flash = Instance.new("Frame", screenGui)
     flash.Name                   = "RebirthFlash"

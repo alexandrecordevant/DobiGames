@@ -805,7 +805,7 @@ function BaseProgressionSystem.GetFloorUnlockCost(floorNumber, rebirthCount)
 
     local discount  = Config.RebirthFloorDiscount or 0
     local reduction = math.min((rebirthCount or 0) * discount, 0.90)
-    return math.floor(base * (1 - reduction))
+    return math.floor(base * (1 - reduction) + 0.5)
 end
 
 return BaseProgressionSystem

@@ -3,10 +3,7 @@ local Players          = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService     = game:GetService("TweenService")
 local player           = Players.LocalPlayer
-local Config = require(
-    ReplicatedStorage:FindFirstChild("GameConfig")
-    or ReplicatedStorage.Specialized.GameConfig
-)
+local Config = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local T                = require(ReplicatedStorage.SharedLib.Shared.UITheme)
 
 local gui = Instance.new("ScreenGui")

@@ -728,7 +728,8 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
     idCounter  = idCounter + 1
     local id   = idCounter
     clone.Name = string.format("BR_meteor_%d", id)
-    pcall(function() clone:SetAttribute("Rarete", rareteNom) end)
+    pcall(function() clone:SetAttribute("Rarete",       rareteNom)   end)
+    pcall(function() clone:SetAttribute("OriginalName", source.Name) end)
     clone.Parent = Workspace
 
     local racine = obtenirRacine(clone)

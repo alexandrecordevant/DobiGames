@@ -637,4 +637,27 @@ task.spawn(function()
     end
 end)
 
-print("[" .. Config.NomDuJeu .. "] 🚀 Serveur démarré · " .. os.date("%d/%m/%Y %H:%M"))
+-- ═══════════════════════════════════════════════
+-- 8. SYSTÈMES COMBAT PVP (chargés uniquement si Config.PvPEnabled)
+-- ═══════════════════════════════════════════════
+
+if Config.PvPEnabled then
+	print("[" .. Config.NomDuJeu .. "] PvP activé → chargement des systèmes Combat")
+
+	local SafeZoneTracker      = require(ServerScriptService.SharedLib.Server.Combat.SafeZoneTracker)
+	local RespawnInvincibility = require(ServerScriptService.SharedLib.Server.Combat.RespawnInvincibility)
+	local BatEquipHandler      = require(ServerScriptService.SharedLib.Server.Combat.BatEquipHandler)
+	local BatSystem            = require(ServerScriptService.SharedLib.Server.Combat.BatSystem)
+
+	-- Init dans l'ordre : zones safe → invincibilité → équipement → hit detection
+	SafeZoneTracker.Init(Config.Combat)
+	RespawnInvincibility.Init(Config.Combat)
+	BatEquipHandler.Init(Config.Combat)
+	BatSystem.Init(Config.Combat, SafeZoneTracker)
+
+	print("[" .. Config.NomDuJeu .. "] Systèmes Combat initialisés")
+else
+	print("[" .. Config.NomDuJeu .. "] PvP désactivé (Config.PvPEnabled = false)")
+end
+
+print("[" .. Config.NomDuJeu .. "] Serveur démarré · " .. os.date("%d/%m/%Y %H:%M"))

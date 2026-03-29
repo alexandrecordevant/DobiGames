@@ -709,6 +709,10 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
     local miniModel = placerMiniModele(touchPart, rarete, modeleDepose)
+    -- Détruire le modèle pleine taille extrait du carry (le mini clone suffit)
+    if modeleDepose and modeleDepose.Parent then
+        pcall(function() modeleDepose:Destroy() end)
+    end
 
     -- Spot doré si BR Mutant
     if isMutant then
@@ -839,7 +843,8 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     end
 
     -- Remettre le BR dans le carry du joueur (avec le bon modèle visuel)
-    local rareteObj = { nom = rarete, dossier = rarete }
+    -- isMutant préservé pour que le re-dépôt calcule le bon income
+    local rareteObj = { nom = rarete, dossier = rarete, isMutant = entree.isMutant }
     pcall(CarrySystem.AjouterAuCarry, player, modeleRestitue, rareteObj)
 
     -- Remettre le SurfaceGui à vide

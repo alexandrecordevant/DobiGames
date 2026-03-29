@@ -196,14 +196,11 @@ local function envoyerEtatBouton(player)
     local cfg         = obtenirConfig(niveau)
     local ok, manques = RebirthSystem.VerifierConditions(player)
 
-    -- Inclure les coins en attente dans les slots (pas encore collectés manuellement)
-    local extraCoins2 = RebirthSystem.GetExtraCoins and RebirthSystem.GetExtraCoins(player) or 0
-
     local etat = {
         visible        = visible,
         disponible     = ok,
         prochainLevel  = niveau,
-        coinsActuels   = (data.coins or 0) + extraCoins2,
+        coinsActuels   = data.coins or 0,
         coinsRequis    = cfg.coinsRequis,
         brainRotRequis = cfg.brainRotRequis.rarete,
         label          = cfg.label,
