@@ -110,29 +110,69 @@ end
 
 local InitialiserPots  -- déclaration forward (la fonction s'appelle elle-même)
 InitialiserPots = function(player, baseIndex, playerData)
+    print("[InitialiserPots] START player=" .. player.Name .. " baseIndex=" .. tostring(baseIndex))
     local bases = workspace:FindFirstChild("Bases")
     local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
-    if not base then return end
+    if not base then
+        warn("[InitialiserPots] Base_" .. tostring(baseIndex) .. " introuvable dans workspace.Bases")
+        return
+    end
 
     local FPCfg = Config.FlowerPotConfig
-    if not FPCfg then return end
+    if not FPCfg then
+        warn("[InitialiserPots] Config.FlowerPotConfig manquant")
+        return
+    end
 
     for potIndex = 1, 4 do
         local potModel = base:FindFirstChild("FlowerPot_" .. potIndex)
-        if not potModel then continue end
+        if not potModel then
+            warn("[InitialiserPots] FlowerPot_" .. potIndex .. " introuvable dans Base_" .. baseIndex)
+            continue
+        end
 
+        -- Migration : créer le potData manquant si la save est ancienne
+        if playerData.pots and not playerData.pots[potIndex] then
+            playerData.pots[potIndex] = { debloque=(potIndex==1), rarete=nil, stage=0, tempsRestant=0, instantGrow=false }
+        end
         local potData = playerData.pots and playerData.pots[potIndex]
         local potCfg  = FPCfg.pots and FPCfg.pots[potIndex]
-        if not potData or not potCfg then continue end
+        if not potData or not potCfg then
+            warn("[InitialiserPots] potData ou potCfg manquant pour pot", potIndex, "— skip")
+            continue
+        end
 
         local potPart = potModel:IsA("BasePart") and potModel
-            or potModel:FindFirstChildWhichIsA("BasePart")
-        if not potPart then continue end
+            or potModel:FindFirstChildWhichIsA("BasePart", true)
+        if not potPart then
+            warn("[InitialiserPots] Aucun BasePart trouvé dans", potModel.Name, "— pot ignoré")
+            continue
+        end
 
-        -- Nettoyer ProximityPrompts ET BillboardGuis (évite le "🔒" persistant après déblocage)
-        for _, child in ipairs(potPart:GetChildren()) do
-            if child:IsA("ProximityPrompt") or child:IsA("BillboardGui") then
-                child:Destroy()
+        print("[InitialiserPots] Pot" .. potIndex .. " | part=" .. potPart.Name .. " | debloque=" .. tostring(potData.debloque) .. " | rarete=" .. tostring(potData.rarete))
+
+        -- Nettoyer ProximityPrompts ET BillboardGuis sur tout le modèle
+        for _, desc in ipairs(potModel:GetDescendants()) do
+            if desc:IsA("ProximityPrompt") or desc:IsA("BillboardGui") then
+                desc:Destroy()
+            end
+        end
+
+        -- Cacher/montrer le modèle cadenas physique selon l'état du pot
+        local cadenas = base:FindFirstChild("Cadenas_B" .. baseIndex .. "_P" .. potIndex)
+        if cadenas then
+            local visible = not potData.debloque
+            for _, desc in ipairs(cadenas:GetDescendants()) do
+                if desc:IsA("BasePart") then
+                    desc.Transparency = visible and 0 or 1
+                    desc.CanCollide   = visible
+                elseif desc:IsA("BillboardGui") or desc:IsA("SurfaceGui") then
+                    desc.Enabled = visible
+                end
+            end
+            if cadenas:IsA("BasePart") then
+                cadenas.Transparency = visible and 0 or 1
+                cadenas.CanCollide   = visible
             end
         end
 
@@ -225,7 +265,7 @@ InitialiserPots = function(player, baseIndex, playerData)
         -- ── Pot vide et débloqué → prompt "Planter" ──
         else
             creerBillboardPot(
-                FPConfig.labelPotVide or "🌱 Plant MYTHIC / SECRET",
+                FPCfg.labelPotVide or "🌱 Plant MYTHIC / SECRET",
                 Color3.fromRGB(120, 220, 100))
 
             local prompt = Instance.new("ProximityPrompt")

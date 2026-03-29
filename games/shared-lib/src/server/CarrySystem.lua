@@ -518,7 +518,22 @@ local function creerPromptDepot(player, touchPart)
 	prompt.Triggered:Connect(function(triggerPlayer)
 		if triggerPlayer ~= player then return end
 		local data = donneesJoueurs[player.UserId]
-		if not data or #data.portes == 0 then return end
+		if not data then return end
+
+		-- Vérifier qu'il y a au moins 1 entrée avec toolRef valide (pas de fantômes)
+		local nbValides = 0
+		for _, entree in ipairs(data.portes) do
+			if entree.toolRef and entree.toolRef.Parent then
+				nbValides = nbValides + 1
+			end
+		end
+		if nbValides == 0 then
+			-- Nettoyer les entrées fantômes éventuelles puis bloquer le dépôt
+			if #data.portes > 0 then
+				CarrySystem.SynchroniserCarry(player)
+			end
+			return
+		end
 
 		local ok, DropSystem = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.DropSystem)
 		if ok and DropSystem and DropSystem.DeposerBrainRots then
@@ -540,7 +555,14 @@ function CarrySystem.UpdateDepotPrompts(player)
 	local data = donneesJoueurs[player.UserId]
 	if not data or not data.depotPrompts then return end
 
-	local nb    = #data.portes
+	-- Compter uniquement les entrées avec toolRef valide (évite les fantômes activer les prompts)
+	local nb = 0
+	for _, entree in ipairs(data.portes) do
+		if entree.toolRef and entree.toolRef.Parent then
+			nb = nb + 1
+		end
+	end
+
 	local coins = calculerCoinsPortes(data)
 	local texte = nb .. " Brain Rot" .. (nb > 1 and "s" or "") .. " · +" .. coins .. " coins"
 
@@ -725,8 +747,10 @@ local function initJoueur(player)
 		local data = donneesJoueurs[player.UserId]
 		if not data then return end
 		task.wait(0.5)
-		-- Les Tools dans le Backpack persistent naturellement entre respawns (Roblox).
-		-- On re-synchronise juste l'UI et la détection de mort.
+		-- Nettoyer les entrées fantômes : outils qui auraient été détruits lors du respawn
+		-- (cas typique : joueur avec Protection + mort → onMort ne vide pas data.portes
+		-- → le Tool équipé dans le character est détruit lors du changement de character)
+		CarrySystem.SynchroniserCarry(player)
 		envoyerCarryUpdate(player)
 		CarrySystem.UpdateDepotPrompts(player)
 		configurerMort(player, char)
@@ -853,6 +877,32 @@ function CarrySystem.InsererEnTeteCarry(player, clone, rarete)
 	jouerSon(player)
 	CarrySystem.UpdateDepotPrompts(player)
 	return true
+end
+
+-- Supprime les entrées fantômes (toolRef nil ou détruit) de data.portes.
+-- Appelé au respawn pour nettoyer les outils détruits lors du changement de character.
+function CarrySystem.SynchroniserCarry(player)
+	local data = donneesJoueurs[player.UserId]
+	if not data then return end
+
+	local valides = {}
+	for _, entree in ipairs(data.portes) do
+		if entree.toolRef and entree.toolRef.Parent then
+			table.insert(valides, entree)
+		else
+			-- Détruire le Tool résiduel s'il existe encore mais sans parent valide
+			if entree.toolRef then
+				pcall(function() entree.toolRef:Destroy() end)
+			end
+			warn("[CarrySystem] SynchroniserCarry : entrée fantôme supprimée pour " .. player.Name)
+		end
+	end
+
+	if #valides ~= #data.portes then
+		data.portes = valides
+		envoyerCarryUpdate(player)
+		CarrySystem.UpdateDepotPrompts(player)
+	end
 end
 
 function CarrySystem.SetProtection(player, valeur)

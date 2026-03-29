@@ -58,6 +58,14 @@ end
 function DataStoreManager.Load(player)
     local ok, data = pcall(function() return DS:GetAsync("player_"..player.UserId) end)
     if not ok or not data then data = DefaultData() end
+
+    -- Migration : ajouter les champs manquants pour les anciennes saves
+    local defaults = DefaultData()
+    if not data.pots then data.pots = defaults.pots end
+    if not data.dailySeed then data.dailySeed = defaults.dailySeed end
+    if not data.upgrades then data.upgrades = defaults.upgrades end
+    if not data.inventory then data.inventory = defaults.inventory end
+
     local income = CollectSystem.CalculerOfflineIncome(data, data.derniereConnexion)
     if income > 0 then
         data.coins = data.coins + income

@@ -23,7 +23,8 @@
       "Bash(rmdir StarterPlayer/StarterPlayerScripts/Common)",
       "Bash(grep -r \"BRFilterSystem\\\\|CollectSystem\\\\|UITheme\\\\|UpgradeSystem\\\\|BrainrotSpawnConfig\\\\|GameConfig\" /c/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/ServerScriptService/ --include=*.lua -l)",
       "Bash(python3 -c \":*)",
-      "Bash(find /c/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib -name *.lua)"
+      "Bash(find /c/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib -name *.lua)",
+      "Bash(find /c/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/StarterPlayer -type f -name *.lua)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

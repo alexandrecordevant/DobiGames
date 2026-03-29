@@ -411,7 +411,14 @@ local function creerPromptRemplacer(touchPart, player, rarete)
         if triggerPlayer ~= player then return end
         local CS     = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
         local portes = CS.GetPortes(player)
-        if #portes == 0 then
+        -- Compter uniquement les entrées avec toolRef valide (pas de fantômes)
+        local nbValides = 0
+        for _, entree in ipairs(portes) do
+            if entree.toolRef and entree.toolRef.Parent then
+                nbValides = nbValides + 1
+            end
+        end
+        if nbValides == 0 then
             notifierJoueur(player, "INFO", "🎒 You are not carrying any Brain Rot!")
             return
         end
@@ -421,15 +428,15 @@ local function creerPromptRemplacer(touchPart, player, rarete)
     end)
 end
 
-local function supprimerPromptRecuperer(touchPart)
+local function supprimerPromptRecuperer(player, touchPart)
     for _, name in ipairs({ "SellPrompt", "RetrievePrompt", "AnchorSell", "AnchorRetrieve",
                              "SlotPrompt", "ManagePrompt", "RecupererPrompt", "VendrePrompt", "RemplacerPrompt" }) do
         local p = touchPart:FindFirstChild(name)
         if p then pcall(function() p:Destroy() end) end
     end
 
-    local depotPrompt = touchPart:FindFirstChild("DepotPrompt")
-    if depotPrompt then pcall(function() depotPrompt.Enabled = true end) end
+    -- Recalculer l'état de tous les prompts selon le carry réel (évite d'activer le DepotPrompt à tort)
+    DropSystem.RecalculerPrompts(player)
 end
 
 -- ============================================================
@@ -687,6 +694,11 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Récupérer le carry du joueur via CarrySystem
     local CarrySystem = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
+
+    -- Nettoyer les entrées fantômes AVANT de vérifier le carry
+    -- (cas typique : mort avec Protection → Tools détruits → entrées fantômes résiduelles)
+    CarrySystem.SynchroniserCarry(player)
+
     local portes = CarrySystem.GetPortes(player)
     if #portes == 0 then return end
 
@@ -702,6 +714,16 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Décision : ViderCarry vide tout, puis on remet les BR restants en mémoire.
     -- En pratique le joueur dépose 1 BR par interaction — carry restant réattaché.
     local tous = CarrySystem.ViderCarry(player)
+    -- Guard renforcé : vérifier qu'au moins 1 entrée a un vrai modèle (pas seulement fantômes)
+    -- ViderCarry inclut les fantômes (modele=nil) dans son retour → #tous == 0 insuffisant
+    local aModeleValide = false
+    for _, item in ipairs(tous) do
+        if item.modele then aModeleValide = true; break end
+    end
+    if not aModeleValide then
+        warn("[DropSystem] DeposerBrainRots : carry sans modèle réel pour " .. player.Name .. " — dépôt annulé")
+        return
+    end
     -- tous[1] = { modele, rarete } à déposer, tous[2..n] = à conserver
     local modeleDepose = tous[1] and tous[1].modele  -- vrai modèle porté (évite cube gris)
     for i = 2, #tous do
@@ -802,6 +824,9 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         IS.ConnecterButton(player, touchPart, spotKey)
     end
 
+    -- Recalculer tous les prompts : active RemplacerPrompt si carry > 0, désactive DepotPrompt du slot occupé
+    DropSystem.RecalculerPrompts(player)
+
     print("[DropSystem] " .. player.Name .. " a déposé " .. rarete .. " sur spot " .. spotKey)
 end
 
@@ -839,8 +864,8 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     -- Supprimer le mini modèle
     supprimerModeleSlot(modeleSlot)
 
-    -- Supprimer le prompt de récupération et réactiver le DepotPrompt
-    supprimerPromptRecuperer(touchPart)
+    -- Supprimer le prompt de récupération et recalculer les prompts selon le carry réel
+    supprimerPromptRecuperer(player, touchPart)
 
     -- Cloner le modèle exact depuis ServerStorage via brNom (évite un BR aléatoire au retrieve)
     local modeleRestitue = nil
@@ -902,7 +927,13 @@ function DropSystem.RecalculerPrompts(player)
     if not index then return end
 
     local CarrySystem = require(game:GetService("ServerScriptService").SharedLib.Server.CarrySystem)
-    local nbPortes = #CarrySystem.GetPortes(player)
+    -- Compter uniquement les entrées avec toolRef valide (pas les fantômes)
+    local nbPortes = 0
+    for _, entree in ipairs(CarrySystem.GetPortes(player)) do
+        if entree.toolRef and entree.toolRef.Parent then
+            nbPortes = nbPortes + 1
+        end
+    end
 
     for _, touchPart in pairs(index) do
         local estOccupe = spotsData[uid][touchPart] ~= nil
@@ -1038,7 +1069,7 @@ function DropSystem.EjecterBR(player, touchPart)
     if IS then IS.SupprimerSlotVisuel(player, touchPart, spotKey) end
 
     supprimerModeleSlot(modeleSlot)
-    supprimerPromptRecuperer(touchPart)
+    supprimerPromptRecuperer(player, touchPart)
     viderGui(touchPart)
 
     -- Cloner un modèle taille réelle dans le terrain près du spot
@@ -1140,7 +1171,7 @@ function DropSystem.VendreBR(player, touchPart)
 
     -- Supprimer le mini modèle et les prompts
     supprimerModeleSlot(modeleSlot)
-    supprimerPromptRecuperer(touchPart)
+    supprimerPromptRecuperer(player, touchPart)
     viderGui(touchPart)
 
     -- Recalculer l'income
