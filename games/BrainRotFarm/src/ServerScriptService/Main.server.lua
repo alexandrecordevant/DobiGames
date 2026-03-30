@@ -81,6 +81,7 @@ local DebloquerPot          = CreerRemoteEvent("DebloquerPot")
 local InstantGrowPot        = CreerRemoteEvent("InstantGrowPot")
 local DemandeOuvrirRebirth  = CreerRemoteEvent("DemandeOuvrirRebirth")
 local ClaimDailySeed        = CreerRemoteEvent("ClaimDailySeed")
+local CollectAllEvent        = CreerRemoteEvent("CollectAllEvent")
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -388,8 +389,24 @@ InitialiserPots = function(player, baseIndex, playerData)
 
                     local bestRarity = seedToUse.Value
 
-                    -- Retirer la graine des mains
+                    -- Retirer la graine du CarriedSeeds (logique plantation)
                     seedToUse:Destroy()
+
+                    -- Retirer le Tool visuel du backpack (ou du character si équipé)
+                    local function retirerToolGraine(target)
+                        if not target then return false end
+                        for _, t in ipairs(target:GetChildren()) do
+                            if t:IsA("Tool") and t:GetAttribute("IsSeed")
+                                and t:GetAttribute("SeedRarity") == bestRarity then
+                                t:Destroy()
+                                return true
+                            end
+                        end
+                        return false
+                    end
+                    if not retirerToolGraine(p:FindFirstChildOfClass("Backpack")) then
+                        retirerToolGraine(p.Character)
+                    end
 
                     local freshData = GetData(player)
                     if not freshData then return end
@@ -939,6 +956,37 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     EnvoyerHUD(player, data)
 end)
 
+-- Collect All — collecte tous les coins accumulés dans les slots en 1 action
+CollectAllEvent.OnServerEvent:Connect(function(player)
+    -- Anti-spam côté serveur (1 seconde de cooldown)
+    local dernierTemps = player:GetAttribute("LastCollectAllTime") or 0
+    local maintenant   = tick()
+    if maintenant - dernierTemps < 1 then
+        warn("[CollectAll] Spam détecté :", player.Name)
+        return
+    end
+    player:SetAttribute("LastCollectAllTime", maintenant)
+
+    local totalCollecte = IncomeSystem.CollecterTousLesSlots(player)
+
+    if totalCollecte > 0 then
+        local data = GetData(player)
+        if data then
+            -- Formater les coins pour la notification
+            local affichage
+            if totalCollecte >= 1e6 then
+                affichage = string.format("%.1fM", totalCollecte / 1e6)
+            elseif totalCollecte >= 1e3 then
+                affichage = string.format("%.0fK", totalCollecte / 1e3)
+            else
+                affichage = tostring(math.floor(totalCollecte))
+            end
+            NotifEvent:FireClient(player, "SUCCESS", "💰 +" .. affichage .. " coins collectés !")
+            EnvoyerHUD(player, data)
+        end
+    end
+end)
+
 -- RemoteFunction : données joueur (pour HUD)
 GetPlayerData.OnServerInvoke = function(player)
     return GetData(player)
@@ -1034,15 +1082,16 @@ CarrySystem.OnBeforeClean = function(player, portes)
     if not data then return end
     local carrySerial = {}
     for _, entree in ipairs(portes) do
-        if entree.rarete then
+        -- Ne sauvegarder que les entrées avec un Tool encore vivant (évite les fantômes)
+        if entree.rarete and entree.toolRef and entree.toolRef.Parent then
+            -- Ne pas sauvegarder les graines (gérées séparément via CarriedSeeds)
+            if entree.toolRef:GetAttribute("IsSeed") then continue end
             -- Trouver le nom original du modèle (OriginalName sur le visuel dans le Tool)
             local brNom = nil
-            if entree.toolRef then
-                for _, child in ipairs(entree.toolRef:GetChildren()) do
-                    if child.Name ~= "Handle" and (child:IsA("Model") or child:IsA("BasePart")) then
-                        brNom = child:GetAttribute("OriginalName") or child.Name
-                        break
-                    end
+            for _, child in ipairs(entree.toolRef:GetChildren()) do
+                if child.Name ~= "Handle" and (child:IsA("Model") or child:IsA("BasePart")) then
+                    brNom = child:GetAttribute("OriginalName") or child.Name
+                    break
                 end
             end
             table.insert(carrySerial, {
@@ -1194,6 +1243,40 @@ TracteurSystem.Init()
 
 -- MonetizationHandler : injecter l'accesseur de données (pour ProcessReceipt)
 MonetizationHandler.SetGetData(GetData)
+
+-- Handlers produits BRF-specific (FlowerPot / Graines)
+-- Enregistrés ici pour garder shared-lib découplé de ces systèmes
+local devP = Config.DevProductIds or {}
+
+-- Skip Seed Timer : rend la graine quotidienne disponible immédiatement
+if devP.SkipSeedTimer and devP.SkipSeedTimer > 0 then
+    MonetizationHandler.RegisterProductHandler(devP.SkipSeedTimer, function(player, data)
+        if data and data.dailySeed then
+            data.dailySeed.graineDispo    = true
+            data.dailySeed.dernieresClaim = 0
+        end
+    end)
+end
+
+-- Seed Pack ×3 : ajoute 3 graines MYTHIC au stock du joueur
+if devP.SeedPackx3 and devP.SeedPackx3 > 0 then
+    MonetizationHandler.RegisterProductHandler(devP.SeedPackx3, function(player, data)
+        if data then
+            SeedInventory.Add(data, "MYTHIC", 3)
+            SeedInventory.NotifyClient(player, data)
+        end
+    end)
+end
+
+-- Secret Seed : ajoute 1 graine SECRET au stock du joueur
+if devP.SecretSeed and devP.SecretSeed > 0 then
+    MonetizationHandler.RegisterProductHandler(devP.SecretSeed, function(player, data)
+        if data then
+            SeedInventory.Add(data, "SECRET", 1)
+            SeedInventory.NotifyClient(player, data)
+        end
+    end)
+end
 
 -- ArbreSystem : graines sur les arbres du ChampCommun
 ArbreSystem.GetData = GetData

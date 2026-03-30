@@ -290,6 +290,49 @@ local function MettreAJourCompteurs(sommetParts, secondes, texteOverride)
 end
 
 -- ═══════════════════════════════════════
+-- TOOL VISUEL GRAINE (apparaît dans le hotbar)
+-- ═══════════════════════════════════════
+
+local COULEUR_GRAINE = {
+    MYTHIC = Color3.fromRGB(180, 0,  255),
+    SECRET = Color3.fromRGB(255, 50, 50),
+}
+
+local function creerToolGraine(player, typeGraine)
+    local couleur = COULEUR_GRAINE[typeGraine] or Color3.fromRGB(180, 0, 255)
+
+    local tool = Instance.new("Tool")
+    tool.Name           = "🌱 " .. typeGraine .. " Seed"
+    tool.ToolTip        = typeGraine .. " Seed — Plante dans un FlowerPot!"
+    tool.CanBeDropped   = false
+    tool.RequiresHandle = true
+    tool:SetAttribute("IsSeed",     true)
+    tool:SetAttribute("SeedRarity", typeGraine)
+
+    local handle = Instance.new("Part")
+    handle.Name         = "Handle"
+    handle.Shape        = Enum.PartType.Ball
+    handle.Size         = Vector3.new(0.7, 0.7, 0.7)
+    handle.Color        = couleur
+    handle.Material     = Enum.Material.Neon
+    handle.Transparency = 0
+    handle.Anchored     = false
+    handle.CanCollide   = false
+    handle.CastShadow   = false
+    handle.Parent       = tool
+
+    local light = Instance.new("PointLight", handle)
+    light.Color      = couleur
+    light.Brightness = 3
+    light.Range      = 6
+
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    if backpack then
+        tool.Parent = backpack
+    end
+end
+
+-- ═══════════════════════════════════════
 -- CALLBACK COLLECTE GRAINE
 -- ═══════════════════════════════════════
 
@@ -332,6 +375,9 @@ local function OnGraineCollectee(player, typeGraine)
     seedVal.Name        = "Seed"
     seedVal.Value       = typeGraine
     seedVal.Parent      = carriedSeeds
+
+    -- Créer le Tool visuel dans le hotbar du joueur
+    creerToolGraine(player, typeGraine)
 
     -- Mettre à jour le HUD carry (la graine occupe maintenant un slot)
     if CS then pcall(CS.EnvoyerCarryUpdate, player) end

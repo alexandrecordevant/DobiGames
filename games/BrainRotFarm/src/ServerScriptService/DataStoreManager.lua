@@ -68,8 +68,19 @@ function DataStoreManager.Load(player)
     if not data.upgrades then data.upgrades = defaults.upgrades end
     if not data.inventory then data.inventory = defaults.inventory end
 
-    -- Migration : champ graines (compteur de graines sauvegardées)
+    -- Migration : champ graines (inventaire de graines actuellement portées)
     if not data.graines then data.graines = { MYTHIC = 0, SECRET = 0 } end
+    -- Migration one-shot : graines était un compteur cumulatif avant cette version.
+    -- On remet à zéro une seule fois via le flag grainesMigratedV2.
+    -- Après migration, les valeurs reflètent uniquement les graines actuellement portées.
+    if not data.grainesMigratedV2 then
+        local ancien = {}
+        for r, v in pairs(data.graines) do ancien[r] = v end
+        data.graines = { MYTHIC = 0, SECRET = 0 }
+        data.grainesMigratedV2 = true
+        warn("[DataStore] Migration grainesMigratedV2 : graines remises à 0 pour "..player.Name
+            .." (ancienne valeur : MYTHIC="..tostring(ancien.MYTHIC or 0).." SECRET="..tostring(ancien.SECRET or 0)..")")
+    end
     if not data.carryPortes then data.carryPortes = {} end
 
     -- Migration plantedAt : pots déjà en cours de croissance sans timestamp

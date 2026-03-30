@@ -312,9 +312,14 @@ end
 -- ============================================================
 
 local function messageSacPlein(player, pData)
+	-- Utiliser GetCapaciteMax pour inclure le bonus (SetCapacite) dans le max réel
+	local max       = CarrySystem.GetCapaciteMax(player)
 	local niveau    = pData and pData.niveauCarry or 0
-	local max       = CARRY_CONFIG.niveaux[niveau] or 1
-	local niveauMax = CARRY_CONFIG.niveaux[niveau + 1] == nil
+	-- Déterminer s'il existe un palier supérieur encore disponible
+	local prochainNiveau = niveau + 1
+	local prochainBase   = CARRY_CONFIG.niveaux[prochainNiveau]
+	-- Vrai max si aucun palier coins supérieur ET pas de palier R$ restant
+	local niveauMax = prochainBase == nil
 
 	-- Envoyer via BrainrotCarryError si disponible (BrainrotCarryUI)
 	local brErrEvent = ReplicatedStorage:FindFirstChild("BrainrotCarryError")
@@ -323,8 +328,8 @@ local function messageSacPlein(player, pData)
 	if niveauMax then
 		msg = "🎒 Carry full! (" .. max .. "/" .. max .. ") — Deposit your Brain Rots first."
 	else
-		local prochainMax = CARRY_CONFIG.niveaux[niveau + 1]
-		local prix        = CARRY_CONFIG.prixUpgrade[niveau + 1] or 0
+		local prochainMax = prochainBase
+		local prix        = CARRY_CONFIG.prixUpgrade[prochainNiveau] or 0
 		msg = "🎒 Carry full! (" .. max .. "/" .. max .. ") — "
 			.. "💡 Upgrade carry to " .. prochainMax .. " slots for " .. prix .. " coins!"
 	end
@@ -948,9 +953,12 @@ function CarrySystem.SetProtection(player, valeur)
 	if data then data.hasProtection = valeur == true end
 end
 
--- Définit le bonus de slots carry (shopUpgrade Carry)
-function CarrySystem.SetCapacite(player, bonusSlots)
-	carryBonuses[player.UserId] = math.max(0, bonusSlots or 0)
+-- Définit la capacité TOTALE de carry (shopUpgrade Carry)
+-- totalSlots = nombre de slots voulus au total (ex : 3, 5, 8)
+-- Le bonus est calculé en soustrayant la base (CarryNiveaux[0])
+function CarrySystem.SetCapacite(player, totalSlots)
+	local base = CARRY_CONFIG.niveaux[0] or 1
+	carryBonuses[player.UserId] = math.max(0, (totalSlots or base) - base)
 	envoyerCarryUpdate(player)
 end
 

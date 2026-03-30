@@ -21,14 +21,11 @@ local function getShopSystem()
     return _ShopSystem
 end
 
--- Chargement différé de FlowerPotSystem (même raison)
-local _FlowerPotSystem = nil
-local function getFlowerPotSystem()
-    if not _FlowerPotSystem then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").FlowerPotSystem)
-        if ok and m then _FlowerPotSystem = m end
-    end
-    return _FlowerPotSystem
+-- Handlers produits injectés depuis Main.server.lua (pattern callback)
+-- Permet à chaque jeu d'enregistrer ses propres produits sans coupler shared-lib
+local _productHandlers = {}
+function MonetizationHandler.RegisterProductHandler(productId, callback)
+    _productHandlers[productId] = callback
 end
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
@@ -50,38 +47,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
             data.tier = (data.tier or 0) + 1
         end
 
-    -- Skip Seed Timer : rend la graine quotidienne disponible immédiatement
-    elseif pid == devP.SkipSeedTimer then
-        if data and data.dailySeed then
-            data.dailySeed.graineDispo    = true
-            data.dailySeed.dernieresClaim = 0  -- force le timer à repartir après claim
-            local FPS = getFlowerPotSystem()
-            if FPS and FPS.NotifierGraineDispo then
-                pcall(FPS.NotifierGraineDispo, player)
-            end
-        end
-
-    -- Seed Pack ×3 : ajoute 3 graines MYTHIC au stock du joueur
-    elseif pid == devP.SeedPackx3 then
-        if data then
-            data.graines = data.graines or {}
-            data.graines.MYTHIC = (data.graines.MYTHIC or 0) + 3
-            local FPS = getFlowerPotSystem()
-            if FPS and FPS.NotifierStock then
-                pcall(FPS.NotifierStock, player)
-            end
-        end
-
-    -- Secret Seed : ajoute 1 graine SECRET au stock du joueur
-    elseif pid == devP.SecretSeed then
-        if data then
-            data.graines = data.graines or {}
-            data.graines.SECRET = (data.graines.SECRET or 0) + 1
-            local FPS = getFlowerPotSystem()
-            if FPS and FPS.NotifierStock then
-                pcall(FPS.NotifierStock, player)
-            end
-        end
+    -- Produits spécifiques au jeu — délégués aux handlers enregistrés via RegisterProductHandler()
+    elseif _productHandlers[pid] then
+        pcall(_productHandlers[pid], player, data)
     end
 
     return Enum.ProductPurchaseDecision.PurchaseGranted

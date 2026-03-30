@@ -668,6 +668,40 @@ function IncomeSystem.GetCoinsEnAttente(player)
     return total
 end
 
+-- Collecte tous les coins en attente de tous les slots en une seule opération
+-- Crédite data.coins + data.totalCoinsGagnes, réinitialise coinsEnAttente
+-- Retourne le total collecté (0 si rien à collecter)
+function IncomeSystem.CollecterTousLesSlots(player)
+    local uid = player.UserId
+    if not coinsEnAttente[uid] then return 0 end
+
+    local totalCollecte = 0
+    local slotsCollectes = 0
+    for spotKey, montant in pairs(coinsEnAttente[uid]) do
+        if (montant or 0) > 0 then
+            totalCollecte    = totalCollecte + montant
+            slotsCollectes   = slotsCollectes + 1
+            coinsEnAttente[uid][spotKey] = 0
+        end
+    end
+
+    if totalCollecte <= 0 then return 0 end
+
+    local getData = getDataFns[uid]
+    if getData then
+        local pd = getData()
+        if pd then
+            pd.coins            = (pd.coins or 0) + totalCollecte
+            pd.totalCoinsGagnes = (pd.totalCoinsGagnes or 0) + totalCollecte
+        end
+    end
+
+    print(string.format("[IncomeSystem] %s — Collect All : +$%s (%d slots collectés)",
+        player.Name, FormatCoins(totalCollecte), slotsCollectes))
+
+    return totalCollecte
+end
+
 -- Ajoute des coins directement au joueur (utilisé par VendreBR dans DropSystem)
 function IncomeSystem.AjouterCoins(player, montant)
     if montant <= 0 then return end
