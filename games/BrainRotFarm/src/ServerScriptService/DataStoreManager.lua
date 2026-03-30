@@ -29,6 +29,8 @@ local function DefaultData()
             upgradeCarry=0,    upgradeAimant=0,
         },
         -- Game Passes shop
+        -- BRs portés non déposés (sauvegardés à la déconnexion, restaurés au login)
+        carryPortes = {},
         hasTracteur      = false,
         tracteurSeuilMin = "RARE",  -- seuil de rareté minimum collecté par le tracteur
         hasLuckyCharm  = false,
@@ -68,6 +70,7 @@ function DataStoreManager.Load(player)
 
     -- Migration : champ graines (compteur de graines sauvegardées)
     if not data.graines then data.graines = { MYTHIC = 0, SECRET = 0 } end
+    if not data.carryPortes then data.carryPortes = {} end
 
     -- Migration plantedAt : pots déjà en cours de croissance sans timestamp
     -- Traité comme planté maintenant → timer repart de zéro (conservatif)

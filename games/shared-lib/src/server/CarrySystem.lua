@@ -28,6 +28,11 @@ local Debris            = game:GetService("Debris")
 -- Signature : function(player, portes) → nil
 CarrySystem.OnCarryChange = nil
 
+-- Callback appelé avant que nettoyerJoueur détruise les Tools (PlayerRemoving)
+-- Permet au jeu de sérialiser le carry avant destruction
+-- Signature : function(player, portes) → nil
+CarrySystem.OnBeforeClean = nil
+
 -- ============================================================
 -- Configuration capture hybride
 -- ============================================================
@@ -194,6 +199,12 @@ local function creerTool(player, clone, rarete)
 	tool:SetAttribute("BrainrotName", nomBR)
 	if rarete and rarete.isMutant then
 		tool:SetAttribute("IsMutant", true)
+	end
+	if rarete and rarete.valeur then
+		tool:SetAttribute("Valeur", rarete.valeur)
+	end
+	if rarete and rarete.elementType then
+		tool:SetAttribute("ElementType", rarete.elementType)
 	end
 
 	-- Handle invisible — jamais lâché (CanBeDropped = false)
@@ -766,6 +777,10 @@ end
 local function nettoyerJoueur(player)
 	local data = donneesJoueurs[player.UserId]
 	if data then
+		-- Callback avant destruction (permet la sérialisation du carry)
+		if CarrySystem.OnBeforeClean then
+			pcall(CarrySystem.OnBeforeClean, player, data.portes)
+		end
 		for _, entree in ipairs(data.portes) do
 			if entree.toolRef and entree.toolRef.Parent then
 				pcall(function() entree.toolRef:Destroy() end)

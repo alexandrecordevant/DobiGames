@@ -701,20 +701,28 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     local portes = CarrySystem.GetPortes(player)
     if #portes == 0 then return end
 
-    -- Prendre le PREMIER Brain Rot du carry uniquement (un BR par spot)
-    -- Décision : on dépose 1 BR à la fois sur un spot. Le joueur doit re-trigger
-    -- pour chaque spot supplémentaire. Cela encourage l'activité et valorise le gameplay.
-    local entree = portes[1]
+    -- Prendre le BR actuellement en main (Tool équipé dans le Character)
+    -- Fallback sur portes[1] si rien n'est équipé en main
+    local indexADeposer = 1
+    local char = player.Character
+    local equippedTool = char and char:FindFirstChildOfClass("Tool")
+    if equippedTool then
+        for i, p in ipairs(portes) do
+            if p.toolRef == equippedTool then
+                indexADeposer = i
+                break
+            end
+        end
+    end
+
+    local entree = portes[indexADeposer]
     if not entree or not entree.rarete then return end
 
     local rarete = entree.rarete.nom or "COMMON"
 
     -- Retirer ce BR du carry (on utilise ViderCarry puis re-add les autres)
-    -- Décision : ViderCarry vide tout, puis on remet les BR restants en mémoire.
-    -- En pratique le joueur dépose 1 BR par interaction — carry restant réattaché.
     local tous = CarrySystem.ViderCarry(player)
     -- Guard renforcé : vérifier qu'au moins 1 entrée a un vrai modèle (pas seulement fantômes)
-    -- ViderCarry inclut les fantômes (modele=nil) dans son retour → #tous == 0 insuffisant
     local aModeleValide = false
     for _, item in ipairs(tous) do
         if item.modele then aModeleValide = true; break end
@@ -723,11 +731,10 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         warn("[DropSystem] DeposerBrainRots : carry sans modèle réel pour " .. player.Name .. " — dépôt annulé")
         return
     end
-    -- tous[1] = { modele, rarete } à déposer, tous[2..n] = à conserver
-    local modeleDepose = tous[1] and tous[1].modele  -- vrai modèle porté (évite cube gris)
-    for i = 2, #tous do
-        local restant = tous[i]
-        if restant and restant.rarete then
+    -- tous[indexADeposer] = BR à déposer, les autres = à conserver
+    local modeleDepose = tous[indexADeposer] and tous[indexADeposer].modele
+    for i, restant in ipairs(tous) do
+        if i ~= indexADeposer and restant and restant.rarete then
             -- Remettre les BR restants dans le carry
             pcall(CarrySystem.AjouterAuCarry, player, restant.modele, restant.rarete)
         end

@@ -539,6 +539,32 @@ local function OnPlayerAdded(player)
         -- Réappliquer tous les upgrades shop achetés (WalkSpeed, Carry, etc.)
         ShopSystem.AppliquerTousUpgrades(player, data)
 
+        -- Restaurer le carry sauvegardé (BRs portés à la déconnexion)
+        if data.carryPortes and #data.carryPortes > 0 then
+            local BrainrotsFolder = game:GetService("ServerStorage"):FindFirstChild("Brainrots")
+            for _, porteeData in ipairs(data.carryPortes) do
+                local rareteObj = {
+                    nom         = porteeData.nom,
+                    dossier     = porteeData.dossier or porteeData.nom,
+                    isMutant    = porteeData.isMutant,
+                    valeur      = porteeData.valeur,
+                    elementType = porteeData.elementType,
+                }
+                -- Cloner le modèle exact si le nom est connu
+                local clone = nil
+                if porteeData.brNom and BrainrotsFolder then
+                    local dossier = BrainrotsFolder:FindFirstChild(porteeData.dossier or porteeData.nom)
+                    local modele = dossier and dossier:FindFirstChild(porteeData.brNom)
+                    if modele then
+                        clone = modele:Clone()
+                        -- Parent temporaire requis : effectuerRamassage vérifie source.Parent ~= nil
+                        clone.Parent = game:GetService("ServerStorage")
+                    end
+                end
+                pcall(CarrySystem.AjouterAuCarry, player, clone, rareteObj)
+            end
+        end
+
         -- Réactiver le sprinkler si upgrade Arroseur acheté
         local niveauArroseur = data.upgrades and data.upgrades.upgradeArroseur or 0
         if niveauArroseur > 0 then
@@ -662,6 +688,8 @@ local function OnPlayerRemoving(player)
         data.tempsJeuSemaine = (data.tempsJeuSemaine or 0) + dureeSession
         data.tempsJeuTotal   = (data.tempsJeuTotal   or 0) + dureeSession
         sessionStart[player.UserId] = nil
+
+        -- carryPortes déjà sérialisé via CarrySystem.OnBeforeClean (avant destruction des Tools)
 
         -- Synchroniser spotsOccupes une dernière fois avant sauvegarde
         local spotsSerial = DropSystem.GetSpotsOccupesSerialisables(player)
@@ -982,6 +1010,38 @@ end
 -- CarrySystem utilise AssignationSystem comme source de vérité pour la base du joueur
 CarrySystem.GetBaseJoueur = function(player) return AssignationSystem.GetBaseIndex(player) end
 CarrySystem.OnCarryChange = nil  -- FlowerPotSystem supprimé (illumination pots retirée)
+
+-- Sérialiser le carry avant que CarrySystem détruise les Tools (PlayerRemoving)
+CarrySystem.OnBeforeClean = function(player, portes)
+    local data = GetData(player)
+    if not data then return end
+    local carrySerial = {}
+    for _, entree in ipairs(portes) do
+        if entree.rarete then
+            -- Trouver le nom original du modèle (OriginalName sur le visuel dans le Tool)
+            local brNom = nil
+            if entree.toolRef then
+                for _, child in ipairs(entree.toolRef:GetChildren()) do
+                    if child.Name ~= "Handle" and (child:IsA("Model") or child:IsA("BasePart")) then
+                        brNom = child:GetAttribute("OriginalName") or child.Name
+                        break
+                    end
+                end
+            end
+            table.insert(carrySerial, {
+                nom         = entree.rarete.nom,
+                dossier     = entree.rarete.dossier or entree.rarete.nom,
+                isMutant    = entree.rarete.isMutant or false,
+                valeur      = entree.rarete.valeur,
+                elementType = entree.rarete.elementType,
+                brNom       = brNom,
+            })
+        end
+    end
+    data.carryPortes = carrySerial
+    print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " carry sauvegardé : " .. #carrySerial .. " BR(s)")
+end
+
 CarrySystem.Init()
 
 -- ZoneCommune (MYTHIC + SECRET)
