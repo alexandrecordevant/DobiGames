@@ -49,18 +49,19 @@ screenGui.Parent         = playerGui
 -- Seeds                  : pos (0,10, 0.5,+30)   h=50
 -- ============================================================
 local btnSeeds = Instance.new("TextButton", screenGui)
-btnSeeds.Name                   = "BtnSeeds"
-btnSeeds.Size                   = UDim2.new(0, 110, 0, 50)
-btnSeeds.Position               = UDim2.new(0, 10, 0.5, 30)
+btnSeeds.Name                   = "BtnFlowerPot"
+btnSeeds.Size                   = UDim2.new(0, 120, 0, 55)
+btnSeeds.Position               = UDim2.new(0, 10, 0.5, 85)
 btnSeeds.BackgroundColor3       = Color3.fromRGB(20, 40, 20)
 btnSeeds.BorderSizePixel        = 0
-btnSeeds.Text                   = "🌱\nSeeds"
+btnSeeds.Text                   = "🪴 FlowerPot"
 btnSeeds.TextColor3             = Color3.fromRGB(150, 230, 130)
 btnSeeds.Font                   = Enum.Font.GothamBold
 btnSeeds.TextSize               = 13
 btnSeeds.TextWrapped            = true
 btnSeeds.AutoButtonColor        = false
 btnSeeds.ZIndex                 = 10
+btnSeeds.Visible                = false  -- bouton géré par FlowerPotHUD
 btnSeeds.Parent                 = screenGui
 Instance.new("UICorner", btnSeeds).CornerRadius = UDim.new(0, 10)
 
@@ -77,7 +78,7 @@ local PANEL_H = 500
 local panel = Instance.new("Frame", screenGui)
 panel.Name                   = "SeedsPanel"
 panel.Size                   = UDim2.new(0, PANEL_W, 0, PANEL_H)
-panel.Position               = UDim2.new(0, 130, 0.5, -PANEL_H / 2)
+panel.Position               = UDim2.new(0, 140, 0.5, -PANEL_H / 2)
 panel.BackgroundColor3       = C.fond
 panel.BorderSizePixel        = 0
 panel.Visible                = false
@@ -91,7 +92,7 @@ local titre = Instance.new("TextLabel", panel)
 titre.Size                   = UDim2.new(1, -44, 0, 40)
 titre.Position               = UDim2.new(0, 12, 0, 6)
 titre.BackgroundTransparency = 1
-titre.Text                   = "🌱 Seeds & Pots"
+titre.Text                   = "🪴 FlowerPots"
 titre.TextColor3             = C.texte
 titre.Font                   = Enum.Font.GothamBold
 titre.TextSize               = 15
@@ -303,6 +304,7 @@ end
 
 local function majPots(pots)
     if not pots then return end
+    local nbReady, nbGrowing = 0, 0
     for i, f in ipairs(potsFrames) do
         local p = pots[i]
         if not p then
@@ -324,6 +326,7 @@ local function majPots(pots)
             f.rarity.TextColor3 = s.rarity=="SECRET" and C.secret or C.mythic
             f.elem.Text = s.elementType and ELEMENT_EMOJI[s.elementType] or ""
             f.cell.BackgroundColor3 = Color3.fromRGB(15,28,35)
+            nbGrowing = nbGrowing + 1
         elseif p.statut.statut == "ready" then
             local s = p.statut
             f.icon.Text = "🎯"; f.icon.TextColor3 = C.ready
@@ -331,7 +334,19 @@ local function majPots(pots)
             f.rarity.TextColor3 = s.rarity=="SECRET" and C.secret or C.mythic
             f.elem.Text = s.elementType and ELEMENT_EMOJI[s.elementType] or "✨"
             f.cell.BackgroundColor3 = Color3.fromRGB(35,25,10)
+            nbReady = nbReady + 1
         end
+    end
+    -- Mise à jour du texte du bouton avec résumé d'état
+    if nbReady > 0 then
+        btnSeeds.Text = "🪴 FlowerPot\n✅ " .. nbReady .. " prêt!"
+        btnSeeds.BackgroundColor3 = Color3.fromRGB(30, 50, 15)
+    elseif nbGrowing > 0 then
+        btnSeeds.Text = "🪴 FlowerPot\n🌱 " .. nbGrowing .. " en cours"
+        btnSeeds.BackgroundColor3 = Color3.fromRGB(20, 40, 20)
+    else
+        btnSeeds.Text = "🪴 FlowerPot"
+        btnSeeds.BackgroundColor3 = Color3.fromRGB(20, 40, 20)
     end
 end
 

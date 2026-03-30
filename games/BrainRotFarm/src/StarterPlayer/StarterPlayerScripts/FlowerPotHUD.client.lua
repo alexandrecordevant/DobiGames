@@ -612,8 +612,8 @@ end
 
 local dailySeedButton = Instance.new("TextButton", screenGui)
 dailySeedButton.Name                   = "DailySeedButton"
-dailySeedButton.Size                   = UDim2.new(0, 140, 0, 40)
-dailySeedButton.Position               = UDim2.new(0, 10, 1, -200)
+dailySeedButton.Size                   = UDim2.new(0, 120, 0, 55)
+dailySeedButton.Position               = UDim2.new(0, 10, 0.5, 50)
 dailySeedButton.BackgroundColor3       = T.fondBouton
 dailySeedButton.BackgroundTransparency = 0.1
 dailySeedButton.TextColor3             = T.texte
@@ -624,7 +624,7 @@ dailySeedButton.Text                   = "🌱 Day 1/7"
 dailySeedButton.BorderSizePixel        = 0
 dailySeedButton.ZIndex                 = 10
 local _dsCorner = Instance.new("UICorner", dailySeedButton)
-_dsCorner.CornerRadius = UDim.new(0, 8)
+_dsCorner.CornerRadius = UDim.new(0, 10)
 
 local _pulseTween = nil
 
@@ -842,6 +842,195 @@ local function OuvrirDailySeedPanel()
 end
 
 dailySeedButton.MouseButton1Click:Connect(OuvrirDailySeedPanel)
+
+-- ============================================================
+-- Bouton FlowerPot + Panel standalone (sous Day, même espace inset)
+-- ============================================================
+
+-- Panel pots (caché par défaut)
+local fpPanel = Instance.new("Frame", screenGui)
+fpPanel.Name                   = "FlowerPotPanel"
+fpPanel.Size                   = UDim2.new(0, 280, 0, 180)
+fpPanel.Position               = UDim2.new(0, 140, 0.5, 50)
+fpPanel.BackgroundColor3       = T.fondPrincipal
+fpPanel.BackgroundTransparency = 0.05
+fpPanel.BorderSizePixel        = 0
+fpPanel.Visible                = false
+fpPanel.ZIndex                 = 20
+Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, 12)
+local _fpStroke = Instance.new("UIStroke", fpPanel)
+_fpStroke.Color = T.bordureAccent ; _fpStroke.Thickness = 2
+
+local fpTitre = Instance.new("TextLabel", fpPanel)
+fpTitre.Size = UDim2.new(1,-44,0,32) ; fpTitre.Position = UDim2.new(0,10,0,4)
+fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = T.texteTitre
+fpTitre.Font = Enum.Font.GothamBold ; fpTitre.TextSize = 14
+fpTitre.TextXAlignment = Enum.TextXAlignment.Left
+fpTitre.Text = "🪴 État des FlowerPots" ; fpTitre.ZIndex = 21
+
+local fpClose = Instance.new("TextButton", fpPanel)
+fpClose.Size = UDim2.new(0,28,0,28) ; fpClose.Position = UDim2.new(1,-34,0,4)
+fpClose.BackgroundColor3 = T.fondBoutonDanger ; fpClose.Text = "✕"
+fpClose.TextColor3 = T.texte ; fpClose.Font = Enum.Font.GothamBold
+fpClose.TextSize = 13 ; fpClose.BorderSizePixel = 0 ; fpClose.ZIndex = 21
+Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, 6)
+fpClose.MouseButton1Click:Connect(function() fpPanel.Visible = false end)
+
+-- Inventaire graines
+local fpInv = Instance.new("Frame", fpPanel)
+fpInv.Size = UDim2.new(1,-20,0,26) ; fpInv.Position = UDim2.new(0,10,0,40)
+fpInv.BackgroundColor3 = T.fondSecondaire ; fpInv.BorderSizePixel = 0 ; fpInv.ZIndex = 21
+Instance.new("UICorner", fpInv).CornerRadius = UDim.new(0, 6)
+local fpMythicLbl = Instance.new("TextLabel", fpInv)
+fpMythicLbl.Size = UDim2.new(0.5,0,1,0) ; fpMythicLbl.BackgroundTransparency = 1
+fpMythicLbl.Text = "⚡ MYTHIC: 0" ; fpMythicLbl.TextColor3 = Color3.fromRGB(180,0,255)
+fpMythicLbl.Font = Enum.Font.GothamBold ; fpMythicLbl.TextSize = 11
+fpMythicLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpMythicLbl.ZIndex = 22
+local fpSecretLbl = Instance.new("TextLabel", fpInv)
+fpSecretLbl.Size = UDim2.new(0.5,0,1,0) ; fpSecretLbl.Position = UDim2.new(0.5,0,0,0)
+fpSecretLbl.BackgroundTransparency = 1
+fpSecretLbl.Text = "🔴 SECRET: 0" ; fpSecretLbl.TextColor3 = Color3.fromRGB(255,80,80)
+fpSecretLbl.Font = Enum.Font.GothamBold ; fpSecretLbl.TextSize = 11
+fpSecretLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpSecretLbl.ZIndex = 22
+
+-- 4 cellules pots
+local FP_ELEM = { water="💧", fire="🔥", earth="🌍", wind="💨" }
+local FP_RARCOL = { MYTHIC=Color3.fromRGB(180,0,255), SECRET=Color3.fromRGB(255,80,80) }
+local fpCells = {}
+for i = 1, 4 do
+    local cw, ch = 58, 82
+    local cell = Instance.new("Frame", fpPanel)
+    cell.Size = UDim2.new(0,cw,0,ch)
+    cell.Position = UDim2.new(0, 10+(i-1)*(cw+6), 0, 74)
+    cell.BackgroundColor3 = T.fondSecondaire ; cell.BorderSizePixel = 0 ; cell.ZIndex = 21
+    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
+    local function cl(txt, sz, pos, ts, bold)
+        local l = Instance.new("TextLabel", cell)
+        l.Size=sz ; l.Position=pos ; l.BackgroundTransparency=1
+        l.Text=txt ; l.TextColor3=T.texte
+        l.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
+        l.TextSize=ts ; l.ZIndex=22 ; return l
+    end
+    cl("Pot "..i, UDim2.new(1,0,0,14), UDim2.new(0,0,0,2),  8,  false)
+    local ic = cl("🔒",  UDim2.new(1,0,0,28), UDim2.new(0,0,0,16), 20, true)
+    local ra = cl("",    UDim2.new(1,-4,0,14),UDim2.new(0,2,0,44),  8,  true)
+    local el = cl("",    UDim2.new(1,0,0,14), UDim2.new(0,0,0,60), 10,  false)
+    table.insert(fpCells, {cell=cell, ic=ic, ra=ra, el=el})
+end
+
+local function fpMajAffichage(pots, graines)
+    local nbReady, nbGrow = 0, 0
+    for i, f in ipairs(fpCells) do
+        local p = pots and pots[i]
+        if not p then f.ic.Text="?"; f.ra.Text=""; f.el.Text=""
+        elseif not p.debloque then
+            f.ic.Text="🔒"; f.ic.TextColor3=T.texte; f.ra.Text="Verr."; f.el.Text=""
+            f.cell.BackgroundColor3=T.fondSecondaire
+        elseif p.statut == nil then
+            f.ic.Text="🪴"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
+            f.cell.BackgroundColor3=T.fondSecondaire
+        elseif p.statut.statut == "growing" then
+            local s=p.statut
+            f.ic.Text="🌱"; f.ic.TextColor3=Color3.fromRGB(100,200,255)
+            f.ra.Text=(s.rarity=="SECRET" and "SEC" or "MYT").." S"..math.max(0,s.stage or 0)
+            f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
+            f.el.Text=s.elementType and FP_ELEM[s.elementType] or ""
+            f.cell.BackgroundColor3=Color3.fromRGB(15,28,35); nbGrow=nbGrow+1
+        elseif p.statut.statut == "ready" then
+            local s=p.statut
+            f.ic.Text="🎯"; f.ic.TextColor3=Color3.fromRGB(255,180,0)
+            f.ra.Text=s.rarity=="SECRET" and "SECRET" or "MYTHIC"
+            f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
+            f.el.Text=s.elementType and FP_ELEM[s.elementType] or "✨"
+            f.cell.BackgroundColor3=Color3.fromRGB(35,25,10); nbReady=nbReady+1
+        end
+    end
+    if graines then
+        fpMythicLbl.Text = "⚡ MYTHIC: "..(graines.MYTHIC or 0)
+        fpSecretLbl.Text = "🔴 SECRET: "..(graines.SECRET or 0)
+    end
+    -- Texte bouton
+    local btnFlowerPot = screenGui:FindFirstChild("FlowerPotButton")
+    if btnFlowerPot then
+        if nbReady > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n✅ "..nbReady.." prêt!"
+        elseif nbGrow > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n🌱 "..nbGrow.." pousse"
+        else btnFlowerPot.Text = "🪴 FlowerPot" end
+    end
+end
+
+-- Cache local des données (mis à jour par événements)
+local fpPotsCache   = {}
+local fpGrainesCache = nil
+
+-- Surcharge de fpMajAffichage pour sauvegarder dans le cache
+local _fpMajBase = fpMajAffichage
+fpMajAffichage = function(pots, graines)
+    if pots   then fpPotsCache    = pots   end
+    if graines then fpGrainesCache = graines end
+    _fpMajBase(fpPotsCache, fpGrainesCache)
+end
+
+local fpGetSeedInfo = nil
+task.spawn(function()
+    fpGetSeedInfo = ReplicatedStorage:WaitForChild("GetSeedInfo", 20)
+end)
+
+-- Bouton FlowerPot
+local btnFlowerPot = Instance.new("TextButton", screenGui)
+btnFlowerPot.Name                   = "FlowerPotButton"
+btnFlowerPot.Size                   = UDim2.new(0, 120, 0, 55)
+btnFlowerPot.Position               = UDim2.new(0, 10, 0.5, 113)
+btnFlowerPot.BackgroundColor3       = T.fondBouton
+btnFlowerPot.BackgroundTransparency = 0.1
+btnFlowerPot.TextColor3             = T.texte
+btnFlowerPot.Font                   = Enum.Font.GothamBold
+btnFlowerPot.TextSize               = 14
+btnFlowerPot.Text                   = "🪴 FlowerPot"
+btnFlowerPot.TextWrapped            = true
+btnFlowerPot.BorderSizePixel        = 0
+btnFlowerPot.ZIndex                 = 10
+Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 10)
+
+btnFlowerPot.MouseButton1Click:Connect(function()
+    fpPanel.Visible = not fpPanel.Visible
+    if fpPanel.Visible and fpGetSeedInfo then
+        task.spawn(function()
+            local ok, info = pcall(function() return fpGetSeedInfo:InvokeServer() end)
+            if ok and info then fpMajAffichage(info.pots, info.graines) end
+        end)
+    end
+end)
+
+-- Mise à jour automatique quand un pot change (PotUpdate envoie 1 pot à la fois)
+if PotUpdate then
+    PotUpdate.OnClientEvent:Connect(function(potIndex, potData)
+        fpPotsCache[potIndex] = potData
+        if fpPanel.Visible then
+            fpMajAffichage(fpPotsCache, fpGrainesCache)
+        end
+    end)
+end
+
+-- Mise à jour automatique quand les graines changent
+if UpdateGraines then
+    UpdateGraines.OnClientEvent:Connect(function(graines)
+        fpGrainesCache = graines
+        if fpPanel.Visible then
+            fpMajAffichage(fpPotsCache, fpGrainesCache)
+        end
+    end)
+end
+
+-- Auto-refresh toutes les 3s quand le panel est ouvert
+task.spawn(function()
+    while true do
+        task.wait(3)
+        if fpPanel.Visible and fpGetSeedInfo then
+            local ok, info = pcall(function() return fpGetSeedInfo:InvokeServer() end)
+            if ok and info then fpMajAffichage(info.pots, info.graines) end
+        end
+    end
+end)
 
 -- ============================================================
 -- LeaderboardUpdate : mise a jour bouton Daily Seed

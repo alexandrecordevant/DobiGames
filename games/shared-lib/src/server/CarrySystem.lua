@@ -33,6 +33,11 @@ CarrySystem.OnCarryChange = nil
 -- Signature : function(player, portes) → nil
 CarrySystem.OnBeforeClean = nil
 
+-- Callback pour compter les items supplémentaires dans le carry (ex : graines portées)
+-- Signature : function(player) → number
+-- Assigné par le jeu (ex : BrainRotFarm → compte CarriedSeeds)
+CarrySystem.GetExtraCount = nil
+
 -- ============================================================
 -- Configuration capture hybride
 -- ============================================================
@@ -80,6 +85,10 @@ local rayonAimant    = {}
 local CarryUpdate      = nil
 local BRAINROTS_FOLDER = nil
 
+local function getExtraCount(player)
+	return CarrySystem.GetExtraCount and CarrySystem.GetExtraCount(player) or 0
+end
+
 -- ============================================================
 -- Utilitaires
 -- ============================================================
@@ -117,14 +126,15 @@ local function envoyerCarryUpdate(player)
 	local data = donneesJoueurs[player.UserId]
 	if not data then return end
 	local max = CarrySystem.GetCapaciteMax(player)
+	local extra = getExtraCount(player)
 	pcall(function()
-		CarryUpdate:FireClient(player, { portes = #data.portes, max = max })
+		CarryUpdate:FireClient(player, { portes = #data.portes + extra, max = max })
 	end)
 	-- Compatibilité BrainrotCarryUI (LavaTower)
 	local brEvent = ReplicatedStorage:FindFirstChild("BrainrotCarryUpdate")
 	if brEvent then
 		pcall(function()
-			brEvent:FireClient(player, #data.portes, max)
+			brEvent:FireClient(player, #data.portes + extra, max)
 		end)
 	end
 	if CarrySystem.OnCarryChange then
@@ -336,7 +346,7 @@ local function effectuerRamassage(player, rarete, modeleExistant)
 	if not data then return false end
 
 	local max = CarrySystem.GetCapaciteMax(player)
-	if #data.portes >= max then
+	if #data.portes + getExtraCount(player) >= max then
 		messageSacPlein(player, data)
 		return false
 	end
@@ -437,7 +447,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 		local pData = donneesJoueurs[player.UserId]
 		local max   = CarrySystem.GetCapaciteMax(player)
-		if pData and #pData.portes >= max then
+		if pData and (#pData.portes + getExtraCount(player)) >= max then
 			prompt.Enabled = false
 			messageSacPlein(player, pData)
 			task.delay(0.1, function()
@@ -483,7 +493,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 		local pData = donneesJoueurs[player.UserId]
 		local max   = CarrySystem.GetCapaciteMax(player)
-		if pData and #pData.portes >= max then
+		if pData and (#pData.portes + getExtraCount(player)) >= max then
 			messageSacPlein(player, pData)
 			return
 		end
@@ -665,7 +675,7 @@ local function dropBrainRot(entree, positionMort)
 		local data = donneesJoueurs[player.UserId]
 		if not data then return end
 		local max = CarrySystem.GetCapaciteMax(player)
-		if #data.portes >= max then
+		if #data.portes + getExtraCount(player) >= max then
 			messageSacPlein(player, data)
 			return
 		end
@@ -858,6 +868,19 @@ end
 -- Retourne true si succès, false si carry plein
 function CarrySystem.AjouterAuCarry(player, clone, rarete)
 	return effectuerRamassage(player, rarete, clone)
+end
+
+-- Retourne true si le carry est plein (items portés + items extra comme les graines)
+function CarrySystem.EstPlein(player)
+	local data = donneesJoueurs[player.UserId]
+	if not data then return false end
+	return (#data.portes + getExtraCount(player)) >= CarrySystem.GetCapaciteMax(player)
+end
+
+-- Déclenche manuellement une mise à jour du HUD carry
+-- Utile après un changement d'items extra (ex : graine ajoutée/retirée)
+function CarrySystem.EnvoyerCarryUpdate(player)
+	envoyerCarryUpdate(player)
 end
 
 -- Insère un BR en tête du carry (position 1) au lieu de l'ajouter en fin.

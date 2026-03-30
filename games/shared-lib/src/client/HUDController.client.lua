@@ -254,8 +254,8 @@ print("[HUDController] NotifEvent connecté ✓")
 -- ============================================================
 local btnShop = Instance.new("TextButton", gui)
 btnShop.Name                   = "ShopRobuxButton"
-btnShop.Size                   = UDim2.new(0, 110, 0, 50)
-btnShop.Position               = UDim2.new(0, 10, 0.5, -130)
+btnShop.Size                   = UDim2.new(0, 120, 0, 55)
+btnShop.Position               = UDim2.new(0, 10, 0.5, -132)
 btnShop.BackgroundColor3       = T.fondBoutonRobux
 btnShop.TextColor3             = T.fondPrincipal
 btnShop.Font                   = Enum.Font.GothamBold
@@ -285,8 +285,8 @@ end)
 -- ============================================================
 local btnRebirthLeft = Instance.new("TextButton", gui)
 btnRebirthLeft.Name                   = "RebirthButtonLeft"
-btnRebirthLeft.Size                   = UDim2.new(0, 110, 0, 85)
-btnRebirthLeft.Position               = UDim2.new(0, 10, 0.5, -65)
+btnRebirthLeft.Size                   = UDim2.new(0, 120, 0, 75)
+btnRebirthLeft.Position               = UDim2.new(0, 10, 0.5, -69)
 btnRebirthLeft.BackgroundColor3       = T.fondBouton
 btnRebirthLeft.TextColor3             = T.texte
 btnRebirthLeft.Font                   = Enum.Font.GothamBold
@@ -380,7 +380,7 @@ local function creerShopRobuxPanel()
     local panel = Instance.new("Frame", gui)
     panel.Name                   = "ShopRobuxPanel"
     panel.Size                   = UDim2.new(0, 340, 0, 500)
-    panel.Position               = UDim2.new(0, 130, 0.5, -250)
+    panel.Position               = UDim2.new(0, 140, 0.5, -250)
     panel.BackgroundColor3       = T.fondPrincipal
     panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0

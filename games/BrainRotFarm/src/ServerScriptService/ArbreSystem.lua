@@ -3,9 +3,20 @@
 -- Graine toutes les 30 min — apparaît simultanément sur les 2 arbres
 -- Fumée mystérieuse violette permanente → dorée quand graine présente
 
-local ArbreSystem  = {}
-local TweenService = game:GetService("TweenService")
-local RS           = game:GetService("ReplicatedStorage")
+local ArbreSystem         = {}
+local TweenService        = game:GetService("TweenService")
+local RS                  = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+-- Lazy loader CarrySystem (éviter dépendances circulaires)
+local _CarrySystem = nil
+local function getCarrySystem()
+	if not _CarrySystem then
+		local ok, m = pcall(require, ServerScriptService.SharedLib.Server.CarrySystem)
+		if ok and m then _CarrySystem = m end
+	end
+	return _CarrySystem
+end
 
 -- Callback données joueur — assigné par Main.server.lua
 ArbreSystem.GetData = nil
@@ -289,13 +300,28 @@ local function OnGraineCollectee(player, typeGraine)
         return
     end
 
-    -- Compteur statistique permanent (jamais prélevé pour planter)
+    -- Vérifier si le carry est plein (BR portés + graines déjà en main)
+    local CS = getCarrySystem()
+    if CS and CS.EstPlein(player) then
+        local NotifEventFull = RS:FindFirstChild("NotifEvent")
+        if NotifEventFull then
+            pcall(function()
+                NotifEventFull:FireClient(player, "WARNING",
+                    "🎒 Carry plein! Plante ou dépose d'abord avant de collecter une graine.")
+            end)
+        end
+        print(string.format("[ArbreSystem] %s — carry plein, graine %s refusée",
+            player.Name, typeGraine))
+        return
+    end
+
+    -- Inventaire de graines portées (ajouté à la collecte, retiré à la plantation)
     data.graines                  = data.graines or { MYTHIC = 0, SECRET = 0 }
     data.graines[typeGraine]      = (data.graines[typeGraine] or 0) + 1
     local total = data.graines[typeGraine]
 
     -- Ajouter la graine dans les mains du joueur (CarriedSeeds)
-    -- Le joueur devra la porter physiquement pour planter dans un FlowerPot
+    -- Retirée lors de la plantation dans un FlowerPot
     local carriedSeeds = player:FindFirstChild("CarriedSeeds")
     if not carriedSeeds then
         carriedSeeds        = Instance.new("Folder")
@@ -307,12 +333,15 @@ local function OnGraineCollectee(player, typeGraine)
     seedVal.Value       = typeGraine
     seedVal.Parent      = carriedSeeds
 
+    -- Mettre à jour le HUD carry (la graine occupe maintenant un slot)
+    if CS then pcall(CS.EnvoyerCarryUpdate, player) end
+
     local NotifEvent = RS:FindFirstChild("NotifEvent")
     if NotifEvent then
         pcall(function()
             NotifEvent:FireClient(player, "SUCCESS",
-                "🌱 Got 1 " .. typeGraine .. " Seed! ("
-                .. total .. " total) — Va la planter dans ton FlowerPot!")
+                "🌱 Graine " .. typeGraine .. " récupérée! ("
+                .. total .. " en main) — Va la planter dans ton FlowerPot!")
         end)
     end
 
@@ -323,7 +352,7 @@ local function OnGraineCollectee(player, typeGraine)
         end)
     end
 
-    print(string.format("[ArbreSystem] %s → +%s Seed (%d total) → CarriedSeeds",
+    print(string.format("[ArbreSystem] %s → +%s Seed (%d en main) → CarriedSeeds",
         player.Name, typeGraine, total))
 end
 

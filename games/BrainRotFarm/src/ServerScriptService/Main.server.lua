@@ -320,8 +320,14 @@ InitialiserPots = function(player, baseIndex, playerData)
                 local statut = FlowerPotGrowthSystem.GetStatut(potModel)
                 local stageInterne = (statut and statut.stage) or d.pots[potIndex].stage or -1
                 local rarete = (statut and statut.rarity) or d.pots[potIndex].rarete or "MYTHIC"
-                -- Stage affiché : interne (-1 à 3) → display (0 à 4)
-                local stageAffiche = math.max(0, stageInterne + 1)
+                -- Stage affiché : interne (-1 à 3) → display (0 à 3) pendant croissance
+                -- Stage 4 uniquement quand "ready" (thread terminé, BR tombé, ProximityPrompt actif)
+                local stageAffiche
+                if statut and statut.statut == "ready" then
+                    stageAffiche = 4
+                else
+                    stageAffiche = math.max(0, math.min(3, stageInterne + 1))
+                end
                 -- Calculer le temps restant réel depuis plantedAt
                 local dureeStage = (FPCfg and FPCfg.GrowthDuration) or 120
                 local tempsRestant = 0
@@ -387,6 +393,11 @@ InitialiserPots = function(player, baseIndex, playerData)
 
                     local freshData = GetData(player)
                     if not freshData then return end
+
+                    -- Décrémenter l'inventaire de graines + notifier HUDs
+                    SeedInventory.Use(freshData, bestRarity)
+                    UpdateGraines:FireClient(player, freshData.graines)
+                    CarrySystem.EnvoyerCarryUpdate(player)
 
                     -- Mémoriser dans les données (persistance DataStore)
                     local now = os.time()
@@ -1010,6 +1021,12 @@ end
 -- CarrySystem utilise AssignationSystem comme source de vérité pour la base du joueur
 CarrySystem.GetBaseJoueur = function(player) return AssignationSystem.GetBaseIndex(player) end
 CarrySystem.OnCarryChange = nil  -- FlowerPotSystem supprimé (illumination pots retirée)
+
+-- Les graines portées (CarriedSeeds) comptent dans le carry max
+CarrySystem.GetExtraCount = function(player)
+    local seeds = player:FindFirstChild("CarriedSeeds")
+    return seeds and #seeds:GetChildren() or 0
+end
 
 -- Sérialiser le carry avant que CarrySystem détruise les Tools (PlayerRemoving)
 CarrySystem.OnBeforeClean = function(player, portes)

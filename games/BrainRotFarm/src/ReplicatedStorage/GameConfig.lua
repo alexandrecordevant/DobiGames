@@ -179,9 +179,9 @@ GameConfig.ShopUpgrades = {
         description = "Increases your Brain Rot carry capacity",
         ordre       = 3,
         niveaux = {
-            [1] = { type="coins", prix=500,  label="Lv.1",   effet={ carryCapacite=2 } },
-            [2] = { type="coins", prix=2000, label="Lv.2",   effet={ carryCapacite=3 } },
-            [3] = { type="robux", prix=149,  gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=5 }, isMax=true },
+            [1] = { type="coins", prix=500,  label="Lv.1",   effet={ carryCapacite=3 } },
+            [2] = { type="coins", prix=2000, label="Lv.2",   effet={ carryCapacite=5 } },
+            [3] = { type="robux", prix=149,  gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
         },
         maxNiveau        = 3,
         dataField        = "upgradeCarry",
@@ -564,16 +564,16 @@ GameConfig.CaptureConfig = {
 
 -- === CARRY ===
 GameConfig.CarryNiveaux = {
-    [0] = 1,
-    [1] = 5,
-    [2] = 8,
-    [3] = 15,
+    [0] = 1,  -- défaut
+    [1] = 3,  -- Lv.1 coins
+    [2] = 5,  -- Lv.2 coins
+    [3] = 8,  -- MAX Game Pass (149 R$)
 }
 
 GameConfig.CarryPrices = {
-    [1] = 1000,
-    [2] = 5000,
-    [3] = 0,
+    [1] = 500,
+    [2] = 2000,
+    [3] = 0,  -- Game Pass
 }
 
 -- === VALEUR PAR RARETÉ ===
