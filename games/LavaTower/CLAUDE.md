@@ -1,5 +1,3 @@
 - Projet actif : LavaTower
 - Ne pas modifier BrainRotFarm ou BrainRotKong sauf demande explicite
-- shared-lib peut être lu, mais ne doit être modifié qu'en cas de besoin réel
-- Toujours signaler l'impact cross-game si shared-lib change
-- shared-lib ne doit JAMAIS être modifié sans confirmation explicite
+- shared-lib est en LECTURE SEULE depuis LavaTower — aucune modification autorisée, jamais, sans exception

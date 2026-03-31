@@ -12,8 +12,8 @@ local Players      = game:GetService("Players")
 -- ═══════════════════════════════════════
 
 local Z_MIN   = -253   -- limite Z min du ChampCommun
-local Z_MAX   = 105    -- limite Z max du ChampCommun
-local VITESSE = 22     -- studs/seconde (ajustable)
+local Z_MAX   = 154    -- limite Z max du ChampCommun (leaderboard 1 à Z=174 moins rayon ~20)
+local VITESSE = 30     -- studs/seconde (ajustable)
 
 -- Délais de départ désynchronisés
 local DELAIS = { 0, 3.5, 7.0, 10.5 }
@@ -81,7 +81,11 @@ local function DemarrerBale(bale, delai)
             end
         end
 
+        -- Rayon du cylindre (déclaré ici pour être accessible dans le Touched)
+        local rayon = part.Size.X / 2  -- ~20 studs
+
         -- Connecter mort sur toutes les parts
+        -- Vérification de distance réelle (évite les faux positifs de la bounding box rectangulaire)
         local dejaConnecte = {}
         for _, desc in ipairs(bale:GetDescendants()) do
             if desc:IsA("BasePart") and not dejaConnecte[desc] then
@@ -89,7 +93,13 @@ local function DemarrerBale(bale, delai)
                 desc.Touched:Connect(function(hit)
                     local character = hit.Parent
                     if character:FindFirstChildOfClass("Humanoid") then
-                        TuerJoueur(character)
+                        local root = character:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            local distance = (root.Position - part.Position).Magnitude
+                            if distance <= rayon + 5 then -- rayon cylindre + petite marge
+                                TuerJoueur(character)
+                            end
+                        end
                     end
                 end)
             end
@@ -100,8 +110,6 @@ local function DemarrerBale(bale, delai)
         local cfOriginal        = part.CFrame
         local rx0, ry0, rz0    = cfOriginal:ToEulerAnglesXYZ()
 
-        -- Rayon du cylindre pour calculer rotation
-        local rayon     = part.Size.X / 2  -- ~20 studs
         local direction = 1  -- 1 = vers Z_MAX, -1 = vers Z_MIN
 
         -- Vitesse légèrement variée par balot pour désynchronisation naturelle (±15 %)

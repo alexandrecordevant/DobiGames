@@ -91,6 +91,16 @@ function DataStoreManager.Load(player)
         end
     end
 
+    -- Migration dailySeed : auto-reset graineDispo si 24h écoulées
+    -- Corrige aussi le cas dernieresClaim = 0 (ancienne save sans timestamp)
+    -- car os.time() - 0 >> 86400 → le timer expirerait immédiatement en "0s"
+    if data.dailySeed and not data.dailySeed.graineDispo then
+        local elapsed = os.time() - (data.dailySeed.dernieresClaim or 0)
+        if elapsed >= 24 * 3600 then
+            data.dailySeed.graineDispo = true
+        end
+    end
+
     local income = CollectSystem.CalculerOfflineIncome(data, data.derniereConnexion)
     if income > 0 then
         data.coins = data.coins + income

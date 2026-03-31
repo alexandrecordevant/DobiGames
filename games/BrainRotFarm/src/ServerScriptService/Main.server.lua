@@ -274,6 +274,8 @@ InitialiserPots = function(player, baseIndex, playerData)
                 task.spawn(function()
                     FlowerPotGrowthSystem.PlantSeed(potModel, potData.rarete, player,
                         function(tp, elem, mult)
+                            -- Nettoyer l'état interne du GrowthSystem (_mutants, _plantages)
+                            FlowerPotGrowthSystem.Annuler(potModel)
                             local d = GetData(player)
                             if d and d.pots and d.pots[potIndex] then
                                 d.pots[potIndex].rarete      = nil
@@ -441,6 +443,8 @@ InitialiserPots = function(player, baseIndex, playerData)
                     -- Lancer la séquence de croissance
                     FlowerPotGrowthSystem.PlantSeed(potModel, bestRarity, player,
                         function(tp, elem, mult)
+                            -- Nettoyer l'état interne du GrowthSystem (_mutants, _plantages)
+                            FlowerPotGrowthSystem.Annuler(potModel)
                             local d = GetData(player)
                             if d and d.pots and d.pots[potIndex] then
                                 d.pots[potIndex].rarete      = nil
@@ -934,9 +938,8 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     local jourActuel  = data.dailySeed.jourActuel or 1
     local rarity      = (cfg and cfg.cycle and cfg.cycle[jourActuel]) or "MYTHIC"
 
-    -- Compteur statistique permanent (jamais prélevé pour planter)
+    -- Ajouter dans l'inventaire de graines (identique aux graines d'arbres)
     SeedInventory.Add(data, rarity, 1)
-    SeedInventory.NotifyClient(player, data)
 
     -- Ajouter la graine dans les mains du joueur (CarriedSeeds)
     local dCarriedSeeds = player:FindFirstChild("CarriedSeeds")
@@ -949,6 +952,39 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     dSeedVal.Name        = "Seed"
     dSeedVal.Value       = rarity
     dSeedVal.Parent      = dCarriedSeeds
+
+    -- Créer le Tool visuel dans le hotbar (identique aux graines d'arbres)
+    local couleurGraine = rarity == "SECRET"
+        and Color3.fromRGB(255, 50, 50)
+        or  Color3.fromRGB(180, 0, 255)
+    local tool = Instance.new("Tool")
+    tool.Name           = "🌱 " .. rarity .. " Seed"
+    tool.ToolTip        = rarity .. " Seed — Plante dans un FlowerPot!"
+    tool.CanBeDropped   = false
+    tool.RequiresHandle = true
+    tool:SetAttribute("IsSeed",     true)
+    tool:SetAttribute("SeedRarity", rarity)
+    local handle = Instance.new("Part")
+    handle.Name         = "Handle"
+    handle.Shape        = Enum.PartType.Ball
+    handle.Size         = Vector3.new(0.7, 0.7, 0.7)
+    handle.Color        = couleurGraine
+    handle.Material     = Enum.Material.Neon
+    handle.Transparency = 0
+    handle.Anchored     = false
+    handle.CanCollide   = false
+    handle.CastShadow   = false
+    handle.Parent       = tool
+    local light = Instance.new("PointLight", handle)
+    light.Color      = couleurGraine
+    light.Brightness = 3
+    light.Range      = 6
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    if backpack then tool.Parent = backpack end
+
+    -- Mettre à jour le HUD carry et l'inventaire graines
+    SeedInventory.NotifyClient(player, data)
+    CarrySystem.EnvoyerCarryUpdate(player)
 
     -- Mettre à jour l'état daily seed
     data.dailySeed.graineDispo    = false
