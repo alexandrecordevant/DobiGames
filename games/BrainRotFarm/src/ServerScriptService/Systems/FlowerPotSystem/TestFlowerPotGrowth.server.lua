@@ -111,9 +111,10 @@ local function trouverPotTest()
         return nil
     end
 
-    -- Chercher la première base
+    -- Chercher la première base — FlowerPots dans Specific/ (structure Shared/Specific)
     for _, base in ipairs(bases:GetChildren()) do
-        local pot = base:FindFirstChild("FlowerPot_1")
+        local specific = base:FindFirstChild("Specific")
+        local pot = specific and specific:FindFirstChild("FlowerPot_1")
         if pot then
             print("[TestFlowerPotGrowth] Pot test trouvé :", pot:GetFullName())
             return pot

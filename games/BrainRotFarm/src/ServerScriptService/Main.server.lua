@@ -156,8 +156,10 @@ InitialiserPots = function(player, baseIndex, playerData)
         return
     end
 
+    -- FlowerPots dans Specific/ (structure Shared/Specific)
+    local specificFolderIP = base:FindFirstChild("Specific")
     for potIndex = 1, 4 do
-        local potModel = base:FindFirstChild("FlowerPot_" .. potIndex)
+        local potModel = specificFolderIP and specificFolderIP:FindFirstChild("FlowerPot_" .. potIndex)
         if not potModel then
             warn("[InitialiserPots] FlowerPot_" .. potIndex .. " introuvable dans Base_" .. baseIndex)
             continue
@@ -1014,12 +1016,14 @@ GetSeedInfo.OnServerInvoke = function(player)
     if baseIndex then
         local bases = workspace:FindFirstChild("Bases")
         local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
+        -- FlowerPots dans Specific/ (structure Shared/Specific)
+        local specificFolderHUD = base and base:FindFirstChild("Specific")
         for potIndex = 1, 4 do
             local potData = data.pots and data.pots[potIndex]
             local debloque = potData and potData.debloque or false
             local statut = nil
-            if debloque and base then
-                local potModel = base:FindFirstChild("FlowerPot_" .. potIndex)
+            if debloque and specificFolderHUD then
+                local potModel = specificFolderHUD:FindFirstChild("FlowerPot_" .. potIndex)
                 if potModel then
                     statut = FlowerPotGrowthSystem.GetStatut(potModel)
                 end
