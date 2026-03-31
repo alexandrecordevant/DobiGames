@@ -547,10 +547,9 @@ local function initialiserShopsBases()
     for i = 1, (Config.MaxBases or 6) do
         local baseModel = basesFolder:FindFirstChild("Base_" .. i)
         if baseModel then
-            -- Shop dans Shared/ (nouvelle structure) — fallback ancienne structure à plat
+            -- Shop dans Shared/ (structure Shared/Specific)
             local sharedFolder = baseModel:FindFirstChild("Shared")
-            local shopModel    = (sharedFolder and sharedFolder:FindFirstChild("Shop"))
-                              or baseModel:FindFirstChild("Shop")
+            local shopModel    = sharedFolder and sharedFolder:FindFirstChild("Shop")
             if shopModel then
                 ShopSystem.InitShop(i, shopModel)
                 nb = nb + 1

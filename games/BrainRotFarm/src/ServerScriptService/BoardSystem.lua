@@ -261,10 +261,9 @@ function BoardSystem.Init()
 
     for i = 1, maxBases do
         local base   = bases:FindFirstChild("Base_" .. i)
-        -- Base dans Shared/ (nouvelle structure) — fallback ancienne structure à plat
+        -- Base (floors/spots) dans Shared/ (structure Shared/Specific)
         local shared = base and base:FindFirstChild("Shared")
-        local bat    = (shared and shared:FindFirstChild("Base"))
-                    or (base and base:FindFirstChild("Base"))
+        local bat    = shared and shared:FindFirstChild("Base")
         local board  = bat and bat:FindFirstChild("Board")
 
         if board then

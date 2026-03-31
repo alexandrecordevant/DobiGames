@@ -91,10 +91,9 @@ function SprinklerSystem.DesactiverBase(baseIndex)
                  and Workspace.Bases:FindFirstChild("Base_" .. baseIndex)
     if not base then return end
 
-    -- Sprinklers dans Specific/ (nouvelle structure) — fallback ancienne structure à plat
+    -- Sprinklers dans Specific/ (structure Shared/Specific)
     local specificFolder   = base:FindFirstChild("Specific")
-    local sprinklersFolder = (specificFolder and specificFolder:FindFirstChild("Sprinklers"))
-                          or base:FindFirstChild("Sprinklers")
+    local sprinklersFolder = specificFolder and specificFolder:FindFirstChild("Sprinklers")
     if not sprinklersFolder then return end
 
     -- Désactiver les scripts
@@ -129,10 +128,9 @@ function SprinklerSystem.ActiverBase(baseIndex, niveau)
         return
     end
 
-    -- Sprinklers dans Specific/ (nouvelle structure) — fallback ancienne structure à plat
+    -- Sprinklers dans Specific/ (structure Shared/Specific)
     local specificFolder   = base:FindFirstChild("Specific")
-    local sprinklersFolder = (specificFolder and specificFolder:FindFirstChild("Sprinklers"))
-                          or base:FindFirstChild("Sprinklers")
+    local sprinklersFolder = specificFolder and specificFolder:FindFirstChild("Sprinklers")
     if not sprinklersFolder then
         warn("[SprinklerSystem] Dossier Sprinklers introuvable dans Base_" .. baseIndex)
         return
