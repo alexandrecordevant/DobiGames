@@ -174,6 +174,8 @@ local function clonerModeleSlot(rarete)
     if not brainrots then return nil end
 
     local dossier = brainrots:FindFirstChild(rarete)
+                 or brainrots:FindFirstChild(string.upper(rarete))
+                 or brainrots:FindFirstChild(string.lower(rarete):gsub("^%l", string.upper))
     if not dossier then
         -- Fallback au dossier COMMON si la rareté n'est pas trouvée
         dossier = brainrots:FindFirstChild("COMMON")
@@ -520,7 +522,11 @@ local function restaurerDepots(player, playerData)
             local modeleSource = nil
             if info.brNom then
                 local brainrots = ServerStorage:FindFirstChild("Brainrots")
-                local dossier   = brainrots and brainrots:FindFirstChild(info.rarete)
+                local dossier   = brainrots and (
+                    brainrots:FindFirstChild(info.rarete)
+                    or brainrots:FindFirstChild(string.upper(info.rarete))
+                    or brainrots:FindFirstChild(string.lower(info.rarete):gsub("^%l", string.upper))
+                )
                 local brSource  = dossier and dossier:FindFirstChild(info.brNom)
                 if brSource then
                     pcall(function()
@@ -541,7 +547,11 @@ local function restaurerDepots(player, playerData)
                 -- Fallback déterministe sur modeles[1] pour éviter le changement
                 -- de BR à chaque reconnexion (math.random dans clonerModeleSlot)
                 local brainrots = ServerStorage:FindFirstChild("Brainrots")
-                local dossier   = brainrots and brainrots:FindFirstChild(info.rarete)
+                local dossier   = brainrots and (
+                    brainrots:FindFirstChild(info.rarete)
+                    or brainrots:FindFirstChild(string.upper(info.rarete))
+                    or brainrots:FindFirstChild(string.lower(info.rarete):gsub("^%l", string.upper))
+                )
                 if dossier then
                     local modeles = dossier:GetChildren()
                     if #modeles > 0 then
@@ -879,7 +889,11 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     local brNom = entree.brNom
     if brNom then
         local brainrots = ServerStorage:FindFirstChild("Brainrots")
-        local dossierRarete = brainrots and brainrots:FindFirstChild(rarete)
+        local dossierRarete = brainrots and (
+            brainrots:FindFirstChild(rarete)
+            or brainrots:FindFirstChild(string.upper(rarete))
+            or brainrots:FindFirstChild(string.lower(rarete):gsub("^%l", string.upper))
+        )
         if dossierRarete then
             local brSource = dossierRarete:FindFirstChild(brNom)
             if brSource then

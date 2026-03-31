@@ -125,26 +125,59 @@ shared-lib continue de faire `require(ReplicatedStorage.GameConfig)` — **aucun
 
 ### 4. ✅ DÉCIDÉ — Architecture multi-base
 
-Workspace LavaTower devra avoir la structure :
+Workspace LavaTower structure :
 ```
 Workspace/
   Bases/
     Base_1/
-      [Base/]           ← optionnel (BaseProgressionSystem auto-détecte)
-        Floor_1/        ← Part ou Model
-          spot_1        ← Model avec TouchPart
-          spot_2
-          ...
-        Floor_2/
-          ...
+      Shared/             ← identique sur toutes les bases
+        SpawnLocation
+        Base              ← Model (floors/slots)
+        Shop
+        SafeZone
+      Specific/           ← variable par base
+        Tour_1            ← tour unique de cette base
     Base_2/
-    ...
+      Shared/
+        ...               ← même contenu que Base_1/Shared
+      Specific/
+        Tour_1
+    Base_3/ ... Base_8/   ← même pattern
 ```
 
-`Config.MaxBases` détermine combien de bases existent. `AssignationSystem` les alloue aux joueurs.
-Les noms `Floor_1`, `spot_1` sont reconnus automatiquement par BaseProgressionSystem (tolérance casse/underscore/espace).
+**Règles :**
+- `Config.MaxBases = 8`
+- `AssignationSystem` alloue `Base_1` à `Base_8` aux joueurs (8 joueurs max)
+- `Shared/` est structurellement identique sur toutes les bases
+- `Specific/` contient uniquement `Tour_1` — une tour par base
+- Les noms `Floor_1`, `spot_1` dans `Shared/Base` sont reconnus automatiquement par BaseProgressionSystem (tolérance casse/underscore/espace)
 
-> **⚠️ Workspace à créer de zéro en Studio.**
+Accès en Lua :
+```lua
+local MAX_BASES = 8
+
+for i = 1, MAX_BASES do
+    local baseFolder = workspace.Bases:FindFirstChild("Base_" .. i)
+    if not baseFolder then
+        warn("Base manquante: Base_" .. i)
+        continue
+    end
+
+    local shared   = baseFolder:FindFirstChild("Shared")
+    local specific = baseFolder:FindFirstChild("Specific")
+
+    -- Tour de cette base
+    local tour     = specific and specific:FindFirstChild("Tour_1")
+
+    -- SafeZone de cette base
+    local safeZone = shared and shared:FindFirstChild("SafeZone")
+
+    -- Base Model (floors/slots) pour BaseProgressionSystem
+    local baseModel = shared and shared:FindFirstChild("Base")
+end
+```
+
+> **⚠️ Workspace à créer de zéro en Studio. 8 bases × structure Shared + Specific.**
 
 ---
 
@@ -170,15 +203,13 @@ Le `RebirthSystem` shared-lib stocke dans le **playerData principal** (`data.reb
 
 ---
 
-## ❓ Informations toujours manquantes *(décisions restantes)*
+## ✅ Toutes les décisions prises
 
-1. **Nombre de floors et spots** : Combien de `Floor_X` par base ? Combien de `spot_X` par floor ?
-   *(définit `Config.ProgressionConfig.floors` et `seuils`)*
-2. **Économie** : Valeur par rareté en coins/s ? (`ValeurParRarete` et `IncomeParRarete` pour DropSystem + IncomeSystem)
-3. **Condition Rebirth** : Quelle condition déclenche le bouton Rebirth ?
-   Dans BRF : `data.progression["4_10"] == true` (tous les spots du floor 4 débloqués).
-   Pour LavaTower : quel seuil ? *(injecté via `RebirthSystem.IsProgressionComplete`)*
-4. **LavaTower en production ?** : Joueurs réels → migration DataStore nécessaire. Dev only → reset propre.
+1. **Floors/spots** : 4 floors × 10 spots — identique BrainRotFarm
+2. **Économie** : identique BrainRotFarm, adapté aux raretés LavaTower :
+   - Common=1, Uncommon=3, Rare=8, Epic=20, Legendary=60, Secret=500
+3. **Condition Rebirth** : `data.progression["4_10"] == true` — identique BrainRotFarm
+4. **Production** : Jeu en dev → reset propre, pas de migration DataStore nécessaire
 
 ---
 
@@ -189,33 +220,34 @@ Le `RebirthSystem` shared-lib stocke dans le **playerData principal** (`data.reb
 2. Décider si le jeu est en prod → stratégie migration DataStore
 
 ### Phase 1 — Config (½ journée)
-3. Créer `GameConfigShared.lua` avec tous les champs shared-lib (MaxBases, ProgressionConfig placeholder, Raretes, ValeurParRarete, IncomeParRarete, AnimationConfig, CarryNiveaux, CarryPrices, RebirthFloorDiscount)
+3. Créer `GameConfigShared.lua` avec tous les champs shared-lib (MaxBases=8, ProgressionConfig placeholder, Raretes, ValeurParRarete, IncomeParRarete, AnimationConfig, CarryNiveaux, CarryPrices, RebirthFloorDiscount)
 4. Créer `GameConfigSpecific.lua` (NomDuJeu="LavaTower", CollectibleName="Stone", couleurs, IDs monétisation, audio)
 5. Transformer `GameConfig.lua` en merger
 6. Réécrire `RebirthConfig.lua` au format shared-lib
 
 ### Phase 2 — Workspace Studio *(hors code)*
-7. Créer `Workspace.Bases.Base_1...Base_N` avec structure `Floor_X/spot_X`
-8. Créer `ServerStorage.Brainrots/Common/`, `/Uncommon/`, `/Rare/`, `/Epic/`, `/Legendary/`, `/Secret/` avec modèles Stone
+7. Créer `Workspace.Bases.Base_1...Base_8` avec structure `Shared/(SpawnLocation, Base, Shop, SafeZone)` + `Specific/(Tour_1)`
+8. Créer floors/spots dans chaque `Shared/Base` selon ProgressionConfig
+9. Créer `ServerStorage.Brainrots/Common/`, `/Uncommon/`, `/Rare/`, `/Epic/`, `/Legendary/`, `/Secret/` avec modèles Stone
 
 ### Phase 3 — Intégration systèmes core
-9. **Supprimer** `RebirthServer.server.lua` + `_RebirthCallbacks.lua`
-10. **AssignationSystem** dans `Main.server.lua` : `Init()`, `OnAssigned`, `GetSpawnCFrame`
-11. **BaseProgressionSystem** dans `OnAssigned` callback
-12. **RebirthSystem** : `Init()`, injecter `Config`, `IsProgressionComplete`, `OnResetBase`, `OnRebirthComplete`
-13. Brancher `RebirthSystem.MettreAJourBouton` sur les événements coins/collecte
+10. **Supprimer** `RebirthServer.server.lua` + `_RebirthCallbacks.lua`
+11. **AssignationSystem** dans `Main.server.lua` : `Init()`, `OnAssigned`, `GetSpawnCFrame`
+12. **BaseProgressionSystem** dans `OnAssigned` callback — pointe sur `Shared/Base`
+13. **RebirthSystem** : `Init()`, injecter `Config`, `IsProgressionComplete`, `OnResetBase`, `OnRebirthComplete`
+14. Brancher `RebirthSystem.MettreAJourBouton` sur les événements coins/collecte
 
 ### Phase 4 — Économie
-14. **CarrySystem.Init()** (ajouter appel explicite dans Main)
-15. **DropSystem.Init()** dans `OnAssigned`
-16. **IncomeSystem.Init()** dans `OnAssigned`, brancher tick sur `BaseProgressionSystem.VerifierDeblocages`
+15. **CarrySystem.Init()** (ajouter appel explicite dans Main)
+16. **DropSystem.Init()** dans `OnAssigned`
+17. **IncomeSystem.Init()** dans `OnAssigned`, brancher tick sur `BaseProgressionSystem.VerifierDeblocages`
 
 ### Phase 5 — Patch shared-lib (cross-game)
-17. Rendre DropSystem case-insensitive pour les noms de dossiers raretés
-18. **Tester BrainRotFarm** après patch
+18. Rendre DropSystem case-insensitive pour les noms de dossiers raretés
+19. **Tester BrainRotFarm** après patch
 
 ### Phase 6 — Optionnel
-19. `BoardSystem`, `RebirthCosmeticsSystem`
+20. `BoardSystem`, `RebirthCosmeticsSystem`
 
 ---
 
@@ -224,11 +256,12 @@ Le `RebirthSystem` shared-lib stocke dans le **playerData principal** (`data.reb
 | Risque | Niveau | Détail |
 |---|---|---|
 | Perte données joueurs rebirth | **HIGH** | Migration `"LavaTowerRebirthV1"` → playerData principal — à traiter avant Phase 3 si prod |
-| Workspace inexistant | **HIGH** | Phases 3-4 complètement bloquées sans `Bases/Base_X/Floor_X/spot_X` en Studio |
+| Workspace inexistant | **HIGH** | Phases 3-4 complètement bloquées sans `Bases/Base_X/Shared/Base/Floor_X/spot_X` en Studio |
 | Patch DropSystem casse BRF | **MEDIUM** | Modifier shared-lib → tester BRF `ServerStorage.Brainrots/COMMON/` |
 | `RebirthSystem.IsProgressionComplete` non défini | **MEDIUM** | Si non injecté, le bouton Rebirth n'apparaît jamais — silent bug |
 | DataStoreManager.DefaultData insuffisant | **MEDIUM** | Ne contient pas `rebirthLevel`, `multiplicateurPermanent`, `progression`, `spotsOccupes` — à ajouter dans `Setup()` de Main |
 | CarrySystem Init silencieux | **LOW** | PickupSystem appelle `CarrySystem.AjouterAuCarry` sans que Init() ait été appelé — échoue silencieusement |
+| BaseProgressionSystem chemin incorrect | **LOW** | Pointe sur `Shared/Base` et non directement sur `Base_X` — vérifier que le système auto-détecte bien le sous-dossier |
 
 ---
 
@@ -237,12 +270,12 @@ Le `RebirthSystem` shared-lib stocke dans le **playerData principal** (`data.reb
 | Tâche | Heures |
 |---|---|
 | Phase 0-1 : Config + RebirthConfig | 2h |
-| Phase 2 : Workspace Studio (dépend du nb floors/spots) | 3-6h |
+| Phase 2 : Workspace Studio 8 bases (dépend du nb floors/spots) | 4-7h |
 | Phase 3 : AssignationSystem + BaseProgressionSystem + RebirthSystem | 5h |
 | Phase 4 : CarrySystem + DropSystem + IncomeSystem | 4h |
 | Phase 5 : Patch shared-lib + tests BRF | 2h |
 | Tests intégration LavaTower | 4h |
-| **Total (sans optionnel)** | **~20-23h** |
+| **Total (sans optionnel)** | **~21-24h** |
 | Phases optionnelles (Board + Cosmetics) | +4h |
 
-> **Chemin critique** : Workspace Studio (Phase 2) est la dépendance la plus longue et entièrement manuelle. Les Phases 3-4 ne peuvent pas démarrer sans elle.
+> **Chemin critique** : Workspace Studio (Phase 2) est la dépendance la plus longue et entièrement manuelle. Les Phases 3-4 ne peuvent pas démarrer sans elle. Avec 8 bases au lieu de 6, compter ~1h de plus en Studio.

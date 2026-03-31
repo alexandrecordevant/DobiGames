@@ -2,5 +2,10 @@
   "folders": [
     { "path": "games/LavaTower" },
     { "path": "games/shared-lib" }
-  ]
+  ],
+  "settings": {
+    "files.readonlyInclude": {
+      "C:/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib/**": true
+    }
+  }
 }

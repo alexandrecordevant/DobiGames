@@ -1,58 +1,20 @@
 -- ReplicatedStorage/Modules/RebirthConfig.lua
--- Configuration data-driven des paliers de Rebirth.
--- Pour ajouter un palier : copier une ligne dans Tiers et incrémenter MaxTier.
+-- Format shared-lib RebirthSystem
+-- Injecté via RebirthSystem.Init({ Config = require(ReplicatedStorage.RebirthConfig) })
 
 local RebirthConfig = {}
 
--- Ordre croissant des raretés (index = puissance)
-RebirthConfig.RarityOrder = {
-	"Common", "Uncommon", "Rare", "Epic", "Legendary", "Secret"
-}
-
--- Couleurs associées aux raretés (cohérent avec GameConfig)
-RebirthConfig.RarityColors = {
-	Common    = Color3.fromRGB(200, 200, 200),
-	Uncommon  = Color3.fromRGB(100, 200, 100),
-	Rare      = Color3.fromRGB(100, 130, 255),
-	Epic      = Color3.fromRGB(180, 50,  255),
-	Legendary = Color3.fromRGB(255, 200, 0),
-	Secret    = Color3.fromRGB(255, 50,  50),
-}
-
--- ─── 10 paliers de Rebirth ───────────────────────────────────────────────────
--- Chaque entrée : money (requis), rarity (BrainRot requis), reward (ce que le joueur gagne)
 RebirthConfig.Tiers = {
-	[1]  = { money = 10000,       rarity = "Common",    reward = { slots = 1 } },
-	[2]  = { money = 25000,       rarity = "Uncommon",  reward = { slots = 1 } },
-	[3]  = { money = 60000,       rarity = "Rare",      reward = { slots = 1 } },
-	[4]  = { money = 150000,      rarity = "Rare",      reward = { slots = 1 } },
-	[5]  = { money = 500000,      rarity = "Epic",      reward = { slots = 1 } },
-	[6]  = { money = 1500000,     rarity = "Epic",      reward = { slots = 1 } },
-	[7]  = { money = 5000000,     rarity = "Legendary", reward = { slots = 1 } },
-	[8]  = { money = 20000000,    rarity = "Legendary", reward = { slots = 1 } },
-	[9]  = { money = 75000000,    rarity = "Secret",    reward = { slots = 1 } },
-	[10] = { money = 250000000,   rarity = "Secret",    reward = { slots = 1 } },
+    [1]  = { coinsRequis=10000,     brainRotRequis={rarete="Common",    quantite=1}, multiplicateur=1.2, slotsBonus=1, label="Rebirth I",    couleur=Color3.fromRGB(200, 200, 200), couleurHex=0xC8C8C8 },
+    [2]  = { coinsRequis=25000,     brainRotRequis={rarete="Uncommon",  quantite=1}, multiplicateur=1.4, slotsBonus=1, label="Rebirth II",   couleur=Color3.fromRGB(100, 200, 100), couleurHex=0x64C864 },
+    [3]  = { coinsRequis=60000,     brainRotRequis={rarete="Rare",      quantite=1}, multiplicateur=1.6, slotsBonus=1, label="Rebirth III",  couleur=Color3.fromRGB(100, 130, 255), couleurHex=0x6482FF },
+    [4]  = { coinsRequis=150000,    brainRotRequis={rarete="Rare",      quantite=1}, multiplicateur=1.8, slotsBonus=1, label="Rebirth IV",   couleur=Color3.fromRGB(100, 130, 255), couleurHex=0x6482FF },
+    [5]  = { coinsRequis=500000,    brainRotRequis={rarete="Epic",      quantite=1}, multiplicateur=2.2, slotsBonus=1, label="Rebirth V",    couleur=Color3.fromRGB(180, 50,  255), couleurHex=0xB432FF },
+    [6]  = { coinsRequis=1500000,   brainRotRequis={rarete="Epic",      quantite=1}, multiplicateur=2.7, slotsBonus=1, label="Rebirth VI",   couleur=Color3.fromRGB(180, 50,  255), couleurHex=0xB432FF },
+    [7]  = { coinsRequis=5000000,   brainRotRequis={rarete="Legendary", quantite=1}, multiplicateur=3.5, slotsBonus=1, label="Rebirth VII",  couleur=Color3.fromRGB(255, 200, 0  ), couleurHex=0xFFC800 },
+    [8]  = { coinsRequis=20000000,  brainRotRequis={rarete="Legendary", quantite=1}, multiplicateur=4.5, slotsBonus=1, label="Rebirth VIII", couleur=Color3.fromRGB(255, 200, 0  ), couleurHex=0xFFC800 },
+    [9]  = { coinsRequis=75000000,  brainRotRequis={rarete="Secret",    quantite=1}, multiplicateur=6.0, slotsBonus=1, label="Rebirth IX",   couleur=Color3.fromRGB(255, 50,  50 ), couleurHex=0xFF3232 },
+    [10] = { coinsRequis=250000000, brainRotRequis={rarete="Secret",    quantite=1}, multiplicateur=8.0, slotsBonus=1, label="Rebirth X",    couleur=Color3.fromRGB(255, 50,  50 ), couleurHex=0xFF3232 },
 }
-
-RebirthConfig.MaxTier = 10
-
--- Retourne la config d'un palier (nil si hors limites)
-function RebirthConfig.GetTier(level)
-	return RebirthConfig.Tiers[level]
-end
-
--- Retourne l'index de puissance d'une rareté (0 si inconnue)
-function RebirthConfig.RarityIndex(rarity)
-	for i, r in ipairs(RebirthConfig.RarityOrder) do
-		if r == rarity then return i end
-	end
-	return 0
-end
-
--- Retourne true si la rareté possédée est >= à la rareté requise
-function RebirthConfig.MeetsRarity(owned, required)
-	return RebirthConfig.RarityIndex(owned) >= RebirthConfig.RarityIndex(required)
-		and RebirthConfig.RarityIndex(owned) > 0
-end
 
 return RebirthConfig
