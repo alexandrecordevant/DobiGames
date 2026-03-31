@@ -938,8 +938,21 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     local jourActuel  = data.dailySeed.jourActuel or 1
     local rarity      = (cfg and cfg.cycle and cfg.cycle[jourActuel]) or "MYTHIC"
 
+    -- Vérifier si le joueur possède le Seed Doubler (2 graines au lieu de 1)
+    local seedDoublerPassId = Config.GamePassIds and Config.GamePassIds.SeedDoubler or 0
+    local quantite = 1
+    if seedDoublerPassId > 0 then
+        local okPass, possede = pcall(function()
+            return game:GetService("MarketplaceService"):UserOwnsGamePassAsync(
+                player.UserId, seedDoublerPassId)
+        end)
+        if okPass and possede then
+            quantite = 2
+        end
+    end
+
     -- Ajouter dans l'inventaire de graines (identique aux graines d'arbres)
-    SeedInventory.Add(data, rarity, 1)
+    SeedInventory.Add(data, rarity, quantite)
 
     -- Ajouter la graine dans les mains du joueur (CarriedSeeds)
     local dCarriedSeeds = player:FindFirstChild("CarriedSeeds")
@@ -982,6 +995,38 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     local backpack = player:FindFirstChildOfClass("Backpack")
     if backpack then tool.Parent = backpack end
 
+    -- Seed Doubler : accorder la 2ème graine si pass possédé
+    for _i = 2, quantite do
+        local sv = Instance.new("StringValue")
+        sv.Name   = "Seed"
+        sv.Value  = rarity
+        sv.Parent = dCarriedSeeds
+        local t = Instance.new("Tool")
+        t.Name           = "🌱 " .. rarity .. " Seed"
+        t.ToolTip        = rarity .. " Seed — Plante dans un FlowerPot!"
+        t.CanBeDropped   = false
+        t.RequiresHandle = true
+        t:SetAttribute("IsSeed",     true)
+        t:SetAttribute("SeedRarity", rarity)
+        local h = Instance.new("Part")
+        h.Name         = "Handle"
+        h.Shape        = Enum.PartType.Ball
+        h.Size         = Vector3.new(0.7, 0.7, 0.7)
+        h.Color        = couleurGraine
+        h.Material     = Enum.Material.Neon
+        h.Transparency = 0
+        h.Anchored     = false
+        h.CanCollide   = false
+        h.CastShadow   = false
+        h.Parent       = t
+        local l = Instance.new("PointLight", h)
+        l.Color      = couleurGraine
+        l.Brightness = 3
+        l.Range      = 6
+        local bp = player:FindFirstChildOfClass("Backpack")
+        if bp then t.Parent = bp end
+    end
+
     -- Mettre à jour le HUD carry et l'inventaire graines
     SeedInventory.NotifyClient(player, data)
     CarrySystem.EnvoyerCarryUpdate(player)
@@ -991,8 +1036,10 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     data.dailySeed.dernieresClaim = os.time()
     data.dailySeed.jourActuel     = (jourActuel % 7) + 1  -- cycle 1 → 7 → 1
 
-    NotifEvent:FireClient(player, "SUCCESS",
-        "🌱 Daily Seed " .. rarity .. " reçue ! (Jour " .. jourActuel .. "/7)")
+    local msgGraines = quantite > 1
+        and ("🌱 Daily Seed ×" .. quantite .. " " .. rarity .. " reçues ! (Seed Doubler 🔑) — Jour " .. jourActuel .. "/7")
+        or  ("🌱 Daily Seed " .. rarity .. " reçue ! (Jour " .. jourActuel .. "/7)")
+    NotifEvent:FireClient(player, "SUCCESS", msgGraines)
     EnvoyerHUD(player, data)
 end)
 

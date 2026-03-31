@@ -28,7 +28,11 @@ GameConfig.GamePassIds = {
     SpeedMAX     = 0,   -- Speed niveau MAX (walkspeed 36)
     CarryMAX     = 0,   -- Carry niveau MAX (5 BR)
     FlowerPot4   = 0,   -- Débloquer FlowerPot 4 (149 R$)
+    SeedDoubler  = 0,   -- Seed Doubler : 2 graines quotidiennes au lieu de 1 (à remplir après création Roblox)
 }
+
+-- Alias direct lu par ClaimDailySeed (synchronisé avec GamePassIds.SeedDoubler)
+GameConfig.SeedDoublerPassId = GameConfig.GamePassIds.SeedDoubler
 
 -- === DEV PRODUCT IDs (table structurée — remplir après création sur Roblox) ===
 GameConfig.DevProductIds = {

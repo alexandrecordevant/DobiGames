@@ -68,6 +68,8 @@ function MonetizationHandler.CheckGamePasses(player, data)
     check(Config.GamePassVIP.Id,          "hasVIP")
     check(Config.GamePassOfflineVault.Id, "hasOfflineVault")
     check(Config.GamePassAutoCollect.Id,  "hasAutoCollect")
+    -- Seed Doubler : donne 2 graines quotidiennes au lieu de 1
+    check(Config.GamePassIds and Config.GamePassIds.SeedDoubler or 0, "hasSeedDoubler")
 
     -- Game Passes shop — itère Config.ShopUpgrades pour ne hardcoder aucun ID
     if Config.ShopUpgrades then

@@ -82,7 +82,7 @@ local function creerSurfaceGui(board)
     sg.SizingMode       = Enum.SurfaceGuiSizingMode.PixelsPerStud
     sg.PixelsPerStud    = 50
     sg.AlwaysOnTop      = false
-    sg.MaxDistance      = 40
+    sg.MaxDistance      = 150
     sg.LightInfluence   = 0.3
 
     -- Fond semi-transparent
