@@ -45,7 +45,8 @@ local coinsEnAttente  = {}
 local _LeaderboardSystem = nil
 local function getLeaderboardSystem()
     if not _LeaderboardSystem then
-        local ok, m = pcall(require, ServerScriptService.LeaderboardSystem)
+        local mod = ServerScriptService:FindFirstChild("LeaderboardSystem")
+        local ok, m = mod and pcall(require, mod) or false, nil
         if ok and m then _LeaderboardSystem = m end
     end
     return _LeaderboardSystem

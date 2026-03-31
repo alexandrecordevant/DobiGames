@@ -82,6 +82,8 @@ local carryBonuses   = {}
 -- Rayon aimant par joueur (shopUpgrade Aimant)
 local rayonAimant    = {}
 
+local initJoueur  -- forward declaration (défini plus bas, utilisé dans InitDepotSpotsBase)
+
 local CarryUpdate      = nil
 local BRAINROTS_FOLDER = nil
 
@@ -759,7 +761,7 @@ end
 -- Init / nettoyage par joueur
 -- ============================================================
 
-local function initJoueur(player)
+initJoueur = function(player)
 	-- Idempotent
 	if donneesJoueurs[player.UserId] then return end
 	donneesJoueurs[player.UserId] = {

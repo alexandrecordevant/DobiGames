@@ -284,7 +284,11 @@ end
 -- ────────────────────────────────────────────────────────────────
 local function scannerTours()
 	local tours = {}
-	for _, enfant in ipairs(workspace:GetChildren()) do
+	local specific = workspace:WaitForChild("Bases", 5)
+		and workspace.Bases:WaitForChild("Base_1", 5)
+		and workspace.Bases.Base_1:WaitForChild("Specific", 5)
+	local conteneur = specific or workspace
+	for _, enfant in ipairs(conteneur:GetChildren()) do
 		if not enfant:IsA("Model") then continue end
 		if enfant.Name:sub(1, #TOWER_NAME_PREFIX) ~= TOWER_NAME_PREFIX then continue end
 		if not enfant:FindFirstChild(NOM_DOSSIER_PLATEFORMES) then continue end

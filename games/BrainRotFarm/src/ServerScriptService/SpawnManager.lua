@@ -231,70 +231,82 @@ local function formatTimer(t)
 	else return ("%ds"):format(s) end
 end
 
--- Applique le Billboard via FilterManager + animations spéciales (GOD/SECRET)
--- brModel = Model complet (clone), racine = PrimaryPart pour animations post-hoc
-local function ajouterBillboard(clone, racine, nomRarete, nomModele, dureeInitiale)
-	dureeInitiale = dureeInitiale or CONFIG.DUREE_DESPAWN
-	local couleur = RARETE_COULEURS_BB[nomRarete] or Color3.new(1, 1, 1)
-
-	-- Valeur coins depuis GameConfig
-	local valeur = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[nomRarete] or 0
-	local valeurTexte = valeur > 0 and ("  💰 " .. valeur .. "/s") or ""
-
-	-- Texte combiné : nom modele + rareté + valeur + timer initial
-	local texte = string.format("%s  ✦ %s ✦%s  ⏱ %s",
-		nomModele, nomRarete, valeurTexte, formatTimer(dureeInitiale))
-
-	-- Appliquer via FilterManager (ZERO instance directe)
-	local FM = getFilterManager()
-	if FM then
-		FM.Apply(clone, {
-			{Name = "Billboard", Params = {
-				Text    = texte,
-				Color   = couleur,
-				OffsetY = 6,
-				Taille  = UDim2.new(5, 0, 1.2, 0),
-			}}
-		})
-	end
-
-	-- Animations spéciales sur le label "Label" du BRBillboard
-	local bb     = racine:FindFirstChild("BRBillboard")
-	local lLabel = bb and bb:FindFirstChild("Label")
-	if lLabel then
-		if nomRarete == "GOD" or nomRarete == "BRAINROT_GOD" then
-			-- Arc-en-ciel
-			local hue = 0
-			local conn
-			conn = RunService.Heartbeat:Connect(function(dt)
-				if not lLabel or not lLabel.Parent then conn:Disconnect(); return end
-				hue = (hue + dt * 0.5) % 1
-				lLabel.TextColor3 = Color3.fromHSV(hue, 1, 1)
-			end)
-		elseif nomRarete == "SECRET" then
-			-- Clignotement blanc/noir
-			local ti = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, true)
-			TweenService:Create(lLabel, ti, { TextColor3 = Color3.fromRGB(20, 20, 20) }):Play()
-		end
+local function FormatNombre(n)
+	n = tonumber(n) or 0
+	if     n >= 1e12 then return ("%.1fT"):format(n / 1e12)
+	elseif n >= 1e9  then return ("%.1fB"):format(n / 1e9)
+	elseif n >= 1e6  then return ("%.1fM"):format(n / 1e6)
+	elseif n >= 1e3  then return ("%.1fK"):format(n / 1e3)
+	else                  return tostring(math.floor(n))
 	end
 end
 
--- Countdown mis à jour dans le label "BRBillboard/Label"
+-- Crée un billboard multi-lignes au-dessus du BR (même style que LavaTower)
+local function ajouterBillboard(clone, racine, nomRarete, nomModele, dureeInitiale)
+	dureeInitiale = dureeInitiale or CONFIG.DUREE_DESPAWN
+	local couleur = RARETE_COULEURS_BB[nomRarete] or Color3.new(1, 1, 1)
+	local valeur  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[nomRarete] or 0
+
+	-- Supprimer ancien billboard si présent
+	local existing = racine:FindFirstChild("BRBillboard")
+	if existing then existing:Destroy() end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name         = "BRBillboard"
+	bb.Size         = UDim2.new(5, 0, 2.0, 0)
+	bb.StudsOffset  = Vector3.new(0, 6, 0)
+	bb.AlwaysOnTop  = false
+	bb.ResetOnSpawn = false
+	bb.Parent       = racine
+
+	local function makeLabel(name, text, posY, color)
+		local label = Instance.new("TextLabel")
+		label.Name                   = name
+		label.Text                   = text
+		label.Size                   = UDim2.new(1, 0, 0.25, 0)
+		label.Position               = UDim2.new(0, 0, posY, 0)
+		label.TextColor3             = color or Color3.new(1, 1, 1)
+		label.TextScaled             = true
+		label.Font                   = Enum.Font.GothamBold
+		label.BackgroundTransparency = 1
+		label.TextStrokeTransparency = 0.5
+		label.TextStrokeColor3       = Color3.new(0, 0, 0)
+		label.Parent                 = bb
+		return label
+	end
+
+	makeLabel("LNom",   nomModele,                       0,    Color3.new(1, 1, 1))
+	local lRarete =
+	makeLabel("LRarete", nomRarete,                      0.25, couleur)
+	makeLabel("LPrix",  "💰 $" .. FormatNombre(valeur), 0.50, Color3.fromRGB(0, 220, 0))
+	makeLabel("LTimer", formatTimer(dureeInitiale),      0.75, Color3.fromRGB(220, 60, 60))
+
+	-- Animations spéciales sur la ligne rareté
+	if nomRarete == "GOD" or nomRarete == "BRAINROT_GOD" then
+		local hue, conn = 0, nil
+		conn = RunService.Heartbeat:Connect(function(dt)
+			if not lRarete or not lRarete.Parent then conn:Disconnect(); return end
+			hue = (hue + dt * 0.5) % 1
+			lRarete.TextColor3 = Color3.fromHSV(hue, 1, 1)
+		end)
+	elseif nomRarete == "SECRET" then
+		local ti = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, true)
+		TweenService:Create(lRarete, ti, { TextColor3 = Color3.fromRGB(20, 20, 20) }):Play()
+	end
+end
+
+-- Countdown mis à jour dans le label "LTimer" du BRBillboard
 local function lancerCountdownBillboard(racine, duree, nomRarete, couleur, valeur)
 	task.spawn(function()
-		local valeurTexte = (valeur and valeur > 0) and ("  💰 " .. valeur .. "/s") or ""
 		for t = duree, 0, -1 do
 			if not racine or not racine.Parent then return end
 			local bb = racine:FindFirstChild("BRBillboard")
 			if not bb then return end
-			local label = bb:FindFirstChild("Label")
+			local label = bb:FindFirstChild("LTimer")
 			if not label then return end
-			-- Mettre à jour le texte (conserver nom modele serait complexe — on affiche rareté + valeur + timer)
-			label.Text = string.format("✦ %s ✦%s  ⏱ %s", nomRarete, valeurTexte, formatTimer(t))
+			label.Text = formatTimer(t)
 			if t <= 10 then
 				label.TextColor3 = Color3.fromRGB(255, 30, 30)
-			elseif t > 10 and nomRarete ~= "SECRET" and nomRarete ~= "GOD" and nomRarete ~= "BRAINROT_GOD" then
-				label.TextColor3 = couleur
 			end
 			if t > 0 then task.wait(1) end
 		end

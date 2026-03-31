@@ -1,16 +1,26 @@
 {
-    "name": "GAME_NAME_PLACEHOLDER",
+    "name": "LavaTower",
     "tree": {
         "$className": "DataModel",
         "ReplicatedStorage": {
             "$className": "ReplicatedStorage",
+            "GameConfig": { "$path": "src/ReplicatedStorage/GameConfig.lua" },
             "Modules": {
                 "$path": "src/ReplicatedStorage/Modules"
             }
         },
         "ServerScriptService": {
             "$className": "ServerScriptService",
-            "$path": "src/ServerScriptService"
+            "$path": "src/ServerScriptService",
+            "SharedLib": {
+                "$className": "Folder",
+                "Server": { "$path": "../shared-lib/src/server" },
+                "Shared": {
+                    "$className": "Folder",
+                    "CollectSystem": { "$path": "../shared-lib/src/shared/CollectSystem.lua" },
+                    "UpgradeSystem": { "$path": "../shared-lib/src/shared/UpgradeSystem.lua" }
+                }
+            }
         },
         "StarterPlayer": {
             "$className": "StarterPlayer",
