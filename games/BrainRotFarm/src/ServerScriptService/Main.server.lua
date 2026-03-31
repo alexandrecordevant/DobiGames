@@ -156,10 +156,11 @@ InitialiserPots = function(player, baseIndex, playerData)
         return
     end
 
-    -- FlowerPots dans Specific/ (structure Shared/Specific)
+    -- FlowerPots dans Specific/ (nouvelle structure) — fallback ancienne structure à plat
     local specificFolderIP = base:FindFirstChild("Specific")
     for potIndex = 1, 4 do
-        local potModel = specificFolderIP and specificFolderIP:FindFirstChild("FlowerPot_" .. potIndex)
+        local potModel = (specificFolderIP and specificFolderIP:FindFirstChild("FlowerPot_" .. potIndex))
+                      or base:FindFirstChild("FlowerPot_" .. potIndex)
         if not potModel then
             warn("[InitialiserPots] FlowerPot_" .. potIndex .. " introuvable dans Base_" .. baseIndex)
             continue
@@ -492,9 +493,10 @@ local function TrouverSpawnBase(baseIndex)
         end
     end
 
-    -- SpawnZone dans Specific/ (structure Shared/Specific)
+    -- SpawnZone dans Specific/ (nouvelle structure) — fallback ancienne structure à plat
     local specificFolder = baseModel:FindFirstChild("Specific")
-    local spawnZone      = specificFolder and specificFolder:FindFirstChild("SpawnZone")
+    local spawnZone      = (specificFolder and specificFolder:FindFirstChild("SpawnZone"))
+                        or baseModel:FindFirstChild("SpawnZone")
     if spawnZone and spawnZone:IsA("BasePart") then
         return spawnZone.CFrame + Vector3.new(0, 4, 0)
     end
@@ -1016,14 +1018,15 @@ GetSeedInfo.OnServerInvoke = function(player)
     if baseIndex then
         local bases = workspace:FindFirstChild("Bases")
         local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
-        -- FlowerPots dans Specific/ (structure Shared/Specific)
+        -- FlowerPots dans Specific/ (nouvelle structure) — fallback ancienne structure à plat
         local specificFolderHUD = base and base:FindFirstChild("Specific")
         for potIndex = 1, 4 do
             local potData = data.pots and data.pots[potIndex]
             local debloque = potData and potData.debloque or false
             local statut = nil
-            if debloque and specificFolderHUD then
-                local potModel = specificFolderHUD:FindFirstChild("FlowerPot_" .. potIndex)
+            if debloque and base then
+                local potModel = (specificFolderHUD and specificFolderHUD:FindFirstChild("FlowerPot_" .. potIndex))
+                              or base:FindFirstChild("FlowerPot_" .. potIndex)
                 if potModel then
                     statut = FlowerPotGrowthSystem.GetStatut(potModel)
                 end
@@ -1211,9 +1214,10 @@ AssignationSystem.GetSpawnCFrame = function(baseIndex)
         end
     end
 
-    -- SpawnZone dans Specific/ (structure Shared/Specific)
+    -- SpawnZone dans Specific/ (nouvelle structure) — fallback ancienne structure à plat
     local specificFolderSC = baseRoot:FindFirstChild("Specific")
-    local spawnZone        = specificFolderSC and specificFolderSC:FindFirstChild("SpawnZone")
+    local spawnZone        = (specificFolderSC and specificFolderSC:FindFirstChild("SpawnZone"))
+                          or baseRoot:FindFirstChild("SpawnZone")
     if spawnZone then
         if spawnZone:IsA("BasePart") then return spawnZone.CFrame + Vector3.new(0, 4, 0) end
         local wT = spawnZone:FindFirstChild("Wall_Top")

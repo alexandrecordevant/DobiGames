@@ -332,9 +332,10 @@ local function initialiserZones()
 		if not indexStr then continue end
 		local baseIndex = tonumber(indexStr)
 
-		-- SpawnZone dans Specific/ (structure Shared/Specific)
+		-- SpawnZone dans Specific/ (nouvelle structure) — fallback ancienne structure à plat
 		local specificFolderSM = baseModel:FindFirstChild("Specific")
-		local spawnZone        = specificFolderSM and specificFolderSM:FindFirstChild(_spawnZoneNom)
+		local spawnZone        = (specificFolderSM and specificFolderSM:FindFirstChild(_spawnZoneNom))
+		                      or baseModel:FindFirstChild(_spawnZoneNom)
 		if not spawnZone then
 			warn("[SpawnManager] SpawnZone manquante pour " .. baseModel.Name)
 			continue
