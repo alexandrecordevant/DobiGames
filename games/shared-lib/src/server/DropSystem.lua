@@ -111,8 +111,9 @@ local function trouverBaseFolder(baseIndex)
     if not bases then return nil end
     local baseRoot = bases:FindFirstChild("Base_" .. tostring(baseIndex))
     if not baseRoot then return nil end
-    -- Préférer Base_X/Base s'il contient des floors
-    local candidat = baseRoot:FindFirstChild("Base")
+    -- Préférer Base_X/Shared/Base s'il contient des floors (structure Shared/Specific)
+    local sharedFolder = baseRoot:FindFirstChild("Shared")
+    local candidat     = sharedFolder and sharedFolder:FindFirstChild("Base")
     if candidat then
         for _, floorDef in ipairs(ProgConfig.floors) do
             if trouverFloor(candidat, floorDef) then return candidat end

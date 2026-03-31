@@ -59,7 +59,9 @@ function SafeZoneTracker.Init(config)
 	local zonesInitialisees = 0
 
 	for _, baseModel in ipairs(bases:GetChildren()) do
-		local safeZone = baseModel:FindFirstChild("SafeZone")
+		-- SafeZone dans Shared/ (structure Shared/Specific)
+		local sharedFolderSZ = baseModel:FindFirstChild("Shared")
+		local safeZone       = sharedFolderSZ and sharedFolderSZ:FindFirstChild("SafeZone")
 		if not safeZone then
 			-- Zone safe optionnelle — warn uniquement si au moins une base existe
 			continue

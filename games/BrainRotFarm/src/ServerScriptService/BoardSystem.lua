@@ -260,9 +260,11 @@ function BoardSystem.Init()
     local OuvrirRebirth = getOuvrirRebirth()
 
     for i = 1, maxBases do
-        local base  = bases:FindFirstChild("Base_" .. i)
-        local bat   = base and base:FindFirstChild("Base")
-        local board = bat and bat:FindFirstChild("Board")
+        local base   = bases:FindFirstChild("Base_" .. i)
+        -- Base (floors/spots) dans Shared/ (structure Shared/Specific)
+        local shared = base and base:FindFirstChild("Shared")
+        local bat    = shared and shared:FindFirstChild("Base")
+        local board  = bat and bat:FindFirstChild("Board")
 
         if board then
             -- Créer la SurfaceGui
@@ -309,9 +311,11 @@ function BoardSystem.MettreAJourBoard(player, etat)
 
     local bases = Workspace:FindFirstChild("Bases")
     if not bases then return end
-    local base  = bases:FindFirstChild("Base_" .. baseIndex)
-    local bat   = base and base:FindFirstChild("Base")
-    local board = bat and bat:FindFirstChild("Board")
+    local base   = bases:FindFirstChild("Base_" .. baseIndex)
+    -- Base (floors/spots) dans Shared/ (structure Shared/Specific)
+    local shared = base and base:FindFirstChild("Shared")
+    local bat    = shared and shared:FindFirstChild("Base")
+    local board  = bat and bat:FindFirstChild("Board")
     if not board then return end
 
     mettreAJourSurfaceGui(board, etat or {})

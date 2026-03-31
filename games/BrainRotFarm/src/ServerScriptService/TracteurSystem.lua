@@ -152,13 +152,15 @@ function TracteurSystem.Activer(player, baseIndex)
     local base = bases:FindFirstChild("Base_" .. baseIndex)
     if not base then return end
 
-    local tracteurModel = base:FindFirstChild("Tractor")
+    -- Tractor et SpawnZone dans Specific/ (structure Shared/Specific)
+    local specificFolder = base:FindFirstChild("Specific")
+    local tracteurModel  = specificFolder and specificFolder:FindFirstChild("Tractor")
     if not tracteurModel then
         warn("[TracteurSystem] Modèle Tractor introuvable dans Base_" .. baseIndex)
         return
     end
 
-    local spawnZone = base:FindFirstChild("SpawnZone")
+    local spawnZone = specificFolder and specificFolder:FindFirstChild("SpawnZone")
     if not spawnZone then
         warn("[TracteurSystem] SpawnZone introuvable dans Base_" .. baseIndex)
         return

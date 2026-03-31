@@ -193,8 +193,10 @@ local function CompterMutants(baseIndex)
     if not baseIndex then return 0 end
     local count = 0
     local bases = Workspace:FindFirstChild("Bases")
-    local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
-    local bat   = base and base:FindFirstChild("Base")
+    local base   = bases and bases:FindFirstChild("Base_" .. baseIndex)
+    -- Base (floors/spots) dans Shared/ (structure Shared/Specific)
+    local shared = base and base:FindFirstChild("Shared")
+    local bat    = shared and shared:FindFirstChild("Base")
     if not bat then return 0 end
     for _, floor in ipairs(bat:GetChildren()) do
         for _, spot in ipairs(floor:GetChildren()) do

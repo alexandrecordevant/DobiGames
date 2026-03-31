@@ -490,7 +490,9 @@ local function TrouverSpawnBase(baseIndex)
         end
     end
 
-    local spawnZone = baseModel:FindFirstChild("SpawnZone")
+    -- SpawnZone dans Specific/ (structure Shared/Specific)
+    local specificFolder = baseModel:FindFirstChild("Specific")
+    local spawnZone      = specificFolder and specificFolder:FindFirstChild("SpawnZone")
     if spawnZone and spawnZone:IsA("BasePart") then
         return spawnZone.CFrame + Vector3.new(0, 4, 0)
     end
@@ -1205,7 +1207,9 @@ AssignationSystem.GetSpawnCFrame = function(baseIndex)
         end
     end
 
-    local spawnZone = baseRoot:FindFirstChild("SpawnZone")
+    -- SpawnZone dans Specific/ (structure Shared/Specific)
+    local specificFolderSC = baseRoot:FindFirstChild("Specific")
+    local spawnZone        = specificFolderSC and specificFolderSC:FindFirstChild("SpawnZone")
     if spawnZone then
         if spawnZone:IsA("BasePart") then return spawnZone.CFrame + Vector3.new(0, 4, 0) end
         local wT = spawnZone:FindFirstChild("Wall_Top")

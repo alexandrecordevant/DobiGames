@@ -589,7 +589,9 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 		warn("[BaseProgressionSystem] Base_" .. baseIndex .. " introuvable")
 		return
 	end
-	local candidatBase = baseRoot:FindFirstChild("Base")
+	-- Base dans Shared/ (structure Shared/Specific)
+	local sharedFolderBPS = baseRoot:FindFirstChild("Shared")
+	local candidatBase    = sharedFolderBPS and sharedFolderBPS:FindFirstChild("Base")
 	local scoreRoot, floorsRoot, spotsRoot = scorerConteneurBase(baseRoot)
 	local scoreBase, floorsBase, spotsBase = scorerConteneurBase(candidatBase)
 
@@ -682,7 +684,9 @@ function BaseProgressionSystem.ResetVisuelBase(baseIndex)
 	local baseRoot = bases:FindFirstChild("Base_" .. baseIndex)
 	if not baseRoot then return end
 
-	local candidatBase = baseRoot:FindFirstChild("Base")
+	-- Base dans Shared/ (structure Shared/Specific)
+	local sharedFolderRVB = baseRoot:FindFirstChild("Shared")
+	local candidatBase    = sharedFolderRVB and sharedFolderRVB:FindFirstChild("Base")
 	local scoreRoot    = scorerConteneurBase(baseRoot)
 	local scoreBase    = scorerConteneurBase(candidatBase)
 	local baseFolder   = (scoreBase >= scoreRoot) and candidatBase or baseRoot
@@ -756,8 +760,9 @@ function BaseProgressionSystem.DebloquerFloorApresRebirth(player, niveauRebirth)
         return
     end
 
-    -- Trouver le conteneur (Base_X ou Base_X/Base)
-    local candidatBase = baseRoot:FindFirstChild("Base")
+    -- Trouver le conteneur (Base_X/Shared/Base — structure Shared/Specific)
+    local sharedFolderDF = baseRoot:FindFirstChild("Shared")
+    local candidatBase   = sharedFolderDF and sharedFolderDF:FindFirstChild("Base")
     local scoreRoot    = scorerConteneurBase(baseRoot)
     local scoreBase    = scorerConteneurBase(candidatBase)
     local baseFolder   = (scoreBase >= scoreRoot) and candidatBase or baseRoot
