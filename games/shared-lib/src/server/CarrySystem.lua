@@ -241,22 +241,41 @@ local function creerTool(player, clone, rarete)
 		end
 
 		-- Centrer le visuel à l'origine avant de souder
-		local ok = pcall(function() clone:PivotTo(CFrame.new(0, 0, 0)) end)
-		if ok then
-			for _, part in ipairs(clone:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.Anchored   = false
-					part.CanCollide = false
-					local wc  = Instance.new("WeldConstraint")
-					wc.Part0  = handle
-					wc.Part1  = part
-					wc.Parent = handle
+		-- Fallback BasePart si PivotTo échoue (modèle sans PrimaryPart ou model vide)
+		local pivotOk = pcall(function() clone:PivotTo(CFrame.new(0, 0, 0)) end)
+		if not pivotOk then
+			-- Tentative directe sur chaque BasePart racine (modèle plat sans PrimaryPart)
+			if clone:IsA("BasePart") then
+				pivotOk = pcall(function() clone.CFrame = CFrame.new(0, 0, 0) end)
+			else
+				for _, part in ipairs(clone:GetDescendants()) do
+					if part:IsA("BasePart") then
+						pcall(function() part.CFrame = CFrame.new(0, 0, 0) end)
+					end
 				end
+				pivotOk = true  -- on continue même si le centrage est approximatif
 			end
-			clone.Parent = tool
-		else
-			warn("[CarrySystem] PivotTo échoué pour " .. nomBR .. " — Tool sans visuel")
+			warn("[CarrySystem] PivotTo échoué pour " .. nomBR .. " — centrage de secours utilisé")
 		end
+		for _, part in ipairs(clone:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Anchored   = false
+				part.CanCollide = false
+				local wc  = Instance.new("WeldConstraint")
+				wc.Part0  = handle
+				wc.Part1  = part
+				wc.Parent = handle
+			end
+		end
+		if clone:IsA("BasePart") then
+			clone.Anchored   = false
+			clone.CanCollide = false
+			local wc  = Instance.new("WeldConstraint")
+			wc.Part0  = handle
+			wc.Part1  = clone
+			wc.Parent = handle
+		end
+		clone.Parent = tool
 	end
 
 	-- Ajouter dans le Backpack

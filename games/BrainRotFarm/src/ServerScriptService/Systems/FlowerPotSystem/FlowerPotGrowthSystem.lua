@@ -46,6 +46,20 @@ local function getPickupHandler()
     return _PickupHandler
 end
 
+-- Lazy loader FilterManager (effets visuels élémentaires centralisés)
+local _FilterManager = nil
+local function getFilterManager()
+    if not _FilterManager then
+        local ok, m = pcall(function()
+            return require(ServerScriptService:WaitForChild("SharedLib")
+                :WaitForChild("BRFilterSystem")
+                :WaitForChild("FilterManager"))
+        end)
+        if ok and m then _FilterManager = m end
+    end
+    return _FilterManager
+end
+
 -- ============================================================
 -- Constantes (lues depuis GameConfig si disponibles)
 -- ============================================================
@@ -65,14 +79,13 @@ local ELEMENTS = (FPConfig and FPConfig.ElementTypes)
 local ELEMENT_MULTIPLIERS = (FPConfig and FPConfig.ElementMultipliers)
     or { water=2, fire=4, earth=6, wind=8 }
 
--- Config particules par élément
-local ELEMENT_PARTICLES = (FPConfig and FPConfig.ElementParticles)
-    or {
-        water = { Color=Color3.fromRGB(0,   150, 255), Lifetime=2.0, SpeedMax=3 },
-        fire  = { Color=Color3.fromRGB(255, 100, 0),   Lifetime=1.0, SpeedMax=5 },
-        earth = { Color=Color3.fromRGB(100, 200, 50),  Lifetime=3.0, SpeedMax=2 },
-        wind  = { Color=Color3.fromRGB(230, 230, 230), Lifetime=1.5, SpeedMax=6 },
-    }
+-- Correspondance élément (lowercase) → nom de filtre FilterManager
+local ELEMENT_TO_FILTRE = {
+    water = "ElementEau",
+    fire  = "ElementFeu",
+    earth = "ElementTerre",
+    wind  = "ElementVent",
+}
 
 -- Emojis par élément (affichage billboard)
 local ELEMENT_EMOJIS = { water="💧", fire="🔥", earth="🌍", wind="💨" }
@@ -286,43 +299,19 @@ end
 -- Effets visuels sur le BR Mutant
 -- ============================================================
 
--- Applique les particules élémentaires sur le BasePart racine du clone
+-- Applique les effets visuels élémentaires via FilterManager (shared-lib)
 local function appliquerParticulesElement(clone, elementType)
-    local cfg = ELEMENT_PARTICLES[elementType]
-    if not cfg then return end
-
-    -- Trouver la part racine pour les particules
-    local root = nil
-    if clone:IsA("Model") then
-        root = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart")
-    elseif clone:IsA("BasePart") then
-        root = clone
-    end
-    if not root then
-        warn("[FlowerPotGrowthSystem] Aucun BasePart racine pour les particules :", elementType)
+    local FM = getFilterManager()
+    if not FM then
+        warn("[FlowerPotGrowthSystem] FilterManager indisponible — effets ignorés pour :", elementType)
         return
     end
-
-    local ok = pcall(function()
-        local emitter          = Instance.new("ParticleEmitter", root)
-        emitter.Name           = "ElementParticles"
-        emitter.Color          = ColorSequence.new(cfg.Color)
-        emitter.Lifetime       = NumberRange.new(cfg.Lifetime * 0.6, cfg.Lifetime)
-        emitter.Speed          = NumberRange.new(0.5, cfg.SpeedMax)
-        emitter.Rate           = 18
-        emitter.Size           = NumberSequence.new({
-            NumberSequenceKeypoint.new(0,   0.35),
-            NumberSequenceKeypoint.new(0.7, 0.25),
-            NumberSequenceKeypoint.new(1,   0),
-        })
-        emitter.LightEmission  = 0.7
-        emitter.LightInfluence = 0.3
-        emitter.RotSpeed       = NumberRange.new(-45, 45)
-    end)
-
-    if not ok then
-        warn("[FlowerPotGrowthSystem] Erreur création particules :", elementType)
+    local nomFiltre = ELEMENT_TO_FILTRE[elementType]
+    if not nomFiltre then
+        warn("[FlowerPotGrowthSystem] Élément inconnu :", elementType)
+        return
     end
+    FM.Apply(clone, { { Name = nomFiltre } })
 end
 
 -- Burst de particules au moment de la chute (feedback visuel)

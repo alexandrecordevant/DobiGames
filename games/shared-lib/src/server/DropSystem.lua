@@ -733,17 +733,16 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Retirer ce BR du carry (on utilise ViderCarry puis re-add les autres)
     local tous = CarrySystem.ViderCarry(player)
-    -- Guard renforcé : vérifier qu'au moins 1 entrée a un vrai modèle (pas seulement fantômes)
-    local aModeleValide = false
-    for _, item in ipairs(tous) do
-        if item.modele then aModeleValide = true; break end
-    end
-    if not aModeleValide then
-        warn("[DropSystem] DeposerBrainRots : carry sans modèle réel pour " .. player.Name .. " — dépôt annulé")
-        return
-    end
+    -- Note : modele peut être nil si PivotTo a échoué dans creerTool (ex: BR Mutant dont le
+    -- modèle n'a pas pu être centré). Les fantômes vrais (toolRef.Parent=nil) sont déjà
+    -- supprimés par SynchroniserCarry + le check #portes==0 ci-dessus. On laisse passer :
+    -- placerModeleSlot a un fallback clonerModeleSlot(rarete) qui clone depuis ServerStorage.
     -- tous[indexADeposer] = BR à déposer, les autres = à conserver
     local modeleDepose = tous[indexADeposer] and tous[indexADeposer].modele
+    if not modeleDepose then
+        warn("[DropSystem] DeposerBrainRots : modèle nil pour " .. player.Name
+            .. " (rarete=" .. rarete .. ") — fallback ServerStorage utilisé")
+    end
     for i, restant in ipairs(tous) do
         if i ~= indexADeposer and restant and restant.rarete then
             -- Remettre les BR restants dans le carry
