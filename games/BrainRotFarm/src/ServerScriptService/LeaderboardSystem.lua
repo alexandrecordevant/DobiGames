@@ -46,6 +46,7 @@ local TRANSP_NORMALE    = 0.65
 -- Callback fourni par Main.server.lua
 LeaderboardSystem.GetPlayerData = nil
 
+
 -- Dernier BR rare capturé { rarete, joueur, timestamp }
 LeaderboardSystem.DernierRare = nil
 

@@ -11,8 +11,8 @@ local Players      = game:GetService("Players")
 -- CONFIG
 -- ═══════════════════════════════════════
 
-local Z_MIN   = -253   -- limite Z min du ChampCommun
-local Z_MAX   = 154    -- limite Z max du ChampCommun (leaderboard 1 à Z=174 moins rayon ~20)
+local Z_MIN   = -327.5 -- leaderboard 2 à Z=-347.5 + rayon ~20
+local Z_MAX   =  154   -- leaderboard 1 à Z=174.13 - rayon ~20
 local VITESSE = 30     -- studs/seconde (ajustable)
 
 -- Délais de départ désynchronisés
