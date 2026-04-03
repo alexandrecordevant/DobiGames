@@ -193,7 +193,8 @@ InitialiserPots = function(player, baseIndex, playerData)
         end
 
         -- Cacher/montrer le modèle cadenas physique selon l'état du pot
-        local cadenas = base:FindFirstChild("Cadenas_B" .. baseIndex .. "_P" .. potIndex)
+        local cadenas = base:FindFirstChild("Cadenas_B" .. baseIndex .. "_P" .. potIndex, true)
+        print("[DEBUG Cadenas] Pot" .. potIndex .. " trouvé=" .. tostring(cadenas ~= nil) .. " debloque=" .. tostring(potData.debloque))
         if cadenas then
             local visible = not potData.debloque
             for _, desc in ipairs(cadenas:GetDescendants()) do
@@ -607,8 +608,8 @@ local function OnPlayerAdded(player)
             pcall(SprinklerSystem.ActiverBase, baseIndex, niveauArroseur)
         end
 
-        -- Réactiver l'animation tracteur si upgrade Tracteur acheté
-        if data.hasTracteur then
+        -- Réactiver l'animation tracteur si upgrade Tracteur acheté (ou dev mode actif)
+        if data.hasTracteur or Config.TracteurDevActif then
             pcall(TracteurSystem.Activer, player, baseIndex)
         end
 

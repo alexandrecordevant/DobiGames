@@ -44,6 +44,29 @@ local function getIncomeSystem()
     return _IncomeSystem
 end
 
+-- Chargement différé de FilterManager (effets visuels élémentaires Mutant)
+local _FilterManager = nil
+local function getFilterManager()
+    if not _FilterManager then
+        local ok, m = pcall(function()
+            return require(ServerScriptService
+                :FindFirstChild("SharedLib")
+                :FindFirstChild("BRFilterSystem")
+                :FindFirstChild("FilterManager"))
+        end)
+        if ok and m then _FilterManager = m end
+    end
+    return _FilterManager
+end
+
+-- Correspondance élément (lowercase) → nom filtre FilterManager
+local ELEMENT_TO_FILTRE = {
+    water = "ElementEau",
+    fire  = "ElementFeu",
+    earth = "ElementTerre",
+    wind  = "ElementVent",
+}
+
 -- ============================================================
 -- État interne par joueur
 -- ============================================================
@@ -189,6 +212,23 @@ local function clonerModeleSlot(rarete)
     local clone  = nil
     pcall(function() clone = source:Clone() end)
     return clone
+end
+
+-- Réapplique les effets visuels élémentaires sur un modèle déposé/restauré
+-- (appel FilterManager identique à FlowerPotGrowthSystem.appliquerParticulesElement)
+local function appliquerEffetsMutant(modeleSlot, elementType)
+    if not modeleSlot or not elementType then return end
+    local FM = getFilterManager()
+    if not FM then
+        warn("[DropSystem] FilterManager indisponible — effets Mutant ignorés pour :", elementType)
+        return
+    end
+    local nomFiltre = ELEMENT_TO_FILTRE[elementType]
+    if not nomFiltre then
+        warn("[DropSystem] Élément inconnu :", elementType)
+        return
+    end
+    pcall(function() FM.Apply(modeleSlot, { { Name = nomFiltre } }) end)
 end
 
 -- Supprime les instances parasites ajoutées pendant le cycle carry/capture
@@ -542,8 +582,8 @@ local function restaurerDepots(player, playerData)
                         .. "' introuvable dans ServerStorage/" .. tostring(info.rarete)
                         .. " → fallback premier modèle du dossier")
                 end
-            elseif not isMutant then
-                -- brNom nil : donnée ancienne (sauvegardée avant le fix onCapture)
+            else
+                -- brNom nil : donnée ancienne OU mutant sans brNom sauvegardé
                 -- Fallback déterministe sur modeles[1] pour éviter le changement
                 -- de BR à chaque reconnexion (math.random dans clonerModeleSlot)
                 local brainrots = ServerStorage:FindFirstChild("Brainrots")
@@ -596,15 +636,18 @@ local function restaurerDepots(player, playerData)
                         end
                     end)
                 end
+                -- Réappliquer les effets visuels élémentaires (particles + highlight + emoji)
+                appliquerEffetsMutant(modeleSlot, info.elementType)
             end
 
             spotsData[uid][touchPart] = {
-                spotKey   = spotKey,
-                rarete    = info.rarete,
-                brNom     = info.brNom,
-                isMutant  = isMutant,
-                valeurSec = valeur,
-                modeleSlot = modeleSlot,
+                spotKey     = spotKey,
+                rarete      = info.rarete,
+                brNom       = info.brNom,
+                isMutant    = isMutant,
+                elementType = info.elementType,
+                valeurSec   = valeur,
+                modeleSlot  = modeleSlot,
             }
 
             mettreAJourGui(touchPart, valeur)
@@ -731,18 +774,16 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     local rarete = entree.rarete.nom or "COMMON"
 
+    -- Lire le nom du BR depuis le Tool AVANT ViderCarry (le Tool est détruit après)
+    local brNomFallback = nil
+    if entree.toolRef and entree.toolRef.Parent then
+        brNomFallback = entree.toolRef:GetAttribute("BrainrotName")
+    end
+
     -- Retirer ce BR du carry (on utilise ViderCarry puis re-add les autres)
     local tous = CarrySystem.ViderCarry(player)
-    -- Note : modele peut être nil si PivotTo a échoué dans creerTool (ex: BR Mutant dont le
-    -- modèle n'a pas pu être centré). Les fantômes vrais (toolRef.Parent=nil) sont déjà
-    -- supprimés par SynchroniserCarry + le check #portes==0 ci-dessus. On laisse passer :
-    -- placerModeleSlot a un fallback clonerModeleSlot(rarete) qui clone depuis ServerStorage.
     -- tous[indexADeposer] = BR à déposer, les autres = à conserver
     local modeleDepose = tous[indexADeposer] and tous[indexADeposer].modele
-    if not modeleDepose then
-        warn("[DropSystem] DeposerBrainRots : modèle nil pour " .. player.Name
-            .. " (rarete=" .. rarete .. ") — fallback ServerStorage utilisé")
-    end
     for i, restant in ipairs(tous) do
         if i ~= indexADeposer and restant and restant.rarete then
             -- Remettre les BR restants dans le carry
@@ -764,14 +805,41 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     local brNom = nil
     if modeleDepose then
         brNom = modeleDepose:GetAttribute("OriginalName") or modeleDepose.Name
+    elseif brNomFallback then
+        -- modèle nil (PivotTo échoué dans creerTool) → nom récupéré depuis l'attribut du Tool
+        brNom = brNomFallback
+    end
+
+    -- Si modeleDepose nil mais brNom connu → cloner le bon modèle depuis ServerStorage
+    -- (évite le fallback aléatoire de clonerModeleSlot)
+    local modeleSource = modeleDepose
+    if not modeleSource and brNom then
+        local brainrots = ServerStorage:FindFirstChild("Brainrots")
+        local dossier = brainrots and (
+            brainrots:FindFirstChild(rarete)
+            or brainrots:FindFirstChild(string.upper(rarete))
+        )
+        local brSource = dossier and dossier:FindFirstChild(brNom)
+        if brSource then
+            pcall(function()
+                modeleSource = brSource:Clone()
+                modeleSource.Parent = Workspace
+            end)
+        else
+            warn("[DropSystem] DeposerBrainRots : modèle '" .. brNom
+                .. "' introuvable dans ServerStorage/" .. rarete .. " — fallback aléatoire")
+        end
     end
 
     -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
-    local modeleSlot = placerModeleSlot(touchPart, rarete, modeleDepose)
-    -- Détruire le modèle pleine taille extrait du carry (le mini clone suffit)
-    if modeleDepose and modeleDepose.Parent then
-        pcall(function() modeleDepose:Destroy() end)
+    local modeleSlot = placerModeleSlot(touchPart, rarete, modeleSource)
+    -- Détruire le modèle pleine taille (le mini clone suffit)
+    if modeleSource and modeleSource.Parent then
+        pcall(function() modeleSource:Destroy() end)
     end
+
+    -- Récupérer le type d'élément du Mutant (nil si BR normal)
+    local elementType = isMutant and entree.rarete.elementType or nil
 
     -- Spot doré si BR Mutant
     if isMutant then
@@ -802,16 +870,19 @@ function DropSystem.DeposerBrainRots(player, touchPart)
                 end
             end)
         end
+        -- Réappliquer les effets visuels élémentaires (particles + highlight + emoji)
+        appliquerEffetsMutant(modeleSlot, elementType)
     end
 
     -- Enregistrer en mémoire locale
     spotsData[uid][touchPart] = {
-        spotKey   = spotKey,
-        rarete    = rarete,
-        brNom     = brNom,      -- nom exact du modèle BR (ex: "Tralalero_Tralala")
-        isMutant  = isMutant,   -- pour restauration fidèle après reconnexion
-        valeurSec = valeurSec,
-        modeleSlot = modeleSlot,
+        spotKey     = spotKey,
+        rarete      = rarete,
+        brNom       = brNom,        -- nom exact du modèle BR (ex: "Tralalero_Tralala")
+        isMutant    = isMutant,     -- pour restauration fidèle après reconnexion
+        elementType = elementType,  -- type élément Mutant ("water"/"fire"/"earth"/"wind")
+        valeurSec   = valeurSec,
+        modeleSlot  = modeleSlot,
     }
 
     -- Persister dans playerData pour le DataStore
@@ -1003,10 +1074,11 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
     if not spotsData[uid] then return result end
     for _, entry in pairs(spotsData[uid]) do
         result[entry.spotKey] = {
-            rarete    = entry.rarete,
-            valeurSec = entry.valeurSec,
-            brNom     = entry.brNom,
-            isMutant  = entry.isMutant,
+            rarete      = entry.rarete,
+            valeurSec   = entry.valeurSec,
+            brNom       = entry.brNom,
+            isMutant    = entry.isMutant,
+            elementType = entry.elementType,
         }
     end
     return result

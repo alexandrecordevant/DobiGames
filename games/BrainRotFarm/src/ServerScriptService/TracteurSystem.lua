@@ -13,9 +13,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Config — vitesse et espacement lus depuis GameConfig
 -- ============================================================
-local Config       = require(ReplicatedStorage.GameConfig)
-local VITESSE_DEF  = Config.TracteurVitesse    or 12  -- studs/seconde
-local ESPACEMENT   = Config.TracteurEspacement or 8   -- studs entre lignes
+local Config           = require(ReplicatedStorage.GameConfig)
+local VITESSE_DEF      = Config.TracteurVitesse           or 12  -- studs/seconde
+local ESPACEMENT       = Config.TracteurEspacement        or 8   -- studs entre lignes
+local ROTATION_OFFSET  = CFrame.Angles(0, math.rad(Config.TracteurRotationOffsetDeg or 0), 0)
 
 -- ============================================================
 -- État interne — { actif=bool } par baseIndex
@@ -76,9 +77,9 @@ local function deplacerVers(baseIndex, tracteurModel, targetPos, vitesse)
 
     if dir.Magnitude < 0.3 then return end
 
-    -- CFrames de départ et d'arrivée (tracteur orienté vers la destination)
-    local startCFrame = CFrame.lookAt(startPos, endPos)
-    local endCFrame   = CFrame.lookAt(endPos,   endPos + dir.Unit)
+    -- CFrames de départ et d'arrivée (tracteur orienté vers la destination + correction modèle)
+    local startCFrame = CFrame.lookAt(startPos, endPos) * ROTATION_OFFSET
+    local endCFrame   = CFrame.lookAt(endPos,   endPos + dir.Unit) * ROTATION_OFFSET
 
     -- Durée et pas (20 fps)
     local distance = dir.Magnitude

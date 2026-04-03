@@ -9,7 +9,7 @@ ElementTerre.Config = {
     Nom          = "TERRE",
 }
 
-local function ajouterBillboardMutant(primaryPart, couleur, nomElement)
+local function ajouterBillboardMutant(primaryPart)
     pcall(function()
         local existing = primaryPart:FindFirstChild("MutantBillboard")
         if existing then existing:Destroy() end
@@ -17,7 +17,7 @@ local function ajouterBillboardMutant(primaryPart, couleur, nomElement)
         local bb = Instance.new("BillboardGui")
         bb.Name         = "MutantBillboard"
         bb.StudsOffset  = Vector3.new(0, 6, 0)
-        bb.Size         = UDim2.new(0, 200, 0, 50)
+        bb.Size         = UDim2.new(0, 80, 0, 80)
         bb.MaxDistance  = 100
         bb.AlwaysOnTop  = true
         bb.Parent       = primaryPart
@@ -25,11 +25,10 @@ local function ajouterBillboardMutant(primaryPart, couleur, nomElement)
         local label = Instance.new("TextLabel")
         label.Size                   = UDim2.new(1, 0, 1, 0)
         label.BackgroundTransparency = 1
-        label.Text                   = "✦ MUTANT " .. nomElement
-        label.TextColor3             = couleur
+        label.Text                   = "🌍"
         label.TextScaled             = true
         label.Font                   = Enum.Font.GothamBold
-        label.TextStrokeTransparency = 0.3
+        label.TextStrokeTransparency = 0.5
         label.TextStrokeColor3       = Color3.new(0, 0, 0)
         label.Parent                 = bb
     end)
@@ -87,7 +86,7 @@ function ElementTerre.Apply(brModel, params)
     end)
 
     -- Label Mutant au-dessus
-    ajouterBillboardMutant(primaryPart, cfg.Couleur, cfg.Nom)
+    ajouterBillboardMutant(primaryPart)
 
     pcall(function() brModel:SetAttribute("ElementType", cfg.Nom) end)
 end

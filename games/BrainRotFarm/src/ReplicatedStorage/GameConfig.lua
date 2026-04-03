@@ -116,6 +116,11 @@ GameConfig.SprinklerVitesses = {
 GameConfig.TracteurVitesse    = 12
 -- Espacement entre les lignes de labourage (studs)
 GameConfig.TracteurEspacement = 8
+-- ⚠️ DEV ONLY — active le tracteur pour tous sans Game Pass (mettre false avant publish)
+GameConfig.TracteurDevActif   = true
+-- Correction orientation modèle (degrés Y) — ajuster si tracteur se déplace de côté
+-- Valeurs typiques : 0, 90, -90, 180
+GameConfig.TracteurRotationOffsetDeg = -90
 
 -- === LEADERBOARDS 3D ===
 -- Panneaux Studio dans Workspace.Leaderboards — chaque panneau doit contenir Gui.Texto
@@ -425,6 +430,10 @@ GameConfig.FlowerPotConfig = {
         gamePassId = 0,
         label      = "⚡ Instant Grow",
     },
+
+    -- Offset Y du BR Mutant au-dessus de la surface du pot (studs)
+    -- Augmenter si le BR est encore à l'intérieur de la plante
+    MutantOffsetY = 7,
 
     -- Échelle visuelle par stage
     stageScales = {

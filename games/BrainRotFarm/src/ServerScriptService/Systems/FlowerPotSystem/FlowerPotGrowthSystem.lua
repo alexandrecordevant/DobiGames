@@ -68,8 +68,8 @@ end
 local DUREE_PAR_STAGE   = (FPConfig and FPConfig.GrowthDuration)   or 120
 -- Stage à partir duquel le BR Mutant apparaît au-dessus
 local MUTANT_SPAWN_STAGE = (FPConfig and FPConfig.MutantSpawnStage) or 2
--- Offset Y au-dessus de la plante (studs)
-local MUTANT_OFFSET_Y   = (FPConfig and FPConfig.MutantOffsetY)    or 3
+-- Offset Y au-dessus du sommet de la plante (studs)
+local MUTANT_OFFSET_Y   = (FPConfig and FPConfig.MutantOffsetY)    or 0.5
 
 -- Éléments disponibles
 local ELEMENTS = (FPConfig and FPConfig.ElementTypes)
@@ -116,6 +116,24 @@ end
 -- Retourne la position de surface supérieure du pot (Y + moitié hauteur)
 local function getSurfacePot(potPart)
     return potPart.Position + Vector3.new(0, potPart.Size.Y / 2, 0)
+end
+
+-- Retourne la position Y du sommet d'un modèle de plante (bounding box)
+local function getSommetPlante(clone, potPart)
+    if clone then
+        if clone:IsA("Model") then
+            local ok, cf, size = pcall(function()
+                return clone:GetBoundingBox()
+            end)
+            if ok and cf and size then
+                return cf.Position.Y + size.Y / 2
+            end
+        elseif clone:IsA("BasePart") then
+            return clone.Position.Y + clone.Size.Y / 2
+        end
+    end
+    -- Fallback : surface du pot
+    return getSurfacePot(potPart).Y
 end
 
 -- Ancre toutes les parts d'un clone (évite la physique)
@@ -495,7 +513,9 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                 mutantClone, brNomChoisi = clonerBRMutant(seedRarity, brNomSauvegarde)
                 notifierBRNom(brNomChoisi)
                 if mutantClone then
-                    local posAuDessus = getSurfacePot(potPart) + Vector3.new(0, MUTANT_OFFSET_Y, 0)
+                    local sommetY = getSommetPlante(plantActuel, potPart)
+                    local surfacePot = getSurfacePot(potPart)
+                    local posAuDessus = Vector3.new(surfacePot.X, sommetY + MUTANT_OFFSET_Y, surfacePot.Z)
                     positionnerClone(mutantClone, posAuDessus)
                     pcall(function()
                         mutantClone:SetAttribute("IsMutant",    true)
@@ -551,9 +571,10 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                 notifierBRNom(brNomChoisi)
 
                 if mutantClone then
-                    -- Position au-dessus du pot
-                    local posAuDessus = getSurfacePot(potPart)
-                        + Vector3.new(0, MUTANT_OFFSET_Y, 0)
+                    -- Position au-dessus du sommet de la plante courante
+                    local sommetY = getSommetPlante(plantActuel, potPart)
+                    local surfacePot = getSurfacePot(potPart)
+                    local posAuDessus = Vector3.new(surfacePot.X, sommetY + MUTANT_OFFSET_Y, surfacePot.Z)
 
                     positionnerClone(mutantClone, posAuDessus)
 
