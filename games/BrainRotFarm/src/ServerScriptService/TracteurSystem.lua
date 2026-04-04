@@ -17,9 +17,20 @@ local Config           = require(ReplicatedStorage.GameConfig)
 local VITESSE_DEF      = Config.TracteurVitesse           or 12  -- studs/seconde
 local ESPACEMENT       = Config.TracteurEspacement        or 8   -- studs entre lignes
 local ROTATION_OFFSET  = CFrame.Angles(0, math.rad(Config.TracteurRotationOffsetDeg or 0), 0)
+local RAYON_COLLECTE   = ESPACEMENT * 0.6                        -- rayon d'aspiration (studs)
+
+-- Chargement différé SpawnManager (évite dépendance circulaire au chargement)
+local _SpawnManager = nil
+local function getSpawnManager()
+    if not _SpawnManager then
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SpawnManager)
+        if ok then _SpawnManager = m end
+    end
+    return _SpawnManager
+end
 
 -- ============================================================
--- État interne — { actif=bool } par baseIndex
+-- État interne — { actif=bool, onCollect=func } par baseIndex
 -- ============================================================
 local tracteurData = {}
 
@@ -65,6 +76,42 @@ local function calculerLignes(spawnZone)
 end
 
 -- ============================================================
+-- Collecte automatique des BRs proches du tracteur (Option B — instant coins)
+-- ============================================================
+local function collecterProches(baseIndex, tracteurModel)
+    local onCollect = tracteurData[baseIndex] and tracteurData[baseIndex].onCollect
+    if not onCollect then return end
+
+    local SpawnManager = getSpawnManager()
+    if not SpawnManager then return end
+
+    local ok, pivot = pcall(function() return tracteurModel:GetPivot() end)
+    if not ok then return end
+    local pos = pivot.Position
+
+    -- Scanner le Workspace pour les BRs appartenant à cette base
+    for _, obj in ipairs(Workspace:GetChildren()) do
+        if obj:GetAttribute("BaseIndex") == baseIndex then
+            local spawnId = obj:GetAttribute("SpawnId")
+            local rarete  = obj:GetAttribute("Rarete")
+            if spawnId and rarete then
+                local racine = obj.PrimaryPart
+                if not racine then
+                    for _, v in ipairs(obj:GetDescendants()) do
+                        if v:IsA("BasePart") then racine = v break end
+                    end
+                end
+                if racine and (racine.Position - pos).Magnitude <= RAYON_COLLECTE then
+                    local valeur = (Config.ValeurParRarete and Config.ValeurParRarete[rarete]) or 1
+                    SpawnManager.SupprimerCollectible(spawnId, baseIndex)
+                    onCollect(rarete, valeur)
+                end
+            end
+        end
+    end
+end
+
+-- ============================================================
 -- Déplacement fluide vers une position (lerp PivotTo)
 -- ============================================================
 local function deplacerVers(baseIndex, tracteurModel, targetPos, vitesse)
@@ -92,6 +139,7 @@ local function deplacerVers(baseIndex, tracteurModel, targetPos, vitesse)
         local alpha  = i / nbPas
         local newCF  = startCFrame:Lerp(endCFrame, alpha)
         pcall(function() tracteurModel:PivotTo(newCF) end)
+        collecterProches(baseIndex, tracteurModel)
         task.wait(dtPas)
     end
 
@@ -144,7 +192,8 @@ end
 -- ============================================================
 
 -- Activer le tracteur animé pour une base
-function TracteurSystem.Activer(player, baseIndex)
+-- onCollect(rareteNom, valeurBase) : callback appelé à chaque BR collecté
+function TracteurSystem.Activer(player, baseIndex, onCollect)
     -- Déjà actif → skip
     if tracteurData[baseIndex] and tracteurData[baseIndex].actif then return end
 
@@ -180,7 +229,7 @@ function TracteurSystem.Activer(player, baseIndex)
         pcall(function() tracteurModel.PrimaryPart.CanCollide = false end)
     end
 
-    tracteurData[baseIndex] = { actif = true }
+    tracteurData[baseIndex] = { actif = true, onCollect = onCollect }
 
     task.spawn(function()
         boucleTracteur(baseIndex, tracteurModel, spawnZone, VITESSE_DEF)

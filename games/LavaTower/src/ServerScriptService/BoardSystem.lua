@@ -71,8 +71,18 @@ end
 -- Création de la SurfaceGui sur le Board
 -- ============================================================
 local function creerSurfaceGui(board)
-    local ancienne = board:FindFirstChild("BoardGui")
-    if ancienne then ancienne:Destroy() end
+    -- Supprimer tous les SurfaceGui/BillboardGui existants (parasites Studio + anciens BoardGui)
+    for _, child in ipairs(board:GetChildren()) do
+        if child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
+            child:Destroy()
+        end
+    end
+    -- Supprimer aussi les TextLabels directs parasites (caractères isolés)
+    for _, child in ipairs(board:GetChildren()) do
+        if child:IsA("TextLabel") or child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
 
     local sg = Instance.new("SurfaceGui", board)
     sg.Name             = "BoardGui"
@@ -80,7 +90,7 @@ local function creerSurfaceGui(board)
     sg.SizingMode       = Enum.SurfaceGuiSizingMode.PixelsPerStud
     sg.PixelsPerStud    = 50
     sg.AlwaysOnTop      = false
-    sg.MaxDistance      = 40
+    sg.MaxDistance      = 80   -- augmenté de 40 → 80 studs
     sg.LightInfluence   = 0.3
 
     local fond = Instance.new("Frame", sg)
@@ -229,6 +239,11 @@ local function mettreAJourSurfaceGui(board, etat)
 end
 
 -- ============================================================
+-- Anti-double-clic — debounce par joueur
+-- ============================================================
+local clickDebounces = {}  -- { [userId] = true } pendant 1.5s
+
+-- ============================================================
 -- API publique — Init
 -- ============================================================
 
@@ -259,6 +274,11 @@ function BoardSystem.Init()
 
             local capturedIndex = i
             cd.MouseClick:Connect(function(player)
+                local uid = player.UserId
+                if clickDebounces[uid] then return end
+                clickDebounces[uid] = true
+                task.delay(1.5, function() clickDebounces[uid] = nil end)
+
                 local RS = getRebirthSystem()
                 if RS then pcall(RS.MettreAJourBouton, player) end
                 pcall(function() OuvrirRebirth:FireClient(player) end)

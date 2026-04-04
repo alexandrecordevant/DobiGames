@@ -610,7 +610,17 @@ local function OnPlayerAdded(player)
 
         -- Réactiver l'animation tracteur si upgrade Tracteur acheté (ou dev mode actif)
         if data.hasTracteur or Config.TracteurDevActif then
-            pcall(TracteurSystem.Activer, player, baseIndex)
+            local function onTracteurCollect(rareteNom, valeurBase)
+                local d = GetData(player)
+                if not d then return end
+                local mult = RebirthSystem.GetMultiplicateur(player) or 1
+                local coins = math.floor(valeurBase * mult)
+                d.coins           = d.coins + coins
+                d.totalCoinsGagnes = (d.totalCoinsGagnes or 0) + coins
+                d.totalCollecte   = (d.totalCollecte   or 0) + 1
+                EnvoyerHUD(player, d)
+            end
+            pcall(TracteurSystem.Activer, player, baseIndex, onTracteurCollect)
         end
 
         -- BaleSystem 

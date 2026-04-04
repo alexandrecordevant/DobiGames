@@ -14,51 +14,54 @@ GameConfigShared.ProgressionConfig = {
         { index = 4, nom = "Floor_4", type = "Model", spots = 10 },
     },
 
+    -- NOTE : Floor 1 entièrement débloqué au départ (coins=0).
+    -- Étages 2-4 débloqués uniquement via Rebirth (coins=9999999999 = jamais via coins).
+    -- L'ordre de déblocage par rebirth est géré dans Main.server.lua (BuildProgressionFromRebirth).
     seuils = {
-        -- Floor 1
-        { floor=1, spot=1,  coins=0,      label="Start"         },
-        { floor=1, spot=2,  coins=0,      label="Start"         },
-        { floor=1, spot=3,  coins=50,     label="50 coins"      },
-        { floor=1, spot=4,  coins=100,    label="100 coins"     },
-        { floor=1, spot=5,  coins=200,    label="200 coins"     },
-        { floor=1, spot=6,  coins=350,    label="350 coins"     },
-        { floor=1, spot=7,  coins=500,    label="500 coins"     },
-        { floor=1, spot=8,  coins=750,    label="750 coins"     },
-        { floor=1, spot=9,  coins=1000,   label="1 000 coins"   },
-        { floor=1, spot=10, coins=1500,   label="1 500 coins"   },
-        -- Floor 2
-        { floor=2, spot=1,  coins=2000,   label="Stage 2"       },
-        { floor=2, spot=2,  coins=2500,   label="2 500 coins"   },
-        { floor=2, spot=3,  coins=3000,   label="3 000 coins"   },
-        { floor=2, spot=4,  coins=3500,   label="3 500 coins"   },
-        { floor=2, spot=5,  coins=4000,   label="4 000 coins"   },
-        { floor=2, spot=6,  coins=5000,   label="5 000 coins"   },
-        { floor=2, spot=7,  coins=6000,   label="6 000 coins"   },
-        { floor=2, spot=8,  coins=7000,   label="7 000 coins"   },
-        { floor=2, spot=9,  coins=8000,   label="8 000 coins"   },
-        { floor=2, spot=10, coins=10000,  label="10 000 coins"  },
-        -- Floor 3
-        { floor=3, spot=1,  coins=15000,  label="Stage 3"       },
-        { floor=3, spot=2,  coins=18000,  label="18 000 coins"  },
-        { floor=3, spot=3,  coins=21000,  label="21 000 coins"  },
-        { floor=3, spot=4,  coins=25000,  label="25 000 coins"  },
-        { floor=3, spot=5,  coins=30000,  label="30 000 coins"  },
-        { floor=3, spot=6,  coins=35000,  label="35 000 coins"  },
-        { floor=3, spot=7,  coins=40000,  label="40 000 coins"  },
-        { floor=3, spot=8,  coins=45000,  label="45 000 coins"  },
-        { floor=3, spot=9,  coins=50000,  label="50 000 coins"  },
-        { floor=3, spot=10, coins=60000,  label="60 000 coins"  },
-        -- Floor 4
-        { floor=4, spot=1,  coins=80000,  label="Stage 4"       },
-        { floor=4, spot=2,  coins=90000,  label="90 000 coins"  },
-        { floor=4, spot=3,  coins=100000, label="100 000 coins" },
-        { floor=4, spot=4,  coins=120000, label="120 000 coins" },
-        { floor=4, spot=5,  coins=140000, label="140 000 coins" },
-        { floor=4, spot=6,  coins=160000, label="160 000 coins" },
-        { floor=4, spot=7,  coins=180000, label="180 000 coins" },
-        { floor=4, spot=8,  coins=200000, label="200 000 coins" },
-        { floor=4, spot=9,  coins=250000, label="250 000 coins" },
-        { floor=4, spot=10, coins=300000, label="300 000 coins" },
+        -- Floor 1 : tout débloqué au départ
+        { floor=1, spot=1,  coins=0, label="Start" },
+        { floor=1, spot=2,  coins=0, label="Start" },
+        { floor=1, spot=3,  coins=0, label="Start" },
+        { floor=1, spot=4,  coins=0, label="Start" },
+        { floor=1, spot=5,  coins=0, label="Start" },
+        { floor=1, spot=6,  coins=0, label="Start" },
+        { floor=1, spot=7,  coins=0, label="Start" },
+        { floor=1, spot=8,  coins=0, label="Start" },
+        { floor=1, spot=9,  coins=0, label="Start" },
+        { floor=1, spot=10, coins=0, label="Start" },
+        -- Floor 2 : déblocage par Rebirth 1-10
+        { floor=2, spot=1,  coins=9999999999, label="Rebirth 1"  },
+        { floor=2, spot=2,  coins=9999999999, label="Rebirth 2"  },
+        { floor=2, spot=3,  coins=9999999999, label="Rebirth 3"  },
+        { floor=2, spot=4,  coins=9999999999, label="Rebirth 4"  },
+        { floor=2, spot=5,  coins=9999999999, label="Rebirth 5"  },
+        { floor=2, spot=6,  coins=9999999999, label="Rebirth 6"  },
+        { floor=2, spot=7,  coins=9999999999, label="Rebirth 7"  },
+        { floor=2, spot=8,  coins=9999999999, label="Rebirth 8"  },
+        { floor=2, spot=9,  coins=9999999999, label="Rebirth 9"  },
+        { floor=2, spot=10, coins=9999999999, label="Rebirth 10" },
+        -- Floor 3 : déblocage par Rebirth 11-20
+        { floor=3, spot=1,  coins=9999999999, label="Rebirth 11" },
+        { floor=3, spot=2,  coins=9999999999, label="Rebirth 12" },
+        { floor=3, spot=3,  coins=9999999999, label="Rebirth 13" },
+        { floor=3, spot=4,  coins=9999999999, label="Rebirth 14" },
+        { floor=3, spot=5,  coins=9999999999, label="Rebirth 15" },
+        { floor=3, spot=6,  coins=9999999999, label="Rebirth 16" },
+        { floor=3, spot=7,  coins=9999999999, label="Rebirth 17" },
+        { floor=3, spot=8,  coins=9999999999, label="Rebirth 18" },
+        { floor=3, spot=9,  coins=9999999999, label="Rebirth 19" },
+        { floor=3, spot=10, coins=9999999999, label="Rebirth 20" },
+        -- Floor 4 : déblocage par Rebirth 21-30
+        { floor=4, spot=1,  coins=9999999999, label="Rebirth 21" },
+        { floor=4, spot=2,  coins=9999999999, label="Rebirth 22" },
+        { floor=4, spot=3,  coins=9999999999, label="Rebirth 23" },
+        { floor=4, spot=4,  coins=9999999999, label="Rebirth 24" },
+        { floor=4, spot=5,  coins=9999999999, label="Rebirth 25" },
+        { floor=4, spot=6,  coins=9999999999, label="Rebirth 26" },
+        { floor=4, spot=7,  coins=9999999999, label="Rebirth 27" },
+        { floor=4, spot=8,  coins=9999999999, label="Rebirth 28" },
+        { floor=4, spot=9,  coins=9999999999, label="Rebirth 29" },
+        { floor=4, spot=10, coins=9999999999, label="Rebirth 30" },
     },
 
     baseSurTotalGagne = true,
@@ -81,24 +84,32 @@ GameConfigShared.Raretes = {
 
 -- === VALEUR PAR RARETÉ ===
 -- Lu par DropSystem
+-- Clés en minuscule (Common…) ET en majuscule (COMMON…) pour compatibilité
+-- avec BrainrotPlatformSpawner qui utilise des raretés ALL CAPS.
 GameConfigShared.ValeurParRarete = {
-    Common    = 1,
-    Uncommon  = 3,
-    Rare      = 8,
-    Epic      = 20,
-    Legendary = 60,
-    Secret    = 500,
+    Common    = 1,   COMMON    = 1,
+    Uncommon  = 3,   UNCOMMON  = 3,
+    Rare      = 8,   RARE      = 8,
+    Epic      = 20,  EPIC      = 20,
+    Legendary = 60,  LEGENDARY = 60,
+    Mythic    = 100, MYTHIC    = 100,
+    God       = 200, GOD       = 200,
+    Secret    = 500, SECRET    = 500,
+    Og        = 500, OG        = 500,
 }
 
 -- === INCOME PAR RARETÉ ===
 -- Lu par IncomeSystem
 GameConfigShared.IncomeParRarete = {
-    Common    = 1,
-    Uncommon  = 3,
-    Rare      = 8,
-    Epic      = 20,
-    Legendary = 60,
-    Secret    = 500,
+    Common    = 1,   COMMON    = 1,
+    Uncommon  = 3,   UNCOMMON  = 3,
+    Rare      = 8,   RARE      = 8,
+    Epic      = 20,  EPIC      = 20,
+    Legendary = 60,  LEGENDARY = 60,
+    Mythic    = 100, MYTHIC    = 100,
+    God       = 200, GOD       = 200,
+    Secret    = 500, SECRET    = 500,
+    Og        = 500, OG        = 500,
 }
 
 -- === ANIMATION CONFIG ===

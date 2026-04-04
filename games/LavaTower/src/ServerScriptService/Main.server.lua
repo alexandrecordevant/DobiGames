@@ -23,6 +23,14 @@ local DropSystem                = require(ServerScriptService.SharedLib.Server.D
 local IncomeSystem              = require(ServerScriptService.SharedLib.Server.IncomeSystem)
 local BoardSystem               = require(ServerScriptService.BoardSystem)
 local RebirthCosmeticsSystem    = require(ServerScriptService.SharedLib.Server.RebirthCosmeticsSystem)
+print("[FuseMachine] Chargement du module…")
+local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.FuseMachineSystem)
+if not _fuseOk then
+    warn("[FuseMachine] ERREUR require : " .. tostring(FuseMachineSystem))
+    FuseMachineSystem = nil
+else
+    print("[FuseMachine] Module chargé ✓")
+end
 
 -- DataStore — inclut les champs requis par shared-lib
 DataStoreManager.Setup("LavaTowerV1", function()
@@ -45,6 +53,37 @@ DataStoreManager.Setup("LavaTowerV1", function()
         spotsOccupes            = {},
     }
 end)
+
+-- ═══════════════════════════════════════════════
+-- 1b. LOGIQUE REBIRTH → SLOTS
+-- Ordre de déblocage des slots par niveau de rebirth :
+--   Rebirth 1  → Floor 2, Spot 1
+--   Rebirth 2  → Floor 2, Spot 2  ...  Rebirth 10 → Floor 2, Spot 10
+--   Rebirth 11 → Floor 3, Spot 1  ...  Rebirth 20 → Floor 3, Spot 10
+--   Rebirth 21 → Floor 4, Spot 1  ...  Rebirth 30 → Floor 4, Spot 10
+-- ═══════════════════════════════════════════════
+
+local REBIRTH_SLOT_ORDER = {}
+do
+    for etage = 2, 4 do
+        for spot = 1, 10 do
+            table.insert(REBIRTH_SLOT_ORDER, { floor = etage, spot = spot })
+        end
+    end
+end
+
+-- Construit data.progression depuis le niveau de rebirth.
+-- Appelé avant BaseProgressionSystem.Init pour que l'état visuel soit correct.
+local function BuildProgressionFromRebirth(rebirthLevel)
+    local prog = {}
+    for i = 1, (rebirthLevel or 0) do
+        local slotInfo = REBIRTH_SLOT_ORDER[i]
+        if slotInfo then
+            prog[slotInfo.floor .. "_" .. slotInfo.spot] = true
+        end
+    end
+    return prog
+end
 
 -- ═══════════════════════════════════════════════
 -- 2. REMOTEEVENTS
@@ -73,6 +112,7 @@ local NotifEvent         = CreerRemoteEvent("NotifEvent")
 local OfflineIncomeNotif = CreerRemoteEvent("OfflineIncomeNotif")
 local DemandeUpgrade     = CreerRemoteEvent("DemandeUpgrade")
 local DemandePrestige    = CreerRemoteEvent("DemandePrestige")
+local AssignBase         = CreerRemoteEvent("AssignBase")         -- notifie le client de son baseIndex
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
 
@@ -92,23 +132,21 @@ local function SetData(player, data)
     playerDataCache[player.UserId] = data
 end
 
--- HUD avec coins réels (data.coins + coins en attente dans les slots)
+-- HUD avec coins réels collectés uniquement (pas les coins en attente dans les slots)
 local function EnvoyerHUD(player, data)
-    local extraCoins  = IncomeSystem.GetCoinsEnAttente(player) or 0
-    local hudData     = {}
-    for k, v in pairs(data) do hudData[k] = v end
-    hudData.coins     = (data.coins or 0) + extraCoins
-    UpdateHUD:FireClient(player, hudData)
+    UpdateHUD:FireClient(player, data)
 end
 
 -- ═══════════════════════════════════════════════
 -- 4. INJECTIONS SHARED-LIB (globales)
 -- ═══════════════════════════════════════════════
 
--- RebirthSystem — config tiers + condition progression (identique BrainRotFarm)
+-- RebirthSystem — config tiers + condition progression
+-- Les rebirths sont disponibles dès que les coins+BR requis sont réunis ;
+-- ils débloquent les slots (pas l'inverse). Pas de condition de progression bloquante.
 RebirthSystem.Config = RebirthConfig.Tiers
-RebirthSystem.IsProgressionComplete = function(playerData)
-    return playerData.progression and playerData.progression["4_10"] == true
+RebirthSystem.IsProgressionComplete = function(_playerData)
+    return true
 end
 
 -- CarrySystem — source de vérité pour la base du joueur
@@ -116,9 +154,13 @@ CarrySystem.GetBaseJoueur = function(player)
     return AssignationSystem.GetBaseIndex(player)
 end
 
--- RebirthSystem — coins en attente comptent pour vérifier les conditions
-RebirthSystem.GetExtraCoins = function(player)
-    return IncomeSystem.GetCoinsEnAttente(player) or 0
+-- RebirthSystem — lecture live des spots occupés pour la vérification des BRs requis
+RebirthSystem.GetSpotsOccupes = function(player)
+    return DropSystem.GetSpotsOccupesSerialisables(player)
+end
+-- DropSystem — mise à jour immédiate du bouton rebirth après dépôt/retrait/vente
+DropSystem.OnSpotChange = function(player)
+    RebirthSystem.MettreAJourBouton(player)
 end
 RebirthSystem.OnButtonUpdate = function(player, etat)
     BoardSystem.MettreAJourBoard(player, etat)
@@ -142,6 +184,11 @@ local function OnPlayerAdded(player)
 
     local baseIndex = AssignationSystem.AssignerJoueur(player)
     if baseIndex then
+        -- Reconstruire la progression à partir du niveau rebirth AVANT Init.
+        -- Garantit que les slots débloqués par rebirth sont corrects même après
+        -- un changement de système ou une reconnexion.
+        data.progression = BuildProgressionFromRebirth(data.rebirthLevel or 0)
+
         BaseProgressionSystem.Init(player, baseIndex, data)
         BaseProgressionSystem.VerifierDeblocages(player, data)
 
@@ -151,10 +198,27 @@ local function OnPlayerAdded(player)
         DropSystem.Init(player, baseIndex, data)
         IncomeSystem.Init(player, function() return GetData(player) end)
 
+        -- Notifier le client de son baseIndex assigné (utilisé pour SlotTextStyle)
+        task.delay(0.5, function()
+            if player.Parent then
+                AssignBase:FireClient(player, baseIndex)
+            end
+        end)
+
         RebirthSystem.OnRebirthComplete = function(p, niveau, cfg)
             local spotsApres = BaseProgressionSystem.GetSpotsActifs(p)
             CarrySystem.InitDepotSpotsBase(p, spotsApres)
-            pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, p, niveau)
+            -- Animation fade-in de structure uniquement au premier rebirth de chaque étage
+            -- Rebirth 1 → Floor 2, Rebirth 11 → Floor 3, Rebirth 21 → Floor 4
+            local SPOTS_PAR_ETAGE = 10
+            for etageIdx = 2, 4 do
+                local premiereSlot = (etageIdx - 2) * SPOTS_PAR_ETAGE + 1
+                if niveau == premiereSlot then
+                    -- DebloquerFloorApresRebirth(p, N) débloque floorIndex = N+1
+                    pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, p, etageIdx - 1)
+                    break
+                end
+            end
             pcall(BoardSystem.MettreAJourBoard, p, {
                 rebirthLevel   = niveau,
                 coinsActuels   = 0,
@@ -164,6 +228,9 @@ local function OnPlayerAdded(player)
             })
         end
         RebirthSystem.OnResetBase = function(p, bIndex, d)
+            -- Pré-remplir la progression AVANT BaseProgressionSystem.Init (appelé par RebirthSystem)
+            -- d.rebirthLevel est déjà mis à jour au moment de cet appel
+            d.progression = BuildProgressionFromRebirth(d.rebirthLevel or 0)
             DropSystem.Stop(p)
             IncomeSystem.Stop(p)
             DropSystem.Init(p, bIndex, d)
@@ -275,6 +342,40 @@ end
 AssignationSystem.Init()
 BoardSystem.Init()
 RebirthCosmeticsSystem.Init()
+
+-- ═══════════════════════════════════════════════
+-- 9. FUSE MACHINE
+-- ═══════════════════════════════════════════════
+
+-- GetCoins inclut les coins en attente dans les slots (comme EnvoyerHUD)
+FuseMachineSystem.GetCoins = function(player)
+    local data = GetData(player)
+    if not data then return 0 end
+    return (data.coins or 0) + (IncomeSystem.GetCoinsEnAttente(player) or 0)
+end
+
+-- Déduction uniquement sur data.coins (les coins en attente restent dans les slots)
+FuseMachineSystem.DeductCoins = function(player, montant)
+    local data = GetData(player)
+    if not data then return end
+    data.coins = math.max(0, (data.coins or 0) - montant)
+    SetData(player, data)
+end
+
+FuseMachineSystem.UpdateHUD = function(player)
+    local data = GetData(player)
+    if data then EnvoyerHUD(player, data) end
+end
+
+if FuseMachineSystem then
+    print("[FuseMachine] Appel Init()…")
+    local ok, err = pcall(FuseMachineSystem.Init)
+    if not ok then
+        warn("[FuseMachine] ERREUR Init() : " .. tostring(err))
+    end
+else
+    warn("[FuseMachine] Init() ignoré — module non chargé")
+end
 
 -- ═══════════════════════════════════════════════
 -- 8. DÉMARRAGE
