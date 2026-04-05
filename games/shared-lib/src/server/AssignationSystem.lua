@@ -105,7 +105,7 @@ local function assigner(player)
 
     if not baseIndex then
         -- Serveur plein → mode spectateur (observer uniquement)
-        notifierJoueur(player, "INFO", "👀 Server full — spectator mode")
+        notifierJoueur(player, "INFO", "Server full — spectator mode")
         warn("[AssignationSystem] " .. player.Name .. " → spectateur (toutes les bases occupées)")
         return nil
     end
@@ -118,7 +118,7 @@ local function assigner(player)
     player:SetAttribute("BaseAssignee", "Base_" .. baseIndex)
 
     -- Informer le joueur et le téléporter
-    notifierJoueur(player, "INFO", "🏠 Base " .. baseIndex .. " assigned — welcome!")
+    notifierJoueur(player, "INFO", "Base " .. baseIndex .. " assigned — welcome!")
     teleporterVersBase(player, baseIndex)
 
     -- Re-téléporter à chaque respawn pour toujours revenir face à la base
@@ -156,7 +156,7 @@ local function liberer(player)
     -- Retirer l'attribut BaseAssignee pour libérer la base côté BotSystem
     pcall(function() player:SetAttribute("BaseAssignee", nil) end)
 
-    notifierTous("INFO", "🏠 " .. player.Name .. " left — Base " .. baseIndex .. " available!")
+    notifierTous("INFO", player.Name .. " left — Base " .. baseIndex .. " available!")
     print("[AssignationSystem] Base_" .. baseIndex .. " libérée (départ de " .. player.Name .. ")")
 end
 

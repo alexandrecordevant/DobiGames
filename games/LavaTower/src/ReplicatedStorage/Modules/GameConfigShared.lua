@@ -183,7 +183,7 @@ GameConfigShared.SpawnableItems = {
 -- === BOARD CONFIG ===
 -- Lu par BoardSystem
 GameConfigShared.BoardConfig = {
-    texteDefaut   = "🔄 REBIRTH\nClick to view",
+    texteDefaut   = "REBIRTH\nClick to view",
     distanceClick = 20,
 }
 

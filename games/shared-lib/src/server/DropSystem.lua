@@ -7,12 +7,13 @@ local DropSystem = {}
 -- ============================================================
 -- Services
 -- ============================================================
-local Players           = game:GetService("Players")
-local Workspace         = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerStorage     = game:GetService("ServerStorage")
+local Players             = game:GetService("Players")
+local Workspace           = game:GetService("Workspace")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local ServerStorage       = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
-local TweenService      = game:GetService("TweenService")
+local TweenService        = game:GetService("TweenService")
+local CollectionService   = game:GetService("CollectionService")
 
 -- ============================================================
 -- Config
@@ -29,6 +30,12 @@ local ProgConfig = Config.ProgressionConfig
 -- Cette table reste pour l'affichage texte du prompt avant dépôt.
 local VALEUR_PAR_RARETE = Config.ValeurParRarete
 
+-- Dossier source des Brainrots (ServerStorage par défaut, ReplicatedStorage pour LavaTower)
+-- Configurable via DropSystem.SetBrainrotsFolder(folder) depuis Main.server.lua
+local _brainrotsFolder = nil
+local function getBrainrotsFolder()
+    return _brainrotsFolder or ServerStorage:FindFirstChild("Brainrots")
+end
 
 -- ============================================================
 -- Chargement différé de IncomeSystem (évite la dépendance circulaire)
@@ -66,6 +73,13 @@ local ELEMENT_TO_FILTRE = {
     earth = "ElementTerre",
     wind  = "ElementVent",
 }
+
+-- ============================================================
+-- Callback injecté par Main.server.lua (optionnel)
+-- Appelé après chaque dépôt / récupération / vente
+-- Exemple : DropSystem.OnSpotChange = function(player) RebirthSystem.MettreAJourBouton(player) end
+-- ============================================================
+DropSystem.OnSpotChange = nil
 
 -- ============================================================
 -- État interne par joueur
@@ -193,7 +207,7 @@ end
 -- Clone un modèle depuis ServerStorage.Brainrots/[dossier]
 -- Décision : on clone un aléatoire parmi les modèles du dossier (cohérent avec CarrySystem)
 local function clonerModeleSlot(rarete)
-    local brainrots = ServerStorage:FindFirstChild("Brainrots")
+    local brainrots = getBrainrotsFolder()
     if not brainrots then return nil end
 
     local dossier = brainrots:FindFirstChild(rarete)
@@ -247,9 +261,18 @@ local function nettoyerParasites(clone)
     local vfx = clone:FindFirstChild("VfxInstance")
     if vfx then pcall(function() vfx:Destroy() end) end
 
-    -- BillboardGui et ProximityPrompts résiduels (texte "EPIC", prompt de capture)
+    -- BillboardGui : garder _BRBillboard mais supprimer LTimer dedans
+    -- ProximityPrompts : tous supprimés (Collect, Capture, etc.)
     for _, v in ipairs(clone:GetDescendants()) do
-        if v:IsA("BillboardGui") or v:IsA("ProximityPrompt") then
+        if v:IsA("BillboardGui") then
+            if v.Name == "_BRBillboard" then
+                -- Conserver le billboard d'info mais retirer le timer
+                local lTimer = v:FindFirstChild("LTimer")
+                if lTimer then pcall(function() lTimer:Destroy() end) end
+            else
+                pcall(function() v:Destroy() end)
+            end
+        elseif v:IsA("ProximityPrompt") then
             pcall(function() v:Destroy() end)
         end
     end
@@ -262,6 +285,15 @@ local function nettoyerParasites(clone)
             pcall(function() v:Destroy() end)
         end
     end
+
+    -- Retirer le tag BrainrotCollectible (Clone() le copie depuis le modèle source).
+    -- Sans ce retrait, PickupSystem.GetInstanceAddedSignal se déclenche quand le clone
+    -- entre dans Workspace → recrée Collect prompt + LTimer + StartCountdown.
+    pcall(function()
+        if CollectionService:HasTag(clone, "BrainrotCollectible") then
+            CollectionService:RemoveTag(clone, "BrainrotCollectible")
+        end
+    end)
 end
 
 -- Place et anime le modèle sur un spot (taille originale)
@@ -462,7 +494,7 @@ local function creerPromptRemplacer(touchPart, player, rarete)
             end
         end
         if nbValides == 0 then
-            notifierJoueur(player, "INFO", "🎒 You are not carrying any Brain Rot!")
+            notifierJoueur(player, "INFO", "You are not carrying any Brain Rot!")
             return
         end
         -- Éjecter le BR actuel dans le champ, puis déposer le BR porté
@@ -561,7 +593,7 @@ local function restaurerDepots(player, playerData)
             -- Tenter de restaurer le modèle exact via brNom (mutants inclus)
             local modeleSource = nil
             if info.brNom then
-                local brainrots = ServerStorage:FindFirstChild("Brainrots")
+                local brainrots = getBrainrotsFolder()
                 local dossier   = brainrots and (
                     brainrots:FindFirstChild(info.rarete)
                     or brainrots:FindFirstChild(string.upper(info.rarete))
@@ -586,7 +618,7 @@ local function restaurerDepots(player, playerData)
                 -- brNom nil : donnée ancienne OU mutant sans brNom sauvegardé
                 -- Fallback déterministe sur modeles[1] pour éviter le changement
                 -- de BR à chaque reconnexion (math.random dans clonerModeleSlot)
-                local brainrots = ServerStorage:FindFirstChild("Brainrots")
+                local brainrots = getBrainrotsFolder()
                 local dossier   = brainrots and (
                     brainrots:FindFirstChild(info.rarete)
                     or brainrots:FindFirstChild(string.upper(info.rarete))
@@ -677,6 +709,16 @@ local function construireSpotsTable(player)
 end
 
 -- ============================================================
+-- API publique — Configuration
+-- ============================================================
+
+-- Configure le dossier source des Brainrots (à appeler avant Init si les BRs ne sont pas dans ServerStorage)
+-- Exemple LavaTower : DropSystem.SetBrainrotsFolder(ReplicatedStorage:FindFirstChild("Brainrots"))
+function DropSystem.SetBrainrotsFolder(folder)
+    _brainrotsFolder = folder
+end
+
+-- ============================================================
 -- API publique — Init
 -- ============================================================
 
@@ -735,13 +777,13 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         if tp == touchPart then spotKey = cle break end
     end
     if not spotKey then
-        notifierJoueur(player, "INFO", "❌ This spot doesn't belong to your base!")
+        notifierJoueur(player, "INFO", "This spot doesn't belong to your base!")
         return
     end
 
     -- Spot déjà occupé ?
     if spotsData[uid][touchPart] then
-        notifierJoueur(player, "INFO", "🔒 This spot is already occupied — retrieve the Brain Rot first.")
+        notifierJoueur(player, "INFO", "This spot is already occupied — retrieve the Brain Rot first.")
         return
     end
 
@@ -814,7 +856,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- (évite le fallback aléatoire de clonerModeleSlot)
     local modeleSource = modeleDepose
     if not modeleSource and brNom then
-        local brainrots = ServerStorage:FindFirstChild("Brainrots")
+        local brainrots = getBrainrotsFolder()
         local dossier = brainrots and (
             brainrots:FindFirstChild(rarete)
             or brainrots:FindFirstChild(string.upper(rarete))
@@ -900,7 +942,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Informer le joueur
     notifierJoueur(player, "INFO",
-        "✅ Brain Rot [" .. rarete .. "] deposited! +" .. valeurSec .. " coins/sec")
+        "Brain Rot [" .. rarete .. "] deposited! +" .. valeurSec .. " coins/sec")
 
     -- Recalculer l'income total du joueur + connecter Button immédiatement
     local IS = getIncomeSystem()
@@ -913,6 +955,9 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Recalculer tous les prompts : active RemplacerPrompt si carry > 0, désactive DepotPrompt du slot occupé
     DropSystem.RecalculerPrompts(player)
+
+    -- Notifier les systèmes externes (ex : RebirthSystem pour détecter le BR requis)
+    if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
 
     print("[DropSystem] " .. player.Name .. " a déposé " .. rarete .. " sur spot " .. spotKey)
 end
@@ -934,7 +979,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     local max    = CarrySystem.GetCapaciteMax(player)
 
     if #portes >= max then
-        notifierJoueur(player, "INFO", "🎒 Carry full — empty your carry before retrieving!")
+        notifierJoueur(player, "INFO", "Carry full — empty your carry before retrieving!")
         return
     end
 
@@ -958,7 +1003,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     local modeleRestitue = nil
     local brNom = entree.brNom
     if brNom then
-        local brainrots = ServerStorage:FindFirstChild("Brainrots")
+        local brainrots = getBrainrotsFolder()
         local dossierRarete = brainrots and (
             brainrots:FindFirstChild(rarete)
             or brainrots:FindFirstChild(string.upper(rarete))
@@ -1000,7 +1045,10 @@ function DropSystem.RecupererBrainRot(player, touchPart)
         IS.RecalculerIncome(player, construireSpotsTable(player))
     end
 
-    notifierJoueur(player, "INFO", "↩️ Brain Rot [" .. rarete .. "] retrieved to your carry!")
+    -- Notifier les systèmes externes (ex : RebirthSystem)
+    if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
+
+    notifierJoueur(player, "INFO", "Brain Rot [" .. rarete .. "] retrieved to your carry!")
     print("[DropSystem] " .. player.Name .. " a récupéré " .. rarete .. " du spot " .. spotKey)
 end
 
@@ -1165,7 +1213,7 @@ function DropSystem.EjecterBR(player, touchPart)
     viderGui(touchPart)
 
     -- Cloner un modèle taille réelle dans le terrain près du spot
-    local brainrots = ServerStorage:FindFirstChild("Brainrots")
+    local brainrots = getBrainrotsFolder()
     if brainrots then
         local dossier = brainrots:FindFirstChild(rarete) or brainrots:FindFirstChild("COMMON")
         if dossier then
@@ -1222,6 +1270,9 @@ function DropSystem.EjecterBR(player, touchPart)
     -- Recalculer l'income
     if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
 
+    -- Notifier les systèmes externes (ex : RebirthSystem)
+    if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
+
     print("[DropSystem] BR éjecté : " .. rarete .. " du spot " .. spotKey)
 end
 
@@ -1269,8 +1320,11 @@ function DropSystem.VendreBR(player, touchPart)
     -- Recalculer l'income
     if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
 
+    -- Notifier les systèmes externes (ex : RebirthSystem)
+    if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
+
     notifierJoueur(player, "INFO",
-        "💰 Brain Rot [" .. rarete .. "] sold! +" .. tostring(bonusVente) .. " coins")
+        "Brain Rot [" .. rarete .. "] sold! +" .. tostring(bonusVente) .. " coins")
     print("[DropSystem] " .. player.Name .. " a vendu " .. rarete .. " du spot " .. spotKey)
 end
 
@@ -1278,10 +1332,44 @@ end
 function DropSystem.Stop(player)
     local uid = player.UserId
     if spotsData[uid] then
-        -- Supprimer tous les mini modèles
-        for _, entry in pairs(spotsData[uid]) do
-            if entry.modeleSlot then
-                pcall(function() entry.modeleSlot:Destroy() end)
+        for touchPart, entry in pairs(spotsData[uid]) do
+            -- Supprimer le mini modèle BR (annuler les tweens en forçant transparence=1 avant destroy)
+            if entry.modeleSlot and entry.modeleSlot.Parent then
+                pcall(function()
+                    for _, v in ipairs(entry.modeleSlot:GetDescendants()) do
+                        if v:IsA("BasePart") then
+                            v.Transparency = 1
+                            v.CanCollide   = false
+                        end
+                    end
+                    entry.modeleSlot:Destroy()
+                end)
+            end
+            -- Supprimer les ancres de prompts (AnchorSell, AnchorRetrieve)
+            -- et tous les ProximityPrompts directs sur le touchPart
+            if touchPart and touchPart.Parent then
+                for _, child in ipairs(touchPart:GetChildren()) do
+                    if (child:IsA("BasePart") and
+                        (child.Name == "AnchorSell" or child.Name == "AnchorRetrieve"))
+                    or (child:IsA("ProximityPrompt") and child.Name ~= "DepotPrompt") then
+                        pcall(function() child:Destroy() end)
+                    end
+                end
+            end
+        end
+    end
+    -- Nettoyer aussi via spotIndex les slots sans entrée dans spotsData
+    -- (cas où le slot était libre mais avait des ancres résiduelles)
+    if spotIndex[uid] then
+        for _, touchPart in pairs(spotIndex[uid]) do
+            if touchPart and touchPart.Parent then
+                for _, child in ipairs(touchPart:GetChildren()) do
+                    if (child:IsA("BasePart") and
+                        (child.Name == "AnchorSell" or child.Name == "AnchorRetrieve"))
+                    or (child:IsA("ProximityPrompt") and child.Name ~= "DepotPrompt") then
+                        pcall(function() child:Destroy() end)
+                    end
+                end
             end
         end
     end

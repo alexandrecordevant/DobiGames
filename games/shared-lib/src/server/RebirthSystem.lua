@@ -320,11 +320,11 @@ local function executerRebirth(player)
 
     -- Étape 4 : Notifications in-game
     local msgJoueur = string.format(
-        "🔥 %s! Multiplier ×%.1f unlocked! +%d bonus slots",
+        "%s! Multiplier x%.1f unlocked! +%d bonus slots",
         cfg.label, cfg.multiplicateur, cfg.slotsBonus
     )
     local msgTous = string.format(
-        "⚡ %s just performed their %s! (×%.1f)",
+        "%s just performed their %s! (x%.1f)",
         player.Name, cfg.label, cfg.multiplicateur
     )
     local notif = getNotifEvent()
@@ -392,10 +392,10 @@ DemandeRebirth.OnServerEvent:Connect(function(player)
     if not ok then
         local parties = {}
         if manques.manqueCoins and manques.manqueCoins > 0 then
-            table.insert(parties, "💰 " .. formaterCoins(manques.manqueCoins) .. " coins missing")
+            table.insert(parties, formaterCoins(manques.manqueCoins) .. " coins missing")
         end
         if manques.manqueBR then
-            table.insert(parties, "🧬 1 " .. manques.manqueBR .. " missing in your inventory")
+            table.insert(parties, "1 " .. manques.manqueBR .. " missing in your inventory")
         end
         local notif = getNotifEvent()
         if notif then

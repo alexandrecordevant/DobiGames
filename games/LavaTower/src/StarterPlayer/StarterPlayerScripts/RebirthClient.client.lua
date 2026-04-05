@@ -226,7 +226,7 @@ headerFill.ZIndex           = 11
 headerFill.Parent           = header
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Text                   = "✦  REBIRTH"
+titleLabel.Text                   = "REBIRTH"
 titleLabel.Size                   = UDim2.new(1, -50, 1, 0)
 titleLabel.Position               = UDim2.new(0, 16, 0, 0)
 titleLabel.BackgroundTransparency = 1
@@ -253,7 +253,7 @@ levelLabel.Parent                 = popup
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name             = "CloseBtn"
-closeBtn.Text             = "✕"
+closeBtn.Text             = "X"
 closeBtn.Size             = UDim2.new(0, 32, 0, 32)
 closeBtn.Position         = UDim2.new(1, -42, 0, 12)
 closeBtn.BackgroundColor3 = C.BLUE_DARK
@@ -280,7 +280,7 @@ moneyBlock.Parent           = popup
 addCorner(moneyBlock, 6)
 addStroke(moneyBlock, C.BORDER, 1)
 
-makeLabel(moneyBlock, "💰  Money",
+makeLabel(moneyBlock, "Money",
     UDim2.new(0, 12, 0, 6), UDim2.new(0.5, 0, 0, 22),
     C.WHITE, 13, Enum.Font.GothamBold, Enum.TextXAlignment.Left).ZIndex = 12
 
@@ -329,7 +329,7 @@ barText.Parent                 = barBg
 
 local moneyStatus = Instance.new("TextLabel")
 moneyStatus.Name                   = "MoneyStatus"
-moneyStatus.Text                   = "✗  Insuffisant"
+moneyStatus.Text                   = "Insuffisant"
 moneyStatus.Size                   = UDim2.new(1, -24, 0, 18)
 moneyStatus.Position               = UDim2.new(0, 12, 0, 54)
 moneyStatus.BackgroundTransparency = 1
@@ -350,7 +350,7 @@ rarityBlock.Parent           = popup
 addCorner(rarityBlock, 6)
 addStroke(rarityBlock, C.BORDER, 1)
 
-makeLabel(rarityBlock, "🎲  Stone Rarity",
+makeLabel(rarityBlock, "Stone Rarity",
     UDim2.new(0, 12, 0, 6), UDim2.new(0.55, 0, 0, 22),
     C.WHITE, 13, Enum.Font.GothamBold, Enum.TextXAlignment.Left).ZIndex = 12
 
@@ -369,7 +369,7 @@ rarityRequired.Parent                 = rarityBlock
 
 local rarityStatus = Instance.new("TextLabel")
 rarityStatus.Name                   = "RarityStatus"
-rarityStatus.Text                   = "✗  Not owned"
+rarityStatus.Text                   = "Not owned"
 rarityStatus.Size                   = UDim2.new(0.5, -12, 0, 18)
 rarityStatus.Position               = UDim2.new(0.5, 4, 0, 6)
 rarityStatus.BackgroundTransparency = 1
@@ -397,7 +397,7 @@ addStroke(rewardBlock, C.BORDER, 1)
 
 local rewardText = Instance.new("TextLabel")
 rewardText.Name                   = "RewardText"
-rewardText.Text                   = "📦  +1 Slot  ×1.2 multiplicateur"
+rewardText.Text                   = "+1 Slot  x1.2 multiplicateur"
 rewardText.Size                   = UDim2.new(1, -24, 1, 0)
 rewardText.Position               = UDim2.new(0, 12, 0, 0)
 rewardText.BackgroundTransparency = 1
@@ -409,7 +409,7 @@ rewardText.ZIndex                 = 12
 rewardText.Parent                 = rewardBlock
 
 local warnLabel = makeLabel(popup,
-    "⚠  You will lose all your Stones and money!",
+    "You will lose all your Stones and money!",
     UDim2.new(0, 12, 0, 334), UDim2.new(1, -24, 0, 34),
     Color3.fromRGB(198, 165, 95), 11, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
 warnLabel.TextWrapped = true
@@ -479,8 +479,8 @@ local function updateFromEtat(etat)
     if not etat then return end
     dernierEtat = etat
 
-    -- Bouton principal : visible seulement si progression complète
-    mainBtn.Visible = etat.visible == true
+    -- Bouton principal désactivé — accès uniquement via le Board devant la base
+    mainBtn.Visible = false
 
     if not menuOuvert then return end
 
@@ -506,10 +506,10 @@ local function updateFromEtat(etat)
 
     local coinsOk = (etat.manqueCoins or 0) == 0
     if coinsOk then
-        moneyStatus.Text       = "✔  Suffisant"
+        moneyStatus.Text       = "Suffisant"
         moneyStatus.TextColor3 = C.GREEN
     else
-        moneyStatus.Text       = "✗  " .. fmtNumber(etat.manqueCoins) .. " manquant"
+        moneyStatus.Text       = fmtNumber(etat.manqueCoins) .. " manquant"
         moneyStatus.TextColor3 = C.RED
     end
 
@@ -518,15 +518,15 @@ local function updateFromEtat(etat)
     rarityRequired.Text       = "Required: " .. rarete
     rarityRequired.TextColor3 = rarityColor
     if brOk then
-        rarityStatus.Text       = "✔  Owned"
+        rarityStatus.Text       = "Owned"
         rarityStatus.TextColor3 = C.GREEN
     else
-        rarityStatus.Text       = "✗  Not owned (" .. (etat.manqueBRActuel or 0) .. "/" .. (etat.manqueBRRequis or 1) .. ")"
+        rarityStatus.Text       = "Not owned (" .. (etat.manqueBRActuel or 0) .. "/" .. (etat.manqueBRRequis or 1) .. ")"
         rarityStatus.TextColor3 = C.RED
     end
 
     -- Récompense
-    rewardText.Text = "📦  +1 Slot  ×" .. string.format("%.1f", mult) .. " multiplicateur"
+    rewardText.Text = "+1 Slot  x" .. string.format("%.1f", mult) .. " multiplicateur"
 
     -- Bas du popup
     slotsLabel.Text = "Rebirth level: " .. niveau
@@ -608,7 +608,7 @@ end)
 -- Animation rebirth (cosmétique)
 if RebirthAnimation then
     RebirthAnimation.OnClientEvent:Connect(function(info)
-        resultLabel.Text       = "✦  " .. (info.label or "REBIRTH") .. "  ×" .. string.format("%.1f", info.multiplicateur or 1)
+        resultLabel.Text       = (info.label or "REBIRTH") .. "  x" .. string.format("%.1f", info.multiplicateur or 1)
         resultLabel.TextColor3 = C.GREEN
         if menuOuvert then
             task.delay(2, closeMenu)

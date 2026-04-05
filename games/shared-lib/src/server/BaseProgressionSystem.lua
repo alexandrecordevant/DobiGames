@@ -300,7 +300,7 @@ local function creerBillboardLock(spotModel, label)
 	lblLock.Size                   = UDim2.new(1, 0, 0.5, 0)
 	lblLock.Position               = UDim2.new(0, 0, 0, 0)
 	lblLock.BackgroundTransparency = 1
-	lblLock.Text                   = "🔒 Locked"
+	lblLock.Text                   = "Locked"
 	lblLock.Font                   = Enum.Font.GothamBold
 	lblLock.TextColor3             = Color3.new(1, 1, 1)
 	lblLock.TextScaled             = true
@@ -310,7 +310,7 @@ local function creerBillboardLock(spotModel, label)
 	lblCoins.Size                   = UDim2.new(1, 0, 0.5, 0)
 	lblCoins.Position               = UDim2.new(0, 0, 0.5, 0)
 	lblCoins.BackgroundTransparency = 1
-	lblCoins.Text                   = "💰 " .. tostring(label or "?")
+	lblCoins.Text                   = tostring(label or "?")
 	lblCoins.Font                   = Enum.Font.GothamBold
 	lblCoins.TextColor3             = Color3.new(1, 1, 1)
 	lblCoins.TextScaled             = true
@@ -318,18 +318,19 @@ local function creerBillboardLock(spotModel, label)
 end
 
 local function supprimerBillboardLock(spotModel)
-	local ancre = spotModel:FindFirstChild("TouchPart")
-	if not ancre then ancre = spotModel:FindFirstChildWhichIsA("BasePart") end
-	if not ancre then return end
-	local bb = ancre:FindFirstChild("LockBillboard")
-	if bb then bb:Destroy() end
+	-- Supprimer LockBillboard + tout BillboardGui résiduel de Studio sur toutes les parts du spot
+	for _, descendant in ipairs(spotModel:GetDescendants()) do
+		if descendant:IsA("BillboardGui") then
+			pcall(function() descendant:Destroy() end)
+		end
+	end
 end
 
 -- ============================================================
 -- Visuels — états spot
 -- ============================================================
 
--- Applique l'état verrouillé (semi-transparent, CanTouch=false, billboard)
+-- Applique l'état verrouillé (semi-transparent, CanTouch=false, pas de billboard)
 local function appliquerEtatVerrouille(spotModel, seuil)
 	local parts = obtenirPartsSpot(spotModel)
 	for _, part in ipairs(parts) do
@@ -339,7 +340,8 @@ local function appliquerEtatVerrouille(spotModel, seuil)
 	if touchPart then
 		pcall(function() touchPart.CanTouch = false end)
 	end
-	creerBillboardLock(spotModel, seuil.label)
+	-- Billboard de verrouillage supprimé : on n'affiche plus le coût au-dessus des slots verrouillés
+	supprimerBillboardLock(spotModel)
 end
 
 -- Applique l'état débloqué (visible, CanTouch=true, pas de billboard)
@@ -363,14 +365,23 @@ end
 -- ============================================================
 
 -- Cache tout un étage (floors 2-4 non encore débloqués)
--- Tous les BaseParts → invisible + non-collidable (évite l'interaction avec parties invisibles)
+-- Sauvegarde la transparence originale de chaque part avant de cacher,
+-- pour pouvoir la restaurer correctement lors du déblocage.
 local function cacherEtage(floorObj)
+	local function cacherPart(v)
+		-- Sauvegarder la transparence Studio originale (avant toute modification)
+		if not v:GetAttribute("_OrigTransp") then
+			v:SetAttribute("_OrigTransp", v.Transparency)
+		end
+		v.Transparency = 1
+		v.CanCollide   = false
+	end
 	if floorObj:IsA("BasePart") then
-		pcall(function() floorObj.Transparency = 1; floorObj.CanCollide = false end)
+		pcall(cacherPart, floorObj)
 	end
 	for _, v in ipairs(floorObj:GetDescendants()) do
 		if v:IsA("BasePart") then
-			pcall(function() v.Transparency = 1; v.CanCollide = false end)
+			pcall(cacherPart, v)
 		elseif v:IsA("ProximityPrompt") or v:IsA("ClickDetector") then
 			pcall(function() v.Enabled = false end)
 		end
@@ -381,7 +392,11 @@ end
 local function afficherStructure(floorObj)
 	local partsStructure = obtenirPartsStructure(floorObj)
 	for _, part in ipairs(partsStructure) do
-		pcall(function() part.Transparency = 0; part.CanCollide = true end)
+		pcall(function()
+			local orig = part:GetAttribute("_OrigTransp")
+			part.Transparency = (orig ~= nil) and orig or 0
+			if part.Transparency < 1 then part.CanCollide = true end
+		end)
 	end
 	-- Réactiver les ProximityPrompts/ClickDetectors de la structure
 	for _, v in ipairs(floorObj:GetDescendants()) do
@@ -400,9 +415,14 @@ local function fadeInStructure(floorObj, onFin)
 		if onFin then task.spawn(onFin) end
 		return
 	end
-	-- Restaurer la collision immédiatement (avant le fade pour éviter le fantôme)
+	-- Restaurer la collision immédiatement pour les parts visibles uniquement
 	for _, part in ipairs(parts) do
-		pcall(function() part.CanCollide = true end)
+		pcall(function()
+			local orig = part:GetAttribute("_OrigTransp")
+			if orig == nil or orig < 1 then
+				part.CanCollide = true
+			end
+		end)
 	end
 	-- Réactiver les ProximityPrompts/ClickDetectors de la structure
 	for _, v in ipairs(floorObj:GetDescendants()) do
@@ -417,12 +437,21 @@ local function fadeInStructure(floorObj, onFin)
 	local total     = #parts
 	for _, part in ipairs(parts) do
 		if part and part.Parent then
-			local t = TweenService:Create(part, tweenInfo, { Transparency = 0 })
-			t.Completed:Connect(function()
+			-- Restaurer la transparence originale Studio (pas forcément 0)
+			local orig = part:GetAttribute("_OrigTransp")
+			local cible = (orig ~= nil) and orig or 0
+			if cible >= 1 then
+				-- Part intentionnellement invisible : ne pas tweener, rester invisible
 				termine += 1
 				if termine >= total and onFin then onFin() end
-			end)
-			t:Play()
+			else
+				local t = TweenService:Create(part, tweenInfo, { Transparency = cible })
+				t.Completed:Connect(function()
+					termine += 1
+					if termine >= total and onFin then onFin() end
+				end)
+				t:Play()
+			end
 		else
 			termine += 1
 			if termine >= total and onFin then onFin() end
@@ -506,8 +535,8 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 	end
 
 	-- Notifications
-	notifierJoueur(player, "INFO", "🎉 Stage " .. floorNum .. " unlocked!")
-	notifierTous("INFO", "🏗️ " .. player.Name .. " unlocked Stage " .. floorNum .. "!")
+	notifierJoueur(player, "INFO", "Stage " .. floorNum .. " unlocked!")
+	notifierTous("INFO", player.Name .. " unlocked Stage " .. floorNum .. "!")
 end
 
 -- ============================================================
@@ -615,6 +644,14 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 		baseFolder  = baseFolder,
 	}
 	local dd = donneesJoueurs[player.UserId]
+
+	-- Sauvegarder les transparences Studio originales de TOUTE la base
+	-- avant toute modification (afficherStructure/cacherEtage écraseraient les valeurs)
+	for _, v in ipairs(baseFolder:GetDescendants()) do
+		if v:IsA("BasePart") and v:GetAttribute("_OrigTransp") == nil then
+			v:SetAttribute("_OrigTransp", v.Transparency)
+		end
+	end
 
 	-- Appliquer l'état visuel pour chaque étage
 	for _, floorDef in ipairs(FLOORS) do

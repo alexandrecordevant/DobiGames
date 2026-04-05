@@ -48,7 +48,7 @@ local function BoucleAuto()
         -- Enregistrer le moment prévu du prochain event
         prochainEventTimestamp = os.time() + intervalle
         task.wait(intervalle - earlyBird)
-        NotifierTous("⏰ Event in 1h! Stay connected for the Early Bird bonus 🎁", Color3.fromRGB(100,200,255))
+        NotifierTous("Event in 1h! Stay connected for the Early Bird bonus", Color3.fromRGB(100,200,255))
         task.wait(earlyBird)
         prochainEventTimestamp = nil  -- event imminant, effacer le timer
         local choix = types[math.random(1, #types)]
@@ -63,7 +63,7 @@ local function BoucleAdminAbuseHebdo()
         task.wait(60)
         local now = os.date("!*t")
         if now.wday == cfg.jourSemaine and now.hour == cfg.heureUTC and now.min == 0 then
-            NotifierTous("🔥 WEEKLY ADMIN ABUSE! Spawn ×" .. cfg.spawnMultiplier .. " for " .. cfg.dureeMinutes .. " min!", Color3.fromRGB(255,50,50))
+            NotifierTous("WEEKLY ADMIN ABUSE! Spawn x" .. cfg.spawnMultiplier .. " for " .. cfg.dureeMinutes .. " min!", Color3.fromRGB(255,50,50))
             CollectSystem.SetEventMultiplier(cfg.spawnMultiplier)
             task.delay(cfg.dureeMinutes * 60, function()
                 CollectSystem.SetEventMultiplier(1)

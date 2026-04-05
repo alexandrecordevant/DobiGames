@@ -17,7 +17,7 @@ local Workspace         = game:GetService("Workspace")
 -- ============================================================
 local Config   = require(ReplicatedStorage.Modules.GameConfig)
 local boardCfg = Config.BoardConfig or {
-    texteDefaut   = "🔄 REBIRTH\nClick to view",
+    texteDefaut   = "REBIRTH\nClick to view",
     distanceClick = 20,
 }
 
@@ -116,7 +116,7 @@ local function creerSurfaceGui(board)
     lblTitre.Font                   = Enum.Font.GothamBold
     lblTitre.TextScaled             = true
     lblTitre.RichText               = true
-    lblTitre.Text                   = "🔄 REBIRTH"
+    lblTitre.Text                   = "REBIRTH"
 
     local lblNiveau = Instance.new("TextLabel", fond)
     lblNiveau.Name                   = "Niveau"
@@ -153,7 +153,7 @@ local function creerSurfaceGui(board)
     lblCoins.Font                   = Enum.Font.Gotham
     lblCoins.TextScaled             = true
     lblCoins.RichText               = true
-    lblCoins.Text                   = "💰 — / —"
+    lblCoins.Text                   = "— / —"
 
     local lblBR = Instance.new("TextLabel", fond)
     lblBR.Name                   = "BR"
@@ -164,7 +164,7 @@ local function creerSurfaceGui(board)
     lblBR.Font                   = Enum.Font.Gotham
     lblBR.TextScaled             = true
     lblBR.RichText               = true
-    lblBR.Text                   = "☄️ — requis"
+    lblBR.Text                   = "— requis"
 
     local lblHint = Instance.new("TextLabel", fond)
     lblHint.Name                   = "Hint"
@@ -175,7 +175,7 @@ local function creerSurfaceGui(board)
     lblHint.Font                   = Enum.Font.Gotham
     lblHint.TextScaled             = true
     lblHint.RichText               = true
-    lblHint.Text                   = "<i>🖱 Click to open menu</i>"
+    lblHint.Text                   = "<i>Click to open menu</i>"
 
     return sg
 end
@@ -215,7 +215,7 @@ local function mettreAJourSurfaceGui(board, etat)
 
     local lblCoins = fond:FindFirstChild("Coins")
     if lblCoins then
-        lblCoins.Text = "💰 " .. formaterNombre(coinsA) .. " / " .. formaterNombre(coinsR)
+        lblCoins.Text = formaterNombre(coinsA) .. " / " .. formaterNombre(coinsR)
         lblCoins.TextColor3 = pct >= 1
             and Color3.fromRGB(0, 255, 100)
             or  Color3.fromRGB(255, 215, 0)
@@ -223,8 +223,8 @@ local function mettreAJourSurfaceGui(board, etat)
 
     local lblBR = fond:FindFirstChild("BR")
     if lblBR then
-        local check = brOk and "✅" or "❌"
-        lblBR.Text       = "☄️ " .. rarete .. "  " .. check
+        local check = brOk and "[OK]" or "[X]"
+        lblBR.Text       = rarete .. "  " .. check
         lblBR.TextColor3 = brOk
             and Color3.fromRGB(100, 255, 100)
             or  Color3.fromRGB(255, 100, 100)

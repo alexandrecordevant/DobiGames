@@ -234,9 +234,17 @@ local function creerTool(player, clone, rarete)
 	-- Visuel soudé au Handle
 	if clone then
 		-- Nettoyer billboards/prompts résiduels du monde
+		-- _BRBillboard est préservé (sans LTimer) pour qu'il survive jusqu'au dépôt sur slot
 		for _, desc in ipairs(clone:GetDescendants()) do
-			if desc:IsA("BillboardGui") or desc:IsA("ProximityPrompt") then
+			if desc:IsA("ProximityPrompt") then
 				pcall(function() desc:Destroy() end)
+			elseif desc:IsA("BillboardGui") then
+				if desc.Name == "_BRBillboard" then
+					local lTimer = desc:FindFirstChild("LTimer")
+					if lTimer then pcall(function() lTimer:Destroy() end) end
+				else
+					pcall(function() desc:Destroy() end)
+				end
 			end
 		end
 
@@ -347,12 +355,12 @@ local function messageSacPlein(player, pData)
 
 	local msg
 	if niveauMax then
-		msg = "🎒 Carry full! (" .. max .. "/" .. max .. ") — Deposit your Brain Rots first."
+		msg = "Carry full! (" .. max .. "/" .. max .. ") — Deposit your Brain Rots first."
 	else
 		local prochainMax = prochainBase
 		local prix        = CARRY_CONFIG.prixUpgrade[prochainNiveau] or 0
-		msg = "🎒 Carry full! (" .. max .. "/" .. max .. ") — "
-			.. "💡 Upgrade carry to " .. prochainMax .. " slots for " .. prix .. " coins!"
+		msg = "Carry full! (" .. max .. "/" .. max .. ") — "
+			.. "Upgrade carry to " .. prochainMax .. " slots for " .. prix .. " coins!"
 	end
 
 	if brErrEvent then
@@ -462,7 +470,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 	prompt.PromptButtonHoldBegan:Connect(function(player)
 		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
 			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
-				notifierJoueur(player, "INFO", "❌ This Brain Rot is not in your field!")
+				notifierJoueur(player, "INFO", "This Brain Rot is not in your field!")
 				prompt.Enabled = false
 				task.delay(0.1, function()
 					if prompt and prompt.Parent then prompt.Enabled = true end
@@ -486,10 +494,10 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 			local precedent = holdingPlayer
 			holdingPlayer   = nil
 			prompt.Enabled  = false
-			notifierJoueur(precedent, "INFO", "❌ " .. player.Name .. " interrupted you!")
-			notifierJoueur(player,    "INFO", "⚡ You can try to capture!")
+			notifierJoueur(precedent, "INFO", player.Name .. " interrupted you!")
+			notifierJoueur(player,    "INFO", "You can try to capture!")
 			notifierAutresJoueurs(player, "INFO",
-				"⚠️ " .. player.Name .. " is trying to grab a " .. rarete.nom .. "!")
+				player.Name .. " is trying to grab a " .. rarete.nom .. "!")
 			task.delay(0.1, function()
 				if prompt and prompt.Parent then prompt.Enabled = true end
 			end)
@@ -497,7 +505,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 			holdingPlayer = player
 			notifProgression(player, cfg.holdDuration)
 			notifierAutresJoueurs(player, "INFO",
-				"⚠️ " .. player.Name .. " is trying to grab a " .. rarete.nom .. "!")
+				player.Name .. " is trying to grab a " .. rarete.nom .. "!")
 		end
 	end)
 
@@ -512,7 +520,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 		if baseIndex ~= nil and CarrySystem.GetBaseJoueur then
 			if CarrySystem.GetBaseJoueur(player) ~= baseIndex then
-				notifierJoueur(player, "INFO", "❌ This Brain Rot is not in your field!")
+				notifierJoueur(player, "INFO", "This Brain Rot is not in your field!")
 				return
 			end
 		end
@@ -528,7 +536,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		holdingPlayer  = nil
 		pcall(function() brModel:SetAttribute("Captured", true) end)
 
-		notifierTous("🏆 " .. player.Name .. " grabbed [" .. nomModele .. "] " .. rarete.nom .. "!")
+		notifierTous(player.Name .. " grabbed [" .. nomModele .. "] " .. rarete.nom .. "!")
 
 		local success = effectuerRamassage(player, rarete, brModel)
 		if success then
@@ -750,7 +758,7 @@ local function onMort(player)
 	local hrp     = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	local posMort = hrp and hrp.Position or Vector3.new(0, 5, 0)
 
-	notifierTous("💀 " .. player.Name .. " dropped their Brain Rots!")
+	notifierTous(player.Name .. " dropped their Brain Rots!")
 
 	local portesADrop = data.portes
 	data.portes = {}
@@ -1005,8 +1013,8 @@ end
 -- ============================================================
 -- Init (appelé par Main.server.lua)
 -- ============================================================
-function CarrySystem.Init()
-	BRAINROTS_FOLDER = ServerStorage:WaitForChild("Brainrots")
+function CarrySystem.Init(brainrotsFolder)
+	BRAINROTS_FOLDER = brainrotsFolder or ServerStorage:WaitForChild("Brainrots")
 
 	local existing = ReplicatedStorage:FindFirstChild("CarryUpdate")
 	if existing then

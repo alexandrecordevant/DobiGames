@@ -30,7 +30,7 @@ end
 -- Coins
 local _, coinsLabel = NouveauLabel(gui,
     UDim2.new(0,220,0,50), UDim2.new(0,10,0,10),
-    Color3.fromRGB(0,0,0), Config.CouleurAccent, "💰 0")
+    Color3.fromRGB(0,0,0), Config.CouleurAccent, "0")
 
 -- Tier
 local _, tierLabel = NouveauLabel(gui,
@@ -47,7 +47,7 @@ eventFrame.Visible = false
 local UpdateHUD = ReplicatedStorage:WaitForChild("UpdateHUD", 15)
 if not UpdateHUD then warn("[HUD] UpdateHUD introuvable — Main.server.lua a crashé ?") return end
 UpdateHUD.OnClientEvent:Connect(function(data)
-    coinsLabel.Text = "💰 " .. tostring(math.floor(data.coins))
+    coinsLabel.Text = tostring(math.floor(data.coins))
     local tier = "Tier " .. data.tier .. " / " .. Config.TotalTiers
     if data.prestige > 0 then tier = tier .. "  (P" .. data.prestige .. ")" end
     tierLabel.Text = tier

@@ -166,6 +166,16 @@ RebirthSystem.OnButtonUpdate = function(player, etat)
     BoardSystem.MettreAJourBoard(player, etat)
 end
 
+-- CarrySystem + DropSystem — dossier Brainrots dans ReplicatedStorage (LavaTower)
+-- IMPORTANT : CarrySystem.Init() doit être appelé pour initialiser BRAINROTS_FOLDER
+-- (utilisé par le fallback de clonage et par Retrieve)
+local BrainrotsFolder = ReplicatedStorage:FindFirstChild("Brainrots")
+if not BrainrotsFolder then
+    warn("[LavaTower] ReplicatedStorage.Brainrots introuvable — CarrySystem/DropSystem dégradés")
+end
+CarrySystem.Init(BrainrotsFolder)
+DropSystem.SetBrainrotsFolder(BrainrotsFolder)
+
 -- RebirthCosmeticsSystem — source de données
 RebirthCosmeticsSystem.GetData = GetData
 
@@ -238,12 +248,7 @@ local function OnPlayerAdded(player)
         end
         RebirthSystem.Init(player, data, baseIndex)
 
-        if player.Character then
-            RebirthCosmeticsSystem.AppliquerPourJoueur(player, player.Character)
-        end
-        player.CharacterAdded:Connect(function(character)
-            RebirthCosmeticsSystem.AppliquerPourJoueur(player, character)
-        end)
+        -- RebirthCosmeticsSystem désactivé pour LavaTower (pas d'auras/trails voulus)
     end
 
     DataStoreManager.StartAutoSave(player, function()
@@ -341,7 +346,7 @@ end
 
 AssignationSystem.Init()
 BoardSystem.Init()
-RebirthCosmeticsSystem.Init()
+-- RebirthCosmeticsSystem.Init() désactivé pour LavaTower
 
 -- ═══════════════════════════════════════════════
 -- 9. FUSE MACHINE

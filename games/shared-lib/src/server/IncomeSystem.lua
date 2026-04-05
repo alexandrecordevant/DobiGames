@@ -254,7 +254,7 @@ local function connecterButton(player, uid, touchPart, spotKey)
                 if notif then
                     pcall(function()
                         notif:FireClient(touchPlayer, "SUCCESS",
-                            "💰 +" .. FormatCoins(pending) .. " coins!")
+                            "+" .. FormatCoins(pending) .. " coins!")
                     end)
                 end
                 -- Mise à jour HUD immédiate
@@ -536,7 +536,7 @@ function IncomeSystem.SetEventMultiplier(multiplier)
                 if multiplier > 1 then
                     pcall(function()
                         NotifEvent:FireClient(player, "EVENT",
-                            "⚡ Multiplicateur event ×" .. multiplier .. " actif sur tes revenus !")
+                            "Multiplicateur event x" .. multiplier .. " actif sur tes revenus !")
                     end)
                 end
             end

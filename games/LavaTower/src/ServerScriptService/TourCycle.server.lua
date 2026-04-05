@@ -73,7 +73,7 @@ local function lancerCycleTour(cfg)
     -- ── Billboard au-dessus de StartZone ──────────────────────────
     local billboard = Instance.new("BillboardGui")
     billboard.Name             = "TimerBillboard"
-    billboard.Size             = UDim2.new(0, 500, 0, 100)
+    billboard.Size             = UDim2.new(15, 0, 4, 0)  -- taille en studs : proportionnel à la distance
     billboard.StudsOffset      = Vector3.new(0, 10, 0)
     billboard.AlwaysOnTop      = false
     billboard.MaxDistance      = 200
@@ -86,8 +86,7 @@ local function lancerCycleTour(cfg)
     timerLabel.BackgroundTransparency = 1
     timerLabel.Font                   = Enum.Font.GothamBold
     timerLabel.TextStrokeTransparency = 0.4
-    timerLabel.TextScaled             = false
-    timerLabel.TextSize               = 50
+    timerLabel.TextScaled             = true
     timerLabel.TextColor3             = cfg.couleurAttente
     timerLabel.Text                   = cfg.nomTour .. " dans 5:00"
     timerLabel.Parent                 = billboard
