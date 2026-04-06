@@ -1,6 +1,7 @@
 {
   "folders": [
     { "path": "games/BrainRotFarm" },
+    { "path": "games/LavaTower" },
     { "path": "games/shared-lib" }
   ]
 }

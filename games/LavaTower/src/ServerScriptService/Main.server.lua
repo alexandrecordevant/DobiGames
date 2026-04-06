@@ -11,7 +11,7 @@ local Workspace           = game:GetService("Workspace")
 -- ═══════════════════════════════════════════════
 
 local Config                = require(ReplicatedStorage.Modules.GameConfig)
-local RebirthConfig         = require(ReplicatedStorage.Modules.RebirthConfig)
+local RebirthConfig         = require(ReplicatedStorage.SharedLib.Shared.RebirthConfig)
 local UpgradeSystem         = require(ReplicatedStorage.Modules.UpgradeSystem)
 local DataStoreManager      = require(ServerScriptService.DataStoreManager)
 local MonetizationHandler   = require(ServerScriptService.MonetizationHandler)
@@ -24,6 +24,7 @@ local IncomeSystem              = require(ServerScriptService.SharedLib.Server.I
 local BoardSystem               = require(ServerScriptService.BoardSystem)
 local RebirthCosmeticsSystem    = require(ServerScriptService.SharedLib.Server.RebirthCosmeticsSystem)
 print("[FuseMachine] Chargement du module…")
+local ShopSystem = require(ServerScriptService.ShopSystem)
 local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.FuseMachineSystem)
 if not _fuseOk then
     warn("[FuseMachine] ERREUR require : " .. tostring(FuseMachineSystem))
@@ -51,6 +52,8 @@ DataStoreManager.Setup("LavaTowerV1", function()
         slotsBonus              = 0,
         progression             = {},
         spotsOccupes            = {},
+        -- shop upgrades
+        shopUpgrades            = { carry = 0, speed = 0, jump = 0 },
     }
 end)
 
@@ -144,7 +147,7 @@ end
 -- RebirthSystem — config tiers + condition progression
 -- Les rebirths sont disponibles dès que les coins+BR requis sont réunis ;
 -- ils débloquent les slots (pas l'inverse). Pas de condition de progression bloquante.
-RebirthSystem.Config = RebirthConfig.Tiers
+RebirthSystem.Config = RebirthConfig
 RebirthSystem.IsProgressionComplete = function(_playerData)
     return true
 end
@@ -380,6 +383,23 @@ if FuseMachineSystem then
     end
 else
     warn("[FuseMachine] Init() ignoré — module non chargé")
+end
+
+-- ═══════════════════════════════════════════════
+-- 10. SHOP SYSTEM
+-- ═══════════════════════════════════════════════
+
+ShopSystem.GetData    = GetData
+ShopSystem.SetData    = SetData
+ShopSystem.NotifEvent = NotifEvent
+ShopSystem.UpdateHUD  = function(player)
+    local data = GetData(player)
+    if data then EnvoyerHUD(player, data) end
+end
+
+local _shopOk, shopErr = pcall(ShopSystem.Init)
+if not _shopOk then
+    warn("[ShopSystem] ERREUR Init() : " .. tostring(shopErr))
 end
 
 -- ═══════════════════════════════════════════════

@@ -111,16 +111,16 @@ GameConfig.SprinklerVitesses = {
     [3] = 120,  -- Arroseur MAX   — rotation rapide
 }
 
--- === TRACTEUR ===
--- Vitesse de déplacement du tracteur dans le champ (studs/seconde)
-GameConfig.TracteurVitesse    = 12
--- Espacement entre les lignes de labourage (studs)
-GameConfig.TracteurEspacement = 8
--- ⚠️ DEV ONLY — active le tracteur pour tous sans Game Pass (mettre false avant publish)
-GameConfig.TracteurDevActif   = true
--- Correction orientation modèle (degrés Y) — ajuster si tracteur se déplace de côté
--- Valeurs typiques : 0, 90, -90, 180
-GameConfig.TracteurRotationOffsetDeg = -90
+-- === TRACTEUR — Lucky Spawn passif ===
+-- À chaque spawn dans le champ d'un joueur possédant le Game Pass Tracteur,
+-- un roll bonus indépendant est effectué pour faire apparaître un MYTHIC/SECRET supplémentaire.
+-- 94% → rien | 4% → MYTHIC | 1% → SECRET | 1% → MYTHIC + SECRET (jackpot)
+GameConfig.TracteurConfig = {
+    MYTHIC_CHANCE  = 4,   -- % : spawn un MYTHIC bonus dans le champ
+    SECRET_CHANCE  = 1,   -- % : spawn un SECRET bonus dans le champ
+    JACKPOT_CHANCE = 1,   -- % : spawn MYTHIC + SECRET simultanément (jackpot)
+    -- Le reste (94 %) ne déclenche rien de bonus
+}
 
 -- === LEADERBOARDS 3D ===
 -- Panneaux Studio dans Workspace.Leaderboards — chaque panneau doit contenir Gui.Texto
@@ -216,16 +216,10 @@ GameConfig.ShopUpgrades = {
     Tracteur = {
         nom         = "Tractor",
         icone       = "🚜",
-        description = "Automatically collects BRs based on your rarity threshold",
+        description = "Each spawn in your field: 4% MYTHIC bonus, 1% SECRET bonus, 1% jackpot (both)!",
         ordre       = 5,
         niveaux = {
             [1] = { type="robux", prix=299, gamePassId=0, label="Activate", effet={ tracteurActif=true }, isMax=true },
-        },
-        -- Seuils disponibles — le joueur choisit dans le Shop (RARE+ gratuit par défaut)
-        seuilsDisponibles = {
-            { label = "RARE+",      rareteMin = "RARE",      prix = 0    },  -- défaut, gratuit
-            { label = "EPIC+",      rareteMin = "EPIC",      prix = 500  },  -- coût coins
-            { label = "LEGENDARY+", rareteMin = "LEGENDARY", prix = 2000 },  -- coût coins
         },
         maxNiveau        = 1,
         isGamePass       = true,
@@ -339,14 +333,14 @@ GameConfig.ProgressionConfig = {
         -- Floor 1
         { floor=1, spot=1,  coins=0,      label="Start"        },
         { floor=1, spot=2,  coins=0,      label="Start"        },
-        { floor=1, spot=3,  coins=50,     label="50 coins"      },
-        { floor=1, spot=4,  coins=100,    label="100 coins"     },
-        { floor=1, spot=5,  coins=200,    label="200 coins"     },
-        { floor=1, spot=6,  coins=350,    label="350 coins"     },
-        { floor=1, spot=7,  coins=500,    label="500 coins"     },
-        { floor=1, spot=8,  coins=750,    label="750 coins"     },
-        { floor=1, spot=9,  coins=1000,   label="1 000 coins"   },
-        { floor=1, spot=10, coins=1500,   label="1 500 coins"   },
+        { floor=1, spot=3,  coins=0,      label="Start"         },
+        { floor=1, spot=4,  coins=0,      label="Start"         },
+        { floor=1, spot=5,  coins=0,      label="Start"         },
+        { floor=1, spot=6,  coins=0,      label="Start"         },
+        { floor=1, spot=7,  coins=0,      label="Start"         },
+        { floor=1, spot=8,  coins=0,      label="Start"         },
+        { floor=1, spot=9,  coins=0,      label="Start"         },
+        { floor=1, spot=10, coins=0,      label="Start"         },
         -- Floor 2
         { floor=2, spot=1,  coins=2000,   label="Stage 2"       },
         { floor=2, spot=2,  coins=2500,   label="2 500 coins"   },
@@ -541,14 +535,6 @@ GameConfig.FlowerPotConfig = {
         earth = { Color=Color3.fromRGB(100, 200, 50),  Lifetime=3.0, SpeedMax=2 },
         wind  = { Color=Color3.fromRGB(230, 230, 230), Lifetime=1.5, SpeedMax=6 },
     },
-}
-
--- === REBIRTH ===
-GameConfig.RebirthConfig = {
-    [1] = { coinsRequis=300000,  brainRotRequis={rarete="LEGENDARY",    quantite=1}, multiplicateur=1.5, slotsBonus=2,  label="Rebirth I",   couleur=Color3.fromRGB(255, 200, 50),  couleurHex=0xFFC832 },
-    [2] = { coinsRequis=500000,  brainRotRequis={rarete="MYTHIC",       quantite=1}, multiplicateur=2.0, slotsBonus=4,  label="Rebirth II",  couleur=Color3.fromRGB(180, 50,  255), couleurHex=0xB432FF },
-    [3] = { coinsRequis=1000000, brainRotRequis={rarete="SECRET",       quantite=1}, multiplicateur=3.0, slotsBonus=6,  label="Rebirth III", couleur=Color3.fromRGB(255, 50,  50),  couleurHex=0xFF3232 },
-    [4] = { coinsRequis=2000000, brainRotRequis={rarete="BRAINROT_GOD", quantite=1}, multiplicateur=5.0, slotsBonus=10, label="Rebirth IV",  couleur=Color3.fromRGB(255, 255, 255), couleurHex=0xFFFFFF },
 }
 
 -- Réduction prix progression par rebirth (-15% cumulatif, cap -90%)

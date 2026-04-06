@@ -12,6 +12,7 @@ local RunService         = game:GetService("RunService")
 -- ═══════════════════════════════════════════════
 
 local Config             = require(ReplicatedStorage.GameConfig)
+local RebirthConfig      = require(ReplicatedStorage.SharedLib.Shared.RebirthConfig)
 local CollectSystem      = require(ServerScriptService.SharedLib.Shared.CollectSystem)
 local UpgradeSystem      = require(ServerScriptService.SharedLib.Shared.UpgradeSystem)
 
@@ -649,7 +650,7 @@ local function OnPlayerAdded(player)
         end
 
         -- Initialiser le système de Rebirth (callbacks Farm injectés ici)
-        RebirthSystem.Config = Config.RebirthConfig
+        RebirthSystem.Config = RebirthConfig
         RebirthSystem.IsProgressionComplete = function(playerData)
             return playerData.progression and playerData.progression["4_10"] == true
         end

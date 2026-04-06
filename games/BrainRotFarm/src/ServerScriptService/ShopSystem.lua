@@ -35,7 +35,6 @@ local AchatUpgrade        = nil   -- OnServerEvent(player, nomUpgrade, niveau)
 local ShopUpdate          = nil   -- FireClient(player, donneesShop)
 local DemandeAchatRobux   = nil   -- OnServerEvent(player, nomUpgrade, niveau) → PromptGamePassPurchase
 local ConfirmerGamePass   = nil   -- OnServerEvent(player, gamePassId) → vérification + application
-local ChangerSeuilTracteur = nil  -- OnServerEvent(player, seuilNom) → change tracteurSeuilMin
 
 local function creerRemoteEvent(nom)
     local existing = ReplicatedStorage:FindFirstChild(nom)
@@ -45,14 +44,6 @@ local function creerRemoteEvent(nom)
     re.Parent = ReplicatedStorage
     return re
 end
-
--- ============================================================
--- Ordre de rareté pour comparaisons Tracteur
--- ============================================================
-local RARETE_ORDRE = {
-    COMMON=1, OG=2, RARE=3, EPIC=4,
-    LEGENDARY=5, MYTHIC=6, SECRET=7, BRAINROT_GOD=8,
-}
 
 -- ============================================================
 -- Chargement différé — évite les dépendances circulaires
@@ -73,15 +64,6 @@ local function getSprinklerSystem()
         if ok and m then _SprinklerSystem = m end
     end
     return _SprinklerSystem
-end
-
-local _TracteurSystem = nil
-local function getTracteurSystem()
-    if not _TracteurSystem then
-        local ok, m = pcall(require, ServerScriptService.TracteurSystem)
-        if ok and m then _TracteurSystem = m end
-    end
-    return _TracteurSystem
 end
 
 local _CarrySystem = nil
@@ -211,20 +193,7 @@ local function appliquerEffet(player, playerData, niveauConfig)
         end
     end
 
-    -- Tracteur : animation allers-retours + boucle auto-collect
-    if effet.tracteurActif then
-        -- Animation tracteur dans le champ (TracteurSystem)
-        local TS = getTracteurSystem()
-        local AS = getAssignationSystem()
-        if TS and AS then
-            local baseIndex = AS.GetBaseIndex(player)
-            if baseIndex then
-                pcall(TS.Activer, player, baseIndex)
-            end
-        end
-        -- Boucle de collecte automatique (logique existante ShopSystem)
-        ShopSystem.ActiverTracteur(player, playerData)
-    end
+    -- Tracteur : comportement passif géré dans SpawnManager (Lucky Spawn) — aucun effet à appliquer ici
 
     -- Lucky Charm (délégué à CollectSystem)
     if effet.luckyBonus then
@@ -233,59 +202,6 @@ local function appliquerEffet(player, playerData, niveauConfig)
             pcall(ColSys.SetLuckyBonus, player, effet.luckyBonus)
         end
     end
-end
-
--- ============================================================
--- Tracteur — boucle auto-collect
--- ============================================================
-local tracteurThreads = {}  -- [userId] = task handle
-
--- Vérifie si le tracteur peut déposer (spots libres > 0)
-local function TracteurPeutDeposer(player)
-    local DS = getDropSystem()
-    if not DS then return false end
-    local libres = DS.GetSpotsLibres(player)
-    return libres and #libres > 0
-end
-
-function ShopSystem.ActiverTracteur(player, playerData)
-    local uid = player.UserId
-    if tracteurThreads[uid] then return end  -- déjà actif
-
-    tracteurThreads[uid] = task.spawn(function()
-        while player.Parent and playerData.hasTracteur do
-            task.wait(3)
-            if not player.Parent then break end
-
-            local BRS = getBrainRotSpawner()
-            local DS  = getDropSystem()
-            if not BRS or not DS then continue end
-
-            -- Vérifier qu'il y a des spots libres
-            if not TracteurPeutDeposer(player) then continue end
-
-            -- Trouver le seuil de rareté du joueur
-            local seuilNom   = playerData.tracteurSeuilMin or "RARE"
-            local seuilOrdre = RARETE_ORDRE[seuilNom] or RARETE_ORDRE["RARE"]
-
-            -- Trouver le BR éligible le plus proche (rareté ≥ seuil)
-            local cible = nil
-            local ok, res = pcall(BRS.GetPlusProcheEligible, player, seuilOrdre)
-            if ok then cible = res end
-            if not cible then continue end
-
-            -- Supprimer le BR du terrain
-            pcall(BRS.SupprimerCollectible, cible.id, cible.baseIndex)
-
-            -- Trouver un spot libre et y déposer directement
-            local libres = DS.GetSpotsLibres(player)
-            if #libres == 0 then continue end
-
-            local spot = libres[1]  -- prend le premier spot libre
-            pcall(DS.DeposerBRDirect, player, spot, cible.rarete)
-        end
-        tracteurThreads[uid] = nil
-    end)
 end
 
 -- ============================================================
@@ -580,12 +496,10 @@ function ShopSystem.Init()
     ShopUpdate           = creerRemoteEvent("ShopUpdate")
     DemandeAchatRobux    = creerRemoteEvent("DemandeAchatRobux")
     ConfirmerGamePass    = creerRemoteEvent("ConfirmerGamePass")
-    ChangerSeuilTracteur = creerRemoteEvent("ChangerSeuilTracteur")
-
     print("[ShopSystem] RemoteEvents créés :")
     for _, nom in ipairs({
         "OuvrirShop","FermerShop","AchatUpgrade","ShopUpdate",
-        "DemandeAchatRobux","ConfirmerGamePass","ChangerSeuilTracteur"
+        "DemandeAchatRobux","ConfirmerGamePass"
     }) do
         local etat = ReplicatedStorage:FindFirstChild(nom) and "✅" or "❌"
         print("  " .. nom .. " : " .. etat)
@@ -674,65 +588,6 @@ function ShopSystem.Init()
                 pcall(ShopSystem.AppliquerTousUpgrades, player, playerData)
             end
         end)
-    end)
-
-    -- Handler : changer le seuil de rareté du Tracteur
-    ChangerSeuilTracteur.OnServerEvent:Connect(function(player, seuilNom)
-        if type(seuilNom) ~= "string" then return end
-
-        local playerData = getData(player)
-        if not playerData then return end
-        if not playerData.hasTracteur then return end
-
-        -- Vérifier que le seuil est dans seuilsDisponibles
-        local tracteurConfig = Config.ShopUpgrades.Tracteur
-        if not tracteurConfig or not tracteurConfig.seuilsDisponibles then return end
-
-        local seuilValide = nil
-        for _, s in ipairs(tracteurConfig.seuilsDisponibles) do
-            if s.rareteMin == seuilNom then seuilValide = s break end
-        end
-        if not seuilValide then return end
-
-        -- Payer les coins si nécessaire (prix > 0 = seuil premium)
-        local prix = seuilValide.prix or 0
-        if prix > 0 then
-            if (playerData.coins or 0) < prix then
-                local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
-                if notif then
-                    pcall(function()
-                        notif:FireClient(player, "ERREUR",
-                            "❌ Coins insuffisants (" .. prix .. " requis)")
-                    end)
-                end
-                return
-            end
-            playerData.coins = playerData.coins - prix
-        end
-
-        playerData.tracteurSeuilMin = seuilNom
-
-        -- Notifier + mettre à jour HUD + shop
-        local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
-        if notif then
-            pcall(function()
-                notif:FireClient(player, "SUCCESS",
-                    "🚜 Tractor: threshold changed to " .. seuilValide.label)
-            end)
-        end
-        if ShopUpdate then
-            pcall(function()
-                ShopUpdate:FireClient(player, construireDonneesShop(player, playerData))
-            end)
-        end
-        if ShopSystem.FireUpdateHUD then
-            pcall(ShopSystem.FireUpdateHUD, player, playerData)
-        end
-    end)
-
-    -- Nettoyer la boucle tracteur à la déconnexion
-    Players.PlayerRemoving:Connect(function(player)
-        tracteurThreads[player.UserId] = nil
     end)
 
     -- Compter les upgrades chargés

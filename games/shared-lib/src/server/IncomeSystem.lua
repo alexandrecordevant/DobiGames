@@ -17,11 +17,6 @@ local _GameConfig = require(
 )
 
 -- ============================================================
--- Valeur de base par rareté (coins/sec par Brain Rot déposé)
--- ============================================================
-local INCOME_PAR_RARETE = _GameConfig.IncomeParRarete
-
--- ============================================================
 -- Multiplicateur d'event (partagé pour tous les joueurs)
 -- Modifié par IncomeSystem.SetEventMultiplier (appelé par EventManager)
 -- ============================================================
@@ -294,7 +289,7 @@ local function calculerRevenu(player, spotsTable, playerData)
     local total = 0
     for _, spot in ipairs(spotsTable) do
         -- Utiliser valeurSec (inclut ×mutant calculé par DropSystem) si disponible
-        local base = spot.valeurSec or (INCOME_PAR_RARETE[spot.rarete] or 0)
+        local base = spot.valeurSec or 0
         total = total + base
     end
 
@@ -324,7 +319,7 @@ local function mettreAJourGuiSpots(spotsTable, multTotal)
         local spotModel = tp.Parent
 
         -- Utiliser valeurSec (inclut ×mutant) si disponible, sinon fallback rareté
-        local baseValeur   = spot.valeurSec or (INCOME_PAR_RARETE[spot.rarete] or 0)
+        local baseValeur   = spot.valeurSec or 0
         local valeurReelle = math.floor(baseValeur * multTotal)
 
         -- Mettre à jour uniquement $offline (revenu/s affiché en permanence)
@@ -444,7 +439,7 @@ function IncomeSystem.Init(player, getData)
 
             for _, spot in ipairs(spotsTable) do
                 -- Utiliser valeurSec (inclut ×mutant) si disponible, sinon fallback rareté
-                local base = spot.valeurSec or (INCOME_PAR_RARETE[spot.rarete] or 0)
+                local base = spot.valeurSec or 0
                 if base > 0 then
                     local incomeSpot = math.floor(
                         base * multRebirth * multVIP * eventMultiplier)

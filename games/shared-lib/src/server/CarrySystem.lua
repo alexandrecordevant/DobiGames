@@ -218,6 +218,14 @@ local function creerTool(player, clone, rarete)
 	if rarete and rarete.elementType then
 		tool:SetAttribute("ElementType", rarete.elementType)
 	end
+	-- Copier les attributs économiques du modèle source vers le Tool
+	-- (le modèle est cloné puis détaché du workspace, les attributs seraient perdus sinon)
+	if clone then
+		local cps  = clone:GetAttribute("CashParSeconde")
+		local prix = clone:GetAttribute("Prix")
+		if cps  then tool:SetAttribute("CashParSeconde", cps)  end
+		if prix then tool:SetAttribute("Prix",           prix) end
+	end
 
 	-- Handle invisible — jamais lâché (CanBeDropped = false)
 	local handle = Instance.new("Part")

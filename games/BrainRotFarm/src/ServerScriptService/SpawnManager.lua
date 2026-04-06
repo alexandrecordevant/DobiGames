@@ -8,11 +8,12 @@ local SpawnManager = {}
 -- ============================================================
 -- Services
 -- ============================================================
-local TweenService   = game:GetService("TweenService")
-local RunService     = game:GetService("RunService")
-local Players        = game:GetService("Players")
-local ServerStorage  = game:GetService("ServerStorage")
-local Workspace      = game:GetService("Workspace")
+local TweenService       = game:GetService("TweenService")
+local RunService         = game:GetService("RunService")
+local Players            = game:GetService("Players")
+local ServerStorage      = game:GetService("ServerStorage")
+local Workspace          = game:GetService("Workspace")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Chargement différé FilterManager (système de filtres centralisé)
 local _FilterManager = nil
@@ -38,6 +39,14 @@ local _animCfg = _GameConfig.AnimationConfig or {}
 
 -- SpawnConfig lu depuis GameConfig
 local _spawnCfg = _GameConfig.SpawnConfig or {}
+
+-- Probabilités roll bonus Tracteur — lues depuis GameConfig.TracteurConfig
+local _tracteurCfg = _GameConfig.TracteurConfig or {}
+local TRACTEUR_CONFIG = {
+    MYTHIC_CHANCE  = _tracteurCfg.MYTHIC_CHANCE  or 4,
+    SECRET_CHANCE  = _tracteurCfg.SECRET_CHANCE  or 1,
+    JACKPOT_CHANCE = _tracteurCfg.JACKPOT_CHANCE or 1,
+}
 
 local CONFIG = {
 	INTERVALLE_SPAWN_DEFAUT = _spawnCfg.intervalleSecondes or 4,
@@ -550,6 +559,278 @@ local function spawnerUnBrainRot(baseIndex)
 end
 
 -- ============================================================
+-- TRACTEUR — Lucky Spawn passif (Game Pass)
+-- ============================================================
+
+-- Cherche le joueur assigné à une base (lookup inverse sur assignations)
+local function trouverJoueurBase(baseIndex)
+    for userId, idx in pairs(assignations) do
+        if idx == baseIndex then
+            return Players:GetPlayerByUserId(userId)
+        end
+    end
+    return nil
+end
+
+-- Feedback visuel jackpot : lumière dorée 1s + notification flottante 3s + son rare
+local function ajouterFeedbackBonus(racine, rareteNom)
+    if not racine or not racine.Parent then return end
+
+    -- Lumière dorée éphémère (1 seconde)
+    local light          = Instance.new("PointLight")
+    light.Color          = Color3.fromRGB(255, 215, 0)
+    light.Brightness     = 6
+    light.Range          = 18
+    light.Parent         = racine
+    task.delay(1, function()
+        if light and light.Parent then light:Destroy() end
+    end)
+
+    -- Notification flottante au-dessus du BR (3 secondes)
+    local bb        = Instance.new("BillboardGui")
+    bb.Name         = "TracteurNotif"
+    bb.Size         = UDim2.new(4, 0, 1.2, 0)
+    bb.StudsOffset  = Vector3.new(0, 10, 0)
+    bb.AlwaysOnTop  = false
+    bb.ResetOnSpawn = false
+    bb.Parent       = racine
+
+    local texte        = rareteNom == "MYTHIC" and "🌟 MYTHIC!" or "💀 SECRET!"
+    local couleurNotif = rareteNom == "MYTHIC"
+        and Color3.fromRGB(180, 0, 255)
+        or  Color3.fromRGB(255, 50,  50)
+
+    local label                  = Instance.new("TextLabel")
+    label.Text                   = texte
+    label.Size                   = UDim2.new(1, 0, 1, 0)
+    label.TextColor3             = couleurNotif
+    label.TextScaled             = true
+    label.Font                   = Enum.Font.GothamBold
+    label.BackgroundTransparency = 1
+    label.TextStrokeTransparency = 0.3
+    label.TextStrokeColor3       = Color3.new(0, 0, 0)
+    label.Parent                 = bb
+
+    task.delay(3, function()
+        if bb and bb.Parent then bb:Destroy() end
+    end)
+
+    -- Son rare si configuré dans GameConfig
+    local sonId = _GameConfig.SonRare
+    if sonId and sonId > 0 then
+        local son                 = Instance.new("Sound")
+        son.SoundId               = "rbxassetid://" .. tostring(sonId)
+        son.Volume                = 1
+        son.RollOffMaxDistance    = 60
+        son.Parent                = racine
+        pcall(function() son:Play() end)
+        task.delay(5, function()
+            if son and son.Parent then son:Destroy() end
+        end)
+    end
+end
+
+-- Spawne un BR d'une rareté précise dans la zone d'une base (bonus Tracteur)
+-- Suit la même logique que spawnerUnBrainRot : animation, attributs, despawn
+local function spawnerBRBonus(baseIndex, rareteNom)
+    local zone = zones[baseIndex]
+    if not zone then return end
+
+    -- Respecter le plafond max par base
+    if compteurs[baseIndex] >= CONFIG.MAX_PAR_BASE then return end
+
+    -- Dossier rareté dans ServerStorage (MYTHIC ou SECRET)
+    local dossier = brainrotsFolder:FindFirstChild(rareteNom)
+    if not dossier then
+        warn("[SpawnManager] Tracteur: dossier '" .. rareteNom .. "' introuvable dans ServerStorage")
+        return
+    end
+    local modeles = dossier:GetChildren()
+    if #modeles == 0 then
+        warn("[SpawnManager] Tracteur: dossier '" .. rareteNom .. "' vide")
+        return
+    end
+
+    local source = modeles[math.random(1, #modeles)]
+    local clone
+    local ok, err = pcall(function() clone = source:Clone() end)
+    if not ok or not clone then
+        warn("[SpawnManager] Tracteur: erreur clonage " .. rareteNom .. " : " .. tostring(err))
+        return
+    end
+
+    -- Attributs identiques aux spawns normaux
+    idCounter  = idCounter + 1
+    local id   = idCounter
+    clone.Name = string.format("BR_%d_%d_tracteur", baseIndex, id)
+    pcall(function() clone:SetAttribute("Rarete",       rareteNom)   end)
+    pcall(function() clone:SetAttribute("BaseIndex",    baseIndex)   end)
+    pcall(function() clone:SetAttribute("SpawnId",      id)          end)
+    pcall(function() clone:SetAttribute("OriginalName", source.Name) end)
+
+    -- Position aléatoire dans la zone de spawn
+    local x = math.random() * (zone.xMax - zone.xMin) + zone.xMin
+    local z = math.random() * (zone.zMax - zone.zMin) + zone.zMin
+
+    clone.Parent = Workspace
+
+    local racine = obtenirRacine(clone)
+    if not racine then clone:Destroy(); return end
+
+    local parts = obtenirBaseParts(clone)
+    for _, part in ipairs(parts) do
+        part.CanCollide = false
+    end
+
+    -- Animation pousse de terre (même style que les spawns normaux)
+    local yDepart = zone.yFixe + CONFIG.Y_DEPART_OFFSET
+    pcall(function()
+        if clone:IsA("Model") then
+            clone:ScaleTo(0.01)
+            clone:PivotTo(CFrame.new(x, yDepart, z))
+        else
+            racine.Size   = racine.Size * 0.01
+            racine.CFrame = CFrame.new(x, yDepart, z)
+        end
+    end)
+
+    -- Enregistrement immédiat dans les actifs
+    actifs[baseIndex][id]  = clone
+    compteurs[baseIndex]   = compteurs[baseIndex] + 1
+
+    task.spawn(function()
+        local duree  = CONFIG.DUREE_POUSSE
+        local etapes = CONFIG.ETAPES_POUSSE
+        for i = 1, etapes do
+            if not clone or not clone.Parent then return end
+            local t     = i / etapes
+            local scale = 1 - math.pow(1 - t, 3)
+            local yPos  = yDepart + scale * math.abs(CONFIG.Y_DEPART_OFFSET)
+            pcall(function()
+                if clone:IsA("Model") then
+                    clone:ScaleTo(math.max(scale, 0.001))
+                    clone:PivotTo(CFrame.new(x, yPos, z))
+                else
+                    racine.CFrame = CFrame.new(x, yPos, z)
+                end
+            end)
+            task.wait(duree / etapes)
+        end
+
+        -- Snap final à la position exacte
+        pcall(function()
+            if clone and clone.Parent then
+                if clone:IsA("Model") then
+                    clone:ScaleTo(1)
+                    clone:PivotTo(CFrame.new(x, zone.yFixe, z))
+                else
+                    racine.CFrame = CFrame.new(x, zone.yFixe, z)
+                end
+            end
+        end)
+
+        if clone and clone.Parent then
+            -- Ancrer les parts
+            for _, part in ipairs(parts) do
+                part.Anchored = true
+            end
+
+            -- Billboard et countdown (durée réduite de l'animation)
+            local dureeRestante = math.floor(CONFIG.DUREE_DESPAWN - CONFIG.DUREE_POUSSE)
+            local couleur = RARETE_COULEURS_BB[rareteNom] or Color3.new(1, 1, 1)
+            local valeur  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rareteNom] or 0
+            pcall(ajouterBillboard, clone, racine, rareteNom, source.Name, dureeRestante)
+            pcall(lancerCountdownBillboard, racine, dureeRestante, rareteNom, couleur, valeur)
+
+            -- FilterManager (visuels rareté centralisés)
+            local FM = getFilterManager()
+            if FM then pcall(FM.Apply, clone, rareteNom) end
+
+            -- Feedback jackpot (lumière + notification + son)
+            pcall(ajouterFeedbackBonus, racine, rareteNom)
+
+            -- ProximityPrompt via OnBRSpawned (même hook que les spawns normaux)
+            local rareteObj = { nom = rareteNom, dossier = rareteNom }
+            if SpawnManager.OnBRSpawned then
+                pcall(SpawnManager.OnBRSpawned, clone, baseIndex, rareteObj)
+            end
+        end
+    end)
+
+    -- Despawn automatique
+    task.delay(CONFIG.DUREE_DESPAWN, function()
+        if not clone or not clone.Parent then return end
+        if actifs[baseIndex][id] == nil then return end
+        if clone:GetAttribute("Captured") then
+            actifs[baseIndex][id] = nil
+            compteurs[baseIndex]  = math.max(0, compteurs[baseIndex] - 1)
+            return
+        end
+        actifs[baseIndex][id] = nil
+        compteurs[baseIndex]  = math.max(0, compteurs[baseIndex] - 1)
+        tweenTransparence(parts, 1, CONFIG.DUREE_FADE_OUT)
+        task.delay(CONFIG.DUREE_FADE_OUT + 0.1, function()
+            if clone and clone.Parent then clone:Destroy() end
+        end)
+    end)
+end
+
+-- Roll bonus Tracteur — appelé après chaque spawn normal dans le champ d'une base
+-- Vérifie le Game Pass côté serveur (pas de cache statique) puis tire le bonus
+local function rollBonusTracteur(baseIndex)
+    -- Trouver le joueur propriétaire de cette base
+    local player = trouverJoueurBase(baseIndex)
+    if not player then return end
+
+    -- ID Game Pass Tracteur depuis GameConfig (0 = pas configuré → skip silencieux)
+    local tracteurId = _GameConfig.GamePassIds and _GameConfig.GamePassIds.Tracteur
+    if not tracteurId or tracteurId == 0 then return end
+
+    -- Vérification côté serveur (jamais en cache pour éviter les exploits)
+    local possede = false
+    local ok, err = pcall(function()
+        possede = MarketplaceService:UserOwnsGamePassAsync(player.UserId, tracteurId)
+    end)
+    if not ok then
+        warn("[SpawnManager] Tracteur: erreur vérif GamePass pour " .. player.Name .. " : " .. tostring(err))
+        return
+    end
+    if not possede then return end
+
+    -- Tirage bonus sur 100
+    -- 1%  → jackpot (MYTHIC + SECRET simultanés)
+    -- 1%  → SECRET seul
+    -- 4%  → MYTHIC seul
+    -- 94% → rien (spawn normal uniquement)
+    local roll  = math.random(1, 100)
+    local cumul = 0
+
+    cumul = cumul + TRACTEUR_CONFIG.JACKPOT_CHANCE
+    if roll <= cumul then
+        -- Jackpot : MYTHIC + SECRET
+        spawnerBRBonus(baseIndex, "MYTHIC")
+        spawnerBRBonus(baseIndex, "SECRET")
+        return
+    end
+
+    cumul = cumul + TRACTEUR_CONFIG.SECRET_CHANCE
+    if roll <= cumul then
+        -- SECRET seul
+        spawnerBRBonus(baseIndex, "SECRET")
+        return
+    end
+
+    cumul = cumul + TRACTEUR_CONFIG.MYTHIC_CHANCE
+    if roll <= cumul then
+        -- MYTHIC seul
+        spawnerBRBonus(baseIndex, "MYTHIC")
+        return
+    end
+
+    -- 94% : aucun bonus
+end
+
+-- ============================================================
 -- Boucle de spawn par base (task.spawn indépendant)
 -- ============================================================
 
@@ -573,6 +854,8 @@ local function lancerBoucleSpawn(baseIndex)
 			-- Spawn si la zone existe encore
 			if zones[baseIndex] then
 				pcall(spawnerUnBrainRot, baseIndex)
+				-- Roll bonus Tracteur passif (indépendant — non bloquant)
+				task.spawn(rollBonusTracteur, baseIndex)
 			else
 				break -- zone supprimée, arrêter la boucle
 			end

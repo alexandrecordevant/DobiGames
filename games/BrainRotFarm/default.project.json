@@ -12,7 +12,8 @@
                 "$className": "Folder",
                 "Shared": {
                     "$className": "Folder",
-                    "UITheme": { "$path": "../shared-lib/src/shared/UITheme.lua" }
+                    "UITheme":       { "$path": "../shared-lib/src/shared/UITheme.lua" },
+                    "RebirthConfig": { "$path": "../shared-lib/src/shared/RebirthConfig.lua" }
                 }
             },
             "Modules": { "$path": "src/ReplicatedStorage/Modules" },

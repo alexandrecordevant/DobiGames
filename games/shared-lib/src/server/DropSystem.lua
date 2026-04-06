@@ -24,12 +24,6 @@ local Config = require(
 )
 local ProgConfig = Config.ProgressionConfig
 
--- Valeur en coins par dépôt immédiat (one-shot, distinct du revenu/sec)
--- Décision : le dépôt ne donne PAS de one-shot coins, seulement le revenu passif.
--- Les coins sont générés par IncomeSystem en continu.
--- Cette table reste pour l'affichage texte du prompt avant dépôt.
-local VALEUR_PAR_RARETE = Config.ValeurParRarete
-
 -- Dossier source des Brainrots (ServerStorage par défaut, ReplicatedStorage pour LavaTower)
 -- Configurable via DropSystem.SetBrainrotsFolder(folder) depuis Main.server.lua
 local _brainrotsFolder = nil
@@ -586,8 +580,9 @@ local function restaurerDepots(player, playerData)
     for spotKey, info in pairs(playerData.spotsOccupes) do
         local touchPart = index[spotKey]
         if touchPart and info and info.rarete then
-            -- Utiliser valeurSec sauvegardée (préserve le multiplicateur Mutant)
-            local valeur   = info.valeurSec or (VALEUR_PAR_RARETE[info.rarete] or 1)
+            -- valeurSec sauvegardée lors du dépôt initial (attribut CashParSeconde du modèle)
+            -- Sera complété via fallback modèle source si 0/nil (anciens saves ou BR sans attribut)
+            local valeur   = (info.valeurSec and info.valeurSec > 0) and info.valeurSec or nil
             local isMutant = info.isMutant == true
 
             -- Tenter de restaurer le modèle exact via brNom (mutants inclus)
@@ -637,7 +632,37 @@ local function restaurerDepots(player, playerData)
                 end
             end
 
+            -- Fallback : lire CashParSeconde depuis le modèle cloné si valeur inconnue
+            -- (anciens saves sans valeurSec, ou BR dont l'attribut n'était pas encore posé)
+            if not valeur and modeleSource then
+                local cpsAttr = modeleSource:GetAttribute("CashParSeconde")
+                if cpsAttr and cpsAttr > 0 then
+                    valeur = cpsAttr
+                    if isMutant and info.elementType then
+                        local multElem = (Config.MutantConfig
+                            and Config.MutantConfig.ElementMultipliers
+                            and Config.MutantConfig.ElementMultipliers[info.elementType]) or 1
+                        valeur = valeur * multElem
+                    end
+                end
+            end
             local modeleSlot = placerModeleSlot(touchPart, info.rarete, modeleSource)
+
+            -- Fallback définitif : lire CashParSeconde depuis le modèle restauré sur le slot.
+            -- Le clone conserve tous les attributs du modèle source même sans brNom sauvegardé.
+            if (not valeur or valeur == 0) and modeleSlot then
+                local cpsSlot = modeleSlot:GetAttribute("CashParSeconde")
+                if cpsSlot and cpsSlot > 0 then
+                    valeur = cpsSlot
+                    if isMutant and info.elementType then
+                        local multElem = (Config.MutantConfig
+                            and Config.MutantConfig.ElementMultipliers
+                            and Config.MutantConfig.ElementMultipliers[info.elementType]) or 1
+                        valeur = valeur * multElem
+                    end
+                end
+            end
+            valeur = valeur or 0
 
             -- Restaurer le visuel Mutant (spot doré + particules)
             if isMutant then
@@ -816,10 +841,12 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     local rarete = entree.rarete.nom or "COMMON"
 
-    -- Lire le nom du BR depuis le Tool AVANT ViderCarry (le Tool est détruit après)
-    local brNomFallback = nil
+    -- Lire le nom et les attributs du BR depuis le Tool AVANT ViderCarry (le Tool est détruit après)
+    local brNomFallback  = nil
+    local cashParSeconde = nil
     if entree.toolRef and entree.toolRef.Parent then
-        brNomFallback = entree.toolRef:GetAttribute("BrainrotName")
+        brNomFallback  = entree.toolRef:GetAttribute("BrainrotName")
+        cashParSeconde = entree.toolRef:GetAttribute("CashParSeconde")
     end
 
     -- Retirer ce BR du carry (on utilise ViderCarry puis re-add les autres)
@@ -833,11 +860,16 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         end
     end
 
-    -- Calculer la valeur par seconde
+    -- Valeur par seconde : lue depuis l'attribut CashParSeconde (Tool ou modèle déposé)
+    -- Fallback sur modeleDepose si l'attribut n'était pas encore sur le Tool (spawn avant fix)
     local isMutant  = entree.rarete.isMutant == true
-    local valeurSec = VALEUR_PAR_RARETE[rarete] or 1
-    -- Multiplier par le multiplicateur si BR Mutant
-    if isMutant and entree.rarete.valeur then
+    local valeurSec = cashParSeconde
+    if (not valeurSec or valeurSec == 0) and modeleDepose then
+        valeurSec = modeleDepose:GetAttribute("CashParSeconde")
+    end
+    valeurSec = valeurSec or 0
+    -- Conserver le multiplicateur Mutant sur la valeur de base
+    if isMutant and entree.rarete.valeur and valeurSec > 0 then
         valeurSec = valeurSec * entree.rarete.valeur
     end
 
@@ -878,6 +910,20 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Détruire le modèle pleine taille (le mini clone suffit)
     if modeleSource and modeleSource.Parent then
         pcall(function() modeleSource:Destroy() end)
+    end
+
+    -- Fallback définitif : lire CashParSeconde depuis le modèle posé sur le slot.
+    -- Le clone conserve tous les attributs du modèle source (ServerStorage).
+    -- Couvre les cas : Tool sans attribut (spawn avant fix), modeleDepose nil, etc.
+    if valeurSec == 0 and modeleSlot then
+        local cpsSlot = modeleSlot:GetAttribute("CashParSeconde")
+        if cpsSlot and cpsSlot > 0 then
+            valeurSec = cpsSlot
+            -- Ré-appliquer le multiplicateur Mutant si applicable
+            if isMutant and entree.rarete.valeur then
+                valeurSec = valeurSec * entree.rarete.valeur
+            end
+        end
     end
 
     -- Récupérer le type d'élément du Mutant (nil si BR normal)
@@ -1148,7 +1194,8 @@ end
 
 -- Dépose un BR directement sur un spot libre, sans passer par le carry
 -- Utilisé par le Tracteur pour déposer automatiquement
-function DropSystem.DeposerBRDirect(player, touchPart, rarete)
+-- cashParSeconde : attribut CashParSeconde du modèle BR (lu par l'appelant avant dépôt)
+function DropSystem.DeposerBRDirect(player, touchPart, rarete, cashParSeconde)
     local uid = player.UserId
     if not spotsData[uid] then return false end
 
@@ -1165,7 +1212,7 @@ function DropSystem.DeposerBRDirect(player, touchPart, rarete)
     -- Spot déjà occupé ?
     if spotsData[uid][touchPart] then return false end
 
-    local valeurSec = VALEUR_PAR_RARETE[rarete] or 1
+    local valeurSec = cashParSeconde or 0
     local modeleSlot = placerModeleSlot(touchPart, rarete)
 
     spotsData[uid][touchPart] = {
