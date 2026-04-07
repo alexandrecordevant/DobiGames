@@ -645,7 +645,7 @@ GameConfig.CaptureConfig = {
 
 -- === CARRY ===
 GameConfig.CarryNiveaux = {
-    [0] = 1,  -- défaut
+    [0] = 2,  -- défaut (bat de baseball)
     [1] = 3,  -- Lv.1 coins
     [2] = 5,  -- Lv.2 coins
     [3] = 8,  -- MAX Game Pass (149 R$)

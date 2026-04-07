@@ -74,3 +74,92 @@ if evtDropped then
         brainrotFrame.Visible = false
     end)
 end
+
+-- ============================================================
+-- Bouton "Escape the Tower" (visible uniquement dans la tour)
+-- ============================================================
+local ORANGE = Color3.fromRGB(220, 120, 0)
+
+local escapeFrame = Instance.new("Frame", gui)
+escapeFrame.Size                   = UDim2.new(0, 170, 0, 50)
+escapeFrame.Position               = UDim2.new(1, -180, 0.5, -25)
+escapeFrame.BackgroundColor3       = ORANGE
+escapeFrame.BackgroundTransparency = 0.15
+escapeFrame.BorderSizePixel        = 0
+escapeFrame.Visible                = false
+local escapeCorner = Instance.new("UICorner", escapeFrame)
+escapeCorner.CornerRadius = UDim.new(0, 8)
+
+local escapeButton = Instance.new("TextButton", escapeFrame)
+escapeButton.Size                   = UDim2.new(1, 0, 1, 0)
+escapeButton.BackgroundTransparency = 1
+escapeButton.TextColor3             = Color3.fromRGB(255, 255, 255)
+escapeButton.TextScaled             = true
+escapeButton.Font                   = Enum.Font.GothamBold
+escapeButton.Text                   = "Escape the Tower"
+
+-- Countdown affiché en haut au centre
+local countdownFrame = Instance.new("Frame", gui)
+countdownFrame.Size                   = UDim2.new(0, 200, 0, 60)
+countdownFrame.Position               = UDim2.new(0.5, -100, 0, 20)
+countdownFrame.BackgroundTransparency = 1
+countdownFrame.BorderSizePixel        = 0
+countdownFrame.Visible                = false
+
+local countdownLabel = Instance.new("TextLabel", countdownFrame)
+countdownLabel.Size                   = UDim2.new(1, 0, 1, 0)
+countdownLabel.BackgroundTransparency = 1
+countdownLabel.TextColor3             = ORANGE
+countdownLabel.TextStrokeColor3       = Color3.fromRGB(255, 255, 255)
+countdownLabel.TextStrokeTransparency = 0
+countdownLabel.TextScaled             = false
+countdownLabel.TextSize               = 42
+countdownLabel.Font                   = Enum.Font.GothamBold
+countdownLabel.Text                   = "3"
+
+local EscapeTowerRE  = ReplicatedStorage:WaitForChild("EscapeTower",  15)
+local TowerEnteredRE = ReplicatedStorage:WaitForChild("TowerEntered", 15)
+local TowerExitedRE  = ReplicatedStorage:WaitForChild("TowerExited",  15)
+
+local countdownActive = false
+
+local function resetEscape()
+    countdownActive       = false
+    countdownFrame.Visible = false
+    escapeFrame.Visible    = false
+end
+
+if TowerEnteredRE then
+    TowerEnteredRE.OnClientEvent:Connect(function()
+        countdownActive = false
+        countdownFrame.Visible = false
+        escapeFrame.Visible    = true
+    end)
+end
+
+if TowerExitedRE then
+    TowerExitedRE.OnClientEvent:Connect(function()
+        resetEscape()
+    end)
+end
+
+if EscapeTowerRE then
+    escapeButton.Activated:Connect(function()
+        if countdownActive then return end
+        countdownActive        = true
+        escapeFrame.Visible    = false
+        countdownFrame.Visible = true
+
+        task.spawn(function()
+            for t = 3, 1, -1 do
+                if not countdownActive then return end
+                countdownLabel.Text = tostring(t)
+                task.wait(1)
+            end
+            if not countdownActive then return end
+            countdownFrame.Visible = false
+            countdownActive        = false
+            EscapeTowerRE:FireServer()
+        end)
+    end)
+end

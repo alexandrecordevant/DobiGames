@@ -74,7 +74,7 @@ local function lancerCycleTour(cfg)
     -- ── Billboard au-dessus de StartZone ──────────────────────────
     local billboard = Instance.new("BillboardGui")
     billboard.Name             = "TimerBillboard"
-    billboard.Size             = UDim2.new(15, 0, 4, 0)  -- taille en studs : proportionnel à la distance
+    billboard.Size             = UDim2.new(44, 0, 12, 0)  -- taille en studs : proportionnel à la distance
     billboard.StudsOffset      = Vector3.new(0, 10, 0)
     billboard.AlwaysOnTop      = false
     billboard.MaxDistance      = 200
@@ -89,7 +89,7 @@ local function lancerCycleTour(cfg)
     timerLabel.TextStrokeTransparency = 0.4
     timerLabel.TextScaled             = true
     timerLabel.TextColor3             = cfg.couleurAttente
-    timerLabel.Text                   = cfg.nomTour .. " dans 5:00"
+    timerLabel.Text                   = cfg.labelAffiche .. " dans 5:00"
     timerLabel.Parent                 = billboard
 
     -- ── Reset lave ────────────────────────────────────────────────
@@ -197,7 +197,7 @@ local function lancerCycleTour(cfg)
             timerLabel.TextColor3 = cfg.couleurAttente
 
             for t = CONFIG.DUREE_ATTENTE, 1, -1 do
-                timerLabel.Text = cfg.nomTour .. " dans " .. formatTimer(t)
+                timerLabel.Text = cfg.labelAffiche .. " dans " .. formatTimer(t)
                 task.wait(1)
             end
 
@@ -228,6 +228,7 @@ local function lancerCycleTour(cfg)
                     local hrp = char:FindFirstChild("HumanoidRootPart")
                     if hrp then
                         hrp.CFrame = interiorSpawn.CFrame + Vector3.new(0, 3, 0)
+                        player:SetAttribute("InTower", true)
                     end
                 end
             end
@@ -257,6 +258,7 @@ task.spawn(function()
     local tour = workspace:WaitForChild("TourCommune")
     lancerCycleTour({
         nomTour          = "TourCommune",
+        labelAffiche     = "Tour commune",
         startZone        = tour:WaitForChild("Triggers"):WaitForChild("StartZone"),
         interiorSpawn    = tour:WaitForChild("InterriorSpawn"),
         lava             = tour:WaitForChild("Lava"),
@@ -285,6 +287,7 @@ task.spawn(function()
 
     lancerCycleTour({
         nomTour          = "TourVIP",
+        labelAffiche     = "Tour VIP",
         startZone        = startZone,
         interiorSpawn    = spawn,
         lava             = lava,

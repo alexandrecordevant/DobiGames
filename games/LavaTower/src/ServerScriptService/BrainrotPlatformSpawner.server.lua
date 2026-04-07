@@ -285,16 +285,27 @@ end
 -- ────────────────────────────────────────────────────────────────
 local function scannerTours()
 	local tours = {}
-	local specific = workspace:WaitForChild("Bases", 5)
-		and workspace.Bases:WaitForChild("Base_1", 5)
-		and workspace.Bases.Base_1:WaitForChild("Specific", 5)
-	local conteneur = specific or workspace
-	for _, enfant in ipairs(conteneur:GetChildren()) do
-		if not enfant:IsA("Model") then continue end
-		if enfant.Name:sub(1, #TOWER_NAME_PREFIX) ~= TOWER_NAME_PREFIX then continue end
-		if not enfant:FindFirstChild(NOM_DOSSIER_PLATEFORMES) then continue end
-		table.insert(tours, enfant)
+	local function scanner(conteneur)
+		for _, enfant in ipairs(conteneur:GetChildren()) do
+			if not enfant:IsA("Model") then continue end
+			if enfant.Name:sub(1, #TOWER_NAME_PREFIX) ~= TOWER_NAME_PREFIX then continue end
+			if not enfant:FindFirstChild(NOM_DOSSIER_PLATEFORMES) then continue end
+			table.insert(tours, enfant)
+		end
 	end
+
+	-- Tours personnelles dans Bases/Base_X/Specific
+	local bases = workspace:FindFirstChild("Bases")
+	if bases then
+		for _, base in ipairs(bases:GetChildren()) do
+			local specific = base:FindFirstChild("Specific")
+			if specific then scanner(specific) end
+		end
+	end
+
+	-- Tours communes directement dans workspace (TourCommune, TourVIP…)
+	scanner(workspace)
+
 	return tours
 end
 

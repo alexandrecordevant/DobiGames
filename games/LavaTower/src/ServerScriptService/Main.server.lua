@@ -146,24 +146,15 @@ end
 -- 4. INJECTIONS SHARED-LIB (globales)
 -- ═══════════════════════════════════════════════
 
--- RebirthSystem — config tiers + condition progression
--- Les rebirths sont disponibles dès que les coins+BR requis sont réunis ;
--- ils débloquent les slots (pas l'inverse). Pas de condition de progression bloquante.
+-- RebirthSystem — config amélioration de base (pas de condition de progression requise)
 RebirthSystem.Config = RebirthConfig
-RebirthSystem.IsProgressionComplete = function(_playerData)
-    return true
-end
 
 -- CarrySystem — source de vérité pour la base du joueur
 CarrySystem.GetBaseJoueur = function(player)
     return AssignationSystem.GetBaseIndex(player)
 end
 
--- RebirthSystem — lecture live des spots occupés pour la vérification des BRs requis
-RebirthSystem.GetSpotsOccupes = function(player)
-    return DropSystem.GetSpotsOccupesSerialisables(player)
-end
--- DropSystem — mise à jour immédiate du bouton rebirth après dépôt/retrait/vente
+-- DropSystem — mise à jour du bouton après dépôt/retrait/vente
 DropSystem.OnSpotChange = function(player)
     RebirthSystem.MettreAJourBouton(player)
 end
@@ -220,36 +211,40 @@ local function OnPlayerAdded(player)
             end
         end)
 
-        RebirthSystem.OnRebirthComplete = function(p, niveau, cfg)
-            local spotsApres = BaseProgressionSystem.GetSpotsActifs(p)
-            CarrySystem.InitDepotSpotsBase(p, spotsApres)
-            -- Animation fade-in de structure uniquement au premier rebirth de chaque étage
-            -- Rebirth 1 → Floor 2, Rebirth 11 → Floor 3, Rebirth 21 → Floor 4
+        RebirthSystem.OnLevelUp = function(p, niveau, cfg)
+            local d = GetData(p)
+            if not d then return end
+            -- Ajouter le nouveau slot de tour à la progression
+            local slotInfo = REBIRTH_SLOT_ORDER[niveau]
+            if slotInfo then
+                d.progression[slotInfo.floor .. "_" .. slotInfo.spot] = true
+            end
+            -- Réinitialiser les systèmes pour que le nouveau slot soit actif
+            local bIndex = AssignationSystem.GetBaseIndex(p)
+            if bIndex then
+                DropSystem.Stop(p)
+                IncomeSystem.Stop(p)
+                DropSystem.Init(p, bIndex, d)
+                IncomeSystem.Init(p, function() return GetData(p) end)
+                local spotsApres = BaseProgressionSystem.GetSpotsActifs(p)
+                CarrySystem.InitDepotSpotsBase(p, spotsApres)
+            end
+            -- Débloquer un floor visuellement au premier slot de chaque étage
+            -- Amélioration 1 → Floor 2 · Amélioration 11 → Floor 3 · Amélioration 21 → Floor 4
             local SPOTS_PAR_ETAGE = 10
             for etageIdx = 2, 4 do
-                local premiereSlot = (etageIdx - 2) * SPOTS_PAR_ETAGE + 1
-                if niveau == premiereSlot then
-                    -- DebloquerFloorApresRebirth(p, N) débloque floorIndex = N+1
+                if niveau == (etageIdx - 2) * SPOTS_PAR_ETAGE + 1 then
                     pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, p, etageIdx - 1)
                     break
                 end
             end
+            -- Mettre à jour le board
+            local nextCfg = RebirthSystem.Config[niveau + 1]
             pcall(BoardSystem.MettreAJourBoard, p, {
-                rebirthLevel   = niveau,
-                coinsActuels   = 0,
-                coinsRequis    = cfg and cfg.coinsRequis or 0,
-                brainRotRequis = cfg and cfg.brainRotRequis and cfg.brainRotRequis.rarete or "?",
-                label          = cfg and cfg.label or nil,
+                rebirthLevel = niveau,
+                coinsActuels = d.coins or 0,
+                coinsRequis  = nextCfg and nextCfg.coinsRequis or 0,
             })
-        end
-        RebirthSystem.OnResetBase = function(p, bIndex, d)
-            -- Pré-remplir la progression AVANT BaseProgressionSystem.Init (appelé par RebirthSystem)
-            -- d.rebirthLevel est déjà mis à jour au moment de cet appel
-            d.progression = BuildProgressionFromRebirth(d.rebirthLevel or 0)
-            DropSystem.Stop(p)
-            IncomeSystem.Stop(p)
-            DropSystem.Init(p, bIndex, d)
-            IncomeSystem.Init(p, function() return GetData(p) end)
         end
         RebirthSystem.Init(player, data, baseIndex)
 

@@ -43,16 +43,6 @@ local function getAssignationSystem()
     return _AssignationSystem
 end
 
-local function getOuvrirRebirth()
-    local ev = ReplicatedStorage:FindFirstChild("OuvrirRebirth")
-    if not ev then
-        ev        = Instance.new("RemoteEvent")
-        ev.Name   = "OuvrirRebirth"
-        ev.Parent = ReplicatedStorage
-    end
-    return ev
-end
-
 -- ============================================================
 -- Utilitaires — formate un nombre avec espaces milliers
 -- ============================================================
@@ -70,179 +60,146 @@ end
 
 -- ============================================================
 -- Création de la SurfaceGui sur le Board
+-- Layout : titre blanc sur fond noir + bouton vert avec le prix
+-- Le TextButton "BoutonAchat" est cliqué directement par le client
 -- ============================================================
 local function creerSurfaceGui(board)
-    -- Supprimer tous les SurfaceGui/BillboardGui existants (parasites Studio + anciens BoardGui)
+    -- Supprimer tous les SurfaceGui/BillboardGui existants
     for _, child in ipairs(board:GetChildren()) do
         if child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
             child:Destroy()
         end
     end
-    -- Supprimer aussi les TextLabels directs parasites (caractères isolés)
+    -- Supprimer aussi les TextLabels/Frames parasites Studio
     for _, child in ipairs(board:GetChildren()) do
         if child:IsA("TextLabel") or child:IsA("Frame") then
             child:Destroy()
         end
     end
+    -- Supprimer l'ancien ClickDetector (le bouton sur le panneau remplace l'interaction)
+    local oldCd = board:FindFirstChildOfClass("ClickDetector")
+    if oldCd then oldCd:Destroy() end
 
     local sg = Instance.new("SurfaceGui", board)
-    sg.Name             = "BoardGui"
-    sg.Face             = Enum.NormalId.Front
-    sg.SizingMode       = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    sg.PixelsPerStud    = 50
-    sg.AlwaysOnTop      = false
-    sg.MaxDistance      = 80   -- augmenté de 40 → 80 studs
-    sg.LightInfluence   = 0.3
+    sg.Name          = "BoardGui"
+    sg.Face          = Enum.NormalId.Front
+    sg.SizingMode    = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 50
+    sg.AlwaysOnTop   = false
+    sg.MaxDistance   = 80
+    sg.LightInfluence = 0.1
 
+    -- Fond gris foncé avec marge pour que les coins arrondis ne mordent pas le panneau
     local fond = Instance.new("Frame", sg)
     fond.Name                   = "Fond"
-    fond.Size                   = UDim2.new(1, 0, 1, 0)
-    fond.BackgroundColor3       = Color3.fromRGB(10, 10, 20)
-    fond.BackgroundTransparency = 0.3
+    fond.Size                   = UDim2.new(1, -8, 1, -8)
+    fond.Position               = UDim2.new(0, 4, 0, 4)
+    fond.BackgroundColor3       = Color3.fromRGB(45, 45, 45)
+    fond.BackgroundTransparency = 0
     fond.BorderSizePixel        = 0
-
-    local corner = Instance.new("UICorner", fond)
-    corner.CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", fond).CornerRadius = UDim.new(0, 8)
 
     local stroke = Instance.new("UIStroke", fond)
-    stroke.Color     = Color3.fromRGB(255, 140, 0)
-    stroke.Thickness = 3
+    stroke.Color     = Color3.fromRGB(50, 50, 50)
+    stroke.Thickness = 2
 
+    -- Titre blanc
     local lblTitre = Instance.new("TextLabel", fond)
     lblTitre.Name                   = "Titre"
-    lblTitre.Size                   = UDim2.new(1, -10, 0.2, 0)
-    lblTitre.Position               = UDim2.new(0, 5, 0, 4)
+    lblTitre.Size                   = UDim2.new(1, -10, 0.28, 0)
+    lblTitre.Position               = UDim2.new(0, 5, 0.02, 0)
     lblTitre.BackgroundTransparency = 1
-    lblTitre.TextColor3             = Color3.fromRGB(255, 165, 0)
-    lblTitre.Font                   = Enum.Font.GothamBold
+    lblTitre.TextColor3             = Color3.fromRGB(235, 235, 235)
+    lblTitre.Font                   = Enum.Font.GothamBlack
     lblTitre.TextScaled             = true
-    lblTitre.RichText               = true
-    lblTitre.Text                   = "REBIRTH"
+    lblTitre.Text                   = "AMÉLIORATION\nDE LA BASE"
 
+    -- Ligne séparatrice
+    local sep = Instance.new("Frame", fond)
+    sep.Size             = UDim2.new(0.85, 0, 0, 2)
+    sep.Position         = UDim2.new(0.075, 0, 0.32, 0)
+    sep.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    sep.BorderSizePixel  = 0
+
+    -- Info niveau + multiplicateur
     local lblNiveau = Instance.new("TextLabel", fond)
     lblNiveau.Name                   = "Niveau"
-    lblNiveau.Size                   = UDim2.new(1, -10, 0.18, 0)
-    lblNiveau.Position               = UDim2.new(0, 5, 0.2, 2)
+    lblNiveau.Size                   = UDim2.new(1, -10, 0.2, 0)
+    lblNiveau.Position               = UDim2.new(0, 5, 0.34, 0)
     lblNiveau.BackgroundTransparency = 1
-    lblNiveau.TextColor3             = Color3.fromRGB(255, 255, 255)
+    lblNiveau.TextColor3             = Color3.fromRGB(235, 235, 235)
     lblNiveau.Font                   = Enum.Font.GothamBold
     lblNiveau.TextScaled             = true
-    lblNiveau.RichText               = true
-    lblNiveau.Text                   = "Level 0 → 1"
+    lblNiveau.Text                   = "Niveau 0 / 30  ·  x1.0"
 
-    local barFond = Instance.new("Frame", fond)
-    barFond.Name             = "BarFond"
-    barFond.Size             = UDim2.new(1, -10, 0.08, 0)
-    barFond.Position         = UDim2.new(0, 5, 0.4, 0)
-    barFond.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    barFond.BorderSizePixel  = 0
-    Instance.new("UICorner", barFond).CornerRadius = UDim.new(1, 0)
-
-    local barFill = Instance.new("Frame", barFond)
-    barFill.Name             = "Fill"
-    barFill.Size             = UDim2.new(0, 0, 1, 0)
-    barFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-    barFill.BorderSizePixel  = 0
-    Instance.new("UICorner", barFill).CornerRadius = UDim.new(1, 0)
-
-    local lblCoins = Instance.new("TextLabel", fond)
-    lblCoins.Name                   = "Coins"
-    lblCoins.Size                   = UDim2.new(1, -10, 0.15, 0)
-    lblCoins.Position               = UDim2.new(0, 5, 0.5, 2)
-    lblCoins.BackgroundTransparency = 1
-    lblCoins.TextColor3             = Color3.fromRGB(255, 215, 0)
-    lblCoins.Font                   = Enum.Font.Gotham
-    lblCoins.TextScaled             = true
-    lblCoins.RichText               = true
-    lblCoins.Text                   = "— / —"
-
-    local lblBR = Instance.new("TextLabel", fond)
-    lblBR.Name                   = "BR"
-    lblBR.Size                   = UDim2.new(1, -10, 0.15, 0)
-    lblBR.Position               = UDim2.new(0, 5, 0.66, 2)
-    lblBR.BackgroundTransparency = 1
-    lblBR.TextColor3             = Color3.fromRGB(200, 200, 200)
-    lblBR.Font                   = Enum.Font.Gotham
-    lblBR.TextScaled             = true
-    lblBR.RichText               = true
-    lblBR.Text                   = "— requis"
-
-    local lblHint = Instance.new("TextLabel", fond)
-    lblHint.Name                   = "Hint"
-    lblHint.Size                   = UDim2.new(1, -10, 0.13, 0)
-    lblHint.Position               = UDim2.new(0, 5, 0.85, 2)
-    lblHint.BackgroundTransparency = 1
-    lblHint.TextColor3             = Color3.fromRGB(150, 150, 150)
-    lblHint.Font                   = Enum.Font.Gotham
-    lblHint.TextScaled             = true
-    lblHint.RichText               = true
-    lblHint.Text                   = "<i>Click to open menu</i>"
+    -- Bouton vert d'achat (cliqué directement par le LocalScript client)
+    local bouton = Instance.new("TextButton", fond)
+    bouton.Name             = "BoutonAchat"
+    bouton.Size             = UDim2.new(0.85, 0, 0.3, 0)
+    bouton.Position         = UDim2.new(0.075, 0, 0.62, 0)
+    bouton.BackgroundColor3 = Color3.fromRGB(60, 165, 80)
+    bouton.TextColor3       = Color3.fromRGB(240, 240, 240)
+    bouton.Font             = Enum.Font.GothamBlack
+    bouton.TextScaled       = true
+    bouton.Text             = "—"
+    bouton.BorderSizePixel  = 0
+    bouton.AutoButtonColor  = true
+    Instance.new("UICorner", bouton).CornerRadius = UDim.new(0, 6)
 
     return sg
 end
 
 -- ============================================================
--- Mise à jour de la SurfaceGui
+-- Met à jour le contenu de la SurfaceGui d'un Board
+-- etat = table envoyée par RebirthButtonUpdate / OnLevelUp :
+--   rebirthLevel, coinsRequis, multiplicateur, disponible, maxAtteint
 -- ============================================================
 local function mettreAJourSurfaceGui(board, etat)
     local sg   = board:FindFirstChild("BoardGui")
-    if not sg then return end
+    if not sg  then return end
     local fond = sg:FindFirstChild("Fond")
     if not fond then return end
 
-    local niveau = etat.rebirthLevel or 0
-    local coinsA = etat.coinsActuels or 0
-    local coinsR = etat.coinsRequis  or 0
-    local rarete = etat.brainRotRequis or "?"
-    local brOk   = etat.manqueBR == nil
-    local pct    = coinsR > 0 and math.clamp(coinsA / coinsR, 0, 1) or 0
+    local niveau  = etat.rebirthLevel or 0
+    local coinsR  = etat.coinsRequis  or 0
+    local mult    = etat.multiplicateur or (1 + niveau * 0.1)
+    local maxed   = etat.maxAtteint or (niveau >= 30)
+    local dispon  = etat.disponible or false
 
+    -- Niveau + multiplicateur
     local lblNiveau = fond:FindFirstChild("Niveau")
     if lblNiveau then
-        lblNiveau.Text = "<b>Level " .. niveau .. " → " .. (niveau + 1) .. "</b>"
-        if etat.label then
-            lblNiveau.Text = "<b>" .. etat.label .. "</b>"
+        lblNiveau.Text = "Niveau " .. niveau .. " / 30  ·  x" .. string.format("%.1f", mult)
+    end
+
+    -- Bouton : prix ou "MAX"
+    local bouton = fond:FindFirstChild("BoutonAchat")
+    if bouton then
+        if maxed then
+            bouton.Text             = "NIVEAU MAXIMUM"
+            bouton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            bouton.TextColor3       = Color3.fromRGB(120, 120, 120)
+            bouton.Active           = false
+        else
+            bouton.Text             = formaterNombre(coinsR) .. " coins"
+            bouton.BackgroundColor3 = dispon
+                and Color3.fromRGB(60, 165, 80)
+                or  Color3.fromRGB(40, 40, 40)
+            bouton.TextColor3       = dispon
+                and Color3.fromRGB(240, 240, 240)
+                or  Color3.fromRGB(120, 120, 120)
+            bouton.Active           = dispon
         end
     end
 
-    local barFond = fond:FindFirstChild("BarFond")
-    local barFill = barFond and barFond:FindFirstChild("Fill")
-    if barFill then
-        barFill.Size             = UDim2.new(pct, 0, 1, 0)
-        barFill.BackgroundColor3 = pct >= 1
-            and Color3.fromRGB(0, 220, 0)
-            or  Color3.fromRGB(255, 200, 0)
-    end
-
-    local lblCoins = fond:FindFirstChild("Coins")
-    if lblCoins then
-        lblCoins.Text = formaterNombre(coinsA) .. " / " .. formaterNombre(coinsR)
-        lblCoins.TextColor3 = pct >= 1
-            and Color3.fromRGB(0, 255, 100)
-            or  Color3.fromRGB(255, 215, 0)
-    end
-
-    local lblBR = fond:FindFirstChild("BR")
-    if lblBR then
-        local check = brOk and "[OK]" or "[X]"
-        lblBR.Text       = rarete .. "  " .. check
-        lblBR.TextColor3 = brOk
-            and Color3.fromRGB(100, 255, 100)
-            or  Color3.fromRGB(255, 100, 100)
-    end
-
+    -- Bordure verte si achat possible
     local stroke = fond:FindFirstChildOfClass("UIStroke")
     if stroke then
-        stroke.Color = (pct >= 1 and brOk)
-            and Color3.fromRGB(255, 215, 0)
-            or  Color3.fromRGB(255, 140, 0)
+        stroke.Color = dispon
+            and Color3.fromRGB(60, 165, 80)
+            or  Color3.fromRGB(50, 50, 50)
     end
 end
-
--- ============================================================
--- Anti-double-clic — debounce par joueur
--- ============================================================
-local clickDebounces = {}  -- { [userId] = true } pendant 1.5s
 
 -- ============================================================
 -- API publique — Init
@@ -255,8 +212,7 @@ function BoardSystem.Init()
         return
     end
 
-    local maxBases      = Config.MaxBases or 8
-    local OuvrirRebirth = getOuvrirRebirth()
+    local maxBases = Config.MaxBases or 8
 
     for i = 1, maxBases do
         local base   = bases:FindFirstChild("Base_" .. i)
@@ -265,27 +221,9 @@ function BoardSystem.Init()
         local board  = bat and bat:FindFirstChild("Board")
 
         if board then
+            -- Créer la SurfaceGui avec le bouton d'amélioration
+            -- Le clic est géré côté client (RebirthHUD.client.lua)
             creerSurfaceGui(board)
-
-            local ancien = board:FindFirstChildOfClass("ClickDetector")
-            if ancien then ancien:Destroy() end
-
-            local cd = Instance.new("ClickDetector", board)
-            cd.MaxActivationDistance = boardCfg.distanceClick
-
-            local capturedIndex = i
-            cd.MouseClick:Connect(function(player)
-                local uid = player.UserId
-                if clickDebounces[uid] then return end
-                clickDebounces[uid] = true
-                task.delay(1.5, function() clickDebounces[uid] = nil end)
-
-                local RS = getRebirthSystem()
-                if RS then pcall(RS.MettreAJourBouton, player) end
-                pcall(function() OuvrirRebirth:FireClient(player) end)
-                Logger.debug("Board", "%s → panel Rebirth (Base_%d)", player.Name, capturedIndex)
-            end)
-
             Logger.debug("Board", "Board configuré → Base_%d", i)
         else
             Logger.warn("Board", "Board introuvable dans Base_%d", i)

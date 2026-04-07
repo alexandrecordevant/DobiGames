@@ -1,11 +1,14 @@
 -- shared-lib/server/RebirthSystem.lua
--- DobiGames — Système de Rebirth générique
--- Reset volontaire contre multiplicateur permanent + slots bonus
--- Conditions : coins + Brain Rot rare spécifique
+-- DobiGames — Système d'Amélioration de Base générique
+--
+-- Principe : le joueur paie des coins pour débloquer un slot supplémentaire
+-- et augmenter son multiplicateur permanent.  Il ne perd ni ses brainrots
+-- ni sa progression.
+--
 -- Callbacks à injecter depuis Main.server.lua :
---   RebirthSystem.Config               = GameConfig.RebirthConfig
---   RebirthSystem.IsProgressionComplete = function(playerData) → bool
---   RebirthSystem.OnRebirthComplete     = function(player, niveau, cfg)
+--   RebirthSystem.Config         = require(...RebirthConfig)
+--   RebirthSystem.OnLevelUp      = function(player, newLevel, cfg)
+--   RebirthSystem.OnButtonUpdate = function(player, etat)
 
 local RebirthSystem = {}
 
@@ -19,61 +22,32 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Dépendances
 -- ============================================================
-local BaseProgressionSystem = require(game:GetService("ServerScriptService").SharedLib.Server.BaseProgressionSystem)
 local Logger = require(script.Parent.Logger)
 
 -- ============================================================
 -- Callbacks injectés par Main.server.lua
 -- ============================================================
 
--- Table de config des niveaux de rebirth (RebirthConfig depuis GameConfig)
+-- Table de config des niveaux (RebirthConfig depuis GameConfig)
 RebirthSystem.Config = nil
 
--- Retourne true si le joueur a atteint la progression maximale requise
--- Exemple Farm : function(data) return data.progression["4_10"] == true end
-RebirthSystem.IsProgressionComplete = nil
+-- Appelé après chaque amélioration réussie
+-- function(player, newLevel, cfg)
+RebirthSystem.OnLevelUp = nil
 
--- Appelé après la séquence complète (Discord, analytics, etc.)
--- function(player, niveau, cfg)
-RebirthSystem.OnRebirthComplete = nil
-
--- Retourne les coins non encore collectés manuellement (coinsEnAttente dans IncomeSystem)
--- Injecter depuis Main : RebirthSystem.GetExtraCoins = function(p) return IncomeSystem.GetCoinsEnAttente(p) end
-RebirthSystem.GetExtraCoins = nil
-
--- Appelé à chaque envoi de RebirthButtonUpdate (5s loop + collectes)
--- Injecter depuis Main : RebirthSystem.OnButtonUpdate = function(player, etat) BoardSystem.MettreAJourBoard(player, etat) end
+-- Appelé à chaque envoi de RebirthButtonUpdate (boucle 5s + après collectes)
+-- function(player, etat)
 RebirthSystem.OnButtonUpdate = nil
 
--- Appelé pendant executerRebirth pour vider les spots + réinitialiser DropSystem/IncomeSystem
--- Injecter depuis Main : RebirthSystem.OnResetBase = function(player, baseIndex, data) ... end
-RebirthSystem.OnResetBase = nil
-
 -- ============================================================
--- Config des niveaux
+-- Helpers config
 -- ============================================================
 
--- Lit REBIRTH_CONFIG depuis RebirthSystem.Config (injecté par Main)
--- Niveaux 5+ : exponentiel, basé sur le dernier BR requis dans la config
+local MAX_LEVEL = 30
+
 local function obtenirConfig(niveau)
     local cfg = RebirthSystem.Config
-    if cfg and cfg[niveau] then
-        return cfg[niveau]
-    end
-    -- Fallback exponentiel pour les niveaux très élevés (5+)
-    -- Utilise le BR requis du niveau 4 si disponible, sinon "BRAINROT_GOD"
-    local fallbackBR = (cfg and cfg[4] and cfg[4].brainRotRequis)
-        or { rarete = "BRAINROT_GOD", quantite = 1 }
-    local extra = niveau - 4
-    return {
-        coinsRequis    = 2000000 * (2 ^ extra),
-        brainRotRequis = fallbackBR,
-        multiplicateur = 5.0 + (1.5 * extra),
-        slotsBonus     = 5,
-        label          = "Rebirth " .. tostring(niveau),
-        couleur        = Color3.fromRGB(255, 255, 255),
-        couleurHex     = 16777215,
-    }
+    return cfg and cfg[niveau] or nil
 end
 
 -- ============================================================
@@ -114,17 +88,8 @@ end
 -- Utilitaires
 -- ============================================================
 
-local function aAtteintProgressionMax(playerData)
-    if not RebirthSystem.IsProgressionComplete then return false end
-    return RebirthSystem.IsProgressionComplete(playerData) == true
-end
-
 local function niveauActuel(playerData)
     return playerData.rebirthLevel or 0
-end
-
-local function prochainNiveau(playerData)
-    return niveauActuel(playerData) + 1
 end
 
 local function formaterCoins(n)
@@ -140,84 +105,60 @@ local function formaterCoins(n)
 end
 
 -- ============================================================
--- Vérification des conditions
+-- Vérification des conditions (coins uniquement)
 -- ============================================================
 
 function RebirthSystem.VerifierConditions(player)
     local data = getData(player)
     if not data then return false, { erreur = "Données introuvables" } end
 
-    local niveau  = prochainNiveau(data)
-    local cfg     = obtenirConfig(niveau)
+    local niveau = niveauActuel(data) + 1
+    if niveau > MAX_LEVEL then
+        return false, { maxAtteint = true }
+    end
+
+    local cfg = obtenirConfig(niveau)
+    if not cfg then return false, { erreur = "Config introuvable" } end
+
     local manques = {}
     local ok      = true
 
-    -- Inclure les coins en attente dans les slots (pas encore collectés manuellement)
-    local extraCoins = RebirthSystem.GetExtraCoins and RebirthSystem.GetExtraCoins(player) or 0
-    local coins = (data.coins or 0) + extraCoins
-    if coins < cfg.coinsRequis then
+    if (data.coins or 0) < cfg.coinsRequis then
         ok = false
-        manques.manqueCoins = cfg.coinsRequis - coins
-    end
-
-    local inv      = data.inventory or {}
-    local rarete   = cfg.brainRotRequis.rarete
-    local quantite = cfg.brainRotRequis.quantite
-    local stock    = inv[rarete] or 0
-
-    -- Vérifier aussi dans les slots déposés (spotsOccupes) — fix LEGENDARY non compté
-    local spotsOccupes = data.spotsOccupes or {}
-    for _, slotData in pairs(spotsOccupes) do
-        if type(slotData) == "table" and slotData.rarete == rarete then
-            stock = stock + 1
-            Logger.debug("Rebirth", "BR requis trouvé dans slot déposé : %s", rarete)
-        end
-    end
-
-    if stock < quantite then
-        ok = false
-        manques.manqueBR       = rarete
-        manques.manqueBRActuel = stock
-        manques.manqueBRRequis = quantite
+        manques.manqueCoins = cfg.coinsRequis - (data.coins or 0)
     end
 
     return ok, manques
 end
 
 -- ============================================================
--- Mise à jour du bouton Rebirth côté client
+-- Mise à jour du bouton côté client
 -- ============================================================
 
 local function envoyerEtatBouton(player)
     local data = getData(player)
     if not data then return end
 
-    local visible     = aAtteintProgressionMax(data)
-    local niveau      = prochainNiveau(data)
-    local cfg         = obtenirConfig(niveau)
+    local niveau    = niveauActuel(data)
+    local prochain  = niveau + 1
+    local maxAtteint = niveau >= MAX_LEVEL
+
+    local cfg = obtenirConfig(prochain)
     local ok, manques = RebirthSystem.VerifierConditions(player)
 
-    local extraCoins = RebirthSystem.GetExtraCoins and RebirthSystem.GetExtraCoins(player) or 0
     local etat = {
-        visible        = visible,
         disponible     = ok,
-        prochainLevel  = niveau,
-        coinsActuels   = (data.coins or 0) + extraCoins,
-        coinsRequis    = cfg.coinsRequis,
-        brainRotRequis = cfg.brainRotRequis.rarete,
-        label          = cfg.label,
-        couleur        = cfg.couleur,
+        maxAtteint     = maxAtteint,
+        prochainLevel  = prochain,
+        coinsActuels   = data.coins or 0,
+        coinsRequis    = cfg and cfg.coinsRequis or 0,
         manqueCoins    = manques.manqueCoins or 0,
-        manqueBR       = manques.manqueBR,
-        manqueBRActuel = manques.manqueBRActuel or 0,
-        manqueBRRequis = manques.manqueBRRequis or 0,
-        rebirthLevel   = niveauActuel(data),
-        multiplicateur = cfg.multiplicateur,  -- multiplicateur du PROCHAIN rebirth (pas l'actuel)
+        rebirthLevel   = niveau,
+        multiplicateur = cfg and cfg.multiplicateur or (data.multiplicateurPermanent or 1.0),
     }
 
     pcall(function() RebirthButtonUpdate:FireClient(player, etat) end)
 
-    -- Mettre à jour le Board de la base (toutes les 5s + après chaque collecte)
     if RebirthSystem.OnButtonUpdate then
         pcall(RebirthSystem.OnButtonUpdate, player, etat)
     end
@@ -227,14 +168,14 @@ end
 -- Effets visuels serveur (particules dorées)
 -- ============================================================
 
-local function effetExplosionRebirth(player)
+local function effetExplosion(player)
     local char = player.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
     local ancre = Instance.new("Part")
-    ancre.Name         = "RebirthFX_" .. player.UserId
+    ancre.Name         = "BaseImproveFX_" .. player.UserId
     ancre.Size         = Vector3.new(1, 1, 1)
     ancre.Position     = hrp.Position
     ancre.Anchored     = true
@@ -244,48 +185,48 @@ local function effetExplosionRebirth(player)
 
     local emitter = Instance.new("ParticleEmitter")
     emitter.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 255, 100)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 180,   0)),
-        ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 100,   0)),
+        ColorSequenceKeypoint.new(0,   Color3.fromRGB(100, 220, 120)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60,  180, 80 )),
+        ColorSequenceKeypoint.new(1,   Color3.fromRGB(40,  120, 60 )),
     })
-    emitter.LightEmission = 1
-    emitter.Rate          = 200
-    emitter.Lifetime      = NumberRange.new(1.5, 3.5)
-    emitter.Speed         = NumberRange.new(15, 30)
+    emitter.LightEmission = 0.8
+    emitter.Rate          = 150
+    emitter.Lifetime      = NumberRange.new(1.0, 2.5)
+    emitter.Speed         = NumberRange.new(10, 25)
     emitter.SpreadAngle   = Vector2.new(180, 180)
     emitter.Size          = NumberSequence.new({
-        NumberSequenceKeypoint.new(0,   0.6),
-        NumberSequenceKeypoint.new(0.5, 1.0),
+        NumberSequenceKeypoint.new(0,   0.5),
+        NumberSequenceKeypoint.new(0.5, 0.8),
         NumberSequenceKeypoint.new(1,   0),
     })
     emitter.Parent = ancre
 
     local light = Instance.new("PointLight")
-    light.Brightness = 8
-    light.Range      = 50
-    light.Color      = Color3.fromRGB(255, 220, 80)
+    light.Brightness = 6
+    light.Range      = 40
+    light.Color      = Color3.fromRGB(80, 220, 100)
     light.Parent     = ancre
 
-    emitter:Emit(120)
+    emitter:Emit(80)
     task.spawn(function()
         TweenService:Create(light,
             TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
             { Brightness = 0 }
         ):Play()
     end)
-    task.delay(4, function()
+    task.delay(3, function()
         emitter.Enabled = false
-        task.delay(3.5, function()
+        task.delay(2.5, function()
             if ancre and ancre.Parent then ancre:Destroy() end
         end)
     end)
 end
 
 -- ============================================================
--- Séquence de Rebirth
+-- Séquence d'amélioration
 -- ============================================================
 
-local function executerRebirth(player)
+local function executerAmelioration(player)
     local dd = donneesJoueurs[player.UserId]
     if not dd then return end
     if dd.enCoursDeRebirth then return end
@@ -293,74 +234,58 @@ local function executerRebirth(player)
 
     local data      = dd.playerData
     local baseIndex = dd.baseIndex
-    local niveau    = prochainNiveau(data)
+    local niveau    = niveauActuel(data) + 1
     local cfg       = obtenirConfig(niveau)
 
-    -- Étape 1 : Consommer les ressources
-    data.coins = 0
-    local inv  = data.inventory or {}
-    local rarete = cfg.brainRotRequis.rarete
-    inv[rarete]  = math.max(0, (inv[rarete] or 0) - cfg.brainRotRequis.quantite)
-    data.inventory    = inv
-    data.rebirthLevel = niveau
+    if not cfg then
+        dd.enCoursDeRebirth = false
+        return
+    end
 
-    -- Étape 2 : Récompenses permanentes
-    data.multiplicateurPermanent = cfg.multiplicateur
-    data.slotsBonus = (data.slotsBonus or 0) + cfg.slotsBonus
+    -- Étape 1 : Déduire les coins
+    data.coins = math.max(0, (data.coins or 0) - cfg.coinsRequis)
+
+    -- Étape 2 : Appliquer les récompenses permanentes
+    data.rebirthLevel             = niveau
+    data.multiplicateurPermanent  = cfg.multiplicateur
+    data.slotsBonus               = (data.slotsBonus or 0) + cfg.slotsBonus
 
     -- Étape 3 : Animation client + particules serveur
     pcall(function()
         RebirthAnimation:FireClient(player, {
             niveau         = niveau,
             label          = cfg.label,
-            couleur        = cfg.couleur,
             multiplicateur = cfg.multiplicateur,
         })
     end)
-    task.spawn(effetExplosionRebirth, player)
+    task.spawn(effetExplosion, player)
 
-    -- Étape 4 : Notifications in-game
-    local msgJoueur = string.format(
-        "%s! Multiplier x%.1f unlocked! +%d bonus slots",
-        cfg.label, cfg.multiplicateur, cfg.slotsBonus
-    )
-    local msgTous = string.format(
-        "%s just performed their %s! (x%.1f)",
-        player.Name, cfg.label, cfg.multiplicateur
-    )
+    -- Étape 4 : Notification personnelle (pas de notification globale)
     local notif = getNotifEvent()
     if notif then
-        pcall(function() notif:FireClient(player, "REBIRTH", msgJoueur) end)
-        pcall(function() notif:FireAllClients("REBIRTH_GLOBAL", msgTous) end)
+        local msg = string.format(
+            "Base améliorée au niveau %d ! ×%.1f multiplicateur · +1 slot",
+            niveau, cfg.multiplicateur
+        )
+        pcall(function() notif:FireClient(player, "AMELIORATION", msg) end)
     end
 
-    -- Étape 5 : Reset progression + ré-init base
-    task.wait(1.5)
-    data.progression   = {}
-    data.spotsOccupes  = {}  -- vider l'inventaire des spots (BRs déposés)
-    -- Vider les spots, DropSystem, IncomeSystem et recréer les prompts (injecté par Main)
-    if RebirthSystem.OnResetBase then
-        pcall(RebirthSystem.OnResetBase, player, baseIndex, data)
+    -- Étape 5 : Callback game-specific (ex. ajouter slot LavaTower, refresh BRF)
+    if RebirthSystem.OnLevelUp then
+        pcall(RebirthSystem.OnLevelUp, player, niveau, cfg)
     end
-    BaseProgressionSystem.Reset(player)
-    task.wait(0.1)
-    BaseProgressionSystem.Init(player, baseIndex, data)
 
-    -- Étape 6 : Mettre à jour le HUD
+    -- Étape 6 : Mettre à jour le HUD et le bouton
     local updateHUD = getUpdateHUD()
     if updateHUD then
         pcall(function() updateHUD:FireClient(player, data) end)
     end
 
-    task.wait(0.5)
+    task.wait(0.3)
     envoyerEtatBouton(player)
 
-    -- Callback externe (Discord, analytics…)
-    if RebirthSystem.OnRebirthComplete then
-        pcall(RebirthSystem.OnRebirthComplete, player, niveau, cfg)
-    end
-
-    Logger.info("Rebirth", "%s → %s (×%.1f, +%d slots)", player.Name, cfg.label, cfg.multiplicateur, cfg.slotsBonus)
+    Logger.info("AmelioBase", "%s → Amélioration %d (×%.1f, +%d slot)",
+        player.Name, niveau, cfg.multiplicateur, cfg.slotsBonus)
 
     dd.enCoursDeRebirth = false
 end
@@ -373,39 +298,24 @@ DemandeRebirth.OnServerEvent:Connect(function(player)
     local dd = donneesJoueurs[player.UserId]
     if not dd or dd.enCoursDeRebirth then return end
 
-    local data = dd.playerData
-
-    if not aAtteintProgressionMax(data) then
-        local notif = getNotifEvent()
-        if notif then
-            pcall(function()
-                notif:FireClient(player, "ERREUR",
-                    "Complete the full progression before performing a Rebirth!")
-            end)
-        end
-        return
-    end
-
     local ok, manques = RebirthSystem.VerifierConditions(player)
     if not ok then
-        local parties = {}
-        if manques.manqueCoins and manques.manqueCoins > 0 then
-            table.insert(parties, formaterCoins(manques.manqueCoins) .. " coins missing")
-        end
-        if manques.manqueBR then
-            table.insert(parties, "1 " .. manques.manqueBR .. " missing in your inventory")
-        end
         local notif = getNotifEvent()
         if notif then
-            pcall(function()
-                notif:FireClient(player, "ERREUR",
-                    "Requirements not met: " .. table.concat(parties, " · "))
-            end)
+            local msg
+            if manques.maxAtteint then
+                msg = "Votre base est déjà au niveau maximum !"
+            elseif manques.manqueCoins and manques.manqueCoins > 0 then
+                msg = formaterCoins(manques.manqueCoins) .. " coins manquants"
+            else
+                msg = "Conditions non remplies"
+            end
+            pcall(function() notif:FireClient(player, "ERREUR", msg) end)
         end
         return
     end
 
-    task.spawn(executerRebirth, player)
+    task.spawn(executerAmelioration, player)
 end)
 
 -- ============================================================
@@ -428,11 +338,10 @@ end)
 -- ============================================================
 
 function RebirthSystem.Init(player, playerData, baseIndex)
-    -- Champs requis avec valeurs par défaut
-    if playerData.rebirthLevel         == nil then playerData.rebirthLevel         = 0   end
+    -- Valeurs par défaut — rétrocompatibles avec les saves existantes
+    if playerData.rebirthLevel          == nil then playerData.rebirthLevel          = 0   end
     if playerData.multiplicateurPermanent == nil then playerData.multiplicateurPermanent = 1.0 end
-    if playerData.slotsBonus           == nil then playerData.slotsBonus           = 0   end
-    if not playerData.inventory             then playerData.inventory              = {}  end
+    if playerData.slotsBonus            == nil then playerData.slotsBonus            = 0   end
 
     donneesJoueurs[player.UserId] = {
         playerData       = playerData,
@@ -446,7 +355,9 @@ function RebirthSystem.Init(player, playerData, baseIndex)
         end
     end)
 
-    Logger.info("Rebirth", "%s initialisé (Rebirth %d, ×%.1f, +%d slots)", player.Name, playerData.rebirthLevel, playerData.multiplicateurPermanent, playerData.slotsBonus)
+    Logger.info("AmelioBase", "%s initialisé (base niv.%d, ×%.1f, +%d slots)",
+        player.Name, playerData.rebirthLevel,
+        playerData.multiplicateurPermanent, playerData.slotsBonus)
 end
 
 function RebirthSystem.GetMultiplicateur(player)

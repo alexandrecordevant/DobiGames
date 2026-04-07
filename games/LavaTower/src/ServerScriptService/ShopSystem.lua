@@ -34,51 +34,10 @@ local function creerRemoteEvent(nom)
 end
 
 -- ── Tour detection ────────────────────────────────────────────────────────────
--- Tours personnelles : Workspace/Bases/Base_N/Specific/Tour_1  (N = 1..8)
--- Tours communes    : Workspace/TourCommune  et  Workspace/TourVIP
-local NUM_BASES = 8
-
-local function checkModelBounds(model, pos)
-    if not model then return false end
-    local ok, cf, size = pcall(function() return model:GetBoundingBox() end)
-    if not ok or not cf or not size then return false end
-    local rel = cf:PointToObjectSpace(pos)
-    return math.abs(rel.X) <= size.X / 2
-       and math.abs(rel.Y) <= size.Y / 2
-       and math.abs(rel.Z) <= size.Z / 2
-end
-
-local function estDansTour(character)
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    local pos = hrp.Position
-
-    -- Tours personnelles : Workspace/Bases/Base_N/Specific/Tour_1
-    local bases = Workspace:FindFirstChild("Bases")
-    if bases then
-        for i = 1, NUM_BASES do
-            local base = bases:FindFirstChild("Base_" .. i)
-            if base then
-                local specific = base:FindFirstChild("Specific")
-                local tour = specific and specific:FindFirstChild("Tour_1")
-                if tour and checkModelBounds(tour, pos) then
-                    return true
-                end
-            end
-        end
-    end
-
-    -- Tour commune
-    if checkModelBounds(Workspace:FindFirstChild("TourCommune"), pos) then
-        return true
-    end
-
-    -- Tour VIP
-    if checkModelBounds(Workspace:FindFirstChild("TourVIP"), pos) then
-        return true
-    end
-
-    return false
+-- L'attribut "InTower" est mis à true/false par PadTP.server.lua et TourCycle.server.lua
+-- directement au moment du TP, ce qui évite tout faux-positif bounding-box.
+local function estDansTour(player)
+    return player:GetAttribute("InTower") == true
 end
 
 -- ── Capacité carry ────────────────────────────────────────────────────────────
@@ -290,7 +249,7 @@ local function traiterAchat(player, upgradeType, amount)
         ShopSystem.SetData(player, data)
         ShopSystem.UpdateHUD(player)
         -- Appliquer immédiatement selon l'état tour actuel du joueur
-        local inTowerNow = player.Character and estDansTour(player.Character) or false
+        local inTowerNow = estDansTour(player)
         appliquerJump(player, inTowerNow)
         local newJP = ShopConfig.GetJumpStat(upgrades.jump)
         local msg = "Saut amélioré ! Niveau " .. upgrades.jump .. "/" .. ShopConfig.Jump.MaxLevel .. " → " .. newJP .. " JP"
@@ -400,7 +359,7 @@ local function lancerBoucleJump()
                 local char = player.Character
                 if not char then continue end
 
-                local inTower   = estDansTour(char)
+                local inTower   = estDansTour(player)
                 local wasInTour = playerTowerState[player.UserId]
 
                 if inTower ~= wasInTour then
@@ -421,6 +380,7 @@ function ShopSystem.Init()
     -- Appliquer speed + carry dès que le personnage spawn
     local function onCharacterAdded(player)
         task.wait(0.1)
+        player:SetAttribute("InTower", false)
         playerTowerState[player.UserId] = false
         appliquerSpeed(player)
         appliquerCarry(player)

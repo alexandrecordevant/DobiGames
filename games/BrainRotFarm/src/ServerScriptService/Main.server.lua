@@ -650,54 +650,36 @@ local function OnPlayerAdded(player)
             UpdateGraines:FireClient(player, graines)
         end
 
-        -- Initialiser le système de Rebirth (callbacks Farm injectés ici)
+        -- Initialiser le système d'Amélioration de Base
         RebirthSystem.Config = RebirthConfig
-        RebirthSystem.IsProgressionComplete = function(playerData)
-            return playerData.progression and playerData.progression["4_10"] == true
+        RebirthSystem.OnButtonUpdate = function(p, etat)
+            BoardSystem.MettreAJourBoard(p, etat)
         end
-        RebirthSystem.OnRebirthComplete = function(player, niveau, cfg)
-            -- Recréer les ProximityPrompts pour les spots du floor 1 (après Init)
-            local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
-            CarrySystem.InitDepotSpotsBase(player, spotsActifs)
-            -- Débloquer le floor suivant visuellement
-            pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, player, niveau)
-            -- Mettre à jour le board (etat minimal pour afficher le nouveau niveau)
-            pcall(BoardSystem.MettreAJourBoard, player, {
-                rebirthLevel   = niveau,
-                coinsActuels   = 0,
-                coinsRequis    = cfg and cfg.coinsRequis or 0,
-                brainRotRequis = cfg and cfg.brainRotRequis and cfg.brainRotRequis.rarete or "?",
-                manqueBR       = "pending",  -- vient d'être reset, BR consommé
-                label          = cfg and cfg.label or nil,
+        RebirthSystem.OnLevelUp = function(p, niveau, cfg)
+            -- Rafraîchir les spots de dépôt (slotsBonus a augmenté)
+            local spotsActifs = BaseProgressionSystem.GetSpotsActifs(p)
+            CarrySystem.InitDepotSpotsBase(p, spotsActifs)
+            -- Vérifier si un nouveau floor se débloque visuellement
+            pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, p, niveau)
+            -- Mettre à jour le board
+            local nextCfg = RebirthSystem.Config[niveau + 1]
+            pcall(BoardSystem.MettreAJourBoard, p, {
+                rebirthLevel = niveau,
+                coinsActuels = GetData(p) and GetData(p).coins or 0,
+                coinsRequis  = nextCfg and nextCfg.coinsRequis or 0,
             })
             -- Notification Discord
             pcall(function()
                 DiscordWebhook.Envoyer(
-                    "🔥 " .. player.Name .. " — " .. cfg.label,
+                    "🏗️ " .. p.Name .. " — Amélioration de base niveau " .. niveau,
                     string.format(
-                        "**%s** vient d'effectuer son **%s** sur BrainRotFarm !\n" ..
+                        "**%s** a amélioré sa base au niveau **%d** sur BrainRotFarm !\n" ..
                         "Multiplicateur : **×%.1f** | Slots bonus : **+%d**",
-                        player.Name, cfg.label, cfg.multiplicateur, cfg.slotsBonus
+                        p.Name, niveau, cfg.multiplicateur, cfg.slotsBonus
                     ),
-                    cfg.couleurHex
+                    0x44BB66
                 )
             end)
-        end
-        -- GetExtraCoins non injecté : le rebirth ne compte que data.coins (coins réellement collectés)
-        RebirthSystem.OnButtonUpdate = function(p, etat)
-            BoardSystem.MettreAJourBoard(p, etat)
-        end
-        RebirthSystem.OnResetBase = function(p, bIndex, d)
-            -- Arrêter et vider DropSystem (mini BRs sur spots détruits)
-            DropSystem.Stop(p)
-            -- Vider les coinsEnAttente d'IncomeSystem (les slots sont maintenant vides)
-            IncomeSystem.Stop(p)
-            -- Réinitialiser DropSystem avec les données réinitialisées (spotsOccupes = {})
-            DropSystem.Init(p, bIndex, d)
-            -- Relancer IncomeSystem
-            IncomeSystem.Init(p, function() return GetData(p) end)
-            -- Note : CarrySystem.InitDepotSpotsBase est appelé APRÈS BaseProgressionSystem.Init
-            -- dans RebirthSystem.OnRebirthComplete (via GetSpotsActifs sur la nouvelle progression)
         end
         RebirthSystem.Init(player, data, baseIndex)
 

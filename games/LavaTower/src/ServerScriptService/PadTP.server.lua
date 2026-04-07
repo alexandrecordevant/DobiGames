@@ -4,10 +4,56 @@
 
 local Players             = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local Workspace           = game:GetService("Workspace")
 local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
 
 local AssignationSystem = require(ServerScriptService.SharedLib.Server.AssignationSystem)
+
+-- ============================================================
+-- RemoteEvents pour le bouton "Escape the Tower"
+-- ============================================================
+local function getOrCreateRemote(name)
+    local existing = ReplicatedStorage:FindFirstChild(name)
+    if existing then return existing end
+    local re = Instance.new("RemoteEvent")
+    re.Name   = name
+    re.Parent = ReplicatedStorage
+    return re
+end
+
+local TowerEntered = getOrCreateRemote("TowerEntered")
+local TowerExited  = getOrCreateRemote("TowerExited")
+local EscapeTower  = getOrCreateRemote("EscapeTower")
+
+-- Cooldown escape (anti-spam bouton)
+local derniersEscape = {}
+
+EscapeTower.OnServerEvent:Connect(function(player)
+    local baseIndex = AssignationSystem.GetBaseIndex(player)
+    if not baseIndex then return end
+
+    local now = os.clock()
+    if now - (derniersEscape[player.UserId] or 0) < 1 then return end
+    derniersEscape[player.UserId] = now
+
+    local character = player.Character
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local spawnCFrame = AssignationSystem.GetSpawnCFrame(baseIndex)
+    if spawnCFrame then
+        hrp.CFrame = spawnCFrame
+        player:SetAttribute("InTower", false)
+        TowerExited:FireClient(player)
+        Logger.debug("Pad", "%s escape tower button (Base_%d)", player.Name, baseIndex)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    derniersEscape[player.UserId] = nil
+end)
 
 -- ============================================================
 -- CONFIGURATION
@@ -19,8 +65,6 @@ local NOM_TRIGGERS   = "Triggers"
 local NOM_START_ZONE = "StartZone"
 -- Nom du point d'arrivée à l'intérieur de la tour
 local NOM_SPAWN      = "InterriorSpawn"
--- Nom de la part de sortie de la tour (optionnel)
-local NOM_EXIT_ZONE  = "ExitZone"
 -- Délai minimum entre deux TP pour le même joueur (anti-spam Touched)
 local TP_COOLDOWN    = 1
 
@@ -74,31 +118,10 @@ local function setupTour(tour, baseIndex)
         derniersTP[player.UserId] = now
 
         hrp.CFrame = interiorSpawn.CFrame + Vector3.new(0, 3, 0)
+        player:SetAttribute("InTower", true)
+        TowerEntered:FireClient(player)
         Logger.debug("Pad", "%s → %s (Base_%d)", player.Name, tour.Name, baseIndex)
     end)
-
-    local exitZone = triggers:FindFirstChild(NOM_EXIT_ZONE)
-    if exitZone then
-        exitZone.Touched:Connect(function(hit)
-            local character = hit.Parent
-            local player    = Players:GetPlayerFromCharacter(character)
-            if not player then return end
-            if AssignationSystem.GetBaseIndex(player) ~= baseIndex then return end
-
-            local hrp = character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-
-            local now = os.clock()
-            if now - (derniersTP[player.UserId] or 0) < TP_COOLDOWN then return end
-            derniersTP[player.UserId] = now
-
-            local spawnCFrame = AssignationSystem.GetSpawnCFrame(baseIndex)
-            if spawnCFrame then
-                hrp.CFrame = spawnCFrame
-                Logger.debug("Pad", "%s ← %s (Base_%d)", player.Name, tour.Name, baseIndex)
-            end
-        end)
-    end
 
     Logger.info("Pad", "✓ %s configurée (Base_%d)", tour.Name, baseIndex)
 end
