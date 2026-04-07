@@ -8,6 +8,7 @@
 
 local DataStoreManager = {}
 local DataStoreService = game:GetService("DataStoreService")
+local Logger           = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ─────────────────────────────────────────────────────────────
 -- État interne — injecté via Setup()
@@ -32,14 +33,14 @@ function DataStoreManager.Setup(datastoreName, defaultDataFn)
     _datastoreName = datastoreName
     _defaultDataFn = defaultDataFn
     _ds            = DataStoreService:GetDataStore(datastoreName)
-    print("[DataStoreManager] DataStore : '" .. datastoreName .. "' ✓")
+    Logger.info("Data", "DataStore : '%s' ✓", datastoreName)
 end
 
 -- Accesseur interne avec fallback de sécurité
 local function getDS()
     if not _ds then
         -- Setup() non appelé — fallback avec avertissement
-        warn("[DataStoreManager] Setup() non appelé — DataStore non configuré. Appeler Setup() dans Main.server.lua.")
+        Logger.warn("Data", "Setup() non appelé — DataStore non configuré. Appeler Setup() dans Main.server.lua.")
         _ds = DataStoreService:GetDataStore("FallbackDataStore_UNCONFIGURED")
     end
     return _ds
@@ -77,7 +78,7 @@ function DataStoreManager.Save(player, data)
         getDS():SetAsync("player_" .. player.UserId, data)
     end)
     if not ok then
-        warn("[DataStore] Erreur save " .. player.Name .. ": " .. tostring(err))
+        Logger.error("Data", "Erreur save %s: %s", player.Name, tostring(err))
     end
 end
 

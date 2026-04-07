@@ -10,6 +10,7 @@ local FuseMachineSystem = {}
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ═══════════════════════════════════════════════
 -- Config
@@ -23,7 +24,7 @@ local _fuseConfigModule = _modules:WaitForChild("FuseConfig", 10)
 if not _fuseConfigModule then
     error("[FuseMachine] FATAL : FuseConfig introuvable dans Modules après 10s")
 end
-print("[FuseMachine] FuseConfig trouvé : " .. _fuseConfigModule:GetFullName())
+Logger.debug("Fuse", "FuseConfig trouvé : %s", _fuseConfigModule:GetFullName())
 local FuseConfig = require(_fuseConfigModule)
 
 -- ═══════════════════════════════════════════════
@@ -186,7 +187,7 @@ local function reinitialiserMachine(machine)
     -- Informer les clients que la machine est libre
     EtatUpdate:FireAllClients(machine, { actif = false })
 
-    print("[FuseMachine] Machine réinitialisée : " .. machine.Name)
+    Logger.debug("Fuse", "Machine réinitialisée : %s", machine.Name)
 end
 
 local function creerPromptCollecte(machine)
@@ -200,7 +201,7 @@ local function creerPromptCollecte(machine)
 
     local part = getPartMachine(machine)
     if not part then
-        warn("[FuseMachine] Pas de BasePart pour le prompt collecte : " .. machine.Name)
+        Logger.warn("Fuse", "Pas de BasePart pour le prompt collecte : %s", machine.Name)
         return
     end
 
@@ -240,7 +241,7 @@ local function creerPromptCollecte(machine)
         notifier(player, "SUCCESS",
             iconeR .. " Fusion terminée ! Vous obtenez : " .. e.outputRarete)
 
-        print("[FuseMachine] " .. player.Name .. " collecte : " .. e.outputRarete)
+        Logger.info("Fuse", "%s collecte : %s", player.Name, e.outputRarete)
 
         reinitialiserMachine(machine)
     end)
@@ -254,7 +255,7 @@ local function demarrerTimer(machine)
         local e = machineEtats[machine]
         if not e or not e.actif then return end
 
-        print("[FuseMachine] Fusion terminée sur " .. machine.Name)
+        Logger.info("Fuse", "Fusion terminée sur %s", machine.Name)
 
         -- Créer le prompt de collecte
         creerPromptCollecte(machine)
@@ -276,18 +277,15 @@ local function demarrerTimer(machine)
 end
 
 local function setupMachine(machine)
-    print("[FuseMachine] setupMachine → " .. machine.Name
-        .. " | Classe : " .. machine.ClassName
-        .. " | Parent : " .. tostring(machine.Parent and machine.Parent.Name))
+    Logger.debug("Fuse", "setupMachine → %s | Classe : %s | Parent : %s", machine.Name, machine.ClassName, tostring(machine.Parent and machine.Parent.Name))
 
     local part = getPartMachine(machine)
     if not part then
-        warn("[FuseMachine] ⚠ Aucune BasePart trouvée pour : " .. machine.Name
-            .. " — assigne un PrimaryPart ou vérifie la structure du modèle")
+        Logger.warn("Fuse", "⚠ Aucune BasePart trouvée pour : %s — assigne un PrimaryPart ou vérifie la structure du modèle", machine.Name)
         return
     end
 
-    print("[FuseMachine] BasePart cible : " .. part.Name .. " (" .. part.ClassName .. ")")
+    Logger.debug("Fuse", "BasePart cible : %s (%s)", part.Name, part.ClassName)
 
     -- Supprimer un éventuel prompt résiduel du même nom
     for _, child in ipairs(part:GetChildren()) do
@@ -318,10 +316,10 @@ local function setupMachine(machine)
 
     machineEtats[machine].promptOuvrir = prompt
 
-    print("[FuseMachine] ✓ ProximityPrompt créé sur " .. part:GetFullName())
+    Logger.debug("Fuse", "✓ ProximityPrompt créé sur %s", part:GetFullName())
 
     prompt.Triggered:Connect(function(player)
-        print("[FuseMachine] Prompt déclenché par " .. player.Name .. " sur " .. machine.Name)
+        Logger.debug("Fuse", "Prompt déclenché par %s sur %s", player.Name, machine.Name)
         local etat = machineEtats[machine]
         if not etat then return end
 
@@ -346,7 +344,7 @@ local function onLancerFusion(player, machine, toolInstances)
     if not machine or not machine.Parent then return end
     local etat = machineEtats[machine]
     if not etat then
-        warn("[FuseMachine] Machine non gérée reçue de " .. player.Name)
+        Logger.warn("Fuse", "Machine non gérée reçue de %s", player.Name)
         return
     end
 
@@ -442,9 +440,7 @@ local function onLancerFusion(player, machine, toolInstances)
     -- Démarrer le timer serveur
     demarrerTimer(machine)
 
-    print("[FuseMachine] Fusion lancée par " .. player.Name
-        .. " | Recette : " .. recette.id
-        .. " | Résultat : " .. outputRarete)
+    Logger.info("Fuse", "Fusion lancée par %s | Recette : %s | Résultat : %s", player.Name, recette.id, outputRarete)
 end
 
 -- ═══════════════════════════════════════════════
@@ -463,7 +459,7 @@ function FuseMachineSystem.Init()
 
     -- Écouter les machines ajoutées (y compris taguées après le démarrage)
     CollectionService:GetInstanceAddedSignal(FuseConfig.MachineTag):Connect(function(machine)
-        print("[FuseMachine] Nouvelle machine détectée via signal : " .. machine.Name)
+        Logger.debug("Fuse", "Nouvelle machine détectée via signal : %s", machine.Name)
         setupMachine(machine)
     end)
     CollectionService:GetInstanceRemovedSignal(FuseConfig.MachineTag):Connect(function(machine)
@@ -472,18 +468,18 @@ function FuseMachineSystem.Init()
 
     -- Scanner les machines déjà taggées
     local tagged = CollectionService:GetTagged(FuseConfig.MachineTag)
-    print("[FuseMachine] Scan tag '" .. FuseConfig.MachineTag .. "' → " .. #tagged .. " machine(s) trouvée(s)")
+    Logger.debug("Fuse", "Scan tag '%s' → %d machine(s) trouvée(s)", FuseConfig.MachineTag, #tagged)
 
     for _, machine in ipairs(tagged) do
         -- Ignorer si déjà setup (peut arriver si le signal a tiré avant)
         if not machineEtats[machine] then
             setupMachine(machine)
         else
-            print("[FuseMachine] " .. machine.Name .. " déjà setup via signal, ignoré")
+            Logger.debug("Fuse", "%s déjà setup via signal, ignoré", machine.Name)
         end
     end
 
-    print("[FuseMachine] Système initialisé ✓  (" .. #tagged .. " machine(s))")
+    Logger.info("Fuse", "Système initialisé ✓ (%d machine(s))", #tagged)
 end
 
 return FuseMachineSystem

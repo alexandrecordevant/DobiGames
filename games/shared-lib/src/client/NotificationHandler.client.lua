@@ -7,6 +7,7 @@
 local Players      = game:GetService("Players")
 local RS           = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local Logger       = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -23,7 +24,7 @@ end
 -- Attendre le RemoteEvent créé par Main.server.lua
 local NotifEvent = RS:WaitForChild("NotifEvent", 15)
 if not NotifEvent then
-    warn("[NotificationHandler] NotifEvent introuvable — script interrompu")
+    Logger.warn("Notif", "NotifEvent introuvable — script interrompu")
     return
 end
 
@@ -142,4 +143,4 @@ NotifEvent.OnClientEvent:Connect(function(typeNotif, messageOuData)
     end
 end)
 
-print("[NotificationHandler] Initialisé ✓")
+Logger.info("Notif", "Initialisé ✓")

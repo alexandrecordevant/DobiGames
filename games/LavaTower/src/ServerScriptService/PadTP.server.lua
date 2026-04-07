@@ -5,6 +5,7 @@
 local Players             = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace           = game:GetService("Workspace")
+local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
 
 local AssignationSystem = require(ServerScriptService.SharedLib.Server.AssignationSystem)
 
@@ -39,19 +40,19 @@ end
 local function setupTour(tour, baseIndex)
     local triggers = tour:FindFirstChild(NOM_TRIGGERS)
     if not triggers then
-        warn(("[PadTP] '%s' manquant dans %s"):format(NOM_TRIGGERS, tour.Name))
+        Logger.warn("Pad", "'%s' manquant dans %s", NOM_TRIGGERS, tour.Name)
         return
     end
 
     local startZone = triggers:FindFirstChild(NOM_START_ZONE)
     if not startZone then
-        warn(("[PadTP] '%s' manquant dans %s.%s"):format(NOM_START_ZONE, tour.Name, NOM_TRIGGERS))
+        Logger.warn("Pad", "'%s' manquant dans %s.%s", NOM_START_ZONE, tour.Name, NOM_TRIGGERS)
         return
     end
 
     local interiorSpawn = tour:FindFirstChild(NOM_SPAWN)
     if not interiorSpawn then
-        warn(("[PadTP] '%s' manquant dans %s"):format(NOM_SPAWN, tour.Name))
+        Logger.warn("Pad", "'%s' manquant dans %s", NOM_SPAWN, tour.Name)
         return
     end
 
@@ -73,7 +74,7 @@ local function setupTour(tour, baseIndex)
         derniersTP[player.UserId] = now
 
         hrp.CFrame = interiorSpawn.CFrame + Vector3.new(0, 3, 0)
-        print(("[PadTP] %s → %s (Base_%d)"):format(player.Name, tour.Name, baseIndex))
+        Logger.debug("Pad", "%s → %s (Base_%d)", player.Name, tour.Name, baseIndex)
     end)
 
     local exitZone = triggers:FindFirstChild(NOM_EXIT_ZONE)
@@ -94,12 +95,12 @@ local function setupTour(tour, baseIndex)
             local spawnCFrame = AssignationSystem.GetSpawnCFrame(baseIndex)
             if spawnCFrame then
                 hrp.CFrame = spawnCFrame
-                print(("[PadTP] %s ← %s (Base_%d)"):format(player.Name, tour.Name, baseIndex))
+                Logger.debug("Pad", "%s ← %s (Base_%d)", player.Name, tour.Name, baseIndex)
             end
         end)
     end
 
-    print(("[PadTP] ✓ %s configurée (Base_%d)"):format(tour.Name, baseIndex))
+    Logger.info("Pad", "✓ %s configurée (Base_%d)", tour.Name, baseIndex)
 end
 
 -- ============================================================
@@ -127,7 +128,7 @@ task.spawn(function()
 
     local bases = Workspace:WaitForChild("Bases", 10)
     if not bases then
-        warn("[PadTP] ❌ Workspace.Bases introuvable")
+        Logger.warn("Pad", "❌ Workspace.Bases introuvable")
         return
     end
 
@@ -139,7 +140,7 @@ task.spawn(function()
             if specific then
                 scannerSpecific(specific, baseIndex)
             else
-                warn(("[PadTP] Pas de dossier Specific dans %s"):format(base.Name))
+                Logger.warn("Pad", "Pas de dossier Specific dans %s", base.Name)
             end
         end
     end

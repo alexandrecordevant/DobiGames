@@ -130,10 +130,11 @@ local RARITY_ZONES = {
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 local brainrotsRoot = ReplicatedStorage:FindFirstChild(DOSSIER_BRAINROTS_NOM)
 if not brainrotsRoot then
-	warn("[PlatformSpawner] ❌ Dossier '" .. DOSSIER_BRAINROTS_NOM .. "' introuvable dans ReplicatedStorage !")
+	Logger.warn("Spawn", "❌ Dossier '%s' introuvable dans ReplicatedStorage !", DOSSIER_BRAINROTS_NOM)
 end
 
 -- Construit la table { COMMON = Folder, RARE = Folder, ... }
@@ -144,7 +145,7 @@ if brainrotsRoot then
 		if folder then
 			DOSSIERS_RARETE[cle] = folder
 		else
-			warn("[PlatformSpawner] ⚠️ Sous-dossier manquant : " .. nomDossier .. " (rareté " .. cle .. ")")
+			Logger.warn("Spawn", "⚠️ Sous-dossier manquant : %s (rareté %s)", nomDossier, cle)
 		end
 	end
 end
@@ -152,7 +153,7 @@ end
 -- Dossier workspace.Brainrots — destination des clones
 local workspaceBrainrots = workspace:FindFirstChild("Brainrots")
 if not workspaceBrainrots then
-	warn("[PlatformSpawner] ⚠️ workspace.Brainrots introuvable — les clones seront parentés à workspace")
+	Logger.warn("Spawn", "⚠️ workspace.Brainrots introuvable — les clones seront parentés à workspace")
 end
 
 -- ════════════════════════════════════════════════════════════════
@@ -202,7 +203,7 @@ local function choisirRareteEtModele(zone)
 	end
 
 	if not next(poisdsValides) then
-		warn("[PlatformSpawner] Aucun modèle disponible pour cette zone (hauteur " .. zone.hauteurMin .. "+)")
+		Logger.warn("Spawn", "Aucun modèle disponible pour cette zone (hauteur %d+)", zone.hauteurMin)
 		return nil, nil
 	end
 
@@ -302,7 +303,7 @@ local function getPlatefformes()
 	local tours  = scannerTours()
 
 	if #tours == 0 then
-		warn("[PlatformSpawner] Aucune tour détectée avec le préfixe '" .. TOWER_NAME_PREFIX .. "'")
+		Logger.warn("Spawn", "Aucune tour détectée avec le préfixe '%s'", TOWER_NAME_PREFIX)
 		return liste
 	end
 
@@ -318,7 +319,7 @@ local function getPlatefformes()
 				if part then
 					table.insert(liste, part)
 				else
-					warn("[PlatformSpawner] Modèle sans BasePart ignoré : " .. enfant:GetFullName())
+					Logger.warn("Spawn", "Modèle sans BasePart ignoré : %s", enfant:GetFullName())
 				end
 			end
 		end
@@ -369,17 +370,17 @@ task.spawn(function()
 	task.wait(3)  -- laisser le jeu terminer son chargement
 
 	if not brainrotsRoot then
-		warn("[PlatformSpawner] ❌ Arrêt — dossier Brainrots manquant dans ReplicatedStorage.")
+		Logger.warn("Spawn", "❌ Arrêt — dossier Brainrots manquant dans ReplicatedStorage.")
 		return
 	end
 	if next(DOSSIERS_RARETE) == nil then
-		warn("[PlatformSpawner] ❌ Arrêt — aucun dossier de rareté chargé. Vérifier NOMS_DOSSIERS_RARETE.")
+		Logger.warn("Spawn", "❌ Arrêt — aucun dossier de rareté chargé. Vérifier NOMS_DOSSIERS_RARETE.")
 		return
 	end
 
 	local plateformes = getPlatefformes()
 	if #plateformes == 0 then
-		warn("[PlatformSpawner] ❌ Arrêt — aucune plateforme. Vérifier TOWER_NAME_PREFIX et NOM_DOSSIER_PLATEFORMES.")
+		Logger.warn("Spawn", "❌ Arrêt — aucune plateforme. Vérifier TOWER_NAME_PREFIX et NOM_DOSSIER_PLATEFORMES.")
 		return
 	end
 

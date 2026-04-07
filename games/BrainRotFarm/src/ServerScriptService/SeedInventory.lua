@@ -9,6 +9,7 @@ local SeedInventory = {}
 -- Services
 -- ============================================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ============================================================
 -- Valeurs par défaut
@@ -65,7 +66,7 @@ end
 function SeedInventory.Add(data, rarity, quantite)
     quantite = quantite or 1
     if not estRareteValide(rarity) then
-        warn("[SeedInventory] Rareté invalide : " .. tostring(rarity))
+        Logger.warn("Seed", "Rareté invalide : %s", tostring(rarity))
         return false
     end
     SeedInventory.Init(data)
@@ -82,7 +83,7 @@ end
 ]]
 function SeedInventory.Use(data, rarity)
     if not estRareteValide(rarity) then
-        warn("[SeedInventory] Rareté invalide : " .. tostring(rarity))
+        Logger.warn("Seed", "Rareté invalide : %s", tostring(rarity))
         return false
     end
     SeedInventory.Init(data)

@@ -14,6 +14,7 @@ local ServerStorage       = game:GetService("ServerStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService        = game:GetService("TweenService")
 local CollectionService   = game:GetService("CollectionService")
+local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
 
 -- ============================================================
 -- Config
@@ -228,12 +229,12 @@ local function appliquerEffetsMutant(modeleSlot, elementType)
     if not modeleSlot or not elementType then return end
     local FM = getFilterManager()
     if not FM then
-        warn("[DropSystem] FilterManager indisponible — effets Mutant ignorés pour :", elementType)
+        Logger.warn("Drop", "FilterManager indisponible — effets Mutant ignorés pour : %s", tostring(elementType))
         return
     end
     local nomFiltre = ELEMENT_TO_FILTRE[elementType]
     if not nomFiltre then
-        warn("[DropSystem] Élément inconnu :", elementType)
+        Logger.warn("Drop", "Élément inconnu : %s", tostring(elementType))
         return
     end
     pcall(function() FM.Apply(modeleSlot, { { Name = nomFiltre } }) end)
@@ -300,7 +301,7 @@ local function placerModeleSlot(touchPart, rarete, modeleSource)
         pcall(function() clone = modeleSource:Clone() end)
         -- Supprimer le modèle détaché flottant dans le Workspace
         pcall(function() modeleSource:Destroy() end)
-        print("[DropSystem] Modèle issu du carry (modèle exact)")
+        Logger.debug("Drop", "Modèle issu du carry (modèle exact)")
     end
 
     -- Fallback : clone aléatoire depuis ServerStorage
@@ -539,7 +540,7 @@ end
 local function scannerSpots(player, baseIndex)
     local baseFolder = trouverBaseFolder(baseIndex)
     if not baseFolder then
-        warn("[DropSystem] BaseFolder introuvable pour Base_" .. tostring(baseIndex))
+        Logger.warn("Drop", "BaseFolder introuvable pour Base_%s", tostring(baseIndex))
         return
     end
 
@@ -556,7 +557,7 @@ local function scannerSpots(player, baseIndex)
                         local cle = floorDef.index .. "_" .. spotNum
                         spotIndex[player.UserId][cle] = touchPart
                     else
-                        warn("[DropSystem] Aucune Part trouvée dans " .. spotModel.Name)
+                        Logger.warn("Drop", "Aucune Part trouvée dans %s", spotModel.Name)
                     end
                 end
             end
@@ -605,9 +606,7 @@ local function restaurerDepots(player, playerData)
                 else
                     -- brNom sauvegardé mais modèle introuvable dans ServerStorage
                     -- (renommage Studio ou modèle supprimé) → fallback déterministe
-                    warn("[DropSystem] Restauration : modèle '" .. tostring(info.brNom)
-                        .. "' introuvable dans ServerStorage/" .. tostring(info.rarete)
-                        .. " → fallback premier modèle du dossier")
+                    Logger.warn("Drop", "Restauration : modèle '%s' introuvable dans ServerStorage/%s → fallback premier modèle du dossier", tostring(info.brNom), tostring(info.rarete))
                 end
             else
                 -- brNom nil : donnée ancienne OU mutant sans brNom sauvegardé
@@ -626,8 +625,7 @@ local function restaurerDepots(player, playerData)
                             modeleSource = modeles[1]:Clone()
                             modeleSource.Parent = Workspace
                         end)
-                        print("[DropSystem] Restauration : brNom nil pour " .. tostring(info.rarete)
-                            .. " → modèle fixe '" .. modeles[1].Name .. "' (donnée ancienne)")
+                        Logger.debug("Drop", "Restauration : brNom nil pour %s → modèle fixe '%s' (donnée ancienne)", tostring(info.rarete), modeles[1].Name)
                     end
                 end
             end
@@ -766,7 +764,7 @@ function DropSystem.AjouterSpotIndex(player, spotKey, touchPart)
     if not spotIndex[player.UserId] then spotIndex[player.UserId] = {} end
     if spotIndex[player.UserId][spotKey] then return end  -- déjà enregistré
     spotIndex[player.UserId][spotKey] = touchPart
-    print("[DropSystem] SpotIndex mis à jour : " .. spotKey .. " → " .. player.Name)
+    Logger.debug("Drop", "SpotIndex mis à jour : %s → %s", spotKey, player.Name)
 end
 
 -- Enregistre un spot nouvellement débloqué depuis un spotModel (API alternative)
@@ -775,13 +773,13 @@ function DropSystem.InitSpot(player, spotModel, spotKey)
     if not spotModel then return end
     local touchPart = trouverTouchPart(spotModel)
     if not touchPart then
-        warn("[DropSystem] InitSpot : aucune Part trouvée dans " .. spotModel.Name)
+        Logger.warn("Drop", "InitSpot : aucune Part trouvée dans %s", spotModel.Name)
         return
     end
     if spotKey then
         DropSystem.AjouterSpotIndex(player, spotKey, touchPart)
     end
-    print("[DropSystem] InitSpot : " .. spotModel.Name .. " enregistré pour " .. player.Name)
+    Logger.debug("Drop", "InitSpot : %s enregistré pour %s", spotModel.Name, player.Name)
 end
 
 -- ============================================================
@@ -900,8 +898,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
                 modeleSource.Parent = Workspace
             end)
         else
-            warn("[DropSystem] DeposerBrainRots : modèle '" .. brNom
-                .. "' introuvable dans ServerStorage/" .. rarete .. " — fallback aléatoire")
+            Logger.warn("Drop", "DeposerBrainRots : modèle '%s' introuvable dans ServerStorage/%s — fallback aléatoire", brNom, rarete)
         end
     end
 
@@ -1005,7 +1002,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Notifier les systèmes externes (ex : RebirthSystem pour détecter le BR requis)
     if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
 
-    print("[DropSystem] " .. player.Name .. " a déposé " .. rarete .. " sur spot " .. spotKey)
+    Logger.info("Drop", "%s a déposé %s sur spot %s", player.Name, rarete, spotKey)
 end
 
 -- ============================================================
@@ -1095,7 +1092,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
 
     notifierJoueur(player, "INFO", "Brain Rot [" .. rarete .. "] retrieved to your carry!")
-    print("[DropSystem] " .. player.Name .. " a récupéré " .. rarete .. " du spot " .. spotKey)
+    Logger.info("Drop", "%s a récupéré %s du spot %s", player.Name, rarete, spotKey)
 end
 
 -- ============================================================
@@ -1233,7 +1230,7 @@ function DropSystem.DeposerBRDirect(player, touchPart, rarete, cashParSeconde)
         IS.ConnecterButton(player, touchPart, spotKey)
     end
 
-    print("[DropSystem] Tracteur a déposé " .. rarete .. " sur spot " .. spotKey)
+    Logger.info("Drop", "Tracteur a déposé %s sur spot %s", rarete, spotKey)
     return true
 end
 
@@ -1320,7 +1317,7 @@ function DropSystem.EjecterBR(player, touchPart)
     -- Notifier les systèmes externes (ex : RebirthSystem)
     if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
 
-    print("[DropSystem] BR éjecté : " .. rarete .. " du spot " .. spotKey)
+    Logger.debug("Drop", "BR éjecté : %s du spot %s", rarete, spotKey)
 end
 
 -- Retourne la touchPart d'un slot depuis sa clé (utilisé par ActionSlot handler dans Main)
@@ -1372,7 +1369,7 @@ function DropSystem.VendreBR(player, touchPart)
 
     notifierJoueur(player, "INFO",
         "Brain Rot [" .. rarete .. "] sold! +" .. tostring(bonusVente) .. " coins")
-    print("[DropSystem] " .. player.Name .. " a vendu " .. rarete .. " du spot " .. spotKey)
+    Logger.info("Drop", "%s a vendu %s du spot %s", player.Name, rarete, spotKey)
 end
 
 -- Nettoie l'état du joueur (appelé à la déconnexion)

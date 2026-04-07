@@ -4,6 +4,7 @@
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player = Players.LocalPlayer
 
@@ -13,7 +14,7 @@ local ok, Config = pcall(function()
 end)
 
 if not ok or not Config then
-	warn("[BatController] GameConfig introuvable — contrôleur désactivé")
+	Logger.warn("Bat", "GameConfig introuvable — contrôleur désactivé")
 	return
 end
 
@@ -27,7 +28,7 @@ local COOLDOWN = Config.Combat.BatCooldown or 1
 -- RemoteEvent (créé par BatSystem côté serveur)
 local batSwingEvent = ReplicatedStorage:WaitForChild("BatSwing", 10)
 if not batSwingEvent then
-	warn("[BatController] RemoteEvent BatSwing introuvable")
+	Logger.warn("Bat", "RemoteEvent BatSwing introuvable")
 	return
 end
 

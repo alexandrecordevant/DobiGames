@@ -2,6 +2,7 @@
 -- Filtre Élémentaire VENT — Tourbillon de sparkles rapides dans toutes les directions + label Mutant
 
 local ElementVent = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 ElementVent.Config = {
     Couleur      = Color3.fromRGB(140, 145, 165),
@@ -40,7 +41,7 @@ function ElementVent.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[ElementVent] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

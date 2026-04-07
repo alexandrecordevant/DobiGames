@@ -6,6 +6,7 @@ local BatEquipHandler = {}
 
 local Players      = game:GetService("Players")
 local ServerStorage = game:GetService("ServerStorage")
+local Logger = require(script.Parent.Parent.Logger)
 
 -- Donne la batte au joueur si elle n'est pas déjà présente
 local function equiperBatte(player)
@@ -25,13 +26,13 @@ local function equiperBatte(player)
 	-- Récupérer le template dans ServerStorage
 	local weaponsFolder = ServerStorage:FindFirstChild("Weapons")
 	if not weaponsFolder then
-		warn("[BatEquipHandler] ServerStorage.Weapons introuvable")
+		Logger.warn("Bat", "ServerStorage.Weapons introuvable")
 		return
 	end
 
 	local batTemplate = weaponsFolder:FindFirstChild("BaseballBat")
 	if not batTemplate then
-		warn("[BatEquipHandler] ServerStorage.Weapons.BaseballBat introuvable")
+		Logger.warn("Bat", "ServerStorage.Weapons.BaseballBat introuvable")
 		return
 	end
 
@@ -43,14 +44,14 @@ end
 -- Initialise le système (appelé par Main.server.lua)
 function BatEquipHandler.Init(config)
 	if not config or not config.BatEnabled then
-		print("[BatEquipHandler] Batte désactivée — système ignoré")
+		Logger.info("Bat", "Batte désactivée — système ignoré")
 		return
 	end
 
 	-- Vérifier que le modèle existe au démarrage
 	local weaponsFolder = ServerStorage:FindFirstChild("Weapons")
 	if not weaponsFolder or not weaponsFolder:FindFirstChild("BaseballBat") then
-		warn("[BatEquipHandler] ATTENTION : ServerStorage.Weapons.BaseballBat manquante — créer le Tool dans Studio")
+		Logger.warn("Bat", "ATTENTION : ServerStorage.Weapons.BaseballBat manquante — créer le Tool dans Studio")
 	end
 
 	Players.PlayerAdded:Connect(function(player)
@@ -68,7 +69,7 @@ function BatEquipHandler.Init(config)
 		end)
 	end
 
-	print("[BatEquipHandler] Initialisé — batte équipée au spawn")
+	Logger.info("Bat", "Initialisé — batte équipée au spawn")
 end
 
 return BatEquipHandler

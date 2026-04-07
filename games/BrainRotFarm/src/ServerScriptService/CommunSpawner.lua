@@ -32,6 +32,7 @@ end
 -- ============================================================
 -- Config
 -- ============================================================
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config = require(game.ReplicatedStorage.GameConfig)
 
 -- Points de spawn lus depuis GameConfig.CommunPoints
@@ -132,7 +133,7 @@ local function notifierTous(typeNotif, message)
 	if ev then
 		pcall(function() ev:FireAllClients(typeNotif, message) end)
 	end
-	print("[CommunSpawner] " .. message)
+	Logger.info("Spawn", "%s", message)
 end
 
 -- Format MM:SS
@@ -145,12 +146,12 @@ end
 local function choisirModele(nomDossier)
 	local dossier = BRAINROTS_FOLDER:FindFirstChild(nomDossier)
 	if not dossier then
-		warn("[CommunSpawner] Dossier introuvable : " .. nomDossier)
+		Logger.warn("Spawn", "Dossier introuvable : %s", nomDossier)
 		return nil
 	end
 	local modeles = dossier:GetChildren()
 	if #modeles == 0 then
-		warn("[CommunSpawner] Dossier vide : " .. nomDossier)
+		Logger.warn("Spawn", "Dossier vide : %s", nomDossier)
 		return nil
 	end
 	return modeles[math.random(1, #modeles)]
@@ -271,8 +272,7 @@ local function initialiserEffetsPermanents()
 			label    = label,
 		}
 
-		print(string.format("[CommunSpawner] Point %d initialisé (%.1f, %.1f, %.1f)",
-			i, position.X, position.Y, position.Z))
+		Logger.debug("Spawn", "Point %d initialisé (%.1f, %.1f, %.1f)", i, position.X, position.Y, position.Z)
 	end
 end
 
@@ -432,7 +432,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 		clone = modeleSource:Clone()
 	end)
 	if not ok or not clone then
-		warn("[CommunSpawner] Erreur clonage : " .. tostring(err))
+		Logger.warn("Spawn", "Erreur clonage : %s", tostring(err))
 		onFin(nil, false, modeleSource.Name)
 		return
 	end
@@ -535,7 +535,7 @@ local function lancerScheduler(typeNom)
 	local cfg = CONFIG[typeNom]
 	if not cfg then return end
     if EstExclue(typeNom) then
-        print("[CommunSpawner] " .. typeNom .. " exclu du spawn (RaretesExcluesSpawn)")
+        Logger.info("Spawn", "%s exclu du spawn (RaretesExcluesSpawn)", typeNom)
         return
     end
 
@@ -608,7 +608,7 @@ local function lancerScheduler(typeNom)
 			local modeleSource = choisirModele(cfg.dossier)
 			if not modeleSource then
 				-- Aucun modèle dispo → passer le cycle
-				warn("[CommunSpawner] Aucun modèle pour " .. typeNom .. ", cycle ignoré")
+				Logger.warn("Spawn", "Aucun modèle pour %s, cycle ignoré", typeNom)
 				setActif(false)
 				restaurerEtatsDefaut(pointIdx)
 				continue
@@ -708,14 +708,14 @@ end
 -- mult = 1 → vitesse normale, mult = 3 → 3× plus fréquent
 function CommunSpawner.SetMultiplier(mult)
     spawnMultiplier = math.max(1, mult or 1)
-    print("[CommunSpawner] Multiplicateur spawn : ×" .. spawnMultiplier)
+    Logger.info("Spawn", "Multiplicateur spawn : ×%d", spawnMultiplier)
 end
 
 function CommunSpawner.Init()
 	initialiserEffetsPermanents()
 	lancerScheduler("MYTHIC")
 	lancerScheduler("SECRET")
-	print("[CommunSpawner] ✓ Schedulers MYTHIC et SECRET démarrés")
+	Logger.info("Spawn", "✓ Schedulers MYTHIC et SECRET démarrés")
 end
 
 return CommunSpawner

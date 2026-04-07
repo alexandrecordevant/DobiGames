@@ -4,6 +4,7 @@
 -- Pas de spam : rate limiting intégré
 
 local HttpService = game:GetService("HttpService")
+local Logger      = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config      = require(game.ReplicatedStorage.GameConfig)
 
 local DiscordWebhook = {}
@@ -25,7 +26,7 @@ end
 -- Envoie un embed Discord via webhook
 local function Envoyer(webhookURL, contenu, username, couleur)
     if not webhookURL or webhookURL == "" then
-        warn("[Discord] URL webhook manquante dans GameConfig.DiscordWebhooks")
+        Logger.warn("Discord", "URL webhook manquante dans GameConfig.DiscordWebhooks")
         return
     end
 
@@ -47,7 +48,7 @@ local function Envoyer(webhookURL, contenu, username, couleur)
     end)
 
     if not ok then
-        warn("[Discord] Erreur webhook : " .. tostring(err))
+        Logger.warn("Discord", "Erreur webhook : %s", tostring(err))
     end
 end
 
@@ -66,7 +67,7 @@ function DiscordWebhook.BrainrotGodCapture(playerName)
              .. "🎮 Join the server: " .. (Config.DiscordInvite or "")
 
     Envoyer(webhooks.records, msg, "BrainRotFarm", 16766720)
-    print("[Discord] BRAINROT_GOD captured by " .. playerName)
+    Logger.info("Discord", "BRAINROT_GOD captured by %s", playerName)
 end
 
 -- 2. SECRET capturé → max 1 message / 30 min
@@ -82,7 +83,7 @@ function DiscordWebhook.SecretCapture(playerName)
              .. "🎮 Join now: " .. (Config.DiscordInvite or "")
 
     Envoyer(webhooks.records, msg, "BrainRotFarm", 16711680)
-    print("[Discord] SECRET captured by " .. playerName)
+    Logger.info("Discord", "SECRET captured by %s", playerName)
 end
 
 -- 3. Admin Abuse hebdo → max 1 envoi toutes les 6h (protection contre appels répétés)
@@ -102,7 +103,7 @@ function DiscordWebhook.AdminAbuseHebdo()
              .. "🎮 " .. (Config.DiscordInvite or "")
 
     Envoyer(webhooks.events, msg, "BrainRotFarm Events", 16711680)
-    print("[Discord] Admin Abuse hebdo announced")
+    Logger.info("Discord", "Admin Abuse hebdo announced")
 end
 
 -- 4. Top Farmer hebdomadaire → max 1 envoi toutes les 6 jours
@@ -119,7 +120,7 @@ function DiscordWebhook.TopFarmerHebdo(playerName, heuresJeu, semaine)
              .. "🎮 " .. (Config.DiscordInvite or "")
 
     Envoyer(webhooks.events, msg, "BrainRotFarm", 16766720)
-    print("[Discord] Top Farmer announced: " .. playerName)
+    Logger.info("Discord", "Top Farmer announced: %s", playerName)
 end
 
 -- 5. Erreur critique → dev-logs uniquement, max 1 envoi / 5 min par contexte

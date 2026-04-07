@@ -15,8 +15,8 @@ local FILTRES_VALIDES = {
     "RarityCOMMON", "RarityOG", "RarityRARE",
     "RarityEPIC", "RarityLEGENDARY", "RarityMYTHIC", "RaritySECRET",
 
-    -- Element
-    "ElementEau", "ElementFeu", "ElementTerre", "ElementVent",
+    -- Mutant (remplace les anciens éléments eau/feu/terre/vent)
+    "MutantGALAXY", "MutantTOXIC", "MutantRAINBOW", "MutantVOID",
 
     -- Visual
     "Glow", "Trail", "Sparkles", "Billboard",
@@ -69,7 +69,7 @@ function FilterRegistry.GetByCategory(categorie)
     local categories = {
         Scale   = {"Miniature", "Normal", "Large", "Geant"},
         Rarity  = {"RarityCOMMON", "RarityOG", "RarityRARE", "RarityEPIC", "RarityLEGENDARY", "RarityMYTHIC", "RaritySECRET"},
-        Element = {"ElementEau", "ElementFeu", "ElementTerre", "ElementVent"},
+        Element = {"MutantGALAXY", "MutantTOXIC", "MutantRAINBOW", "MutantVOID"},
         Visual  = {"Glow", "Trail", "Sparkles", "Billboard"},
         State   = {"Pickupable", "Deposited", "Carried"},
     }

@@ -5,6 +5,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
+local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -427,7 +428,7 @@ local function rafraichir()
     if not GetSeedInfo then return end
     local ok, info = pcall(function() return GetSeedInfo:InvokeServer() end)
     if not ok or not info then
-        warn("[SeedsHUD] GetSeedInfo erreur :", info)
+        Logger.warn("HUD", "[SeedsHUD] GetSeedInfo erreur : %s", tostring(info))
         return
     end
     majStock(info.graines)
@@ -451,7 +452,7 @@ task.spawn(function()
     UpdateGraines = ReplicatedStorage:WaitForChild("UpdateGraines", 20)
 
     if not GetSeedInfo then
-        warn("[SeedsHUD] GetSeedInfo introuvable après 20s")
+        Logger.warn("HUD", "[SeedsHUD] GetSeedInfo introuvable après 20s")
         return
     end
 

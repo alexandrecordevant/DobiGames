@@ -2,6 +2,7 @@
 -- Filtre Élémentaire TERRE — Débris qui jaillissent en éventail + lueur verte douce + label Mutant
 
 local ElementTerre = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 ElementTerre.Config = {
     Couleur      = Color3.fromRGB(65, 95, 30),
@@ -40,7 +41,7 @@ function ElementTerre.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[ElementTerre] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

@@ -5,6 +5,7 @@
 local Players       = game:GetService("Players")
 local RunService    = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
+local Logger = require(script.Parent.Logger)
 
 -- Configuration des bots
 local BOT_CONFIG = {
@@ -52,7 +53,7 @@ end
 local function calculerWaypoints()
     local basesFolder = workspace:FindFirstChild("Bases")
     if not basesFolder then
-        warn("[BotSystem] workspace.Bases introuvable — bots désactivés")
+        Logger.warn("Bot", "workspace.Bases introuvable — bots désactivés")
         return false
     end
 
@@ -89,15 +90,9 @@ local function calculerWaypoints()
 
         if fieldModel and basePos and spawnPos then
             WAYPOINTS[baseId] = { fieldModel = fieldModel, base = basePos, spawn = spawnPos }
-            print(string.format(
-                "[BotSystem] Base_%d — base=(%.0f,%.0f,%.0f) spawn=(%.0f,%.0f,%.0f)",
-                i, basePos.X, basePos.Y, basePos.Z, spawnPos.X, spawnPos.Y, spawnPos.Z
-            ))
+            Logger.debug("Bot", "Base_%d — base=(%.0f,%.0f,%.0f) spawn=(%.0f,%.0f,%.0f)", i, basePos.X, basePos.Y, basePos.Z, spawnPos.X, spawnPos.Y, spawnPos.Z)
         else
-            warn("[BotSystem] Waypoints incomplets pour " .. baseId
-                .. " (Field=" .. tostring(fieldModel ~= nil)
-                .. " Base=" .. tostring(basePos ~= nil)
-                .. " Spawn=" .. tostring(spawnPos ~= nil) .. ")")
+            Logger.warn("Bot", "Waypoints incomplets pour %s (Field=%s Base=%s Spawn=%s)", baseId, tostring(fieldModel ~= nil), tostring(basePos ~= nil), tostring(spawnPos ~= nil))
         end
     end
 
@@ -121,7 +116,7 @@ local ANIM_IDS = {
 local function creerDummy(nomBot, spawnPosition)
     local modele = ServerStorage:FindFirstChild("BotDummy")
     if not modele then
-        warn("[BotSystem] ServerStorage.BotDummy introuvable — bots désactivés")
+        Logger.warn("Bot", "ServerStorage.BotDummy introuvable — bots désactivés")
         return nil
     end
 
@@ -229,7 +224,7 @@ end
 local function boucleBot(baseId, nomBot, spawnPos)
     local waypoints = WAYPOINTS[baseId]
     if not waypoints then
-        warn("[BotSystem] Pas de waypoints pour", baseId)
+        Logger.warn("Bot", "Pas de waypoints pour %s", tostring(baseId))
         return
     end
 
@@ -347,7 +342,7 @@ task.wait(BOT_CONFIG.delaiDemarrage)
 -- Calcul des waypoints depuis workspace.Bases (map déjà chargée à ce stade)
 local waypointsOk = calculerWaypoints()
 if not waypointsOk then
-    warn("[BotSystem] Aucun waypoint calculé — système désactivé")
+    Logger.warn("Bot", "Aucun waypoint calculé — système désactivé")
     return true
 end
 
@@ -370,6 +365,6 @@ Players.PlayerRemoving:Connect(function()
     mettreAJourBots()
 end)
 
-print("[BotSystem] Systeme de bots demarre")
+Logger.info("Bot", "Systeme de bots demarre")
 
 return true

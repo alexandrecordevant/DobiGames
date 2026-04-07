@@ -7,6 +7,7 @@ local ArbreSystem         = {}
 local TweenService        = game:GetService("TweenService")
 local RS                  = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Logger              = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- Lazy loader CarrySystem (éviter dépendances circulaires)
 local _CarrySystem = nil
@@ -339,7 +340,7 @@ end
 local function OnGraineCollectee(player, typeGraine)
     local data = ArbreSystem.GetData and ArbreSystem.GetData(player)
     if not data then
-        warn("[ArbreSystem] GetData nil pour " .. player.Name)
+        Logger.warn("Arbre", "GetData nil pour %s", player.Name)
         return
     end
 
@@ -353,8 +354,7 @@ local function OnGraineCollectee(player, typeGraine)
                     "🎒 Carry plein! Plante ou dépose d'abord avant de collecter une graine.")
             end)
         end
-        print(string.format("[ArbreSystem] %s — carry plein, graine %s refusée",
-            player.Name, typeGraine))
+        Logger.debug("Arbre", "%s — carry plein, graine %s refusée", player.Name, typeGraine)
         return
     end
 
@@ -398,8 +398,7 @@ local function OnGraineCollectee(player, typeGraine)
         end)
     end
 
-    print(string.format("[ArbreSystem] %s → +%s Seed (%d en main) → CarriedSeeds",
-        player.Name, typeGraine, total))
+    Logger.info("Arbre", "%s → +%s Seed (%d en main) → CarriedSeeds", player.Name, typeGraine, total)
 end
 
 -- ═══════════════════════════════════════
@@ -412,13 +411,13 @@ function ArbreSystem.Init()
     local arbresConfig = Config.FlowerPotConfig.arbresConfig
 
     if not arbreCfg or not arbresConfig then
-        warn("[ArbreSystem] arbresConfig / arbresDropConfig manquant dans GameConfig")
+        Logger.warn("Arbre", "arbresConfig / arbresDropConfig manquant dans GameConfig")
         return
     end
 
     local champCommun = workspace:FindFirstChild("ChampCommun")
     if not champCommun then
-        warn("[ArbreSystem] ChampCommun introuvable dans Workspace")
+        Logger.warn("Arbre", "ChampCommun introuvable dans Workspace")
         return
     end
 
@@ -446,14 +445,14 @@ function ArbreSystem.Init()
                 nom        = cfg.nom,
             })
 
-            print("[ArbreSystem] " .. cfg.nom .. " initialisé ✓")
+            Logger.debug("Arbre", "%s initialisé ✓", cfg.nom)
         else
-            warn("[ArbreSystem] " .. cfg.nom .. " introuvable dans ChampCommun")
+            Logger.warn("Arbre", "%s introuvable dans ChampCommun", cfg.nom)
         end
     end
 
     if #arbresDonnees == 0 then
-        warn("[ArbreSystem] Aucun arbre trouvé — abandon")
+        Logger.warn("Arbre", "Aucun arbre trouvé — abandon")
         return
     end
 
@@ -484,8 +483,7 @@ function ArbreSystem.Init()
                 local typeGraine = (rand <= arbreCfg.chanceMYTHIC)
                     and "MYTHIC" or "SECRET"
 
-                print(string.format("[ArbreSystem] Graine %s sur %s",
-                    typeGraine, d.nom))
+                Logger.info("Arbre", "Graine %s sur %s", typeGraine, d.nom)
 
                 local getC, _ = ActiverGraine(d.sommetPart, typeGraine,
                     function(player, type_)
@@ -512,8 +510,7 @@ function ArbreSystem.Init()
             -- Nettoyer les graines non collectées
             for _, e in ipairs(treeEtats) do
                 if not e.getC() then
-                    print(string.format("[ArbreSystem] Graine expirée sur %s (timeout %ds)",
-                        e.d.nom, timeout))
+                    Logger.debug("Arbre", "Graine expirée sur %s (timeout %ds)", e.d.nom, timeout)
                     local ppExist = e.d.sommetPart:FindFirstChild("SeedPrompt")
                     if ppExist then ppExist:Destroy() end
                     local bbExist = e.d.sommetPart:FindFirstChild("SeedBillboard")
@@ -544,8 +541,7 @@ function ArbreSystem.Init()
         end
     end)
 
-    print(string.format("[ArbreSystem] ✓ Graines toutes les %.0f min — 2 arbres simultanés",
-        arbreCfg.intervalleSecondes / 60))
+    Logger.info("Arbre", "✓ Graines toutes les %.0f min — 2 arbres simultanés", arbreCfg.intervalleSecondes / 60)
 end
 
 return ArbreSystem

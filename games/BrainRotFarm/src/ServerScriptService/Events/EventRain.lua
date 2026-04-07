@@ -17,6 +17,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 -- Config
 -- ============================================================
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config = require(ReplicatedStorage.GameConfig)
 
 -- ============================================================
@@ -145,7 +146,7 @@ function EventRain.Demarrer(config)
         pcall(CCS.SetMultiplier, config.spawnMultiplier or 3)
     end
 
-    print("[EventRain] ▶ Rain Event démarré (" .. (config.duree or 90) .. "s) — " .. #nuages .. " nuage(s)")
+    Logger.info("Event", "▶ Rain Event démarré (%ds) — %d nuage(s)", config.duree or 90, #nuages)
 end
 
 function EventRain.Terminer()
@@ -182,7 +183,7 @@ function EventRain.Terminer()
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
     if ev then pcall(function() ev:FireAllClients("INFO", "☀️ The rain stops... the field stays fertilized!") end) end
 
-    print("[EventRain] ■ Rain Event terminé")
+    Logger.info("Event", "■ Rain Event terminé")
 end
 
 return EventRain

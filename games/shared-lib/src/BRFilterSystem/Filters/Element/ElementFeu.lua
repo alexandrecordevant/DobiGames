@@ -2,6 +2,7 @@
 -- Filtre Élémentaire FEU — Flammes qui montent + lueur chaude modérée + label Mutant
 
 local ElementFeu = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 ElementFeu.Config = {
     Couleur      = Color3.fromRGB(160, 50, 0),
@@ -40,7 +41,7 @@ function ElementFeu.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[ElementFeu] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

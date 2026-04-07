@@ -4,6 +4,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
+local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local ShopConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ShopConfig"))
 
@@ -15,7 +16,7 @@ local ShopPurchase = ReplicatedStorage:WaitForChild("ShopPurchase", 30)
 local ShopRefresh  = ReplicatedStorage:WaitForChild("ShopRefresh",  30)
 
 if not ShopOpen or not ShopPurchase or not ShopRefresh then
-    warn("[ShopClient] RemoteEvents du shop introuvables — GUI désactivé")
+    Logger.warn("Shop", "RemoteEvents du shop introuvables — GUI désactivé")
     return
 end
 

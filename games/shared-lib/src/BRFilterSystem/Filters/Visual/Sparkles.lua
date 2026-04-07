@@ -2,6 +2,7 @@
 -- Filtre Visuel SPARKLES — Ajoute des sparkles sur le BR
 
 local Sparkles = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 Sparkles.Config = {
     Couleur = Color3.fromRGB(255, 255, 200),  -- Jaune pâle par défaut
@@ -18,7 +19,7 @@ function Sparkles.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[Sparkles] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

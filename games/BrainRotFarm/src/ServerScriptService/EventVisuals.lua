@@ -14,6 +14,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 -- Config
 -- ============================================================
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config = require(ReplicatedStorage.GameConfig)
 
 -- ============================================================
@@ -42,7 +43,7 @@ local function chargerModule(nomEvent)
         return m
     end
 
-    warn("[EventVisuals] Erreur chargement module " .. nomEvent .. ": " .. tostring(m))
+    Logger.warn("Event", "Erreur chargement module %s: %s", nomEvent, tostring(m))
     modulesCache[nomEvent] = false
     return false
 end
@@ -205,7 +206,7 @@ function EventVisuals.TerminerActif()
     end
 
     fireEventEnded()
-    print("[EventVisuals] ■ Event terminé : " .. nomEvent)
+    Logger.info("Event", "■ Event terminé : %s", nomEvent)
 end
 
 function EventVisuals.Lancer(nomEvent)
@@ -222,7 +223,7 @@ function EventVisuals.Lancer(nomEvent)
         -- Event avec module visuel (NightMode, MeteorDrop, Rain, Golden)
         local cfgVisuelle = Config.EventsVisuels and Config.EventsVisuels[nomEvent]
         if not cfgVisuelle then
-            warn("[EventVisuals] Config.EventsVisuels." .. nomEvent .. " manquante")
+            Logger.warn("Event", "Config.EventsVisuels.%s manquante", nomEvent)
             return
         end
         duree      = cfgVisuelle.duree
@@ -232,7 +233,7 @@ function EventVisuals.Lancer(nomEvent)
         -- Event sans module visuel (LuckyHour, DoubleCoins, SecretSpawn)
         local cfgGameplay = CONFIGS_GAMEPLAY[nomEvent]
         if not cfgGameplay then
-            warn("[EventVisuals] Event inconnu : " .. tostring(nomEvent))
+            Logger.warn("Event", "Event inconnu : %s", tostring(nomEvent))
             return
         end
         duree      = type(cfgGameplay.duree) == "function" and cfgGameplay.duree() or cfgGameplay.duree
@@ -254,7 +255,7 @@ function EventVisuals.Lancer(nomEvent)
         end
     end)
 
-    print("[EventVisuals] ▶ Event lancé : " .. nomEvent .. " (" .. tostring(duree) .. "s)")
+    Logger.info("Event", "▶ Event lancé : %s (%ss)", nomEvent, tostring(duree))
 end
 
 function EventVisuals.Init()
@@ -262,7 +263,7 @@ function EventVisuals.Init()
     creerRemoteEvent("NightModeStart")
     creerRemoteEvent("MeteorImpact")
     creerRemoteEvent("GoldenStart")
-    print("[EventVisuals] ✓ Coordinateur initialisé")
+    Logger.info("Event", "✓ Coordinateur initialisé")
 end
 
 return EventVisuals

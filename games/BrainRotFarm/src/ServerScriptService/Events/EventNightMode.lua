@@ -13,6 +13,7 @@ local TweenService      = game:GetService("TweenService")
 local Lighting          = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ============================================================
 -- Ordre de rareté (EPIC = 4)
@@ -142,7 +143,7 @@ function EventNightMode.Demarrer(config)
         boosterLumieresBR()
     end)
 
-    print("[EventNightMode] ▶ Night Mode démarré (" .. (config.duree or 45) .. "s)")
+    Logger.info("Event", "▶ Night Mode démarré (%ds)", config.duree or 45)
 end
 
 function EventNightMode.Terminer()
@@ -165,7 +166,7 @@ function EventNightMode.Terminer()
         pcall(function() notif:FireAllClients("INFO", "☀️ Day breaks... until the next event!") end)
     end
 
-    print("[EventNightMode] ■ Night Mode terminé")
+    Logger.info("Event", "■ Night Mode terminé")
 end
 
 return EventNightMode

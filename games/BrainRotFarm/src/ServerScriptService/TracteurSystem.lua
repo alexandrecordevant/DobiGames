@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Config — vitesse et espacement lus depuis GameConfig
 -- ============================================================
+local Logger           = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config           = require(ReplicatedStorage.GameConfig)
 local VITESSE_DEF      = Config.TracteurVitesse           or 12  -- studs/seconde
 local ESPACEMENT       = Config.TracteurEspacement        or 8   -- studs entre lignes
@@ -45,7 +46,7 @@ local function calculerLignes(spawnZone)
     local wallRight  = spawnZone:FindFirstChild("Wall_Right")
 
     if not (wallTop and wallBottom and wallLeft and wallRight) then
-        warn("[TracteurSystem] Murs SpawnZone incomplets")
+        Logger.warn("Tracteur", "Murs SpawnZone incomplets")
         return nil
     end
 
@@ -150,12 +151,11 @@ end
 local function boucleTracteur(baseIndex, tracteurModel, spawnZone, vitesse)
     local lignes = calculerLignes(spawnZone)
     if not lignes or #lignes == 0 then
-        warn("[TracteurSystem] Lignes introuvables pour Base_" .. baseIndex)
+        Logger.warn("Tracteur", "Lignes introuvables pour Base_%s", tostring(baseIndex))
         return
     end
 
-    print("[TracteurSystem] Base_" .. baseIndex
-        .. " — " .. #lignes .. " lignes | vitesse " .. vitesse .. " st/s")
+    Logger.info("Tracteur", "Base_%s — %d lignes | vitesse %d st/s", tostring(baseIndex), #lignes, vitesse)
 
     while tracteurData[baseIndex] and tracteurData[baseIndex].actif do
         for _, ligne in ipairs(lignes) do
@@ -175,7 +175,7 @@ local function boucleTracteur(baseIndex, tracteurModel, spawnZone, vitesse)
         end
     end
 
-    print("[TracteurSystem] Base_" .. baseIndex .. " tracteur arrêté")
+    Logger.info("Tracteur", "Base_%s tracteur arrêté", tostring(baseIndex))
 end
 
 -- ============================================================
@@ -193,13 +193,13 @@ function TracteurSystem.Activer(player, baseIndex, onCollect)
     local specificFolder = base:FindFirstChild("Specific")
     local tracteurModel  = specificFolder and specificFolder:FindFirstChild("Tractor")
     if not tracteurModel then
-        warn("[TracteurSystem] Modèle Tractor introuvable dans Base_" .. baseIndex)
+        Logger.warn("Tracteur", "Modèle Tractor introuvable dans Base_%s", tostring(baseIndex))
         return
     end
 
     local spawnZone = specificFolder and specificFolder:FindFirstChild("SpawnZone")
     if not spawnZone then
-        warn("[TracteurSystem] SpawnZone introuvable dans Base_" .. baseIndex)
+        Logger.warn("Tracteur", "SpawnZone introuvable dans Base_%s", tostring(baseIndex))
         return
     end
 
@@ -218,7 +218,7 @@ function TracteurSystem.Activer(player, baseIndex, onCollect)
         boucleTracteur(baseIndex, tracteurModel, spawnZone, VITESSE_DEF)
     end)
 
-    print("[TracteurSystem] Base_" .. baseIndex .. " tracteur activé pour " .. player.Name)
+    Logger.info("Tracteur", "Base_%s tracteur activé pour %s", tostring(baseIndex), player.Name)
 end
 
 function TracteurSystem.Desactiver(baseIndex)
@@ -229,7 +229,7 @@ function TracteurSystem.Desactiver(baseIndex)
 end
 
 function TracteurSystem.Init()
-    print("[TracteurSystem] ✓ Init")
+    Logger.info("Tracteur", "✓ Init")
 end
 
 return TracteurSystem

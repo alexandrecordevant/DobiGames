@@ -4,6 +4,7 @@
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Logger     = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ============================================================
 -- CONFIGURATION PARTAGÉE
@@ -101,7 +102,7 @@ local function lancerCycleTour(cfg)
         lavaVitesse   = CONFIG.VITESSE_BASE
         lava.Anchored = true
         lava.Position = Vector3.new(lava.Position.X, hauteurDepart, lava.Position.Z)
-        print(tag .. " Lave reset à Y=" .. hauteurDepart)
+        Logger.debug("Tower", "%s Lave reset à Y=%d", tag, hauteurDepart)
     end
 
     -- ── Démarrer la lave ──────────────────────────────────────────
@@ -109,7 +110,7 @@ local function lancerCycleTour(cfg)
         if lavaActive then return end
         lavaActive  = true
         lavaVitesse = CONFIG.VITESSE_BASE
-        print(tag .. " Lave démarrée | " .. nbJoueurs .. " joueur(s)")
+        Logger.info("Tower", "%s Lave démarrée | %d joueur(s)", tag, nbJoueurs)
 
         local tempsAccel = 0
         local dernierTemps = os.clock()
@@ -145,13 +146,13 @@ local function lancerCycleTour(cfg)
                     end
                 end
                 if vivants == 0 then
-                    print(tag .. " Plus personne → Reset lave")
+                    Logger.debug("Tower", "%s Plus personne → Reset lave", tag)
                     resetLava()
                 end
             end
 
             if lava.Position.Y >= CONFIG.HAUTEUR_MAX then
-                print(tag .. " Hauteur max → Reset lave")
+                Logger.debug("Tower", "%s Hauteur max → Reset lave", tag)
                 resetLava()
             end
         end)
@@ -165,7 +166,7 @@ local function lancerCycleTour(cfg)
         if not player then return end
         local hum = char:FindFirstChildOfClass("Humanoid")
         if not hum or hum.Health <= 0 then return end
-        print(tag .. " " .. player.Name .. " éliminé")
+        Logger.info("Tower", "%s %s éliminé", tag, player.Name)
         hum.Health = 0
         task.delay(1, function()
             local vivants = 0
@@ -180,7 +181,7 @@ local function lancerCycleTour(cfg)
                 end
             end
             if vivants == 0 then
-                print(tag .. " Tous éliminés → Reset lave")
+                Logger.debug("Tower", "%s Tous éliminés → Reset lave", tag)
                 resetLava()
             end
         end)
@@ -219,7 +220,7 @@ local function lancerCycleTour(cfg)
 
             local joueurs = getJoueursZone(startZone)
             local nbTP    = #joueurs
-            print(tag .. " Téléportation de " .. nbTP .. " joueur(s)")
+            Logger.info("Tower", "%s Téléportation de %d joueur(s)", tag, nbTP)
 
             for _, player in ipairs(joueurs) do
                 local char = player.Character
@@ -240,11 +241,11 @@ local function lancerCycleTour(cfg)
                 while lavaActive do task.wait(1) end
             end
 
-            print(tag .. " Nouveau cycle")
+            Logger.debug("Tower", "%s Nouveau cycle", tag)
         end
     end)
 
-    print(tag .. " ✓ Cycle lancé")
+    Logger.info("Tower", "%s ✓ Cycle lancé", tag)
 end
 
 -- ============================================================
@@ -268,7 +269,7 @@ end)
 task.spawn(function()
     local tour = workspace:FindFirstChild("TourVIP")
     if not tour then
-        warn("[TourCycle] TourVIP introuvable dans workspace — ignorée.")
+        Logger.warn("Tower", "TourVIP introuvable dans workspace — ignorée.")
         return
     end
 
@@ -278,7 +279,7 @@ task.spawn(function()
     local lava        = tour:FindFirstChild("Lava")
 
     if not startZone or not spawn or not lava then
-        warn("[TourCycle] TourVIP : structure incomplète (Triggers/StartZone, InterriorSpawn ou Lava manquant).")
+        Logger.warn("Tower", "TourVIP : structure incomplète (Triggers/StartZone, InterriorSpawn ou Lava manquant).")
         return
     end
 

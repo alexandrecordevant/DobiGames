@@ -5,6 +5,7 @@ local Config = require(
     or game.ReplicatedStorage.Specialized.GameConfig
 )
 local CollectSystem = require(game:GetService("ServerScriptService").SharedLib.Shared.CollectSystem)
+local Logger = require(script.Parent.Logger)
 
 -- Chargement différé de EventVisuals (coordinateur visuel+gameplay)
 local _EventVisuals = nil
@@ -33,7 +34,7 @@ local function DemarrerEvent(typeEvent)
     if EV then
         pcall(EV.Lancer, typeEvent)
     else
-        warn("[EventManager] EventVisuals non disponible, event ignoré : " .. tostring(typeEvent))
+        Logger.warn("Event", "EventVisuals non disponible, event ignoré : %s", tostring(typeEvent))
     end
 end
 
@@ -80,7 +81,7 @@ function EventManager.Init()
 
     task.spawn(BoucleAuto)
     task.spawn(BoucleAdminAbuseHebdo)
-    print("[EventManager] Events automatiques démarrés ✓")
+    Logger.info("Event", "Events automatiques démarrés ✓")
 end
 
 function EventManager.DeclenchemantManuel(typeEvent)

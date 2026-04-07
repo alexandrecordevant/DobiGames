@@ -16,6 +16,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 -- Config
 -- ============================================================
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config = require(ReplicatedStorage.GameConfig)
 
 -- Position du panneau 3D custom (fallback si panneaux Studio absents)
@@ -243,7 +244,7 @@ local function CreerOuMettreAJourLeaderstats(player, playerData)
         ls        = Instance.new("Folder")
         ls.Name   = "leaderstats"
         ls.Parent = player
-        print("[LeaderboardSystem] leaderstats créés pour " .. player.Name .. " ✓")
+        Logger.debug("Leaderboard", "leaderstats créés pour %s ✓", player.Name)
     end
 
     local coins = ls:FindFirstChild("💰 Coins")
@@ -432,7 +433,7 @@ local function creerPanneau()
     panneauPart = part
     footerLabel = footer
 
-    print("[LeaderboardSystem] Panneau 3D custom créé à " .. tostring(PANNEAU_POSITION))
+    Logger.debug("Leaderboard", "Panneau 3D custom créé à %s", tostring(PANNEAU_POSITION))
 end
 
 -- ============================================================
@@ -832,8 +833,7 @@ function LeaderboardSystem.EnregistrerRare(player, rareteNom)
         joueur    = player.Name,
         timestamp = os.time(),
     }
-    print(string.format("[LeaderboardSystem] Rare enregistré : %s capturé par %s",
-        rareteNom, player.Name))
+    Logger.info("Leaderboard", "Rare enregistré : %s capturé par %s", rareteNom, player.Name)
 end
 
 -- Initialise le système
@@ -873,9 +873,9 @@ function LeaderboardSystem.Init()
             for _, child in ipairs(lbFolder:GetChildren()) do
                 table.insert(enfants, child.Name .. " (" .. child.ClassName .. ")")
             end
-            print("[LeaderboardSystem] Workspace.Leaderboards : " .. table.concat(enfants, ", "))
+            Logger.debug("Leaderboard", "Workspace.Leaderboards : %s", table.concat(enfants, ", "))
         else
-            warn("[LeaderboardSystem] Workspace.Leaderboards INTROUVABLE — panneaux Studio désactivés")
+            Logger.warn("Leaderboard", "Workspace.Leaderboards INTROUVABLE — panneaux Studio désactivés")
         end
 
         -- Récupérer les 2 textos (LB1 + LB2 — même contenu)
@@ -888,9 +888,9 @@ function LeaderboardSystem.Init()
                 pcall(configurerTexto, t)
                 pcall(function() t.Text = initTexte end)
                 table.insert(textosLeaderboards, t)
-                print("[LeaderboardSystem] " .. nom .. " Texto ✓")
+                Logger.debug("Leaderboard", "%s Texto ✓", nom)
             else
-                warn("[LeaderboardSystem] " .. nom .. " Texto INTROUVABLE")
+                Logger.warn("Leaderboard", "%s Texto INTROUVABLE", nom)
             end
         end
     end)
@@ -898,7 +898,7 @@ function LeaderboardSystem.Init()
     -- Lancer la boucle (les textos seront nil pour les 2 premiers ticks, sans effet)
     task.spawn(boucleLeaderboard)
 
-    print("[LeaderboardSystem] ✓ Initialisé (LB1+LB2 identiques · contenu fusionné · cycle " .. UPDATE_CLASSEMENT .. "s)")
+    Logger.info("Leaderboard", "✓ Initialisé (LB1+LB2 identiques · contenu fusionné · cycle %ds)", UPDATE_CLASSEMENT)
 end
 
 -- Mise à jour immédiate (appelée après gain de coins, rebirth, etc.)

@@ -3,6 +3,9 @@
 
 local GameConfig = {}
 
+-- === DEBUG ===
+GameConfig.LOG_LEVEL = "WARN"
+
 -- === IDENTITÉ DU JEU ===
 GameConfig.NomDuJeu          = "Brain Rot Farm"
 GameConfig.Theme             = "farm"
@@ -517,25 +520,104 @@ GameConfig.FlowerPotConfig = {
     -- Offset Y (studs) du BR Mutant au-dessus de la plante
     MutantOffsetY    = 3,
 
-    -- Éléments disponibles pour les BR Mutants
-    ElementTypes = { "water", "fire", "earth", "wind" },
+    -- Types de Mutants disponibles (remplace les anciens éléments eau/feu/terre/vent)
+    -- Lus par MutantGenerator, FlowerPotGrowthSystem et les filtres BRFilterSystem
+    MutantTypes = { "GALAXY", "TOXIC", "RAINBOW", "VOID" },
 
-    -- Multiplicateurs de revenu par élément (income = ValeurParRarete[rarity] × multiplier)
-    ElementMultipliers = {
-        water = 2,
-        fire  = 4,
-        earth = 6,
-        wind  = 8,
+    -- Multiplicateurs de revenu par type Mutant (income = ValeurParRarete[rarity] × multiplier)
+    MutantMultipliers = {
+        GALAXY  = 2,
+        TOXIC   = 4,
+        RAINBOW = 6,
+        VOID    = 8,
     },
 
-    -- Config particules élémentaires (Color, Lifetime, SpeedMax)
-    ElementParticles = {
-        water = { Color=Color3.fromRGB(0,   150, 255), Lifetime=2.0, SpeedMax=3 },
-        fire  = { Color=Color3.fromRGB(255, 100, 0),   Lifetime=1.0, SpeedMax=5 },
-        earth = { Color=Color3.fromRGB(100, 200, 50),  Lifetime=3.0, SpeedMax=2 },
-        wind  = { Color=Color3.fromRGB(230, 230, 230), Lifetime=1.5, SpeedMax=6 },
+    -- Correspondance type Mutant → nom de filtre FilterManager
+    MutantFiltres = {
+        GALAXY  = "MutantGALAXY",
+        TOXIC   = "MutantTOXIC",
+        RAINBOW = "MutantRAINBOW",
+        VOID    = "MutantVOID",
+    },
+
+    -- Emojis par type Mutant (affichage billboard et notifications)
+    MutantEmojis = {
+        GALAXY  = "🌌",
+        TOXIC   = "☠️",
+        RAINBOW = "🌈",
+        VOID    = "🕳️",
     },
 }
+
+-- === TYPES MUTANTS ===
+-- Source de vérité canonique pour tous les systèmes (MutantGenerator, FlowerPotGrowthSystem, filtres)
+-- Multiplier = facteur appliqué sur IncomeParRarete lors de la récolte d'un BR Mutant
+GameConfig.MutantTypes = {
+    {
+        Name           = "GALAXY",
+        Multiplier     = 2,
+        Color          = Color3.fromRGB(88,  24,  169),
+        SecondaryColor = Color3.fromRGB(20,   0,   60),
+        ParticleColor  = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 150, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(88,   24, 169)),
+        }),
+        Scale          = 1.2,
+        Filtre         = "MutantGALAXY",
+        Emoji          = "🌌",
+        Icon           = "rbxassetid://GALAXY_ICON_ID",
+    },
+    {
+        Name           = "TOXIC",
+        Multiplier     = 4,
+        Color          = Color3.fromRGB(57,  255,  20),
+        SecondaryColor = Color3.fromRGB(0,    80,   0),
+        ParticleColor  = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(57,  255,  20)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0,   200,   0)),
+        }),
+        Scale          = 1.4,
+        Filtre         = "MutantTOXIC",
+        Emoji          = "☠️",
+        Icon           = "rbxassetid://TOXIC_ICON_ID",
+    },
+    {
+        Name           = "RAINBOW",
+        Multiplier     = 6,
+        Color          = Color3.fromRGB(255,   0,   0),  -- hue-shift via TweenService en jeu
+        SecondaryColor = Color3.fromRGB(255, 255,   0),
+        ParticleColor  = ColorSequence.new({
+            ColorSequenceKeypoint.new(0,    Color3.fromRGB(255,   0,   0)),
+            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0,   255,   0)),
+            ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0,     0, 255)),
+            ColorSequenceKeypoint.new(1,    Color3.fromRGB(255,   0, 255)),
+        }),
+        Scale          = 1.6,
+        Filtre         = "MutantRAINBOW",
+        Emoji          = "🌈",
+        Icon           = "rbxassetid://RAINBOW_ICON_ID",
+    },
+    {
+        Name           = "VOID",
+        Multiplier     = 8,
+        Color          = Color3.fromRGB(10,    0,  20),
+        SecondaryColor = Color3.fromRGB(200,   0,   0),
+        ParticleColor  = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(200,   0,   0)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(10,    0,  20)),
+        }),
+        Scale          = 1.8,
+        Filtre         = "MutantVOID",
+        Emoji          = "🕳️",
+        Icon           = "rbxassetid://VOID_ICON_ID",
+    },
+}
+
+-- Index par nom pour lookup O(1) : GameConfig.MutantTypesByName["GALAXY"] → entrée complète
+GameConfig.MutantTypesByName = {}
+for _, mt in ipairs(GameConfig.MutantTypes) do
+    GameConfig.MutantTypesByName[mt.Name] = mt
+end
 
 -- Réduction prix progression par rebirth (-15% cumulatif, cap -90%)
 -- Utilisé par BaseProgressionSystem pour alléger les seuils de déblocage

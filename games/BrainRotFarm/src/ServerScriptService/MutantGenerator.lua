@@ -1,8 +1,9 @@
 -- ServerScriptService/Specialized/MutantGenerator.lua
--- DobiGames — Génère des BR Mutants élémentaires depuis une graine MYTHIC/SECRET
+-- DobiGames — Génère des BR Mutants depuis une graine MYTHIC/SECRET
+-- Types disponibles : GALAXY (×2) | TOXIC (×4) | RAINBOW (×6) | VOID (×8)
 -- Rareté finale TOUJOURS COMMON/OG/RARE (jamais MYTHIC/SECRET)
 -- SECRET seed = meilleures chances RARE | MYTHIC seed = plus souvent COMMON/OG
--- Refactorisé : effets visuels via FilterManager (plus de part.Color ni BillboardHelper direct)
+-- Effets visuels via FilterManager uniquement — aucune modification directe des BR
 
 local MutantGenerator = {}
 
@@ -11,6 +12,7 @@ local MutantGenerator = {}
 -- ============================================================
 local ServerStorage     = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local _GameConfig       = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 -- Chargement différé FilterManager (évite erreur si BRFilterSystem pas encore chargé)
@@ -28,36 +30,22 @@ local function getFilterManager()
 end
 
 -- ============================================================
--- Configuration élémentaire
+-- Configuration des types Mutants (lue depuis GameConfig.MutantTypes)
 -- ============================================================
-local ELEMENT_CONFIG = {
-    EAU = {
-        nomFiltre    = "ElementEau",
-        nomDisplay   = "🌊 BR Mutant EAU",
-        couleur      = Color3.fromRGB(0,   150, 255),
-        cleMultiplier = "water",
-    },
-    FEU = {
-        nomFiltre    = "ElementFeu",
-        nomDisplay   = "🔥 BR Mutant FEU",
-        couleur      = Color3.fromRGB(255, 80,  0),
-        cleMultiplier = "fire",
-    },
-    TERRE = {
-        nomFiltre    = "ElementTerre",
-        nomDisplay   = "🌍 BR Mutant TERRE",
-        couleur      = Color3.fromRGB(100, 150, 50),
-        cleMultiplier = "earth",
-    },
-    VENT = {
-        nomFiltre    = "ElementVent",
-        nomDisplay   = "💨 BR Mutant VENT",
-        couleur      = Color3.fromRGB(200, 200, 220),
-        cleMultiplier = "wind",
-    },
-}
 
-local ELEMENTS = { "EAU", "FEU", "TERRE", "VENT" }
+-- Construction de MUTANT_CONFIG depuis GameConfig pour éviter toute valeur hardcodée
+local MUTANT_CONFIG = {}
+local MUTANT_NAMES  = {}
+
+for _, mt in ipairs(_GameConfig.MutantTypes) do
+    MUTANT_CONFIG[mt.Name] = {
+        nomFiltre  = mt.Filtre,
+        nomDisplay = mt.Emoji .. " BR Mutant " .. mt.Name,
+        couleur    = mt.Color,
+        multiplier = mt.Multiplier,
+    }
+    table.insert(MUTANT_NAMES, mt.Name)
+end
 
 -- Poids rareté selon type de graine (jamais MYTHIC/SECRET — seulement COMMON/OG/RARE)
 local POIDS_RARETE = {
@@ -82,9 +70,9 @@ local function tirerPondere(poids)
     return "COMMON"  -- Fallback
 end
 
--- Tirage élément aléatoire
-local function tirerElement()
-    return ELEMENTS[math.random(1, #ELEMENTS)]
+-- Tirage type Mutant aléatoire (uniforme sur MUTANT_NAMES)
+local function tirerMutantType()
+    return MUTANT_NAMES[math.random(1, #MUTANT_NAMES)]
 end
 
 -- ============================================================
@@ -92,17 +80,17 @@ end
 -- ============================================================
 
 --[[
-    Génère un BR Mutant élémentaire depuis une graine
+    Génère un BR Mutant depuis une graine
 
     @param seedRarity  (string)  — "MYTHIC" ou "SECRET"
-    @param elementType (string, optionnel) — "EAU"/"FEU"/"TERRE"/"VENT" (aléatoire si nil)
-    @return clone (Model), finalRarity (string), elementType (string)
+    @param mutantType  (string, optionnel) — "GALAXY"/"TOXIC"/"RAINBOW"/"VOID" (aléatoire si nil)
+    @return clone (Model), finalRarity (string), mutantType (string)
             ou nil, nil, nil en cas d'échec
 ]]
-function MutantGenerator.Generate(seedRarity, elementType)
+function MutantGenerator.Generate(seedRarity, mutantType)
     local brainrots = ServerStorage:FindFirstChild("Brainrots")
     if not brainrots then
-        warn("[MutantGenerator] ServerStorage.Brainrots introuvable")
+        Logger.warn("Spawn", "ServerStorage.Brainrots introuvable")
         return nil, nil, nil
     end
 
@@ -110,22 +98,22 @@ function MutantGenerator.Generate(seedRarity, elementType)
     local poids       = POIDS_RARETE[seedRarity] or POIDS_RARETE.MYTHIC
     local finalRarity = tirerPondere(poids)
 
-    -- Choisir ou valider l'élément
-    if not elementType or not ELEMENT_CONFIG[elementType] then
-        elementType = tirerElement()
+    -- Choisir ou valider le type Mutant
+    if not mutantType or not MUTANT_CONFIG[mutantType] then
+        mutantType = tirerMutantType()
     end
-    local elemCfg = ELEMENT_CONFIG[elementType]
+    local elemCfg = MUTANT_CONFIG[mutantType]
 
     -- Cloner un BR de la rareté sélectionnée
     local dossier = brainrots:FindFirstChild(finalRarity)
     if not dossier then
-        warn("[MutantGenerator] Dossier introuvable :", finalRarity)
+        Logger.warn("Spawn", "Dossier introuvable : %s", finalRarity)
         return nil, nil, nil
     end
 
     local modeles = dossier:GetChildren()
     if #modeles == 0 then
-        warn("[MutantGenerator] Dossier vide :", finalRarity)
+        Logger.warn("Spawn", "Dossier vide : %s", finalRarity)
         return nil, nil, nil
     end
 
@@ -134,7 +122,7 @@ function MutantGenerator.Generate(seedRarity, elementType)
         clone = modeles[math.random(1, #modeles)]:Clone()
     end)
     if not ok or not clone then
-        warn("[MutantGenerator] Échec clone BR", finalRarity)
+        Logger.warn("Spawn", "Échec clone BR %s", finalRarity)
         return nil, nil, nil
     end
 
@@ -158,26 +146,24 @@ function MutantGenerator.Generate(seedRarity, elementType)
 
     -- Attributs + nom (avant les filtres pour que le Billboard ait le bon ObjectText)
     pcall(function()
-        clone:SetAttribute("ElementType", elementType)
+        clone:SetAttribute("MutantType",  mutantType)
         clone:SetAttribute("Rarete",      finalRarity)
         clone:SetAttribute("IsMutant",    true)
         clone:SetAttribute("SeedRarity",  seedRarity)
         clone.Name = elemCfg.nomDisplay
     end)
 
-    -- Calculer la valeur du mutant (income base × multiplicateur élément)
+    -- Calculer la valeur du mutant (income base × multiplicateur du type)
     local incomeBase   = (_GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[finalRarity]) or 0
-    local fpCfg        = _GameConfig.FlowerPotConfig
-    local multCle      = elemCfg.cleMultiplier
-    local multElement  = (fpCfg and fpCfg.ElementMultipliers and fpCfg.ElementMultipliers[multCle]) or 1
+    local multElement  = elemCfg.multiplier or 1
     local valeurMutant = incomeBase * multElement
     local valeurTexte  = valeurMutant > 0 and ("  💰 " .. valeurMutant .. "/s") or ""
 
-    -- Appliquer les effets visuels via FilterManager
+    -- Appliquer les effets visuels via FilterManager (seul point d'entrée autorisé)
     local FM = getFilterManager()
     if FM then
         FM.Apply(clone, {
-            {Name = elemCfg.nomFiltre},   -- ElementEau / ElementFeu / ElementTerre / ElementVent
+            {Name = elemCfg.nomFiltre},   -- MutantGALAXY / MutantTOXIC / MutantRAINBOW / MutantVOID
             {Name = "Normal"},             -- Scale 1×
             {Name = "Billboard", Params = {
                 Text    = elemCfg.nomDisplay .. valeurTexte,
@@ -186,33 +172,31 @@ function MutantGenerator.Generate(seedRarity, elementType)
             }},
         })
     else
-        warn("[MutantGenerator] FilterManager indisponible — effets visuels ignorés")
+        Logger.warn("Spawn", "FilterManager indisponible — effets visuels ignorés")
     end
 
-    print(string.format(
-        "[MutantGenerator] %s (%s) depuis graine %s",
-        elemCfg.nomDisplay, finalRarity, seedRarity))
+    Logger.info("Spawn", "%s (%s) depuis graine %s", elemCfg.nomDisplay, finalRarity, seedRarity)
 
-    return clone, finalRarity, elementType
+    return clone, finalRarity, mutantType
 end
 
 --[[
-    Retourne la config complète d'un élément
+    Retourne la config complète d'un type Mutant
 
-    @param elementType (string)
+    @param mutantType (string) — "GALAXY"/"TOXIC"/"RAINBOW"/"VOID"
     @return table ou nil
 ]]
-function MutantGenerator.GetElementConfig(elementType)
-    return ELEMENT_CONFIG[elementType]
+function MutantGenerator.GetMutantConfig(mutantType)
+    return MUTANT_CONFIG[mutantType]
 end
 
 --[[
-    Retourne la liste des éléments disponibles
+    Retourne la liste des types Mutants disponibles
 
-    @return table { "EAU", "FEU", "TERRE", "VENT" }
+    @return table { "GALAXY", "TOXIC", "RAINBOW", "VOID" }
 ]]
-function MutantGenerator.GetElements()
-    return ELEMENTS
+function MutantGenerator.GetMutantTypes()
+    return MUTANT_NAMES
 end
 
 return MutantGenerator

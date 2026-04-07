@@ -20,6 +20,7 @@ local Config = require(
     game.ReplicatedStorage:FindFirstChild("GameConfig")
     or game.ReplicatedStorage.Specialized.GameConfig
 )
+local Logger = require(script.Parent.Logger)
 local ProgConfig = Config.ProgressionConfig
 
 local SEUILS = ProgConfig.seuils
@@ -66,7 +67,7 @@ local function activerDepotSpot(player, spotObj, spotKey)
                  or spotObj:FindFirstChildWhichIsA("BasePart")
     end
     if not touchPart then
-        warn("[BaseProgressionSystem] activerDepotSpot : aucune Part dans " .. spotObj.Name)
+        Logger.warn("Prog", "activerDepotSpot : aucune Part dans %s", spotObj.Name)
         return
     end
 
@@ -78,7 +79,7 @@ local function activerDepotSpot(player, spotObj, spotKey)
     local CS = getCarrySystem()
     if CS then pcall(CS.AjouterDepotSpot, player, touchPart) end
 
-    print(string.format("[BaseProgressionSystem] DepotPrompt créé : %s (spot %s)", spotObj.Name, spotKey))
+    Logger.debug("Prog", "DepotPrompt créé : %s (spot %s)", spotObj.Name, spotKey)
 end
 
 -- ============================================================
@@ -224,7 +225,7 @@ end
 local function notifierTous(typeNotif, message)
 	local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
 	if ev then pcall(function() ev:FireAllClients(typeNotif, message) end) end
-	print("[BaseProgression] " .. message)
+	Logger.info("Prog", "%s", message)
 end
 
 -- ============================================================
@@ -610,12 +611,12 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 	-- Récupérer la base dans le Workspace
 	local bases = Workspace:FindFirstChild("Bases")
 	if not bases then
-		warn("[BaseProgressionSystem] Workspace.Bases introuvable")
+		Logger.warn("Prog", "Workspace.Bases introuvable")
 		return
 	end
 	local baseRoot = bases:FindFirstChild("Base_" .. baseIndex)
 	if not baseRoot then
-		warn("[BaseProgressionSystem] Base_" .. baseIndex .. " introuvable")
+		Logger.warn("Prog", "Base_%s introuvable", tostring(baseIndex))
 		return
 	end
 	-- Base dans Shared/ (structure Shared/Specific)
@@ -632,7 +633,7 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 	end
 
 	if not baseFolder or math.max(scoreBase, scoreRoot) <= 0 then
-		warn("[BaseProgressionSystem] Aucun conteneur valide trouvé pour Base_" .. baseIndex .. " (floors/spots introuvables)")
+		Logger.warn("Prog", "Aucun conteneur valide trouvé pour Base_%s (floors/spots introuvables)", tostring(baseIndex))
 		return
 	end
 
@@ -686,15 +687,14 @@ function BaseProgressionSystem.Init(player, baseIndex, playerData)
 		end
 	end
 
-	print(string.format(
-		"[BaseProgressionSystem] %s → Base_%d initialisée (%d spots actifs) [root=%dF/%dS, base=%dF/%dS, cible=%s]",
+	Logger.info("Prog", "%s → Base_%d initialisée (%d spots actifs) [root=%dF/%dS, base=%dF/%dS, cible=%s]",
 		player.Name,
 		baseIndex,
 		#dd.spotsActifs,
 		floorsRoot, spotsRoot,
 		floorsBase, spotsBase,
 		baseFolder.Name
-	))
+	)
 end
 
 -- ============================================================
@@ -754,7 +754,7 @@ function BaseProgressionSystem.ResetVisuelBase(baseIndex)
 		end
 	end
 
-	print("[BaseProgressionSystem] ResetVisuel Base_" .. baseIndex .. " ✓")
+	Logger.info("Prog", "ResetVisuel Base_%s ✓", tostring(baseIndex))
 end
 
 -- ============================================================
@@ -766,7 +766,7 @@ function BaseProgressionSystem.InitBasesInactives()
     for i = 1, maxBases do
         pcall(BaseProgressionSystem.ResetVisuelBase, i)
     end
-    print("[BaseProgressionSystem] InitBasesInactives (" .. maxBases .. " bases) ✓")
+    Logger.info("Prog", "InitBasesInactives (%d bases) ✓", maxBases)
 end
 
 -- ============================================================
@@ -777,7 +777,7 @@ function BaseProgressionSystem.DebloquerFloorApresRebirth(player, niveauRebirth)
     local AssignationSystem = require(game:GetService("ServerScriptService").SharedLib.Server.AssignationSystem)
     local baseIndex = AssignationSystem.GetBaseIndex(player)
     if not baseIndex then
-        warn("[BaseProgressionSystem] DebloquerFloorApresRebirth : base introuvable pour " .. player.Name)
+        Logger.warn("Prog", "DebloquerFloorApresRebirth : base introuvable pour %s", player.Name)
         return
     end
 
@@ -793,7 +793,7 @@ function BaseProgressionSystem.DebloquerFloorApresRebirth(player, niveauRebirth)
         if f.index == floorIndex then floorDef = f break end
     end
     if not floorDef then
-        print("[BaseProgressionSystem] DebloquerFloor : pas de Floor " .. floorIndex .. " dans la config")
+        Logger.debug("Prog", "DebloquerFloor : pas de Floor %d dans la config", floorIndex)
         return
     end
 
@@ -806,17 +806,13 @@ function BaseProgressionSystem.DebloquerFloorApresRebirth(player, niveauRebirth)
 
     local floorObj = trouverFloor(baseFolder, floorIndex)
     if not floorObj then
-        warn("[BaseProgressionSystem] DebloquerFloor : Floor " .. floorIndex
-            .. " introuvable dans Base_" .. baseIndex)
+        Logger.warn("Prog", "DebloquerFloor : Floor %d introuvable dans Base_%s", floorIndex, tostring(baseIndex))
         return
     end
 
     -- Fade in avec les fonctions locales existantes
     fadeInStructure(floorObj, function()
-        print(string.format(
-            "[BaseProgressionSystem] Floor %d débloqué → Base_%d (Rebirth %d, %s)",
-            floorIndex, baseIndex, niveauRebirth, player.Name
-        ))
+        Logger.info("Prog", "Floor %d débloqué → Base_%d (Rebirth %d, %s)", floorIndex, baseIndex, niveauRebirth, player.Name)
     end)
 end
 

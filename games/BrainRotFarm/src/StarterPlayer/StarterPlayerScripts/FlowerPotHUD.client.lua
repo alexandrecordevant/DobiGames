@@ -4,6 +4,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
+local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -19,7 +20,7 @@ local ClaimDailySeed   = ReplicatedStorage:WaitForChild("ClaimDailySeed", 10)
 local UpdateGraines    = ReplicatedStorage:WaitForChild("UpdateGraines",  10)
 
 if not OuvrirPot then
-    warn("[FlowerPotHUD] OuvrirPot RemoteEvent not found — aborting")
+    Logger.warn("HUD", "[FlowerPotHUD] OuvrirPot RemoteEvent not found — aborting")
     return
 end
 
@@ -299,7 +300,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
                 UDim2.new(1, 0, 0, 36),
                 12,
                 function()
-                    warn("[FlowerPotHUD] Skip Daily Seed — R$ not configured")
+                    Logger.warn("HUD", "[FlowerPotHUD] Skip Daily Seed — R$ not configured")
                 end)
             skipBtn.LayoutOrder = 6
         end
@@ -323,7 +324,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
             UDim2.new(1, 0, 0, 36),
             12,
             function()
-                warn("[FlowerPotHUD] Seed Pack — R$ not configured")
+                Logger.warn("HUD", "[FlowerPotHUD] Seed Pack — R$ not configured")
             end)
         packBtn.LayoutOrder = 8
     end
@@ -337,7 +338,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
             UDim2.new(1, 0, 0, 36),
             12,
             function()
-                warn("[FlowerPotHUD] SECRET Seed Pack — R$ not configured")
+                Logger.warn("HUD", "[FlowerPotHUD] SECRET Seed Pack — R$ not configured")
             end)
         premBtn.LayoutOrder = 9
     end
@@ -1173,4 +1174,4 @@ if PotBillboardUpdate then
     end)
 end
 
-print("[FlowerPotHUD] ✓ Initialized")
+Logger.info("HUD", "✓ FlowerPotHUD Initialized")

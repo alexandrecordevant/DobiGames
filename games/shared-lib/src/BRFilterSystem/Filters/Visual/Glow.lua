@@ -2,6 +2,7 @@
 -- Filtre Visuel GLOW — Ajoute un PointLight générique sur le BR
 
 local Glow = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 Glow.Config = {
     Brightness = 3,
@@ -22,7 +23,7 @@ function Glow.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[Glow] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

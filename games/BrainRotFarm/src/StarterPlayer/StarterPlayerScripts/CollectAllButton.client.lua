@@ -5,6 +5,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
+local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local localPlayer = Players.LocalPlayer
 local playerGui   = localPlayer:WaitForChild("PlayerGui")
@@ -131,7 +132,7 @@ task.spawn(function()
         animerHover(false)
     end)
 
-    print("[CollectAllButton] ✓ Bouton Collect All connecté au serveur")
+    Logger.info("HUD", "✓ Bouton Collect All connecté au serveur")
 end)
 
-print("[CollectAllButton] ✓ Bouton Collect All affiché")
+Logger.info("HUD", "✓ Bouton Collect All affiché")

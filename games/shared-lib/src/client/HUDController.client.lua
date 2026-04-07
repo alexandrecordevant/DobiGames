@@ -5,6 +5,7 @@ local TweenService     = game:GetService("TweenService")
 local player           = Players.LocalPlayer
 local Config = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local T                = require(ReplicatedStorage.SharedLib.Shared.UITheme)
+local Logger           = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local gui = Instance.new("ScreenGui")
 gui.Name          = "HUD"
@@ -247,7 +248,7 @@ NotifEvent.OnClientEvent:Connect(function(typeNotif, message)
     notifMasque = true
 end)
 
-print("[HUDController] NotifEvent connecté ✓")
+Logger.info("HUD", "NotifEvent connecté ✓")
 
 -- ============================================================
 -- Bouton Shop R$ (gauche, au-dessus du Rebirth)

@@ -6,6 +6,7 @@ local BrainrotInventoryService = {}
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
+local Logger = require(script.Parent.Logger)
 
 -- ── RemoteEvent pour notifier le client après une collecte ──
 local function getOrCreate(name)
@@ -62,8 +63,7 @@ function BrainrotInventoryService.Add(player, brainrotData)
 
 	pcall(function() BrainrotCollected:FireClient(player, brainrotData) end)
 
-	print(("[BrainrotInventory] %s a collecté %s (%s)"):format(
-		player.Name, brainrotData.name, brainrotData.rarity))
+	Logger.info("Inventory", "%s a collecté %s (%s)", player.Name, brainrotData.name, brainrotData.rarity)
 
 	return true
 end
@@ -88,8 +88,7 @@ function BrainrotInventoryService.RemoveOneOfRarity(player, rarity)
 	for id, entry in pairs(inv) do
 		if entry.rarity == rarity then
 			inv[id] = nil
-			print(("[BrainrotInventory] %s : BR rareté %s consommé (rebirth)"):format(
-				player.Name, rarity))
+			Logger.info("Inventory", "%s : BR rareté %s consommé (rebirth)", player.Name, rarity)
 			return true
 		end
 	end

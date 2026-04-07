@@ -6,6 +6,7 @@
 local BaleSystem = {}
 local TweenService = game:GetService("TweenService")
 local Players      = game:GetService("Players")
+local Logger       = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ═══════════════════════════════════════
 -- CONFIG
@@ -44,7 +45,7 @@ local function TuerJoueur(character)
         humanoid.Health = 0
         local player = Players:GetPlayerFromCharacter(character)
         if player then
-            print("[BaleSystem] 💀 " .. player.Name .. " écrasé par une bale !")
+            Logger.info("Bale", "💀 %s écrasé par une bale !", player.Name)
         end
     end
 end
@@ -60,7 +61,7 @@ local function DemarrerBale(bale, delai)
         -- Trouver la Part du cylindre
         local part = TrouverPart(bale)
         if not part then
-            warn("[BaleSystem] Aucune BasePart dans " .. bale.Name)
+            Logger.warn("Bale", "Aucune BasePart dans %s", bale.Name)
             return
         end
 
@@ -115,7 +116,7 @@ local function DemarrerBale(bale, delai)
         -- Vitesse légèrement variée par balot pour désynchronisation naturelle (±15 %)
         local vitesse = VITESSE * (0.85 + math.random() * 0.30)
 
-        print(string.format("[BaleSystem] %s démarre (délai %.1fs, vitesse %.1f)", bale.Name, delai, vitesse))
+        Logger.debug("Bale", "%s démarre (délai %.1fs, vitesse %.1f)", bale.Name, delai, vitesse)
 
         -- ═══ BOUCLE ALLERS-RETOURS ═══
         while bale.Parent do
@@ -166,7 +167,7 @@ end
 function BaleSystem.Init()
     local cc = workspace:FindFirstChild("ChampCommun")
     if not cc then
-        warn("[BaleSystem] ChampCommun introuvable")
+        Logger.warn("Bale", "ChampCommun introuvable")
         return
     end
 
@@ -177,11 +178,11 @@ function BaleSystem.Init()
             DemarrerBale(bale, DELAIS[i])
             count = count + 1
         else
-            warn("[BaleSystem] Bale_" .. i .. " introuvable dans ChampCommun")
+            Logger.warn("Bale", "Bale_%d introuvable dans ChampCommun", i)
         end
     end
 
-    print("[BaleSystem] Init ✓ — " .. count .. "/4 balots actifs")
+    Logger.info("Bale", "Init ✓ — %d/4 balots actifs", count)
 end
 
 return BaleSystem

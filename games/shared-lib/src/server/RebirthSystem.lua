@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Dépendances
 -- ============================================================
 local BaseProgressionSystem = require(game:GetService("ServerScriptService").SharedLib.Server.BaseProgressionSystem)
+local Logger = require(script.Parent.Logger)
 
 -- ============================================================
 -- Callbacks injectés par Main.server.lua
@@ -169,7 +170,7 @@ function RebirthSystem.VerifierConditions(player)
     for _, slotData in pairs(spotsOccupes) do
         if type(slotData) == "table" and slotData.rarete == rarete then
             stock = stock + 1
-            print("[RebirthSystem] BR requis trouvé dans slot déposé : " .. rarete)
+            Logger.debug("Rebirth", "BR requis trouvé dans slot déposé : %s", rarete)
         end
     end
 
@@ -359,10 +360,7 @@ local function executerRebirth(player)
         pcall(RebirthSystem.OnRebirthComplete, player, niveau, cfg)
     end
 
-    print(string.format(
-        "[RebirthSystem] %s → %s (×%.1f, +%d slots)",
-        player.Name, cfg.label, cfg.multiplicateur, cfg.slotsBonus
-    ))
+    Logger.info("Rebirth", "%s → %s (×%.1f, +%d slots)", player.Name, cfg.label, cfg.multiplicateur, cfg.slotsBonus)
 
     dd.enCoursDeRebirth = false
 end
@@ -448,13 +446,7 @@ function RebirthSystem.Init(player, playerData, baseIndex)
         end
     end)
 
-    print(string.format(
-        "[RebirthSystem] %s initialisé (Rebirth %d, ×%.1f, +%d slots)",
-        player.Name,
-        playerData.rebirthLevel,
-        playerData.multiplicateurPermanent,
-        playerData.slotsBonus
-    ))
+    Logger.info("Rebirth", "%s initialisé (Rebirth %d, ×%.1f, +%d slots)", player.Name, playerData.rebirthLevel, playerData.multiplicateurPermanent, playerData.slotsBonus)
 end
 
 function RebirthSystem.GetMultiplicateur(player)

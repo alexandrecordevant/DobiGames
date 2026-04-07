@@ -12,6 +12,8 @@ local RunService         = game:GetService("RunService")
 -- ═══════════════════════════════════════════════
 
 local Config             = require(ReplicatedStorage.GameConfig)
+local Logger             = require(ServerScriptService.SharedLib.Server.Logger)
+Logger.init(Config.LOG_LEVEL)
 local RebirthConfig      = require(ReplicatedStorage.SharedLib.Shared.RebirthConfig)
 local CollectSystem      = require(ServerScriptService.SharedLib.Shared.CollectSystem)
 local UpgradeSystem      = require(ServerScriptService.SharedLib.Shared.UpgradeSystem)
@@ -89,7 +91,7 @@ local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
 local GetSeedInfo        = CreerRemoteFunction("GetSeedInfo")
 
-print("[" .. Config.NomDuJeu .. "] RemoteEvents créés ✓")
+Logger.info("Main", "RemoteEvents créés ✓")
 
 -- ═══════════════════════════════════════════════
 -- 3. STOCKAGE DES DONNÉES EN MÉMOIRE (par joueur)
@@ -143,17 +145,17 @@ end
 
 local InitialiserPots  -- déclaration forward (la fonction s'appelle elle-même)
 InitialiserPots = function(player, baseIndex, playerData)
-    print("[InitialiserPots] START player=" .. player.Name .. " baseIndex=" .. tostring(baseIndex))
+    Logger.debug("Main", "[InitialiserPots] START player=%s baseIndex=%s", player.Name, tostring(baseIndex))
     local bases = workspace:FindFirstChild("Bases")
     local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
     if not base then
-        warn("[InitialiserPots] Base_" .. tostring(baseIndex) .. " introuvable dans workspace.Bases")
+        Logger.warn("Main", "[InitialiserPots] Base_%s introuvable dans workspace.Bases", tostring(baseIndex))
         return
     end
 
     local FPCfg = Config.FlowerPotConfig
     if not FPCfg then
-        warn("[InitialiserPots] Config.FlowerPotConfig manquant")
+        Logger.warn("Main", "[InitialiserPots] Config.FlowerPotConfig manquant")
         return
     end
 
@@ -162,7 +164,7 @@ InitialiserPots = function(player, baseIndex, playerData)
     for potIndex = 1, 4 do
         local potModel = specificFolderIP and specificFolderIP:FindFirstChild("FlowerPot_" .. potIndex)
         if not potModel then
-            warn("[InitialiserPots] FlowerPot_" .. potIndex .. " introuvable dans Base_" .. baseIndex)
+            Logger.warn("Main", "[InitialiserPots] FlowerPot_%d introuvable dans Base_%s", potIndex, tostring(baseIndex))
             continue
         end
 
@@ -173,18 +175,18 @@ InitialiserPots = function(player, baseIndex, playerData)
         local potData = playerData.pots and playerData.pots[potIndex]
         local potCfg  = FPCfg.pots and FPCfg.pots[potIndex]
         if not potData or not potCfg then
-            warn("[InitialiserPots] potData ou potCfg manquant pour pot", potIndex, "— skip")
+            Logger.warn("Main", "[InitialiserPots] potData ou potCfg manquant pour pot %d — skip", potIndex)
             continue
         end
 
         local potPart = potModel:IsA("BasePart") and potModel
             or potModel:FindFirstChildWhichIsA("BasePart", true)
         if not potPart then
-            warn("[InitialiserPots] Aucun BasePart trouvé dans", potModel.Name, "— pot ignoré")
+            Logger.warn("Main", "[InitialiserPots] Aucun BasePart trouvé dans %s — pot ignoré", potModel.Name)
             continue
         end
 
-        print("[InitialiserPots] Pot" .. potIndex .. " | part=" .. potPart.Name .. " | debloque=" .. tostring(potData.debloque) .. " | rarete=" .. tostring(potData.rarete))
+        Logger.debug("Main", "[InitialiserPots] Pot%d | part=%s | debloque=%s | rarete=%s", potIndex, potPart.Name, tostring(potData.debloque), tostring(potData.rarete))
 
         -- Nettoyer ProximityPrompts ET BillboardGuis sur tout le modèle
         for _, desc in ipairs(potModel:GetDescendants()) do
@@ -195,7 +197,7 @@ InitialiserPots = function(player, baseIndex, playerData)
 
         -- Cacher/montrer le modèle cadenas physique selon l'état du pot
         local cadenas = base:FindFirstChild("Cadenas_B" .. baseIndex .. "_P" .. potIndex, true)
-        print("[DEBUG Cadenas] Pot" .. potIndex .. " trouvé=" .. tostring(cadenas ~= nil) .. " debloque=" .. tostring(potData.debloque))
+        Logger.debug("Main", "[DEBUG Cadenas] Pot%d trouvé=%s debloque=%s", potIndex, tostring(cadenas ~= nil), tostring(potData.debloque))
         if cadenas then
             local visible = not potData.debloque
             for _, desc in ipairs(cadenas:GetDescendants()) do
@@ -271,8 +273,7 @@ InitialiserPots = function(player, baseIndex, playerData)
                 local elapsed     = os.time() - plantedAt
                 local etape       = math.min(5, math.floor(elapsed / dureeStage))
                 local premAttente = math.max(1, dureeStage - (elapsed % dureeStage))
-                print(string.format("[DEBUG FlowerPot] Pot%d rejoin | rarete=%s | plantedAt=%s | elapsed=%ds | etape=%d | premAttente=%ds",
-                    potIndex, tostring(potData.rarete), tostring(plantedAt), elapsed, etape, premAttente))
+                Logger.debug("Main", "[DEBUG FlowerPot] Pot%d rejoin | rarete=%s | plantedAt=%s | elapsed=%ds | etape=%d | premAttente=%ds", potIndex, tostring(potData.rarete), tostring(plantedAt), elapsed, etape, premAttente)
                 task.spawn(function()
                     FlowerPotGrowthSystem.PlantSeed(potModel, potData.rarete, player,
                         function(tp, elem, mult)
@@ -722,7 +723,7 @@ local function OnPlayerAdded(player)
     -- Début de session (pour tracking temps de jeu hebdo Top Farmer)
     sessionStart[player.UserId] = os.time()
 
-    print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " connecté (Tier " .. data.tier .. ", Prestige " .. data.prestige .. ")")
+    Logger.info("Main", "%s connecté (Tier %s, Prestige %s)", player.Name, tostring(data.tier), tostring(data.prestige))
 end
 
 local function OnPlayerRemoving(player)
@@ -745,8 +746,7 @@ local function OnPlayerRemoving(player)
 
         if data.pots then
             for pi, pd in pairs(data.pots) do
-                print(string.format("[DEBUG FlowerPot] SAVE Pot%d | rarete=%s | plantedAt=%s",
-                    pi, tostring(pd.rarete), tostring(pd.plantedAt)))
+                Logger.debug("Main", "[DEBUG FlowerPot] SAVE Pot%d | rarete=%s | plantedAt=%s", pi, tostring(pd.rarete), tostring(pd.plantedAt))
             end
         end
         DataStoreManager.Save(player, data)
@@ -760,7 +760,7 @@ local function OnPlayerRemoving(player)
             pcall(TracteurSystem.Desactiver, baseIndexSortie)
         end
         AssignationSystem.LibererBase(player)
-        print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " sauvegardé et déconnecté")
+        Logger.info("Main", "%s sauvegardé et déconnecté", player.Name)
     end
 end
 
@@ -775,7 +775,7 @@ game:BindToClose(function()
             DataStoreManager.Save(player, data)
         end
     end
-    print("[" .. Config.NomDuJeu .. "] Sauvegarde d'urgence terminée")
+    Logger.info("Main", "Sauvegarde d'urgence terminée")
 end)
 
 -- ═══════════════════════════════════════════════
@@ -1061,7 +1061,7 @@ CollectAllEvent.OnServerEvent:Connect(function(player)
     local dernierTemps = player:GetAttribute("LastCollectAllTime") or 0
     local maintenant   = tick()
     if maintenant - dernierTemps < 1 then
-        warn("[CollectAll] Spam détecté :", player.Name)
+        Logger.warn("Main", "[CollectAll] Spam détecté : %s", player.Name)
         return
     end
     player:SetAttribute("LastCollectAllTime", maintenant)
@@ -1206,7 +1206,7 @@ CarrySystem.OnBeforeClean = function(player, portes)
         end
     end
     data.carryPortes = carrySerial
-    print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " carry sauvegardé : " .. #carrySerial .. " BR(s)")
+    Logger.info("Main", "%s carry sauvegardé : %d BR(s)", player.Name, #carrySerial)
 end
 
 CarrySystem.Init()
@@ -1242,7 +1242,7 @@ if not BrainrotReward then
     BrainrotReward        = Instance.new("BindableEvent")
     BrainrotReward.Name   = "_BrainrotReward"
     BrainrotReward.Parent = ServerScriptService
-    print("[Main] _BrainrotReward BindableEvent créé ✓")
+    Logger.debug("Main", "_BrainrotReward BindableEvent créé ✓")
 end
 
 BrainrotReward.Event:Connect(function(player, montant, rarete)
@@ -1425,7 +1425,7 @@ end)
 -- ═══════════════════════════════════════════════
 
 if Config.PvPEnabled then
-	print("[" .. Config.NomDuJeu .. "] PvP activé → chargement des systèmes Combat")
+	Logger.info("Main", "PvP activé → chargement des systèmes Combat")
 
 	local SafeZoneTracker      = require(ServerScriptService.SharedLib.Server.Combat.SafeZoneTracker)
 	local RespawnInvincibility = require(ServerScriptService.SharedLib.Server.Combat.RespawnInvincibility)
@@ -1438,9 +1438,9 @@ if Config.PvPEnabled then
 	BatEquipHandler.Init(Config.Combat)
 	BatSystem.Init(Config.Combat, SafeZoneTracker)
 
-	print("[" .. Config.NomDuJeu .. "] Systèmes Combat initialisés")
+	Logger.info("Main", "Systèmes Combat initialisés")
 else
-	print("[" .. Config.NomDuJeu .. "] PvP désactivé (Config.PvPEnabled = false)")
+	Logger.info("Main", "PvP désactivé (Config.PvPEnabled = false)")
 end
 
-print("[" .. Config.NomDuJeu .. "] Serveur démarré · " .. os.date("%d/%m/%Y %H:%M"))
+Logger.info("Main", "Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))

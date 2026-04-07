@@ -6,6 +6,7 @@
 local RebirthCosmeticsSystem = {}
 
 local Players = game:GetService("Players")
+local Logger = require(script.Parent.Logger)
 
 -- Source de données injectée depuis Main.server.lua
 RebirthCosmeticsSystem.GetData = nil
@@ -247,7 +248,7 @@ local function initialiserPourJoueur(player, character)
     -- Récupérer les données du joueur via le callback injecté
     local getData = RebirthCosmeticsSystem.GetData
     if not getData then
-        warn("[RebirthCosmetics] GetData non injecté — cosmétiques ignorés pour " .. player.Name)
+        Logger.warn("Rebirth", "GetData non injecté — cosmétiques ignorés pour %s", player.Name)
         return
     end
     local data = getData(player)
@@ -266,10 +267,7 @@ local function initialiserPourJoueur(player, character)
 
     appliquerCosmetiques(character, config)
 
-    print(string.format(
-        "[RebirthCosmetics] %s → Rebirth %d — cosmétiques palier appliqués",
-        player.Name, rebirthLevel
-    ))
+    Logger.debug("Rebirth", "%s → Rebirth %d — cosmétiques palier appliqués", player.Name, rebirthLevel)
 end
 
 -- ============================================================
@@ -300,7 +298,7 @@ function RebirthCosmeticsSystem.Init()
         end)
     end)
 
-    print("[RebirthCosmetics] Initialisé ✓")
+    Logger.info("Rebirth", "Initialisé ✓")
 end
 
 return RebirthCosmeticsSystem

@@ -15,6 +15,7 @@ local Workspace         = game:GetService("Workspace")
 -- ============================================================
 -- Config (Specialized — aucune valeur hardcodée ici)
 -- ============================================================
+local Logger   = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config   = require(ReplicatedStorage.GameConfig)
 local boardCfg = Config.BoardConfig or {
     texteDefaut   = "🔄 REBIRTH\nClick to view",
@@ -252,7 +253,7 @@ end
 function BoardSystem.Init()
     local bases = Workspace:FindFirstChild("Bases")
     if not bases then
-        warn("[BoardSystem] Workspace.Bases introuvable")
+        Logger.warn("Board", "Workspace.Bases introuvable")
         return
     end
 
@@ -285,17 +286,16 @@ function BoardSystem.Init()
 
                 pcall(function() OuvrirRebirth:FireClient(player) end)
 
-                print("[BoardSystem] " .. player.Name
-                    .. " → panel Rebirth ouvert (Base_" .. capturedIndex .. ")")
+                Logger.debug("Board", "%s → panel Rebirth ouvert (Base_%d)", player.Name, capturedIndex)
             end)
 
-            print("[BoardSystem] Board configuré → Base_" .. i)
+            Logger.debug("Board", "Board configuré → Base_%d", i)
         else
-            warn("[BoardSystem] Board introuvable dans Base_" .. i)
+            Logger.warn("Board", "Board introuvable dans Base_%d", i)
         end
     end
 
-    print("[BoardSystem] Init ✓")
+    Logger.info("Board", "Init ✓")
 end
 
 -- ============================================================

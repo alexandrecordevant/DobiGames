@@ -5,6 +5,7 @@
 local RespawnInvincibility = {}
 
 local Players = game:GetService("Players")
+local Logger = require(script.Parent.Parent.Logger)
 
 -- Crée une aura dorée de particules sur le HumanoidRootPart
 local function creerAuraInvincibilite(rootPart)
@@ -93,7 +94,7 @@ end
 -- Initialise le système (appelé par Main.server.lua)
 function RespawnInvincibility.Init(config)
 	if not config or not config.RespawnInvincibilityEnabled then
-		print("[RespawnInvincibility] Invincibilité respawn désactivée — système ignoré")
+		Logger.info("Combat", "Invincibilité respawn désactivée — système ignoré")
 		return
 	end
 
@@ -121,7 +122,7 @@ function RespawnInvincibility.Init(config)
 		end)
 	end
 
-	print(string.format("[RespawnInvincibility] Initialisé — durée : %ds", duree))
+	Logger.info("Combat", "Initialisé — durée : %ds", duree)
 end
 
 return RespawnInvincibility

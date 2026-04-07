@@ -5,6 +5,7 @@
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -19,7 +20,7 @@ local RebirthAnimation    = ReplicatedStorage:WaitForChild("RebirthAnimation",  
 local OuvrirRebirth       = ReplicatedStorage:WaitForChild("OuvrirRebirth",        15)
 
 if not RebirthButtonUpdate or not DemandeRebirth then
-    warn("[RebirthHUD] Remotes introuvables — vérifier RebirthSystem dans Main.server.lua")
+    Logger.warn("Rebirth", "Remotes introuvables — vérifier RebirthSystem dans Main.server.lua")
     return
 end
 
@@ -567,4 +568,4 @@ if OuvrirRebirth then
     end)
 end
 
-print("[RebirthHUD] Système Rebirth client prêt ✓")
+Logger.info("Rebirth", "Système Rebirth client prêt ✓")

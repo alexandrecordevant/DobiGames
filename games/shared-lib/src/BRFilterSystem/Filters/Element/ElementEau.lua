@@ -2,6 +2,7 @@
 -- Filtre Élémentaire EAU — Gouttes qui coulent vers le bas + lueur bleue douce + label Mutant
 
 local ElementEau = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 ElementEau.Config = {
     Couleur      = Color3.fromRGB(40, 90, 160),
@@ -40,7 +41,7 @@ function ElementEau.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[ElementEau] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

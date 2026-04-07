@@ -12,6 +12,7 @@ local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage       = game:GetService("ServerStorage")
 local TweenService        = game:GetService("TweenService")
+local Logger              = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ============================================================
 -- Lazy loader CarrySystem
@@ -104,12 +105,12 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
     -- Validation IsMutant
     local isMutant = clone:GetAttribute("IsMutant")
     if not isMutant then
-        warn("[FlowerPotPickupHandler] Clone sans attribut IsMutant — pickup annulé")
+        Logger.warn("Pickup", "Clone sans attribut IsMutant — pickup annulé")
         return
     end
 
     -- Lire attributs depuis le clone (source de vérité serveur)
-    local elementType = clone:GetAttribute("ElementType") or config.elementType or "water"
+    local elementType = clone:GetAttribute("MutantType") or config.elementType or "GALAXY"
     local seedRarity  = clone:GetAttribute("Rarity")      or config.seedRarity  or "MYTHIC"
     local multiplier  = clone:GetAttribute("Multiplier")  or config.multiplier  or 2
     local emoji       = config.emoji or "✨"
@@ -123,7 +124,7 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
     end
 
     if not promptParent then
-        warn("[FlowerPotPickupHandler] Aucun BasePart trouvé pour attacher le prompt")
+        Logger.warn("Pickup", "Aucun BasePart trouvé pour attacher le prompt")
         return
     end
 
@@ -142,9 +143,7 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
     prompt.Enabled               = true
     prompt.Parent                = promptParent
 
-    print(string.format(
-        "[FlowerPotPickupHandler] Prompt 'Récolter' créé | %s %s ×%d | Pot: %s",
-        emoji, elementType, multiplier, potModel.Name))
+    Logger.debug("Pickup", "Prompt 'Récolter' créé | %s %s ×%d | Pot: %s", emoji, elementType, multiplier, potModel.Name)
 
     -- ─── Connexion au trigger ───
     local connexion = nil
@@ -164,14 +163,14 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
 
         -- Vérifier que le clone existe encore
         if not clone or not clone.Parent then
-            warn("[FlowerPotPickupHandler] Clone introuvable lors du trigger")
+            Logger.warn("Pickup", "Clone introuvable lors du trigger")
             return
         end
 
         -- Récupérer CarrySystem
         local CS = getCarrySystem()
         if not CS then
-            warn("[FlowerPotPickupHandler] CarrySystem indisponible — récolte annulée")
+            Logger.warn("Pickup", "CarrySystem indisponible — récolte annulée")
             -- Réactiver le prompt si erreur système
             prompt.Enabled = true
             return
@@ -207,9 +206,7 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
                 jouerSonRecolte(rootPart.Position)
             end
 
-            print(string.format(
-                "[FlowerPotPickupHandler] %s récolté par %s | %s ×%d | Pot: %s",
-                seedRarity, triggerPlayer.Name, elementType, multiplier, potModel.Name))
+            Logger.info("Pickup", "%s récolté par %s | %s ×%d | Pot: %s", seedRarity, triggerPlayer.Name, elementType, multiplier, potModel.Name)
 
             -- Nettoyer prompt (clone sera détruit par CarrySystem)
             pcall(function() prompt:Destroy() end)
@@ -242,9 +239,7 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
             notifier(triggerPlayer, "WARNING",
                 "🎒 Carry plein! Dépose tes Brain Rots d'abord, puis récolte.")
 
-            print(string.format(
-                "[FlowerPotPickupHandler] Carry plein pour %s — prompt réactivé",
-                triggerPlayer.Name))
+            Logger.debug("Pickup", "Carry plein pour %s — prompt réactivé", triggerPlayer.Name)
         end
     end)
 end

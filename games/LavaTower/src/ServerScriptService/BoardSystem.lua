@@ -11,6 +11,7 @@ local BoardSystem = {}
 -- ============================================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ============================================================
 -- Config
@@ -250,7 +251,7 @@ local clickDebounces = {}  -- { [userId] = true } pendant 1.5s
 function BoardSystem.Init()
     local bases = Workspace:FindFirstChild("Bases")
     if not bases then
-        warn("[BoardSystem] Workspace.Bases introuvable")
+        Logger.warn("Board", "Workspace.Bases introuvable")
         return
     end
 
@@ -282,16 +283,16 @@ function BoardSystem.Init()
                 local RS = getRebirthSystem()
                 if RS then pcall(RS.MettreAJourBouton, player) end
                 pcall(function() OuvrirRebirth:FireClient(player) end)
-                print("[BoardSystem] " .. player.Name .. " → panel Rebirth (Base_" .. capturedIndex .. ")")
+                Logger.debug("Board", "%s → panel Rebirth (Base_%d)", player.Name, capturedIndex)
             end)
 
-            print("[BoardSystem] Board configuré → Base_" .. i)
+            Logger.debug("Board", "Board configuré → Base_%d", i)
         else
-            warn("[BoardSystem] Board introuvable dans Base_" .. i)
+            Logger.warn("Board", "Board introuvable dans Base_%d", i)
         end
     end
 
-    print("[BoardSystem] Init ✓")
+    Logger.info("Board", "Init ✓")
 end
 
 -- ============================================================

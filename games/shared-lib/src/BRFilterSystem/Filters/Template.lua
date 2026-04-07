@@ -9,6 +9,7 @@
 --   5. Tester via FilterManager.Apply(br, {{Name="NomDuFiltre"}})
 
 local NomDuFiltre = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ============================================================
 -- Configuration par défaut
@@ -46,7 +47,7 @@ function NomDuFiltre.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[NomDuFiltre] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

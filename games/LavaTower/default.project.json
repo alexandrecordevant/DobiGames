@@ -10,6 +10,7 @@
             },
             "SharedLib": {
                 "$className": "Folder",
+                "Logger": { "$path": "../shared-lib/src/server/Logger.lua" },
                 "Shared": {
                     "$className": "Folder",
                     "RebirthConfig": { "$path": "../shared-lib/src/shared/RebirthConfig.lua" }

@@ -3,6 +3,9 @@
 
 local GameConfigSpecific = {}
 
+-- === DEBUG ===
+GameConfigSpecific.LOG_LEVEL = "WARN"
+
 -- === IDENTITÉ DU JEU ===
 GameConfigSpecific.NomDuJeu        = "LavaTower"
 GameConfigSpecific.Theme           = "Lava"

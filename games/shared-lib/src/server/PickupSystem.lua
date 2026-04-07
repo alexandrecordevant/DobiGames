@@ -26,6 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
 local TweenService      = game:GetService("TweenService")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Logger = require(script.Parent.Logger)
 
 -- ─────────────────────────────────────────────────────────────
 -- ⚙️  CONFIGURATION — peut être surchargée via Init(config)
@@ -203,7 +204,7 @@ end
 local function SetupPickup(brainrot)
 	local root = GetRootPart(brainrot)
 	if not root then
-		warn("[PickupSystem] Aucune BasePart sur", brainrot.Name, "— pickup ignoré")
+		Logger.warn("Pickup", "Aucune BasePart sur %s — pickup ignoré", brainrot.Name)
 		return
 	end
 
@@ -346,9 +347,7 @@ function PickupSystem.Init(config)
 		task.spawn(SetupBrainrot, inst)
 	end)
 
-	print("[PickupSystem] ✓ Démarré — tag : '" .. TAG .. "'"
-		.. " | hold:" .. PICKUP_HOLD_DURATION .. "s"
-		.. " | dist:" .. PICKUP_MAX_DISTANCE .. " studs")
+	Logger.info("Pickup", "✓ Démarré — tag : '%s' | hold:%ds | dist:%d studs", TAG, PICKUP_HOLD_DURATION, PICKUP_MAX_DISTANCE)
 end
 
 return PickupSystem

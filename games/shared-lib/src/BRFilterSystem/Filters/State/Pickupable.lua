@@ -4,6 +4,7 @@
 -- Ce filtre crée uniquement le ProximityPrompt
 
 local Pickupable = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 Pickupable.Config = {
     ActionText   = "Ramasser",
@@ -25,7 +26,7 @@ function Pickupable.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[Pickupable] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

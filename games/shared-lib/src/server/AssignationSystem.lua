@@ -18,6 +18,7 @@ local Config = require(
     ReplicatedStorage:FindFirstChild("GameConfig")
     or ReplicatedStorage.Specialized.GameConfig
 )
+local Logger = require(script.Parent.Logger)
 
 -- ============================================================
 -- Configuration
@@ -106,7 +107,7 @@ local function assigner(player)
     if not baseIndex then
         -- Serveur plein → mode spectateur (observer uniquement)
         notifierJoueur(player, "INFO", "Server full — spectator mode")
-        warn("[AssignationSystem] " .. player.Name .. " → spectateur (toutes les bases occupées)")
+        Logger.warn("Assign", "%s → spectateur (toutes les bases occupées)", player.Name)
         return nil
     end
 
@@ -133,7 +134,7 @@ local function assigner(player)
         end
     end)
 
-    print("[AssignationSystem] " .. player.Name .. " → Base_" .. baseIndex)
+    Logger.info("Assign", "%s → Base_%s", player.Name, tostring(baseIndex))
 
     -- Déclencher le callback (Main.server.lua init BaseProgression, DropSystem, IncomeSystem...)
     if AssignationSystem.OnAssigned then
@@ -157,7 +158,7 @@ local function liberer(player)
     pcall(function() player:SetAttribute("BaseAssignee", nil) end)
 
     notifierTous("INFO", player.Name .. " left — Base " .. baseIndex .. " available!")
-    print("[AssignationSystem] Base_" .. baseIndex .. " libérée (départ de " .. player.Name .. ")")
+    Logger.info("Assign", "Base_%s libérée (départ de %s)", tostring(baseIndex), player.Name)
 end
 
 -- ============================================================
@@ -211,7 +212,7 @@ function AssignationSystem.Init()
         end
     end
 
-    print("[AssignationSystem] ✓ Initialisé (MAX_BASES = " .. MAX_BASES .. ")")
+    Logger.info("Assign", "✓ Initialisé (MAX_BASES = %d)", MAX_BASES)
 end
 
 return AssignationSystem

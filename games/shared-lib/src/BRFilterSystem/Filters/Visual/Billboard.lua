@@ -3,6 +3,7 @@
 -- Remplace BillboardHelper.lua — le Billboard devient un filtre standard
 
 local Billboard = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 Billboard.Config = {
     Taille        = UDim2.new(0, 200, 0, 50),
@@ -37,12 +38,12 @@ function Billboard.Apply(brModel, params)
     end
 
     if not racine then
-        warn("[Billboard] Racine introuvable sur", brModel.Name)
+        Logger.warn("Filter", "Racine introuvable sur %s", brModel.Name)
         return
     end
 
     if not params.Text or not params.Color then
-        warn("[Billboard] Params Text et Color requis")
+        Logger.warn("Filter", "Params Text et Color requis")
         return
     end
 

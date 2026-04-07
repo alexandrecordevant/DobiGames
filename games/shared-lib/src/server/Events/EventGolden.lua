@@ -35,6 +35,7 @@ local function getCollectSystem()
     end
     return _CollectSystem
 end
+local Logger = require(script.Parent.Parent.Logger)
 
 -- ============================================================
 -- État interne
@@ -154,7 +155,7 @@ function EventGolden.Demarrer(config)
     if IS and IS.SetEventMultiplier then pcall(IS.SetEventMultiplier, mult) end
     if CS and CS.SetEventMultiplier then pcall(CS.SetEventMultiplier, mult) end
 
-    print("[EventGolden] ▶ Golden Event démarré (" .. (config.duree or 60) .. "s) — ×" .. mult)
+    Logger.info("Event", "▶ Golden Event démarré (%ds) — ×%s", (config.duree or 60), tostring(mult))
 end
 
 function EventGolden.Terminer()
@@ -192,7 +193,7 @@ function EventGolden.Terminer()
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
     if ev then pcall(function() ev:FireAllClients("INFO", "The Golden Event is over. See you soon!") end) end
 
-    print("[EventGolden] ■ Golden Event terminé")
+    Logger.info("Event", "■ Golden Event terminé")
 end
 
 return EventGolden

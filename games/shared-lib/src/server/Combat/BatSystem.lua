@@ -8,6 +8,7 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Logger = require(script.Parent.Parent.Logger)
 
 -- Chargement différé pour éviter les dépendances circulaires
 local _CarrySystem = nil
@@ -108,7 +109,7 @@ end
 local function dropperBRsPortes(victim, victimCharacter)
 	local carrySystem = getCarrySystem()
 	if not carrySystem then
-		warn("[BatSystem] CarrySystem introuvable — drop annulé")
+		Logger.warn("Bat", "CarrySystem introuvable — drop annulé")
 		return
 	end
 
@@ -152,8 +153,7 @@ local function dropperBRsPortes(victim, victimCharacter)
 		end
 	end
 
-	print(string.format("[BatSystem] %s a fait lâcher %d BR(s) à %s",
-		"?", nbPortes, victim.Name))
+	Logger.info("Bat", "%s a fait lâcher %d BR(s) à %s", "?", nbPortes, victim.Name)
 
 	afficherFeedback(victimCharacter, "OUCH!", Color3.fromRGB(255, 50, 50))
 end
@@ -260,7 +260,7 @@ end
 -- ============================================================
 function BatSystem.Init(config, safeZoneTracker)
 	if not config or not config.BatEnabled then
-		print("[BatSystem] Batte désactivée — système ignoré")
+		Logger.info("Bat", "Batte désactivée — système ignoré")
 		return
 	end
 
@@ -284,11 +284,7 @@ function BatSystem.Init(config, safeZoneTracker)
 		swingAttempts[player.UserId] = nil
 	end)
 
-	print(string.format(
-		"[BatSystem] Initialisé — portée : %d studs, cooldown : %.1fs",
-		config.BatRange or 6,
-		config.BatCooldown or 1
-	))
+	Logger.info("Bat", "Initialisé — portée : %d studs, cooldown : %.1fs", config.BatRange or 6, config.BatCooldown or 1)
 end
 
 return BatSystem

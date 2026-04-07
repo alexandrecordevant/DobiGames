@@ -33,6 +33,7 @@ end
 -- ============================================================
 -- Config — lue depuis GameConfig
 -- ============================================================
+local Logger      = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local _GameConfig = require(game.ReplicatedStorage.GameConfig)
 -- Valeurs animation depuis AnimationConfig (fallback si absent)
 local _animCfg = _GameConfig.AnimationConfig or {}
@@ -163,12 +164,12 @@ end
 local function choisirModele(nomDossier)
 	local dossier = brainrotsFolder:FindFirstChild(nomDossier)
 	if not dossier then
-		warn("[SpawnManager] Dossier introuvable : " .. nomDossier)
+		Logger.warn("Spawn", "Dossier introuvable : %s", nomDossier)
 		return nil
 	end
 	local modeles = dossier:GetChildren()
 	if #modeles == 0 then
-		warn("[SpawnManager] Dossier vide : " .. nomDossier)
+		Logger.warn("Spawn", "Dossier vide : %s", nomDossier)
 		return nil
 	end
 	return modeles[math.random(1, #modeles)]
@@ -343,7 +344,7 @@ end
 local function initialiserZones()
 	local basesFolder = Workspace:FindFirstChild("Bases")
 	if not basesFolder then
-		warn("[SpawnManager] Workspace.Bases introuvable !")
+		Logger.warn("Spawn", "Workspace.Bases introuvable !")
 		return
 	end
 
@@ -357,7 +358,7 @@ local function initialiserZones()
 		local specificFolderSM = baseModel:FindFirstChild("Specific")
 		local spawnZone        = specificFolderSM and specificFolderSM:FindFirstChild(_spawnZoneNom)
 		if not spawnZone then
-			warn("[SpawnManager] SpawnZone manquante pour " .. baseModel.Name)
+			Logger.warn("Spawn", "SpawnZone manquante pour %s", baseModel.Name)
 			continue
 		end
 
@@ -367,7 +368,7 @@ local function initialiserZones()
 		local wallRight  = spawnZone:FindFirstChild("Wall_Right")
 
 		if not (wallTop and wallBottom and wallLeft and wallRight) then
-			warn("[SpawnManager] Murs manquants dans SpawnZone de " .. baseModel.Name)
+			Logger.warn("Spawn", "Murs manquants dans SpawnZone de %s", baseModel.Name)
 			continue
 		end
 
@@ -391,8 +392,7 @@ local function initialiserZones()
 		intervalles[baseIndex]     = CONFIG.INTERVALLE_SPAWN_DEFAUT
 		multiplicateurs[baseIndex] = 1
 
-		print(string.format("[SpawnManager] Zone %s initialisée → X[%.1f, %.1f] Z[%.1f, %.1f] Y=%.1f",
-			baseModel.Name, xMin, xMax, zMin, zMax, yFixe))
+		Logger.debug("Spawn", "Zone %s initialisée → X[%.1f, %.1f] Z[%.1f, %.1f] Y=%.1f", baseModel.Name, xMin, xMax, zMin, zMax, yFixe)
 	end
 end
 
@@ -420,7 +420,7 @@ local function spawnerUnBrainRot(baseIndex)
 		clone = modeleSource:Clone()
 	end)
 	if not ok or not clone then
-		warn("[SpawnManager] Erreur clonage : " .. tostring(err))
+		Logger.warn("Spawn", "Erreur clonage : %s", tostring(err))
 		return
 	end
 
@@ -443,7 +443,7 @@ local function spawnerUnBrainRot(baseIndex)
 	local racine = obtenirRacine(clone)
 	if not racine then
 		clone:Destroy()
-		warn("[SpawnManager] Modèle sans BasePart : " .. modeleSource.Name)
+		Logger.warn("Spawn", "Modèle sans BasePart : %s", modeleSource.Name)
 		return
 	end
 
@@ -642,12 +642,12 @@ local function spawnerBRBonus(baseIndex, rareteNom)
     -- Dossier rareté dans ServerStorage (MYTHIC ou SECRET)
     local dossier = brainrotsFolder:FindFirstChild(rareteNom)
     if not dossier then
-        warn("[SpawnManager] Tracteur: dossier '" .. rareteNom .. "' introuvable dans ServerStorage")
+        Logger.warn("Spawn", "Tracteur: dossier '%s' introuvable dans ServerStorage", rareteNom)
         return
     end
     local modeles = dossier:GetChildren()
     if #modeles == 0 then
-        warn("[SpawnManager] Tracteur: dossier '" .. rareteNom .. "' vide")
+        Logger.warn("Spawn", "Tracteur: dossier '%s' vide", rareteNom)
         return
     end
 
@@ -655,7 +655,7 @@ local function spawnerBRBonus(baseIndex, rareteNom)
     local clone
     local ok, err = pcall(function() clone = source:Clone() end)
     if not ok or not clone then
-        warn("[SpawnManager] Tracteur: erreur clonage " .. rareteNom .. " : " .. tostring(err))
+        Logger.warn("Spawn", "Tracteur: erreur clonage %s : %s", rareteNom, tostring(err))
         return
     end
 
@@ -792,7 +792,7 @@ local function rollBonusTracteur(baseIndex)
         possede = MarketplaceService:UserOwnsGamePassAsync(player.UserId, tracteurId)
     end)
     if not ok then
-        warn("[SpawnManager] Tracteur: erreur vérif GamePass pour " .. player.Name .. " : " .. tostring(err))
+        Logger.warn("Spawn", "Tracteur: erreur vérif GamePass pour %s : %s", player.Name, tostring(err))
         return
     end
     if not possede then return end
@@ -872,7 +872,7 @@ local function demarrer()
 
 	for baseIndex in pairs(zones) do
 		lancerBoucleSpawn(baseIndex)
-		print("[SpawnManager] Boucle lancée pour Base_" .. baseIndex)
+		Logger.info("Spawn", "Boucle lancée pour Base_%s", tostring(baseIndex))
 	end
 end
 
@@ -899,7 +899,7 @@ end
 -- Forcer l'assignation d'un joueur à une base précise (appelé par Main via AssignationSystem)
 function SpawnManager.SetBase(player, baseIndex)
     assignations[player.UserId] = baseIndex
-    print(string.format("[SpawnManager] %s → Base_%d (SetBase)", player.Name, baseIndex))
+    Logger.info("Spawn", "%s → Base_%d (SetBase)", player.Name, baseIndex)
 end
 
 -- Assigner un joueur à la première base libre
@@ -916,12 +916,12 @@ function SpawnManager.AssignerBase(player)
 	for baseIndex in pairs(zones) do
 		if not basesOccupees[baseIndex] then
 			assignations[player.UserId] = baseIndex
-			print(string.format("[SpawnManager] %s → Base_%d", player.Name, baseIndex))
+			Logger.info("Spawn", "%s → Base_%d", player.Name, baseIndex)
 			return baseIndex
 		end
 	end
 
-	warn("[SpawnManager] Toutes les bases sont occupées pour " .. player.Name)
+	Logger.warn("Spawn", "Toutes les bases sont occupées pour %s", player.Name)
 	return nil
 end
 
@@ -930,7 +930,7 @@ function SpawnManager.LibererBase(player)
 	if assignations[player.UserId] then
 		local baseIndex = assignations[player.UserId]
 		assignations[player.UserId] = nil
-		print(string.format("[SpawnManager] Base_%d libérée (%s)", baseIndex, player.Name))
+		Logger.debug("Spawn", "Base_%d libérée (%s)", baseIndex, player.Name)
 	end
 end
 
@@ -1013,7 +1013,7 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
         dossier = brainrotsFolder:FindFirstChild("LEGENDARY")
     end
     if not dossier then
-        warn("[SpawnManager] SpawnerBRSpecifique : dossier introuvable (" .. tostring(rareteNom) .. ")")
+        Logger.warn("Spawn", "SpawnerBRSpecifique : dossier introuvable (%s)", tostring(rareteNom))
         return
     end
 
@@ -1024,7 +1024,7 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
     local clone
     local ok, err = pcall(function() clone = source:Clone() end)
     if not ok or not clone then
-        warn("[SpawnManager] SpawnerBRSpecifique : erreur clonage " .. tostring(err))
+        Logger.warn("Spawn", "SpawnerBRSpecifique : erreur clonage %s", tostring(err))
         return
     end
 

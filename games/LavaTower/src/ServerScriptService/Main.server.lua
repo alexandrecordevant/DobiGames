@@ -11,6 +11,8 @@ local Workspace           = game:GetService("Workspace")
 -- ═══════════════════════════════════════════════
 
 local Config                = require(ReplicatedStorage.Modules.GameConfig)
+local Logger                = require(ServerScriptService.SharedLib.Server.Logger)
+Logger.init(Config.LOG_LEVEL)
 local RebirthConfig         = require(ReplicatedStorage.SharedLib.Shared.RebirthConfig)
 local UpgradeSystem         = require(ReplicatedStorage.Modules.UpgradeSystem)
 local DataStoreManager      = require(ServerScriptService.DataStoreManager)
@@ -23,14 +25,14 @@ local DropSystem                = require(ServerScriptService.SharedLib.Server.D
 local IncomeSystem              = require(ServerScriptService.SharedLib.Server.IncomeSystem)
 local BoardSystem               = require(ServerScriptService.BoardSystem)
 local RebirthCosmeticsSystem    = require(ServerScriptService.SharedLib.Server.RebirthCosmeticsSystem)
-print("[FuseMachine] Chargement du module…")
+Logger.debug("Main", "[FuseMachine] Chargement du module...")
 local ShopSystem = require(ServerScriptService.ShopSystem)
 local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.FuseMachineSystem)
 if not _fuseOk then
-    warn("[FuseMachine] ERREUR require : " .. tostring(FuseMachineSystem))
+    Logger.error("Main", "[FuseMachine] ERREUR require : %s", tostring(FuseMachineSystem))
     FuseMachineSystem = nil
 else
-    print("[FuseMachine] Module chargé ✓")
+    Logger.info("Main", "[FuseMachine] Module chargé ✓")
 end
 
 -- DataStore — inclut les champs requis par shared-lib
@@ -119,7 +121,7 @@ local AssignBase         = CreerRemoteEvent("AssignBase")         -- notifie le 
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
 
-print("[" .. Config.NomDuJeu .. "] RemoteEvents créés ✓")
+Logger.info("Main", "RemoteEvents créés ✓")
 
 -- ═══════════════════════════════════════════════
 -- 3. DONNÉES JOUEURS
@@ -174,7 +176,7 @@ end
 -- (utilisé par le fallback de clonage et par Retrieve)
 local BrainrotsFolder = ReplicatedStorage:FindFirstChild("Brainrots")
 if not BrainrotsFolder then
-    warn("[LavaTower] ReplicatedStorage.Brainrots introuvable — CarrySystem/DropSystem dégradés")
+    Logger.warn("Main", "ReplicatedStorage.Brainrots introuvable — CarrySystem/DropSystem dégradés")
 end
 CarrySystem.Init(BrainrotsFolder)
 DropSystem.SetBrainrotsFolder(BrainrotsFolder)
@@ -258,7 +260,7 @@ local function OnPlayerAdded(player)
         return GetData(player)
     end)
 
-    print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " connecté")
+    Logger.info("Main", "%s connecté", player.Name)
 end
 
 local function OnPlayerRemoving(player)
@@ -275,7 +277,7 @@ local function OnPlayerRemoving(player)
         RebirthSystem.Reset(player)
         DropSystem.Stop(player)
         AssignationSystem.LibererBase(player)
-        print("[" .. Config.NomDuJeu .. "] " .. player.Name .. " sauvegardé")
+        Logger.info("Main", "%s sauvegardé", player.Name)
     end
 end
 
@@ -376,13 +378,13 @@ FuseMachineSystem.UpdateHUD = function(player)
 end
 
 if FuseMachineSystem then
-    print("[FuseMachine] Appel Init()…")
+    Logger.debug("Main", "[FuseMachine] Appel Init()...")
     local ok, err = pcall(FuseMachineSystem.Init)
     if not ok then
-        warn("[FuseMachine] ERREUR Init() : " .. tostring(err))
+        Logger.error("Main", "[FuseMachine] ERREUR Init() : %s", tostring(err))
     end
 else
-    warn("[FuseMachine] Init() ignoré — module non chargé")
+    Logger.warn("Main", "[FuseMachine] Init() ignoré — module non chargé")
 end
 
 -- ═══════════════════════════════════════════════
@@ -399,11 +401,11 @@ end
 
 local _shopOk, shopErr = pcall(ShopSystem.Init)
 if not _shopOk then
-    warn("[ShopSystem] ERREUR Init() : " .. tostring(shopErr))
+    Logger.error("Main", "[ShopSystem] ERREUR Init() : %s", tostring(shopErr))
 end
 
 -- ═══════════════════════════════════════════════
 -- 8. DÉMARRAGE
 -- ═══════════════════════════════════════════════
 
-print("[" .. Config.NomDuJeu .. "] 🚀 Serveur démarré · " .. os.date("%d/%m/%Y %H:%M"))
+Logger.info("Main", "🚀 Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))

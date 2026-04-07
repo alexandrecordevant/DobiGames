@@ -23,6 +23,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage     = game:GetService("ServerStorage")
 local Workspace         = game:GetService("Workspace")
 local Debris            = game:GetService("Debris")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- Callback injecté par Main.server.lua si le jeu utilise un système de pots
 -- Signature : function(player, portes) → nil
@@ -115,7 +116,7 @@ local function choisirModele(nomDossier)
 	if not BRAINROTS_FOLDER then return nil end
 	local dossier = BRAINROTS_FOLDER:FindFirstChild(nomDossier)
 	if not dossier then
-		warn("[CarrySystem] Dossier introuvable : " .. tostring(nomDossier))
+		Logger.warn("Carry", "Dossier introuvable : %s", tostring(nomDossier))
 		return nil
 	end
 	local modeles = dossier:GetChildren()
@@ -153,7 +154,7 @@ end
 local function notifierTous(message)
 	local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
 	if ev then pcall(function() ev:FireAllClients("INFO", message) end) end
-	print("[CarrySystem] " .. message)
+	Logger.info("Carry", "%s", message)
 end
 
 local function notifierAutresJoueurs(excluPlayer, typeNotif, message)
@@ -271,7 +272,7 @@ local function creerTool(player, clone, rarete)
 				end
 				pivotOk = true  -- on continue même si le centrage est approximatif
 			end
-			warn("[CarrySystem] PivotTo échoué pour " .. nomBR .. " — centrage de secours utilisé")
+			Logger.warn("Carry", "PivotTo échoué pour %s — centrage de secours utilisé", nomBR)
 		end
 		for _, part in ipairs(clone:GetDescendants()) do
 			if part:IsA("BasePart") then
@@ -430,7 +431,7 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 
 	local racine = obtenirRacine(brModel)
 	if not racine then
-		warn("[CarrySystem] creerPromptCapture : racine introuvable sur", brModel and brModel.Name)
+		Logger.warn("Carry", "creerPromptCapture : racine introuvable sur %s", tostring(brModel and brModel.Name))
 		return
 	end
 
@@ -603,7 +604,7 @@ local function creerPromptDepot(player, touchPart)
 			DropSystem.DeposerBrainRots(player, touchPart)
 			return
 		end
-		warn("[CarrySystem] DropSystem introuvable — carry vidé sans récompense")
+		Logger.warn("Carry", "DropSystem introuvable — carry vidé sans récompense")
 		CarrySystem.ViderCarry(player)
 	end)
 
@@ -974,7 +975,7 @@ function CarrySystem.SynchroniserCarry(player)
 			if entree.toolRef then
 				pcall(function() entree.toolRef:Destroy() end)
 			end
-			warn("[CarrySystem] SynchroniserCarry : entrée fantôme supprimée pour " .. player.Name)
+			Logger.warn("Carry", "SynchroniserCarry : entrée fantôme supprimée pour %s", player.Name)
 		end
 	end
 
@@ -1012,7 +1013,7 @@ end
 -- ⚠️ Spécifique BrainRotFarm — pour LavaTower, utiliser PickupSystem.
 function CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, onCapture)
 	if not rarete then
-		warn("[CarrySystem] OnBRSpawned : rarete nil")
+		Logger.warn("Carry", "OnBRSpawned : rarete nil")
 		return
 	end
 	creerPromptCapture(brModel, rarete, baseIndex, onCapture)
@@ -1051,7 +1052,7 @@ function CarrySystem.Init(brainrotsFolder)
 	Players.PlayerAdded:Connect(initJoueur)
 	Players.PlayerRemoving:Connect(nettoyerJoueur)
 
-	print("[CarrySystem] ✓ Initialisé (Tool/Backpack)")
+	Logger.info("Carry", "✓ Initialisé (Tool/Backpack)")
 end
 
 return CarrySystem

@@ -6,6 +6,7 @@ local Players          = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService       = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Logger           = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -13,17 +14,17 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- ═══════════════════════════════════════════════
 -- Attente des RemoteEvents (créés par FuseMachineSystem.Init)
 -- ═══════════════════════════════════════════════
-print("[FuseMachineClient] Script démarré ✓")
+Logger.info("Fuse", "Script démarré ✓")
 local OuvrirUI   = ReplicatedStorage:WaitForChild("FuseMachine_OuvrirUI",   60)
 local FermerUI   = ReplicatedStorage:WaitForChild("FuseMachine_FermerUI",   60)
 local EtatUpdate = ReplicatedStorage:WaitForChild("FuseMachine_EtatUpdate", 60)
 local Lancer     = ReplicatedStorage:WaitForChild("FuseMachine_Lancer",     60)
 
 if not OuvrirUI then
-    warn("[FuseMachineClient] RemoteEvents introuvables après 60s — FuseMachineSystem.Init() appelé ?")
+    Logger.warn("Fuse", "RemoteEvents introuvables après 60s — FuseMachineSystem.Init() appelé ?")
     return
 end
-print("[FuseMachineClient] RemoteEvents trouvés ✓")
+Logger.info("Fuse", "RemoteEvents trouvés ✓")
 
 -- ═══════════════════════════════════════════════
 -- Couleurs thème LavaTower
@@ -778,7 +779,7 @@ end
 -- ═══════════════════════════════════════════════
 
 OuvrirUI.OnClientEvent:Connect(function(machine, etatData, recettes)
-    print("[FuseMachineClient] OuvrirUI reçu ✓ machine=" .. tostring(machine and machine.Name))
+    Logger.debug("Fuse", "OuvrirUI reçu ✓ machine=%s", tostring(machine and machine.Name))
     ouvrirUI(machine, etatData, recettes)
 end)
 

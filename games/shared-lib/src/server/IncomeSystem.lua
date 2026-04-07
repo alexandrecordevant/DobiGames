@@ -15,6 +15,7 @@ local _GameConfig = require(
     game.ReplicatedStorage:FindFirstChild("GameConfig")
     or game.ReplicatedStorage.Specialized.GameConfig
 )
+local Logger = require(script.Parent.Logger)
 
 -- ============================================================
 -- Multiplicateur d'event (partagé pour tous les joueurs)
@@ -138,7 +139,7 @@ end
 local function CleanupDefaultValues()
     local basesFolder = workspace:FindFirstChild("Bases")
     if not basesFolder then
-        warn("[IncomeSystem] workspace.Bases introuvable — CleanupDefaultValues ignoré")
+        Logger.warn("Income", "workspace.Bases introuvable — CleanupDefaultValues ignoré")
         return
     end
 
@@ -154,7 +155,7 @@ local function CleanupDefaultValues()
         end
     end
 
-    print("[IncomeSystem] CleanupDefaultValues — slots réinitialisés")
+    Logger.info("Income", "CleanupDefaultValues — slots réinitialisés")
 end
 
 -- Retourne la BasePart Button/TouchPart du spot (Part avec le SurfaceGui + Touched collecte)
@@ -213,7 +214,7 @@ local function connecterButton(player, uid, touchPart, spotKey)
     -- Trouver Button/TouchPart (Part avec SurfaceGui + Touched collecte)
     local buttonTouchPart = GetButtonTouchPart(spotModel)
     if not buttonTouchPart then
-        warn("[IncomeSystem] Button/TouchPart introuvable : " .. spotModel:GetFullName())
+        Logger.warn("Income", "Button/TouchPart introuvable : %s", spotModel:GetFullName())
         return
     end
 
@@ -264,13 +265,12 @@ local function connecterButton(player, uid, touchPart, spotKey)
         if coinsEnAttente[uid] then coinsEnAttente[uid][spotKey] = 0 end
         pcall(mettreAJourVisuel, touchPart, 0, nil)
 
-        print("[IncomeSystem] " .. touchPlayer.Name
-            .. " collecte $" .. FormatCoins(pending) .. " → slot " .. spotKey)
+        Logger.debug("Income", "%s collecte $%s → slot %s", touchPlayer.Name, FormatCoins(pending), spotKey)
 
         task.delay(0.5, function() debounce = false end)
     end)
 
-    print("[IncomeSystem] Button/TouchPart connecté → slot " .. spotKey)
+    Logger.debug("Income", "Button/TouchPart connecté → slot %s", spotKey)
 end
 
 -- ============================================================
@@ -501,7 +501,7 @@ function IncomeSystem.Init(player, getData)
     end)
 
     threads[uid] = thread
-    print("[IncomeSystem] ✓ Boucle démarrée pour " .. player.Name)
+    Logger.info("Income", "✓ Boucle démarrée pour %s", player.Name)
 end
 
 -- ============================================================
@@ -538,7 +538,7 @@ function IncomeSystem.SetEventMultiplier(multiplier)
         end)
     end
 
-    print("[IncomeSystem] eventMultiplier → ×" .. tostring(eventMultiplier))
+    Logger.info("Income", "eventMultiplier → ×%s", tostring(eventMultiplier))
 end
 
 -- ============================================================
@@ -619,7 +619,7 @@ function IncomeSystem.CollecterSlot(player, spotKey)
         end
     end
     coinsEnAttente[uid][spotKey] = 0
-    print("[IncomeSystem] Slot " .. spotKey .. " collecté avant vente : $" .. FormatCoins(montant))
+    Logger.debug("Income", "Slot %s collecté avant vente : $%s", spotKey, FormatCoins(montant))
 end
 
 -- Connecte manuellement le Button d'un slot pour la collecte
@@ -692,8 +692,7 @@ function IncomeSystem.CollecterTousLesSlots(player)
         end
     end
 
-    print(string.format("[IncomeSystem] %s — Collect All : +$%s (%d slots collectés)",
-        player.Name, FormatCoins(totalCollecte), slotsCollectes))
+    Logger.info("Income", "%s — Collect All : +$%s (%d slots collectés)", player.Name, FormatCoins(totalCollecte), slotsCollectes)
 
     return totalCollecte
 end

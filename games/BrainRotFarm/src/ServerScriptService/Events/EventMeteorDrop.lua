@@ -17,6 +17,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- ============================================================
 -- Config
 -- ============================================================
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config = require(ReplicatedStorage.GameConfig)
 
 -- ============================================================
@@ -237,7 +238,7 @@ function EventMeteorDrop.Demarrer(config)
         boucleSpawn(config)
     end)
 
-    print("[EventMeteorDrop] ▶ Meteor Drop démarré (" .. (config.duree or 60) .. "s)")
+    Logger.info("Event", "▶ Meteor Drop démarré (%ds)", config.duree or 60)
 end
 
 function EventMeteorDrop.Terminer()
@@ -255,7 +256,7 @@ function EventMeteorDrop.Terminer()
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
     if ev then pcall(function() ev:FireAllClients("INFO", "☄️ The meteors have stopped falling.") end) end
 
-    print("[EventMeteorDrop] ■ Meteor Drop terminé")
+    Logger.info("Event", "■ Meteor Drop terminé")
 end
 
 return EventMeteorDrop

@@ -7,6 +7,7 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
 local Workspace         = game:GetService("Workspace")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 local ShopConfig = require(ReplicatedStorage.Modules.ShopConfig)
 
@@ -320,7 +321,7 @@ local function ajouterPrompt(part)
         ShopOpen:FireClient(player, makePayload(player))
     end)
 
-    print("[ShopSystem] ProximityPrompt ajouté sur", part:GetFullName())
+    Logger.debug("Shop", "ProximityPrompt ajouté sur %s", part:GetFullName())
 end
 
 -- ── Scan du workspace pour les instances avec attribut "Shop" ─────────────────
@@ -339,7 +340,7 @@ local function trouverCible(instance)
         if bp then
             return bp
         end
-        warn("[ShopSystem] Modèle sans BasePart : " .. instance:GetFullName())
+        Logger.warn("Shop", "Modèle sans BasePart : %s", instance:GetFullName())
         return nil
     elseif instance:IsA("BasePart") then
         return instance
@@ -366,13 +367,13 @@ local function scannerWorkspace()
     -- Petit délai pour que le workspace soit entièrement peuplé côté serveur
     task.wait(1)
 
-    print("[ShopSystem] Début du scan workspace…")
+    Logger.debug("Shop", "Début du scan workspace...")
     local total = 0
     for _, desc in ipairs(Workspace:GetDescendants()) do
         total += 1
         verifier(desc)
     end
-    print("[ShopSystem] Scan terminé — " .. total .. " descendants parcourus")
+    Logger.debug("Shop", "Scan terminé — %d descendants parcourus", total)
 
     -- Écouter les nouveaux descendants (objets spawned en cours de jeu)
     Workspace.DescendantAdded:Connect(function(desc)
@@ -460,7 +461,7 @@ function ShopSystem.Init()
     -- Lancer la boucle de détection des tours (pour jump)
     lancerBoucleJump()
 
-    print("[ShopSystem] Initialisé ✓")
+    Logger.info("Shop", "Initialisé ✓")
 end
 
 return ShopSystem

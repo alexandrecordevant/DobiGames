@@ -5,6 +5,7 @@
 local SafeZoneTracker = {}
 
 local Players = game:GetService("Players")
+local Logger = require(script.Parent.Parent.Logger)
 
 -- Table globale : [userId] = true si dans une zone safe
 local playersInSafeZone = {}
@@ -45,14 +46,14 @@ end
 -- Initialise le tracker (appelé par Main.server.lua)
 function SafeZoneTracker.Init(config)
 	if not config or not config.SafeZoneEnabled then
-		print("[SafeZoneTracker] Zones safe désactivées — système ignoré")
+		Logger.info("Safe", "Zones safe désactivées — système ignoré")
 		return
 	end
 
 	-- Chercher toutes les bases dans workspace.Bases
 	local bases = workspace:FindFirstChild("Bases")
 	if not bases then
-		warn("[SafeZoneTracker] workspace.Bases introuvable — zones safe non initialisées")
+		Logger.warn("Safe", "workspace.Bases introuvable — zones safe non initialisées")
 		return
 	end
 
@@ -107,7 +108,7 @@ function SafeZoneTracker.Init(config)
 		lastFeedbackTime[player.UserId]   = nil
 	end)
 
-	print(string.format("[SafeZoneTracker] Initialisé — %d zone(s) safe détectée(s)", zonesInitialisees))
+	Logger.info("Safe", "Initialisé — %d zone(s) safe détectée(s)", zonesInitialisees)
 end
 
 -- Vérifie si un joueur est actuellement dans une zone safe

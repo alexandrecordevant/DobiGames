@@ -11,6 +11,7 @@ local FiltersFolder = script.Parent:FindFirstChild("Filters")
 if not FiltersFolder then
     error("[FilterManager] FATAL: BRFilterSystem/Filters introuvable — vérifie le mapping Rojo")
 end
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ============================================================
 -- Utilitaires internes
@@ -28,27 +29,27 @@ local function appliquerFiltre(brModel, config)
 
     local filterModule = trouverFiltreModule(filterName)
     if not filterModule then
-        warn("[FilterManager] Filtre introuvable :", filterName)
+        Logger.warn("Filter", "Filtre introuvable : %s", tostring(filterName))
         return false
     end
 
     -- Require protégé
     local ok, filter = pcall(require, filterModule)
     if not ok or type(filter) ~= "table" then
-        warn("[FilterManager] Erreur require filtre :", filterName, filter)
+        Logger.warn("Filter", "Erreur require filtre : %s %s", tostring(filterName), tostring(filter))
         return false
     end
 
     -- Vérifier que Apply existe
     if type(filter.Apply) ~= "function" then
-        warn("[FilterManager] Filtre sans Apply() :", filterName)
+        Logger.warn("Filter", "Filtre sans Apply() : %s", tostring(filterName))
         return false
     end
 
     -- Appliquer
     local applyOk, err = pcall(filter.Apply, brModel, params)
     if not applyOk then
-        warn("[FilterManager] Erreur lors de Apply() pour", filterName, ":", err)
+        Logger.warn("Filter", "Erreur lors de Apply() pour %s : %s", tostring(filterName), tostring(err))
         return false
     end
 
@@ -88,12 +89,12 @@ end
 ]]
 function FilterManager.Apply(brModel, filterConfigs)
     if not brModel then
-        warn("[FilterManager] brModel nil — Apply annulé")
+        Logger.warn("Filter", "brModel nil — Apply annulé")
         return false
     end
 
     if type(filterConfigs) ~= "table" then
-        warn("[FilterManager] filterConfigs doit être une table")
+        Logger.warn("Filter", "filterConfigs doit être une table")
         return false
     end
 

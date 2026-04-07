@@ -19,6 +19,7 @@ local TweenService        = game:GetService("TweenService")
 -- ============================================================
 -- Config
 -- ============================================================
+local Logger  = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config  = require(ReplicatedStorage.GameConfig)
 local FPConfig = Config.FlowerPotConfig
 
@@ -71,24 +72,18 @@ local MUTANT_SPAWN_STAGE = (FPConfig and FPConfig.MutantSpawnStage) or 2
 -- Offset Y au-dessus du sommet de la plante (studs)
 local MUTANT_OFFSET_Y   = (FPConfig and FPConfig.MutantOffsetY)    or 0.5
 
--- Éléments disponibles
-local ELEMENTS = (FPConfig and FPConfig.ElementTypes)
-    or { "water", "fire", "earth", "wind" }
+-- Types Mutants disponibles (lus depuis GameConfig.MutantTypes — source de vérité canonique)
+local ELEMENTS = {}
+local ELEMENT_MULTIPLIERS = {}
+local ELEMENT_TO_FILTRE   = {}
+local ELEMENT_EMOJIS      = {}
 
--- Multiplicateurs de revenu par élément
-local ELEMENT_MULTIPLIERS = (FPConfig and FPConfig.ElementMultipliers)
-    or { water=2, fire=4, earth=6, wind=8 }
-
--- Correspondance élément (lowercase) → nom de filtre FilterManager
-local ELEMENT_TO_FILTRE = {
-    water = "ElementEau",
-    fire  = "ElementFeu",
-    earth = "ElementTerre",
-    wind  = "ElementVent",
-}
-
--- Emojis par élément (affichage billboard)
-local ELEMENT_EMOJIS = { water="💧", fire="🔥", earth="🌍", wind="💨" }
+for _, mt in ipairs(Config.MutantTypes) do
+    table.insert(ELEMENTS, mt.Name)
+    ELEMENT_MULTIPLIERS[mt.Name] = mt.Multiplier
+    ELEMENT_TO_FILTRE[mt.Name]   = mt.Filtre
+    ELEMENT_EMOJIS[mt.Name]      = mt.Emoji
+end
 
 -- ============================================================
 -- État interne
@@ -219,20 +214,20 @@ end
 local function clonerGraine(potPart)
     local dossierGraines = ServerStorage:FindFirstChild("Seeds")
     if not dossierGraines then
-        warn("[FlowerPotGrowthSystem] ServerStorage/Seeds introuvable — créer le dossier dans Studio")
+        Logger.warn("Pot", "ServerStorage/Seeds introuvable — créer le dossier dans Studio")
         return nil
     end
 
     local src = dossierGraines:FindFirstChild("GenericSeed")
     if not src then
-        warn("[FlowerPotGrowthSystem] GenericSeed introuvable dans Seeds/ — créer le modèle dans Studio")
+        Logger.warn("Pot", "GenericSeed introuvable dans Seeds/ — créer le modèle dans Studio")
         return nil
     end
 
     local clone = nil
     local ok = pcall(function() clone = src:Clone() end)
     if not ok or not clone then
-        warn("[FlowerPotGrowthSystem] Échec clone GenericSeed")
+        Logger.warn("Pot", "Échec clone GenericSeed")
         return nil
     end
 
@@ -246,21 +241,21 @@ end
 local function clonerPlantStage(stageIndex, potPart)
     local dossierPlants = ServerStorage:FindFirstChild("Plants")
     if not dossierPlants then
-        warn("[FlowerPotGrowthSystem] ServerStorage/Plants introuvable — créer le dossier dans Studio")
+        Logger.warn("Pot", "ServerStorage/Plants introuvable — créer le dossier dans Studio")
         return nil
     end
 
     local nomStage = "Plant_Stage" .. stageIndex
     local src = dossierPlants:FindFirstChild(nomStage)
     if not src then
-        warn("[FlowerPotGrowthSystem] Modèle introuvable :", nomStage, "— créer dans Studio")
+        Logger.warn("Pot", "Modèle introuvable : %s — créer dans Studio", nomStage)
         return nil
     end
 
     local clone = nil
     local ok = pcall(function() clone = src:Clone() end)
     if not ok or not clone then
-        warn("[FlowerPotGrowthSystem] Échec clone :", nomStage)
+        Logger.warn("Pot", "Échec clone : %s", nomStage)
         return nil
     end
 
@@ -277,19 +272,19 @@ end
 local function clonerBRMutant(seedRarity, nomModele)
     local brainrots = ServerStorage:FindFirstChild("Brainrots")
     if not brainrots then
-        warn("[FlowerPotGrowthSystem] ServerStorage/Brainrots introuvable")
+        Logger.warn("Pot", "ServerStorage/Brainrots introuvable")
         return nil, nil
     end
 
     local dossier = brainrots:FindFirstChild(seedRarity)
     if not dossier then
-        warn("[FlowerPotGrowthSystem] Dossier rareté introuvable :", seedRarity)
+        Logger.warn("Pot", "Dossier rareté introuvable : %s", seedRarity)
         return nil, nil
     end
 
     local modeles = dossier:GetChildren()
     if #modeles == 0 then
-        warn("[FlowerPotGrowthSystem] Aucun modèle dans :", seedRarity)
+        Logger.warn("Pot", "Aucun modèle dans : %s", seedRarity)
         return nil, nil
     end
 
@@ -302,7 +297,7 @@ local function clonerBRMutant(seedRarity, nomModele)
     local clone = nil
     local ok = pcall(function() clone = src:Clone() end)
     if not ok or not clone then
-        warn("[FlowerPotGrowthSystem] Échec clone BR Mutant depuis :", seedRarity)
+        Logger.warn("Pot", "Échec clone BR Mutant depuis : %s", seedRarity)
         return nil, nil
     end
 
@@ -321,12 +316,12 @@ end
 local function appliquerParticulesElement(clone, elementType)
     local FM = getFilterManager()
     if not FM then
-        warn("[FlowerPotGrowthSystem] FilterManager indisponible — effets ignorés pour :", elementType)
+        Logger.warn("Pot", "FilterManager indisponible — effets ignorés pour : %s", elementType)
         return
     end
     local nomFiltre = ELEMENT_TO_FILTRE[elementType]
     if not nomFiltre then
-        warn("[FlowerPotGrowthSystem] Élément inconnu :", elementType)
+        Logger.warn("Pot", "Élément inconnu : %s", elementType)
         return
     end
     FM.Apply(clone, { { Name = nomFiltre } })
@@ -388,17 +383,17 @@ end
 function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest, resumeOptions)
     -- Validation des paramètres
     if not potModel or not potModel.Parent then
-        warn("[FlowerPotGrowthSystem] potModel invalide")
+        Logger.warn("Pot", "potModel invalide")
         return
     end
     if seedRarity ~= "MYTHIC" and seedRarity ~= "SECRET" then
-        warn("[FlowerPotGrowthSystem] seedRarity invalide (doit être MYTHIC ou SECRET) :", seedRarity)
+        Logger.warn("Pot", "seedRarity invalide (doit être MYTHIC ou SECRET) : %s", seedRarity)
         return
     end
 
     local potPart = getPotPart(potModel)
     if not potPart then
-        warn("[FlowerPotGrowthSystem] Pas de BasePart dans :", potModel.Name)
+        Logger.warn("Pot", "Pas de BasePart dans : %s", potModel.Name)
         return
     end
 
@@ -422,9 +417,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         pcall(resumeOptions.onElementChosen, elementType)
     end
 
-    print(string.format(
-        "[FlowerPotGrowthSystem] Début croissance | Pot: %s | Graine: %s | Élément: %s %s | ×%d",
-        potModel.Name, seedRarity, elementType, emoji, multiplier))
+    Logger.info("Pot", "Début croissance | Pot: %s | Graine: %s | Élément: %s %s | ×%d", potModel.Name, seedRarity, elementType, emoji, multiplier)
 
     -- Étape courante pour la reprise (0=GenericSeed, 1-4=Plant_StageX, 5=terminé)
     local etapeCourante   = (resumeOptions and resumeOptions.etapeCourante) or 0
@@ -461,7 +454,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                 positionnerClone(mutantClone, posSurPot)
                 pcall(function()
                     mutantClone:SetAttribute("IsMutant",    true)
-                    mutantClone:SetAttribute("ElementType", elementType)
+                    mutantClone:SetAttribute("MutantType",  elementType)
                     mutantClone:SetAttribute("Rarity",      seedRarity)
                     mutantClone:SetAttribute("Multiplier",  multiplier)
                 end)
@@ -497,15 +490,14 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
             local graine = clonerGraine(potPart)
             if graine then
                 plantActuel = graine
-                print("[FlowerPotGrowthSystem]", potModel.Name, "→ GenericSeed affiché")
+                Logger.debug("Pot", "%s → GenericSeed affiché", potModel.Name)
             end
         else
             -- Reprise : afficher le stage déjà atteint
             local stageAffiche = etapeCourante - 1  -- 0 à 3
             plantActuel = clonerPlantStage(stageAffiche, potPart)
             if _plantages[potId] then _plantages[potId].stage = stageAffiche end
-            print(string.format("[FlowerPotGrowthSystem] %s → Plant_Stage%d (reprise étape %d)",
-                potModel.Name, stageAffiche, etapeCourante))
+            Logger.debug("Pot", "%s → Plant_Stage%d (reprise étape %d)", potModel.Name, stageAffiche, etapeCourante)
 
             -- Si le mutant aurait déjà dû spawner (stage >= MUTANT_SPAWN_STAGE)
             if stageAffiche >= MUTANT_SPAWN_STAGE then
@@ -519,7 +511,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                     positionnerClone(mutantClone, posAuDessus)
                     pcall(function()
                         mutantClone:SetAttribute("IsMutant",    true)
-                        mutantClone:SetAttribute("ElementType", elementType)
+                        mutantClone:SetAttribute("MutantType",  elementType)
                         mutantClone:SetAttribute("Rarity",      seedRarity)
                         mutantClone:SetAttribute("Multiplier",  multiplier)
                     end)
@@ -545,7 +537,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
 
             -- Vérifier validité du pot (peut être détruit si joueur quitte)
             if not potModel or not potModel.Parent then
-                print("[FlowerPotGrowthSystem] Pot détruit — croissance annulée :", potId)
+                Logger.debug("Pot", "Pot détruit — croissance annulée : %s", potId)
                 break
             end
 
@@ -561,8 +553,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
             -- Mettre à jour le stage courant (visible via GetStatut)
             if _plantages[potId] then _plantages[potId].stage = stage end
 
-            print(string.format("[FlowerPotGrowthSystem] %s → Plant_Stage%d",
-                potModel.Name, stage))
+            Logger.debug("Pot", "%s → Plant_Stage%d", potModel.Name, stage)
 
             -- ─── STAGE 2 : Spawn BR Mutant au-dessus (seulement si pas déjà spawné) ───
             if stage == MUTANT_SPAWN_STAGE and not mutantClone then
@@ -581,7 +572,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                     -- Attributs élémentaires (serveur uniquement)
                     pcall(function()
                         mutantClone:SetAttribute("IsMutant",    true)
-                        mutantClone:SetAttribute("ElementType", elementType)
+                        mutantClone:SetAttribute("MutantType",  elementType)
                         mutantClone:SetAttribute("Rarity",      seedRarity)
                         mutantClone:SetAttribute("Multiplier",  multiplier)
                     end)
@@ -599,11 +590,9 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                         multiplier  = multiplier,
                     }
 
-                    print(string.format(
-                        "[FlowerPotGrowthSystem] BR Mutant %s spawné à Y+%d | %s | Pot: %s",
-                        seedRarity, MUTANT_OFFSET_Y, elementType, potModel.Name))
+                    Logger.info("Pot", "BR Mutant %s spawné à Y+%d | %s | Pot: %s", seedRarity, MUTANT_OFFSET_Y, elementType, potModel.Name)
                 else
-                    warn("[FlowerPotGrowthSystem] Échec spawn BR Mutant — vérifier ServerStorage/Brainrots/" .. seedRarity)
+                    Logger.warn("Pot", "Échec spawn BR Mutant — vérifier ServerStorage/Brainrots/%s", seedRarity)
                 end
             end
         end
@@ -639,13 +628,13 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
             plantActuel = nil
         end
 
-        print("[FlowerPotGrowthSystem]", potModel.Name, "→ Plante morte")
+        Logger.debug("Pot", "%s → Plante morte", potModel.Name)
 
         -- ────────────────────────────────────────────────
         -- CHUTE : BR Mutant tombe sur le pot
         -- ────────────────────────────────────────────────
         if not mutantClone or not mutantClone.Parent then
-            warn("[FlowerPotGrowthSystem] BR Mutant introuvable à la fin de croissance :", potId)
+            Logger.warn("Pot", "BR Mutant introuvable à la fin de croissance : %s", potId)
             _threads[potId] = nil
             return
         end
@@ -659,9 +648,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         -- Animation de chute
         animerChute(mutantClone, posSurPot, 0.8)
 
-        print(string.format(
-            "[FlowerPotGrowthSystem] BR Mutant tombé sur %s — élément: %s | ×%d",
-            potModel.Name, elementType, multiplier))
+        Logger.info("Pot", "BR Mutant tombé sur %s — élément: %s | ×%d", potModel.Name, elementType, multiplier)
 
         -- ────────────────────────────────────────────────
         -- PICKUP : Déléguer au FlowerPotPickupHandler
@@ -678,7 +665,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                     onHarvest   = onHarvest,
                 })
             else
-                warn("[FlowerPotGrowthSystem] FlowerPotPickupHandler indisponible — BR Mutant non récoltable")
+                Logger.warn("Pot", "FlowerPotPickupHandler indisponible — BR Mutant non récoltable")
             end
         end
 
@@ -696,7 +683,7 @@ function FlowerPotGrowthSystem.Annuler(potModel)
     if not potModel then return end
     local potId = potModel:GetFullName()
     nettoyerPot(potId)
-    print("[FlowerPotGrowthSystem] Croissance annulée :", potModel.Name)
+    Logger.debug("Pot", "Croissance annulée : %s", potModel.Name)
 end
 
 -- ============================================================

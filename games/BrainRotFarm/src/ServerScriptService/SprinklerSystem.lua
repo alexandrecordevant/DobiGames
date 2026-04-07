@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- ============================================================
 -- Config — vitesses lues depuis GameConfig (0 valeur hardcodée)
 -- ============================================================
+local Logger  = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config  = require(ReplicatedStorage.GameConfig)
 local VITESSES = Config.SprinklerVitesses or { [0]=0, [1]=30, [2]=60, [3]=120 }
 
@@ -111,7 +112,7 @@ function SprinklerSystem.DesactiverBase(baseIndex)
         end
     end
 
-    print("[SprinklerSystem] Base_" .. baseIndex .. " sprinklers désactivés")
+    Logger.debug("Sprinkler", "Base_%s sprinklers désactivés", tostring(baseIndex))
 end
 
 -- Activer les sprinklers d'une base au niveau donné (0 = désactiver)
@@ -124,7 +125,7 @@ function SprinklerSystem.ActiverBase(baseIndex, niveau)
     local base = Workspace:FindFirstChild("Bases")
                  and Workspace.Bases:FindFirstChild("Base_" .. baseIndex)
     if not base then
-        warn("[SprinklerSystem] Base_" .. baseIndex .. " introuvable")
+        Logger.warn("Sprinkler", "Base_%s introuvable", tostring(baseIndex))
         return
     end
 
@@ -132,7 +133,7 @@ function SprinklerSystem.ActiverBase(baseIndex, niveau)
     local specificFolder   = base:FindFirstChild("Specific")
     local sprinklersFolder = specificFolder and specificFolder:FindFirstChild("Sprinklers")
     if not sprinklersFolder then
-        warn("[SprinklerSystem] Dossier Sprinklers introuvable dans Base_" .. baseIndex)
+        Logger.warn("Sprinkler", "Dossier Sprinklers introuvable dans Base_%s", tostring(baseIndex))
         return
     end
 
@@ -148,10 +149,7 @@ function SprinklerSystem.ActiverBase(baseIndex, niveau)
         appliquerVitessePart(part, vitesse)
     end
 
-    print(string.format(
-        "[SprinklerSystem] Base_%d sprinkler activé — niveau %d (%.0f°/s)",
-        baseIndex, niveau, vitesse
-    ))
+    Logger.info("Sprinkler", "Base_%d sprinkler activé — niveau %d (%.0f°/s)", baseIndex, niveau, vitesse)
 end
 
 -- Init : désactiver tous les sprinklers au démarrage serveur
@@ -168,7 +166,7 @@ function SprinklerSystem.Init()
     end
 
     if not bases then
-        warn("[SprinklerSystem] Workspace.Bases introuvable — Init ignoré")
+        Logger.warn("Sprinkler", "Workspace.Bases introuvable — Init ignoré")
         return
     end
 
@@ -176,7 +174,7 @@ function SprinklerSystem.Init()
         SprinklerSystem.DesactiverBase(i)
     end
 
-    print("[SprinklerSystem] ✓ Init — tous sprinklers désactivés par défaut")
+    Logger.info("Sprinkler", "✓ Init — tous sprinklers désactivés par défaut")
 end
 
 return SprinklerSystem

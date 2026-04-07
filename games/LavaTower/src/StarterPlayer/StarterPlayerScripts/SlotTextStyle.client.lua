@@ -6,6 +6,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
+local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player = Players.LocalPlayer
 
@@ -150,4 +151,4 @@ if UpdateHUD then
     end)
 end
 
-print("[SlotTextStyle] Prêt ✓")
+Logger.info("HUD", "[SlotTextStyle] Prêt ✓")

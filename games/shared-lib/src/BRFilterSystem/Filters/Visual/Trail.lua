@@ -2,6 +2,7 @@
 -- Filtre Visuel TRAIL — Ajoute un trail de traîne sur le BR
 
 local Trail = {}
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 Trail.Config = {
     Couleur        = Color3.fromRGB(255, 255, 255),
@@ -29,7 +30,7 @@ function Trail.Apply(brModel, params)
     local primaryPart = brModel.PrimaryPart
                      or brModel:FindFirstChildWhichIsA("BasePart")
     if not primaryPart then
-        warn("[Trail] PrimaryPart introuvable sur", brModel.Name)
+        Logger.warn("Filter", "PrimaryPart introuvable sur %s", brModel.Name)
         return
     end
 

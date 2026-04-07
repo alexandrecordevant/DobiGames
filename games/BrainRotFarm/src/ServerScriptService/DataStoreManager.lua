@@ -3,6 +3,7 @@ local DataStoreManager = {}
 local DataStoreService = game:GetService("DataStoreService")
 local DS               = DataStoreService:GetDataStore("BrainRotIdleV1")
 local CollectSystem    = require(game:GetService("ServerScriptService").SharedLib.Shared.CollectSystem)
+local Logger           = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 local function DefaultData()
     return {
@@ -78,8 +79,7 @@ function DataStoreManager.Load(player)
         for r, v in pairs(data.graines) do ancien[r] = v end
         data.graines = { MYTHIC = 0, SECRET = 0 }
         data.grainesMigratedV2 = true
-        warn("[DataStore] Migration grainesMigratedV2 : graines remises à 0 pour "..player.Name
-            .." (ancienne valeur : MYTHIC="..tostring(ancien.MYTHIC or 0).." SECRET="..tostring(ancien.SECRET or 0)..")")
+        Logger.warn("Data", "Migration grainesMigratedV2 : graines remises à 0 pour %s (ancienne valeur : MYTHIC=%s SECRET=%s)", player.Name, tostring(ancien.MYTHIC or 0), tostring(ancien.SECRET or 0))
     end
     if not data.carryPortes then data.carryPortes = {} end
 
@@ -115,7 +115,7 @@ end
 function DataStoreManager.Save(player, data)
     data.derniereConnexion = os.time()
     local ok, err = pcall(function() DS:SetAsync("player_"..player.UserId, data) end)
-    if not ok then warn("[DataStore] Erreur save "..player.Name..": "..tostring(err)) end
+    if not ok then Logger.error("Data", "Erreur save %s: %s", player.Name, tostring(err)) end
 end
 
 function DataStoreManager.StartAutoSave(player, getData)

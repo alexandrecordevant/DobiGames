@@ -16,6 +16,7 @@ local MarketplaceService  = game:GetService("MarketplaceService")
 -- ============================================================
 -- Config — données uniquement, aucune logique ici
 -- ============================================================
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local Config = require(ReplicatedStorage.GameConfig)
 
 -- ============================================================
@@ -434,12 +435,12 @@ function ShopSystem.InitShop(baseIndex, shopModel)
 
     local touchPart = trouverShopPart(shopModel)
     if not touchPart then
-        warn("[ShopSystem] ⚠ Aucune BasePart trouvée dans Shop de Base_" .. baseIndex)
+        Logger.warn("Shop", "⚠ Aucune BasePart trouvée dans Shop de Base_%s", tostring(baseIndex))
         return
     end
 
     ajouterPromptShop(touchPart, baseIndex)
-    print("[ShopSystem] PP créé → Base_" .. baseIndex .. " sur " .. touchPart.Name)
+    Logger.debug("Shop", "PP créé → Base_%s sur %s", tostring(baseIndex), touchPart.Name)
 end
 
 local function initialiserShopsBases()
@@ -455,7 +456,7 @@ local function initialiserShopsBases()
     end
 
     if not basesFolder then
-        warn("[ShopSystem] ⚠ Dossier 'Bases' introuvable après 15s — ProximityPrompts non créés")
+        Logger.warn("Shop", "⚠ Dossier 'Bases' introuvable après 15s — ProximityPrompts non créés")
         return
     end
 
@@ -470,12 +471,12 @@ local function initialiserShopsBases()
                 ShopSystem.InitShop(i, shopModel)
                 nb = nb + 1
             else
-                warn("[ShopSystem] ⚠ Pas de modèle Shop dans Base_" .. i)
+                Logger.warn("Shop", "⚠ Pas de modèle Shop dans Base_%d", i)
             end
         end
     end
 
-    print("[ShopSystem] " .. nb .. " ProximityPrompt(s) Shop initialisés")
+    Logger.info("Shop", "%d ProximityPrompt(s) Shop initialisés", nb)
 end
 
 -- API publique : recréer les ProximityPrompts (ex: après rechargement de carte)
@@ -487,7 +488,7 @@ end
 -- Init
 -- ============================================================
 function ShopSystem.Init()
-    print("[ShopSystem] Init() démarré…")
+    Logger.info("Shop", "Init() démarré…")
 
     -- Créer les RemoteEvents (creerRemoteEvent est idempotent)
     OuvrirShop           = creerRemoteEvent("OuvrirShop")
@@ -496,14 +497,7 @@ function ShopSystem.Init()
     ShopUpdate           = creerRemoteEvent("ShopUpdate")
     DemandeAchatRobux    = creerRemoteEvent("DemandeAchatRobux")
     ConfirmerGamePass    = creerRemoteEvent("ConfirmerGamePass")
-    print("[ShopSystem] RemoteEvents créés :")
-    for _, nom in ipairs({
-        "OuvrirShop","FermerShop","AchatUpgrade","ShopUpdate",
-        "DemandeAchatRobux","ConfirmerGamePass"
-    }) do
-        local etat = ReplicatedStorage:FindFirstChild(nom) and "✅" or "❌"
-        print("  " .. nom .. " : " .. etat)
-    end
+    Logger.debug("Shop", "RemoteEvents créés")
 
     -- Ajouter ProximityPrompts (initialiserShopsBases attend jusqu'à 15s)
     task.spawn(initialiserShopsBases)
@@ -593,7 +587,7 @@ function ShopSystem.Init()
     -- Compter les upgrades chargés
     local n = 0
     for _ in pairs(Config.ShopUpgrades) do n = n + 1 end
-    print("[ShopSystem] ✓ Init terminé — " .. n .. " upgrades | ProximityPrompts en cours…")
+    Logger.info("Shop", "✓ Init terminé — %d upgrades | ProximityPrompts en cours…", n)
 end
 
 return ShopSystem
