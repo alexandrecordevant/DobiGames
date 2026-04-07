@@ -535,9 +535,8 @@ local function debloquerEtage(player, dd, floorNum, floorObj)
 		end
 	end
 
-	-- Notifications
+	-- Notification individuelle uniquement
 	notifierJoueur(player, "INFO", "Stage " .. floorNum .. " unlocked!")
-	notifierTous("INFO", player.Name .. " unlocked Stage " .. floorNum .. "!")
 end
 
 -- ============================================================

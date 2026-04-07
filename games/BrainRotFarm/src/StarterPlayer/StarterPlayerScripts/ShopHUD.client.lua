@@ -612,9 +612,10 @@ task.spawn(function()
     local ShopUpdateEvent = ReplicatedStorage:WaitForChild("ShopUpdate",  15)
     local FermerShopEvent = ReplicatedStorage:WaitForChild("FermerShop",  15)
 
-    AchatUpgrade         = ReplicatedStorage:WaitForChild("AchatUpgrade",         15)
-    DemandeAchatRobux    = ReplicatedStorage:WaitForChild("DemandeAchatRobux",    15)
-    ChangerSeuilTracteur = ReplicatedStorage:WaitForChild("ChangerSeuilTracteur", 15)
+    AchatUpgrade         = ReplicatedStorage:WaitForChild("AchatUpgrade",      15)
+    DemandeAchatRobux    = ReplicatedStorage:WaitForChild("DemandeAchatRobux", 15)
+    -- ChangerSeuilTracteur supprimé côté serveur (7beec9d) — FindFirstChild sans timeout
+    ChangerSeuilTracteur = ReplicatedStorage:FindFirstChild("ChangerSeuilTracteur")
 
     if OuvrirShopEvent then
         OuvrirShopEvent.OnClientEvent:Connect(function(donnes)

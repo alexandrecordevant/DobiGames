@@ -811,7 +811,7 @@ DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
     elseif prixRobux > 0 then
         local gpId = potCfg.gamePassId or Config.GamePassIds.FlowerPot4 or 0
         if gpId == 0 then
-            NotifEvent:FireClient(player, "ERROR", "❌ Game Pass non configuré")
+            Logger.warn("Main", "DebloquerPot %d : GamePassId non configuré pour %s", potIndex, player.Name)
             return
         end
         local ok, owned = pcall(function()

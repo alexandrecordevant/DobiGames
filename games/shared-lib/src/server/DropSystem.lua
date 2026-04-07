@@ -800,7 +800,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         if tp == touchPart then spotKey = cle break end
     end
     if not spotKey then
-        notifierJoueur(player, "INFO", "This spot doesn't belong to your base!")
+        Logger.warn("Drop", "%s : spot invalide (hors base)", player.Name)
         return
     end
 
@@ -1091,7 +1091,6 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     -- Notifier les systèmes externes (ex : RebirthSystem)
     if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
 
-    notifierJoueur(player, "INFO", "Brain Rot [" .. rarete .. "] retrieved to your carry!")
     Logger.info("Drop", "%s a récupéré %s du spot %s", player.Name, rarete, spotKey)
 end
 

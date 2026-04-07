@@ -187,8 +187,7 @@ local function spawnerMeteore(config)
         -- Explosion visuelle
         creerImpact(posImpact, config.rayonImpact or 15)
 
-        -- Notifier l'impact + shake caméra client
-        notifierTous(config.messageImpact or "💥 Impact !")
+        -- Shake caméra client
         local reImpact = ReplicatedStorage:FindFirstChild("MeteorImpact")
         if reImpact then
             pcall(function() reImpact:FireAllClients(posImpact) end)
@@ -252,9 +251,6 @@ function EventMeteorDrop.Terminer()
     end
     meteorsParts      = {}
     meteorActifsCount = 0
-
-    local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
-    if ev then pcall(function() ev:FireAllClients("INFO", "☄️ The meteors have stopped falling.") end) end
 
     Logger.info("Event", "■ Meteor Drop terminé")
 end

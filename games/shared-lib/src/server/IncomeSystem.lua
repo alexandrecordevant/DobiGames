@@ -525,16 +525,6 @@ function IncomeSystem.SetEventMultiplier(multiplier)
     for _, player in ipairs(Players:GetPlayers()) do
         task.spawn(function()
             IncomeSystem.RecalculerIncome(player, nil)
-            -- Notifier les joueurs du changement
-            local NotifEvent = ReplicatedStorage:FindFirstChild("NotifEvent")
-            if NotifEvent then
-                if multiplier > 1 then
-                    pcall(function()
-                        NotifEvent:FireClient(player, "EVENT",
-                            "Multiplicateur event x" .. multiplier .. " actif sur tes revenus !")
-                    end)
-                end
-            end
         end)
     end
 

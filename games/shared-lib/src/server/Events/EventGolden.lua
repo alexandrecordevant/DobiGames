@@ -190,9 +190,6 @@ function EventGolden.Terminer()
     if IS and IS.SetEventMultiplier then pcall(IS.SetEventMultiplier, 1) end
     if CS and CS.SetEventMultiplier then pcall(CS.SetEventMultiplier, 1) end
 
-    local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
-    if ev then pcall(function() ev:FireAllClients("INFO", "The Golden Event is over. See you soon!") end) end
-
     Logger.info("Event", "■ Golden Event terminé")
 end
 

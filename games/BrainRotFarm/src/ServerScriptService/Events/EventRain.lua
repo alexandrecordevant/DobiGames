@@ -180,9 +180,6 @@ function EventRain.Terminer()
         pcall(CCS.SetMultiplier, 1)
     end
 
-    local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
-    if ev then pcall(function() ev:FireAllClients("INFO", "☀️ The rain stops... the field stays fertilized!") end) end
-
     Logger.info("Event", "■ Rain Event terminé")
 end
 
