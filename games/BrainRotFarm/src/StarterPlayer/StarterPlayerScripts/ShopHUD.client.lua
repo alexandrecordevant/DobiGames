@@ -305,6 +305,8 @@ end
 -- ============================================================
 -- Mise à jour des boutons dans un bloc upgrade
 -- ============================================================
+local MAX_VISIBLE_BOUTONS = 4  -- fenêtre glissante pour les upgrades multi-paliers
+
 local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
     local info = upgradeFrames[nomUpgrade]
     if not info then return end
@@ -320,17 +322,38 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
     local niveauActuel = getNiveauActuel(donnes, upgradeConfig)
     local panelWidth   = PANEL_W - 16 - 10  -- largeur du container (approx)
     local pad          = 6
-    local nbBoutons    = maxNiveau
 
-    -- Si game pass à 1 niveau, afficher 1 gros bouton
+    -- Indicateur de progression dans le titre (si plus de 4 paliers)
+    if maxNiveau > MAX_VISIBLE_BOUTONS then
+        local nomLbl = info.frame:FindFirstChild("Nom")
+        if nomLbl then
+            local progressText = niveauActuel >= maxNiveau
+                and "MAX"
+                or ("Lv." .. niveauActuel .. "/" .. maxNiveau)
+            nomLbl.Text = upgradeConfig.icone .. "  " .. string.upper(upgradeConfig.nom) .. "   [" .. progressText .. "]"
+        end
+    end
+
+    -- Fenêtre glissante : montre le dernier acheté + les suivants jusqu'à MAX_VISIBLE_BOUTONS
+    local startIdx = 1
+    if maxNiveau > MAX_VISIBLE_BOUTONS then
+        startIdx = math.max(1, niveauActuel)
+        local endIdx = math.min(maxNiveau, startIdx + MAX_VISIBLE_BOUTONS - 1)
+        -- Décaler si on est en fin de liste pour toujours afficher MAX_VISIBLE_BOUTONS boutons
+        if endIdx - startIdx + 1 < MAX_VISIBLE_BOUTONS then
+            startIdx = math.max(1, endIdx - MAX_VISIBLE_BOUTONS + 1)
+        end
+    end
+    local nbBoutons = math.min(maxNiveau - startIdx + 1, maxNiveau > MAX_VISIBLE_BOUTONS and MAX_VISIBLE_BOUTONS or maxNiveau)
+
     local largeurBouton = math.floor((panelWidth - (nbBoutons - 1) * pad) / nbBoutons)
 
-    for niveauNum = 1, maxNiveau do
+    for niveauNum = startIdx, startIdx + nbBoutons - 1 do
         local niveauConfig = upgradeConfig.niveaux[niveauNum]
         if not niveauConfig then continue end
 
         local etat   = getEtatBouton(donnes, upgradeConfig, niveauNum, niveauConfig)
-        local xPos   = (niveauNum - 1) * (largeurBouton + pad)
+        local xPos   = (niveauNum - startIdx) * (largeurBouton + pad)
         local texte  = ""
         local bgCol  = C_GREY_BG
         local txtCol = C_GREY_TXT

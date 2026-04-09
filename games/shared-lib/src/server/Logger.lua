@@ -19,7 +19,6 @@ local PREFIXES = {
     Bot     = "[BOT]",
     Filter  = "[FILTER]",
     Pot     = "[POT]",
-    Rebirth    = "[REBIRTH]",
     AmelioBase = "[AMELIO-BASE]",
     Assign  = "[ASSIGN]",
     Drop    = "[DROP]",

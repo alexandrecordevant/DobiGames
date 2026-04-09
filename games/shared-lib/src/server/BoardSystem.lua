@@ -1,8 +1,7 @@
--- ServerScriptService/Common/BoardSystem.lua
--- BrainRotFarm — Boards cliquables devant chaque base
+-- shared-lib/src/server/BoardSystem.lua
+-- DobiGames shared-lib — Boards cliquables devant chaque base
 -- SurfaceGui sur la face du Board → affiche infos Rebirth
--- ClickDetector → ouvre le menu Rebirth côté client
--- 0 valeur hardcodée — tout lu depuis GameConfig
+-- Le TextButton "BoutonAchat" est cliqué directement par le client (RebirthHUD.client.lua)
 
 local BoardSystem = {}
 
@@ -11,29 +10,23 @@ local BoardSystem = {}
 -- ============================================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
+local Logger            = require(script.Parent.Logger)
 
 -- ============================================================
--- Config (Specialized — aucune valeur hardcodée ici)
+-- Config
 -- ============================================================
-local Logger   = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
-local Config   = require(ReplicatedStorage.GameConfig)
+local Config = require(
+    game.ReplicatedStorage:FindFirstChild("GameConfig")
+    or game.ReplicatedStorage.Specialized.GameConfig
+)
 local boardCfg = Config.BoardConfig or {
-    texteDefaut   = "🔄 REBIRTH\nClick to view",
+    texteDefaut   = "REBIRTH\nClick to view",
     distanceClick = 20,
 }
 
 -- ============================================================
 -- Lazy loaders
 -- ============================================================
-local _RebirthSystem = nil
-local function getRebirthSystem()
-    if not _RebirthSystem then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.RebirthSystem)
-        if ok and m then _RebirthSystem = m end
-    end
-    return _RebirthSystem
-end
-
 local _AssignationSystem = nil
 local function getAssignationSystem()
     if not _AssignationSystem then
@@ -60,27 +53,33 @@ end
 
 -- ============================================================
 -- Création de la SurfaceGui sur le Board
--- Layout : titre blanc sur fond noir + bouton vert avec le prix
--- Le TextButton "BoutonAchat" est cliqué directement par le client
 -- ============================================================
 local function creerSurfaceGui(board)
-    local ancienne = board:FindFirstChild("BoardGui")
-    if ancienne then ancienne:Destroy() end
-
+    -- Supprimer tous les SurfaceGui/BillboardGui existants
+    for _, child in ipairs(board:GetChildren()) do
+        if child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
+            child:Destroy()
+        end
+    end
+    -- Supprimer aussi les TextLabels/Frames parasites Studio
+    for _, child in ipairs(board:GetChildren()) do
+        if child:IsA("TextLabel") or child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
     -- Supprimer l'ancien ClickDetector (le bouton sur le panneau remplace l'interaction)
     local oldCd = board:FindFirstChildOfClass("ClickDetector")
     if oldCd then oldCd:Destroy() end
 
     local sg = Instance.new("SurfaceGui", board)
-    sg.Name          = "BoardGui"
-    sg.Face          = Enum.NormalId.Front
-    sg.SizingMode    = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    sg.PixelsPerStud = 50
-    sg.AlwaysOnTop   = false
-    sg.MaxDistance   = 150
+    sg.Name           = "BoardGui"
+    sg.Face           = Enum.NormalId.Front
+    sg.SizingMode     = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud  = 50
+    sg.AlwaysOnTop    = false
+    sg.MaxDistance    = 80
     sg.LightInfluence = 0.1
 
-    -- Fond gris foncé avec marge pour que les coins arrondis ne mordent pas le panneau
     local fond = Instance.new("Frame", sg)
     fond.Name                   = "Fond"
     fond.Size                   = UDim2.new(1, -8, 1, -8)
@@ -94,7 +93,6 @@ local function creerSurfaceGui(board)
     stroke.Color     = Color3.fromRGB(50, 50, 50)
     stroke.Thickness = 2
 
-    -- Titre blanc
     local lblTitre = Instance.new("TextLabel", fond)
     lblTitre.Name                   = "Titre"
     lblTitre.Size                   = UDim2.new(1, -10, 0.28, 0)
@@ -105,14 +103,12 @@ local function creerSurfaceGui(board)
     lblTitre.TextScaled             = true
     lblTitre.Text                   = "AMÉLIORATION\nDE LA BASE"
 
-    -- Ligne séparatrice
     local sep = Instance.new("Frame", fond)
     sep.Size             = UDim2.new(0.85, 0, 0, 2)
     sep.Position         = UDim2.new(0.075, 0, 0.32, 0)
     sep.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     sep.BorderSizePixel  = 0
 
-    -- Info niveau + multiplicateur
     local lblNiveau = Instance.new("TextLabel", fond)
     lblNiveau.Name                   = "Niveau"
     lblNiveau.Size                   = UDim2.new(1, -10, 0.2, 0)
@@ -123,7 +119,6 @@ local function creerSurfaceGui(board)
     lblNiveau.TextScaled             = true
     lblNiveau.Text                   = "Niveau 0 / 30  ·  x1.0"
 
-    -- Bouton vert d'achat (cliqué directement par le LocalScript client)
     local bouton = Instance.new("TextButton", fond)
     bouton.Name             = "BoutonAchat"
     bouton.Size             = UDim2.new(0.85, 0, 0.3, 0)
@@ -151,19 +146,17 @@ local function mettreAJourSurfaceGui(board, etat)
     local fond = sg:FindFirstChild("Fond")
     if not fond then return end
 
-    local niveau  = etat.rebirthLevel or 0
-    local coinsR  = etat.coinsRequis  or 0
-    local mult    = etat.multiplicateur or (1 + niveau * 0.1)
-    local maxed   = etat.maxAtteint or (niveau >= 30)
-    local dispon  = etat.disponible or false
+    local niveau = etat.rebirthLevel or 0
+    local coinsR = etat.coinsRequis  or 0
+    local mult   = etat.multiplicateur or (1 + niveau * 0.1)
+    local maxed  = etat.maxAtteint or (niveau >= 30)
+    local dispon = etat.disponible or false
 
-    -- Niveau + multiplicateur
     local lblNiveau = fond:FindFirstChild("Niveau")
     if lblNiveau then
         lblNiveau.Text = "Niveau " .. niveau .. " / 30  ·  x" .. string.format("%.1f", mult)
     end
 
-    -- Bouton : prix ou "MAX"
     local bouton = fond:FindFirstChild("BoutonAchat")
     if bouton then
         if maxed then
@@ -183,7 +176,6 @@ local function mettreAJourSurfaceGui(board, etat)
         end
     end
 
-    -- Bordure verte si achat possible
     local stroke = fond:FindFirstChildOfClass("UIStroke")
     if stroke then
         stroke.Color = dispon
@@ -203,22 +195,21 @@ function BoardSystem.Init()
         return
     end
 
-    local maxBases = Config.MaxBases or 6
+    local maxBases = Config.MaxBases or 8
 
     for i = 1, maxBases do
         local base   = bases:FindFirstChild("Base_" .. i)
-        -- Base (floors/spots) dans Shared/ (structure Shared/Specific)
         local shared = base and base:FindFirstChild("Shared")
         local bat    = shared and shared:FindFirstChild("Base")
         local board  = bat and bat:FindFirstChild("Board")
 
         if board then
-            -- Créer la SurfaceGui avec le bouton d'amélioration
-            -- Le clic est géré côté client (RebirthHUD.client.lua)
             creerSurfaceGui(board)
             Logger.debug("Board", "Board configuré → Base_%d", i)
         else
-            Logger.warn("Board", "Board introuvable dans Base_%d", i)
+            if base then
+                Logger.warn("Board", "Board introuvable dans Base_%d", i)
+            end
         end
     end
 
@@ -226,8 +217,7 @@ function BoardSystem.Init()
 end
 
 -- ============================================================
--- API publique — Mise à jour du Board pour un joueur
--- etat = table RebirthButtonUpdate (rebirthLevel, coinsActuels, coinsRequis, etc.)
+-- API publique — MettreAJourBoard
 -- ============================================================
 
 function BoardSystem.MettreAJourBoard(player, etat)
@@ -236,10 +226,9 @@ function BoardSystem.MettreAJourBoard(player, etat)
     local baseIndex = AS.GetBaseIndex(player)
     if not baseIndex then return end
 
-    local bases = Workspace:FindFirstChild("Bases")
+    local bases  = Workspace:FindFirstChild("Bases")
     if not bases then return end
     local base   = bases:FindFirstChild("Base_" .. baseIndex)
-    -- Base (floors/spots) dans Shared/ (structure Shared/Specific)
     local shared = base and base:FindFirstChild("Shared")
     local bat    = shared and shared:FindFirstChild("Base")
     local board  = bat and bat:FindFirstChild("Board")

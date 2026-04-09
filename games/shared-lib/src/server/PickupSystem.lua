@@ -20,13 +20,12 @@ local PickupSystem = {}
 -- Services
 -- ─────────────────────────────────────────────────────────────
 
-local CollectionService = game:GetService("CollectionService")
-local Players           = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService        = game:GetService("RunService")
-local TweenService      = game:GetService("TweenService")
+local CollectionService   = game:GetService("CollectionService")
+local Players             = game:GetService("Players")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
-local Logger = require(script.Parent.Logger)
+local Logger              = require(script.Parent.Logger)
+local BrainrotBillboard   = require(script.Parent.BrainrotBillboard)
 
 -- ─────────────────────────────────────────────────────────────
 -- ⚙️  CONFIGURATION — peut être surchargée via Init(config)
@@ -39,20 +38,6 @@ local DEFAULT_LIFETIME     = 60
 local BILLBOARD_STUDS_Y    = 7
 local ERROR_COOLDOWN       = 1.5
 
--- ─────────────────────────────────────────────────────────────
--- 🎨 COULEURS PAR RARETÉ
--- ─────────────────────────────────────────────────────────────
-
-local RARETE_COULEURS = {
-	COMMON    = Color3.fromRGB(200, 200, 200),
-	RARE      = Color3.fromRGB(0,   120, 255),
-	EPIC      = Color3.fromRGB(150,   0, 255),
-	LEGENDARY = Color3.fromRGB(255, 200,   0),
-	MYTHIC    = Color3.fromRGB(255,  50,  50),
-	GOD       = Color3.fromRGB(255, 140,   0),
-	SECRET    = Color3.fromRGB(255, 255, 255),
-	OG        = Color3.fromRGB(100, 220, 255),
-}
 
 -- ─────────────────────────────────────────────────────────────
 -- CarrySystem — chargement différé (évite dépendance circulaire)
@@ -100,102 +85,6 @@ local function GetRootPart(instance)
 	return nil
 end
 
-local function FormatNombre(n)
-	n = tonumber(n) or 0
-	if     n >= 1e12 then return ("%.1fT"):format(n / 1e12)
-	elseif n >= 1e9  then return ("%.1fB"):format(n / 1e9)
-	elseif n >= 1e6  then return ("%.1fM"):format(n / 1e6)
-	elseif n >= 1e3  then return ("%.1fK"):format(n / 1e3)
-	else                  return tostring(math.floor(n))
-	end
-end
-
-local function FormatTimer(t)
-	t = math.max(0, math.floor(t))
-	local m = math.floor(t / 60)
-	local s = t % 60
-	return m > 0 and ("%d:%02d"):format(m, s) or ("%ds"):format(s)
-end
-
--- ─────────────────────────────────────────────────────────────
--- BILLBOARD
--- ─────────────────────────────────────────────────────────────
-
-local BILLBOARD_NAME = "_BRBillboard"
-
-local function MakeLabel(parent, name, text, posY, color)
-	local label = Instance.new("TextLabel")
-	label.Name                   = name
-	label.Text                   = text
-	label.Size                   = UDim2.new(1, 0, 0.20, 0)
-	label.Position               = UDim2.new(0, 0, posY, 0)
-	label.TextColor3             = color or Color3.new(1, 1, 1)
-	label.TextScaled             = true
-	label.Font                   = Enum.Font.GothamBold
-	label.BackgroundTransparency = 1
-	label.TextStrokeTransparency = 0.5
-	label.TextStrokeColor3       = Color3.new(1, 1, 1)
-	label.Parent                 = parent
-	return label
-end
-
-local function SetupBillboard(brainrot, duration)
-	local root = GetRootPart(brainrot)
-	if not root then return nil end
-
-	for _, child in ipairs(root:GetChildren()) do
-		if child:IsA("BillboardGui") then child:Destroy() end
-	end
-
-	local rarete  = brainrot:GetAttribute("Rarete")         or "COMMON"
-	local nomAff  = brainrot:GetAttribute("OriginalName")   or brainrot.Name
-	local prix    = brainrot:GetAttribute("Prix")           or 0
-	local cps     = brainrot:GetAttribute("CashParSeconde") or 0
-	local couleur = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
-
-	local bb = Instance.new("BillboardGui")
-	bb.Name         = BILLBOARD_NAME
-	bb.Size         = UDim2.new(5, 0, 2.5, 0)
-	bb.StudsOffset  = Vector3.new(0, BILLBOARD_STUDS_Y, 0)
-	bb.AlwaysOnTop  = false
-	bb.ResetOnSpawn = false
-	bb.Parent       = root
-
-	MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(0, 0, 0))
-	local lRarete =
-	MakeLabel(bb, "LRarete", rarete,                            0.20, couleur)
-	MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.40, Color3.fromRGB(0, 220, 0))
-	MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.60, Color3.fromRGB(255, 215, 0))
-	MakeLabel(bb, "LTimer", FormatTimer(duration),              0.80, Color3.fromRGB(220, 60, 60))
-
-	if rarete == "GOD" or rarete == "BRAINROT_GOD" then
-		local hue, conn = 0, nil
-		conn = RunService.Heartbeat:Connect(function(dt)
-			if not lRarete or not lRarete.Parent then conn:Disconnect() return end
-			hue = (hue + dt * 0.5) % 1
-			lRarete.TextColor3 = Color3.fromHSV(hue, 1, 1)
-		end)
-	elseif rarete == "SECRET" then
-		lRarete.TextColor3 = Color3.fromRGB(255, 255, 255)
-		TweenService:Create(lRarete,
-			TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, true),
-			{ TextColor3 = Color3.fromRGB(20, 20, 20) }
-		):Play()
-	end
-
-	return bb
-end
-
-local function UpdateBillboardTimer(brainrot, t)
-	local root = GetRootPart(brainrot)
-	if not root then return end
-	local bb = root:FindFirstChild(BILLBOARD_NAME)
-	if not bb then return end
-	local label = bb:FindFirstChild("LTimer")
-	if not label then return end
-	label.Text = FormatTimer(t)
-	if t <= 10 then label.TextColor3 = Color3.fromRGB(255, 30, 30) end
-end
 
 -- ─────────────────────────────────────────────────────────────
 -- PICKUP — PROXIMITYPROMPT
@@ -284,7 +173,7 @@ local function StartCountdown(brainrot, duration)
 		for t = duration, 0, -1 do
 			-- Arrêt si le BR a quitté workspace (collecté → dans un Tool, ou détruit)
 			if not brainrot or not brainrot:IsDescendantOf(workspace) then return end
-			UpdateBillboardTimer(brainrot, t)
+			BrainrotBillboard.UpdateTimer(brainrot, t)
 			if t > 0 then task.wait(1) end
 		end
 		-- Détruire uniquement si encore dans workspace (pas collecté)
@@ -305,7 +194,7 @@ local function SetupBrainrot(brainrot)
 	if not brainrot:IsDescendantOf(workspace) then return end
 
 	local duration = brainrot:GetAttribute("LifeTime") or DEFAULT_LIFETIME
-	SetupBillboard(brainrot, duration)
+	BrainrotBillboard.SetupField(brainrot, duration, BILLBOARD_STUDS_Y)
 	SetupPickup(brainrot)
 	StartCountdown(brainrot, duration)
 end

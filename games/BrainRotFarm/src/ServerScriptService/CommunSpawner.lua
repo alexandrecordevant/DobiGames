@@ -10,7 +10,6 @@ local CommunSpawner = {}
 -- ============================================================
 local TweenService        = game:GetService("TweenService")
 local Players             = game:GetService("Players")
-local ServerStorage       = game:GetService("ServerStorage")
 local Workspace           = game:GetService("Workspace")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
@@ -102,7 +101,7 @@ local PARTICLE_RATE_ALERTE = 40
 local LIGHT_RANGE_BASE     = 20
 local LIGHT_RANGE_ALERTE   = 40
 
-local BRAINROTS_FOLDER = ServerStorage:WaitForChild("Brainrots")
+local BRAINROTS_FOLDER = ReplicatedStorage:WaitForChild("Brainrots")
 
 -- ============================================================
 -- État interne
@@ -440,6 +439,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	idCounter  = idCounter + 1
 	clone.Name = string.format("CC_%s_%d", typeNom, idCounter)
 	pcall(function() clone:SetAttribute("OriginalName", modeleSource.Name) end)
+	pcall(function() clone:SetAttribute("Rarete", typeNom) end)
 	clone.Parent = Workspace
 
 	local racine = obtenirRacine(clone)
@@ -464,7 +464,11 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	-- Valeur coins depuis GameConfig (fallback : typeConfig.valeur)
 	local valeurCoins = (Config.IncomeParRarete and Config.IncomeParRarete[typeNom])
 	                     or typeConfig.valeur or 0
-	local valeurTexte = valeurCoins > 0 and ("  💰 " .. valeurCoins .. "/s") or ""
+	-- CashParSeconde : copier depuis modèle source, fallback IncomeParRarete
+	local cpsCommunSrc = modeleSource:GetAttribute("CashParSeconde")
+	local cpsCommunVal = cpsCommunSrc or valeurCoins
+	pcall(function() clone:SetAttribute("CashParSeconde", cpsCommunVal) end)
+	local valeurTexte = cpsCommunVal > 0 and ("  💰 " .. cpsCommunVal .. "/s") or ""
 
 	-- ── Filtres rareté + Billboard via FilterManager ────────────────
 	local FM = getFilterManager()

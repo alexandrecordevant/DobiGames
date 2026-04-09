@@ -816,6 +816,82 @@ function BaseProgressionSystem.DebloquerFloorApresRebirth(player, niveauRebirth)
 end
 
 -- ============================================================
+-- Déblocage visuel d'un slot depuis OnLevelUp (rebirth runtime)
+-- Appelé depuis Main.server.lua des deux jeux après chaque amélioration
+-- ============================================================
+
+function BaseProgressionSystem.AppliquerSlotRebirth(player, floorNum, spotNum)
+    local dd = donneesJoueurs[player.UserId]
+    if not dd then return end
+
+    local floorObj = trouverFloor(dd.baseFolder, floorNum)
+    if not floorObj then
+        Logger.warn("Prog", "AppliquerSlotRebirth : Floor %d introuvable", floorNum)
+        return
+    end
+
+    local cle = floorNum .. "_" .. spotNum
+    dd.progression[cle] = true
+
+    if spotNum == 1 and floorNum > 1 then
+        -- Premier slot d'un nouvel étage → déblocage complet de l'étage
+        debloquerEtage(player, dd, floorNum, floorObj)
+    else
+        -- Slot suivant dans un étage déjà visible → débloquer uniquement ce slot
+        local seuil = nil
+        for _, s in ipairs(SEUILS) do
+            if s.floor == floorNum and s.spot == spotNum then
+                seuil = s
+                break
+            end
+        end
+        if seuil then
+            debloquerSpotIndividuel(player, dd, floorObj, seuil)
+        end
+    end
+end
+
+-- ============================================================
+-- Rebirth → Slots  (ordre de déblocage commun aux deux jeux)
+-- Floors 2, 3, 4 … chacun ses spots dans l'ordre croissant
+-- ============================================================
+
+local _rebirthSlotOrder = nil
+local function getRebirthSlotOrder()
+    if _rebirthSlotOrder then return _rebirthSlotOrder end
+    _rebirthSlotOrder = {}
+    for _, floorDef in ipairs(FLOORS) do
+        if floorDef.index > 1 then
+            for spot = 1, (floorDef.spots or 10) do
+                table.insert(_rebirthSlotOrder, { floor = floorDef.index, spot = spot })
+            end
+        end
+    end
+    return _rebirthSlotOrder
+end
+
+-- Construit data.progression depuis le niveau de rebirth.
+-- À appeler AVANT BaseProgressionSystem.Init pour que l'état visuel soit correct.
+function BaseProgressionSystem.BuildProgressionFromRebirth(rebirthLevel)
+    local order = getRebirthSlotOrder()
+    local prog  = {}
+    for i = 1, (rebirthLevel or 0) do
+        local slotInfo = order[i]
+        if slotInfo then
+            prog[slotInfo.floor .. "_" .. slotInfo.spot] = true
+        end
+    end
+    return prog
+end
+
+-- Retourne l'info de slot {floor, spot} correspondant au niveau de rebirth donné.
+-- Utilisé dans OnLevelUp pour ajouter le bon slot à progression.
+function BaseProgressionSystem.GetSlotInfoForRebirth(niveau)
+    local order = getRebirthSlotOrder()
+    return order[niveau]
+end
+
+-- ============================================================
 -- Calcul du coût réduit d'un floor selon le niveau rebirth
 -- ============================================================
 

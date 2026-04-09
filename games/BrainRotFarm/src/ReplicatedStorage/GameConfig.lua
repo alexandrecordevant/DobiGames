@@ -28,7 +28,7 @@ GameConfig.GamePassIds = {
     Protection   = 0,   -- Protection offline (pas de perte)
     OfflineVault = 0,   -- Revenus offline x1 (vault)
     ArroseurMAX  = 0,   -- Arroseur niveau MAX (×5 spawn rate)
-    SpeedMAX     = 0,   -- Speed niveau MAX (walkspeed 36)
+    SpeedMAX     = 0,   -- Speed niveau MAX (walkspeed 40)
     CarryMAX     = 0,   -- Carry niveau MAX (5 BR)
     FlowerPot4   = 0,   -- Débloquer FlowerPot 4 (149 R$)
     SeedDoubler  = 0,   -- Seed Doubler : 2 graines quotidiennes au lieu de 1 (à remplir après création Roblox)
@@ -68,7 +68,7 @@ GameConfig.CoutUpgradeMultiplier  = 2.5
 GameConfig.PrestigeMultiplier     = 2.0
 
 -- === EVENTS AUTOMATIQUES ===
-GameConfig.EventIntervalleMinutes = 120
+GameConfig.EventIntervalleMinutes = 6 --120
 GameConfig.EventDureeMinutes      = 5
 GameConfig.EventSpawnMultiplier   = 10
 GameConfig.EarlyBirdBonusMinutes  = 60
@@ -81,7 +81,7 @@ GameConfig.AdminAbuseHebdo = {
 -- Types d'events aléatoires déclenchés par EventManager.
 -- Modifier cette liste pour ajouter/retirer des events selon le jeu.
 GameConfig.EventTypes = {
-    "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins",
+    "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour",
 }
 
 -- === RARETÉS ===
@@ -161,8 +161,8 @@ GameConfig.ShopUpgrades = {
         description = "Speeds up Brain Rot spawns in your field",
         ordre       = 1,
         niveaux = {
-            [1] = { type="coins", prix=500,   label="Lv.1",    effet={ spawnRateMultiplier=1.6 } },
-            [2] = { type="coins", prix=2000,  label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
+            [1] = { type="coins", prix=1500,  label="Lv.1",    effet={ spawnRateMultiplier=1.6 } },
+            [2] = { type="coins", prix=6000,  label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
             [3] = { type="robux", prix=149,   gamePassId=0,    label="MAX 🔥", effet={ spawnRateMultiplier=5.0 }, isMax=true },
         },
         maxNiveau        = 3,
@@ -176,11 +176,23 @@ GameConfig.ShopUpgrades = {
         description = "Increases your movement speed",
         ordre       = 2,
         niveaux = {
-            [1] = { type="coins", prix=300,  label="Lv.1",   effet={ walkSpeed=22 } },
-            [2] = { type="coins", prix=1000, label="Lv.2",   effet={ walkSpeed=28 } },
-            [3] = { type="robux", prix=99,   gamePassId=0,   label="MAX 🔥", effet={ walkSpeed=36 }, isMax=true },
+            [1]  = { type="coins", prix=500,        label="Lv.1",  effet={ walkSpeed=18 } },
+            [2]  = { type="coins", prix=1500,        label="Lv.2",  effet={ walkSpeed=19 } },
+            [3]  = { type="coins", prix=4000,        label="Lv.3",  effet={ walkSpeed=20 } },
+            [4]  = { type="coins", prix=10000,       label="Lv.4",  effet={ walkSpeed=21 } },
+            [5]  = { type="coins", prix=25000,       label="Lv.5",  effet={ walkSpeed=22 } },
+            [6]  = { type="coins", prix=60000,       label="Lv.6",  effet={ walkSpeed=23 } },
+            [7]  = { type="coins", prix=150000,      label="Lv.7",  effet={ walkSpeed=24 } },
+            [8]  = { type="coins", prix=400000,      label="Lv.8",  effet={ walkSpeed=26 } },
+            [9]  = { type="coins", prix=1000000,     label="Lv.9",  effet={ walkSpeed=28 } },
+            [10] = { type="coins", prix=2500000,     label="Lv.10", effet={ walkSpeed=30 } },
+            [11] = { type="coins", prix=6000000,     label="Lv.11", effet={ walkSpeed=32 } },
+            [12] = { type="coins", prix=15000000,    label="Lv.12", effet={ walkSpeed=33 } },
+            [13] = { type="coins", prix=40000000,    label="Lv.13", effet={ walkSpeed=34 } },
+            [14] = { type="coins", prix=100000000,   label="Lv.14", effet={ walkSpeed=35 } },
+            [15] = { type="robux", prix=99, gamePassId=0, label="MAX 🔥", effet={ walkSpeed=40 }, isMax=true },
         },
-        maxNiveau        = 3,
+        maxNiveau        = 15,
         dataField        = "upgradeSpeed",
         iconeLeaderboard = true,
     },
@@ -191,9 +203,9 @@ GameConfig.ShopUpgrades = {
         description = "Increases your Brain Rot carry capacity",
         ordre       = 3,
         niveaux = {
-            [1] = { type="coins", prix=500,  label="Lv.1",   effet={ carryCapacite=3 } },
-            [2] = { type="coins", prix=2000, label="Lv.2",   effet={ carryCapacite=5 } },
-            [3] = { type="robux", prix=149,  gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
+            [1] = { type="coins", prix=1200,  label="Lv.1",   effet={ carryCapacite=3 } },
+            [2] = { type="coins", prix=5000,  label="Lv.2",   effet={ carryCapacite=5 } },
+            [3] = { type="robux", prix=149,   gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
         },
         maxNiveau        = 3,
         dataField        = "upgradeCarry",
@@ -206,8 +218,8 @@ GameConfig.ShopUpgrades = {
         description = "Increases Brain Rot collection radius",
         ordre       = 4,
         niveaux = {
-            [1] = { type="coins", prix=800,  label="Lv.1",   effet={ rayonCollecte=8  } },
-            [2] = { type="coins", prix=3000, label="Lv.2",   effet={ rayonCollecte=14 }, isMax=true },
+            [1] = { type="coins", prix=2000,  label="Lv.1",   effet={ rayonCollecte=8  } },
+            [2] = { type="coins", prix=8000,  label="Lv.2",   effet={ rayonCollecte=14 }, isMax=true },
         },
         maxNiveau        = 2,
         dataField        = "upgradeAimant",
@@ -268,7 +280,7 @@ GameConfig.BadgePremierPrestige = 0
 GameConfig.EventsVisuels = {
 
     NightMode = {
-        duree          = 45,
+        duree          = 90,
         brightnessMin  = 0,
         ambientNuit    = Color3.fromRGB(0, 0, 20),
         ambientJour    = Color3.fromRGB(70, 70, 70),
@@ -309,6 +321,15 @@ GameConfig.EventsVisuels = {
         message        = "✨ GOLDEN EVENT! All earnings ×5 for 60s!",
         messageFin     = "✨ The Golden Event is over. See you soon!",
     },
+
+    LuckyHour = {
+        duree           = 60,
+        rarityPool      = { RARE = 60, EPIC = 35, LEGENDARY = 5 },
+        spawnInterval   = 10,
+        couleurAmbiance = Color3.fromRGB(180, 0, 255),
+        message         = "⭐ LUCKY HOUR! Des BR rares spawnnent sur votre base!",
+        messageFin      = "⭐ La Lucky Hour est terminée.",
+    },
 }
 
 -- Positions spawn points ChampCommun (utilisées par Rain + MeteorDrop)
@@ -344,39 +365,39 @@ GameConfig.ProgressionConfig = {
         { floor=1, spot=8,  coins=0,      label="Start"         },
         { floor=1, spot=9,  coins=0,      label="Start"         },
         { floor=1, spot=10, coins=0,      label="Start"         },
-        -- Floor 2
-        { floor=2, spot=1,  coins=2000,   label="Stage 2"       },
-        { floor=2, spot=2,  coins=2500,   label="2 500 coins"   },
-        { floor=2, spot=3,  coins=3000,   label="3 000 coins"   },
-        { floor=2, spot=4,  coins=3500,   label="3 500 coins"   },
-        { floor=2, spot=5,  coins=4000,   label="4 000 coins"   },
-        { floor=2, spot=6,  coins=5000,   label="5 000 coins"   },
-        { floor=2, spot=7,  coins=6000,   label="6 000 coins"   },
-        { floor=2, spot=8,  coins=7000,   label="7 000 coins"   },
-        { floor=2, spot=9,  coins=8000,   label="8 000 coins"   },
-        { floor=2, spot=10, coins=10000,  label="10 000 coins"  },
+        -- Floor 2 — déblocage via Rebirth uniquement (coins=9999999999 = jamais auto)
+        { floor=2, spot=1,  coins=9999999999, label="Rebirth 1"  },
+        { floor=2, spot=2,  coins=9999999999, label="Rebirth 2"  },
+        { floor=2, spot=3,  coins=9999999999, label="Rebirth 3"  },
+        { floor=2, spot=4,  coins=9999999999, label="Rebirth 4"  },
+        { floor=2, spot=5,  coins=9999999999, label="Rebirth 5"  },
+        { floor=2, spot=6,  coins=9999999999, label="Rebirth 6"  },
+        { floor=2, spot=7,  coins=9999999999, label="Rebirth 7"  },
+        { floor=2, spot=8,  coins=9999999999, label="Rebirth 8"  },
+        { floor=2, spot=9,  coins=9999999999, label="Rebirth 9"  },
+        { floor=2, spot=10, coins=9999999999, label="Rebirth 10" },
         -- Floor 3
-        { floor=3, spot=1,  coins=15000,  label="Stage 3"       },
-        { floor=3, spot=2,  coins=18000,  label="18 000 coins"  },
-        { floor=3, spot=3,  coins=21000,  label="21 000 coins"  },
-        { floor=3, spot=4,  coins=25000,  label="25 000 coins"  },
-        { floor=3, spot=5,  coins=30000,  label="30 000 coins"  },
-        { floor=3, spot=6,  coins=35000,  label="35 000 coins"  },
-        { floor=3, spot=7,  coins=40000,  label="40 000 coins"  },
-        { floor=3, spot=8,  coins=45000,  label="45 000 coins"  },
-        { floor=3, spot=9,  coins=50000,  label="50 000 coins"  },
-        { floor=3, spot=10, coins=60000,  label="60 000 coins"  },
+        { floor=3, spot=1,  coins=9999999999, label="Rebirth 11" },
+        { floor=3, spot=2,  coins=9999999999, label="Rebirth 12" },
+        { floor=3, spot=3,  coins=9999999999, label="Rebirth 13" },
+        { floor=3, spot=4,  coins=9999999999, label="Rebirth 14" },
+        { floor=3, spot=5,  coins=9999999999, label="Rebirth 15" },
+        { floor=3, spot=6,  coins=9999999999, label="Rebirth 16" },
+        { floor=3, spot=7,  coins=9999999999, label="Rebirth 17" },
+        { floor=3, spot=8,  coins=9999999999, label="Rebirth 18" },
+        { floor=3, spot=9,  coins=9999999999, label="Rebirth 19" },
+        { floor=3, spot=10, coins=9999999999, label="Rebirth 20" },
         -- Floor 4
-        { floor=4, spot=1,  coins=80000,  label="Stage 4"       },
-        { floor=4, spot=2,  coins=90000,  label="90 000 coins"  },
-        { floor=4, spot=3,  coins=100000, label="100 000 coins" },
-        { floor=4, spot=4,  coins=120000, label="120 000 coins" },
-        { floor=4, spot=5,  coins=140000, label="140 000 coins" },
-        { floor=4, spot=6,  coins=160000, label="160 000 coins" },
-        { floor=4, spot=7,  coins=180000, label="180 000 coins" },
-        { floor=4, spot=8,  coins=200000, label="200 000 coins" },
-        { floor=4, spot=9,  coins=250000, label="250 000 coins" },
-        { floor=4, spot=10, coins=300000, label="300 000 coins" },
+        { floor=4, spot=1,  coins=9999999999, label="Rebirth 21" },
+        { floor=4, spot=2,  coins=9999999999, label="Rebirth 22" },
+        { floor=4, spot=3,  coins=9999999999, label="Rebirth 23" },
+        { floor=4, spot=4,  coins=9999999999, label="Rebirth 24" },
+        { floor=4, spot=5,  coins=9999999999, label="Rebirth 25" },
+        { floor=4, spot=6,  coins=9999999999, label="Rebirth 26" },
+        { floor=4, spot=7,  coins=9999999999, label="Rebirth 27" },
+        { floor=4, spot=8,  coins=9999999999, label="Rebirth 28" },
+        { floor=4, spot=9,  coins=9999999999, label="Rebirth 29" },
+        { floor=4, spot=10, coins=9999999999, label="Rebirth 30" },
     },
 
     -- true = progression basée sur les coins TOTAUX gagnés (jamais régressif)

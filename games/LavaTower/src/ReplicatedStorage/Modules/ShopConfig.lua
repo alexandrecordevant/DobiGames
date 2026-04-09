@@ -57,6 +57,18 @@ ShopConfig.Jump = {
     OnlyInTower     = true,
 }
 
+-- ── OBJETS (achat unique) ──────────────────────────────────────────────────
+-- Rangés dans ReplicatedStorage/Tools/
+ShopConfig.Bat = {
+    Price = 500,
+    Label = "Bat",
+}
+
+ShopConfig.GoldSlap = {
+    Price = 10000,
+    Label = "GoldSlap",
+}
+
 -- ── HELPERS ────────────────────────────────────────────────────────────────
 
 -- WalkSpeed réelle pour un niveau donné (additif)

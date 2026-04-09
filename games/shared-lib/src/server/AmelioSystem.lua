@@ -1,4 +1,4 @@
--- shared-lib/server/RebirthSystem.lua
+-- shared-lib/server/AmelioSystem.lua
 -- DobiGames — Système d'Amélioration de Base générique
 --
 -- Principe : le joueur paie des coins pour débloquer un slot supplémentaire
@@ -6,11 +6,11 @@
 -- ni sa progression.
 --
 -- Callbacks à injecter depuis Main.server.lua :
---   RebirthSystem.Config         = require(...RebirthConfig)
---   RebirthSystem.OnLevelUp      = function(player, newLevel, cfg)
---   RebirthSystem.OnButtonUpdate = function(player, etat)
+--   AmelioSystem.Config         = require(...RebirthConfig)
+--   AmelioSystem.OnLevelUp      = function(player, newLevel, cfg)
+--   AmelioSystem.OnButtonUpdate = function(player, etat)
 
-local RebirthSystem = {}
+local AmelioSystem = {}
 
 -- ============================================================
 -- Services
@@ -29,15 +29,15 @@ local Logger = require(script.Parent.Logger)
 -- ============================================================
 
 -- Table de config des niveaux (RebirthConfig depuis GameConfig)
-RebirthSystem.Config = nil
+AmelioSystem.Config = nil
 
 -- Appelé après chaque amélioration réussie
 -- function(player, newLevel, cfg)
-RebirthSystem.OnLevelUp = nil
+AmelioSystem.OnLevelUp = nil
 
 -- Appelé à chaque envoi de RebirthButtonUpdate (boucle 5s + après collectes)
 -- function(player, etat)
-RebirthSystem.OnButtonUpdate = nil
+AmelioSystem.OnButtonUpdate = nil
 
 -- ============================================================
 -- Helpers config
@@ -46,7 +46,7 @@ RebirthSystem.OnButtonUpdate = nil
 local MAX_LEVEL = 30
 
 local function obtenirConfig(niveau)
-    local cfg = RebirthSystem.Config
+    local cfg = AmelioSystem.Config
     return cfg and cfg[niveau] or nil
 end
 
@@ -108,7 +108,7 @@ end
 -- Vérification des conditions (coins uniquement)
 -- ============================================================
 
-function RebirthSystem.VerifierConditions(player)
+function AmelioSystem.VerifierConditions(player)
     local data = getData(player)
     if not data then return false, { erreur = "Données introuvables" } end
 
@@ -144,7 +144,7 @@ local function envoyerEtatBouton(player)
     local maxAtteint = niveau >= MAX_LEVEL
 
     local cfg = obtenirConfig(prochain)
-    local ok, manques = RebirthSystem.VerifierConditions(player)
+    local ok, manques = AmelioSystem.VerifierConditions(player)
 
     local etat = {
         disponible     = ok,
@@ -159,8 +159,8 @@ local function envoyerEtatBouton(player)
 
     pcall(function() RebirthButtonUpdate:FireClient(player, etat) end)
 
-    if RebirthSystem.OnButtonUpdate then
-        pcall(RebirthSystem.OnButtonUpdate, player, etat)
+    if AmelioSystem.OnButtonUpdate then
+        pcall(AmelioSystem.OnButtonUpdate, player, etat)
     end
 end
 
@@ -271,8 +271,8 @@ local function executerAmelioration(player)
     end
 
     -- Étape 5 : Callback game-specific (ex. ajouter slot LavaTower, refresh BRF)
-    if RebirthSystem.OnLevelUp then
-        pcall(RebirthSystem.OnLevelUp, player, niveau, cfg)
+    if AmelioSystem.OnLevelUp then
+        pcall(AmelioSystem.OnLevelUp, player, niveau, cfg)
     end
 
     -- Étape 6 : Mettre à jour le HUD et le bouton
@@ -298,7 +298,7 @@ DemandeRebirth.OnServerEvent:Connect(function(player)
     local dd = donneesJoueurs[player.UserId]
     if not dd or dd.enCoursDeRebirth then return end
 
-    local ok, manques = RebirthSystem.VerifierConditions(player)
+    local ok, manques = AmelioSystem.VerifierConditions(player)
     if not ok then
         local notif = getNotifEvent()
         if notif then
@@ -337,7 +337,7 @@ end)
 -- API publique
 -- ============================================================
 
-function RebirthSystem.Init(player, playerData, baseIndex)
+function AmelioSystem.Init(player, playerData, baseIndex)
     -- Valeurs par défaut — rétrocompatibles avec les saves existantes
     if playerData.rebirthLevel          == nil then playerData.rebirthLevel          = 0   end
     if playerData.multiplicateurPermanent == nil then playerData.multiplicateurPermanent = 1.0 end
@@ -349,35 +349,33 @@ function RebirthSystem.Init(player, playerData, baseIndex)
         enCoursDeRebirth = false,
     }
 
-    task.delay(2, function()
-        if donneesJoueurs[player.UserId] then
-            envoyerEtatBouton(player)
-        end
-    end)
+    if donneesJoueurs[player.UserId] then
+        envoyerEtatBouton(player)
+    end
 
     Logger.info("AmelioBase", "%s initialisé (base niv.%d, ×%.1f, +%d slots)",
         player.Name, playerData.rebirthLevel,
         playerData.multiplicateurPermanent, playerData.slotsBonus)
 end
 
-function RebirthSystem.GetMultiplicateur(player)
+function AmelioSystem.GetMultiplicateur(player)
     local data = getData(player)
     return data and (data.multiplicateurPermanent or 1.0) or 1.0
 end
 
-function RebirthSystem.GetSlotsBonus(player)
+function AmelioSystem.GetSlotsBonus(player)
     local data = getData(player)
     return data and (data.slotsBonus or 0) or 0
 end
 
-function RebirthSystem.Reset(player)
+function AmelioSystem.Reset(player)
     donneesJoueurs[player.UserId] = nil
 end
 
-function RebirthSystem.MettreAJourBouton(player)
+function AmelioSystem.MettreAJourBouton(player)
     if donneesJoueurs[player.UserId] then
         pcall(envoyerEtatBouton, player)
     end
 end
 
-return RebirthSystem
+return AmelioSystem

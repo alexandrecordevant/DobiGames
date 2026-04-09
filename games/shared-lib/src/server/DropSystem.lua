@@ -15,6 +15,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService        = game:GetService("TweenService")
 local CollectionService   = game:GetService("CollectionService")
 local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
+local BrainrotBillboard   = require(ServerScriptService.SharedLib.Server.BrainrotBillboard)
 
 -- ============================================================
 -- Config
@@ -565,59 +566,6 @@ local function scannerSpots(player, baseIndex)
     end
 end
 
--- ============================================================
--- Recrée le _BRBillboard au-dessus d'un mini-modèle restauré
--- (le modèle cloné depuis ServerStorage n'a pas de _BRBillboard)
--- ============================================================
-
-local RARETE_COULEURS_BILL = {
-    COMMON    = Color3.fromRGB(200, 200, 200),
-    RARE      = Color3.fromRGB(0,   100, 255),
-    EPIC      = Color3.fromRGB(180, 0,   255),
-    LEGENDARY = Color3.fromRGB(255, 165, 0),
-    SECRET    = Color3.fromRGB(255, 255, 255),
-    GOD       = Color3.fromRGB(255, 0,   0),
-}
-
-local function creerBillboardSlot(modeleSlot, valeurSec)
-    if not modeleSlot then return end
-    local root = modeleSlot.PrimaryPart or modeleSlot:FindFirstChildWhichIsA("BasePart")
-    if not root then return end
-
-    local existing = root:FindFirstChild("_BRBillboard")
-    if existing then pcall(function() existing:Destroy() end) end
-
-    local rarete = modeleSlot:GetAttribute("Rarete")       or "COMMON"
-    local nom    = modeleSlot:GetAttribute("OriginalName") or modeleSlot.Name
-    local cps    = valeurSec or modeleSlot:GetAttribute("CashParSeconde") or 0
-    local couleur = RARETE_COULEURS_BILL[rarete] or Color3.new(1, 1, 1)
-
-    local bb = Instance.new("BillboardGui")
-    bb.Name         = "_BRBillboard"
-    bb.Size         = UDim2.new(5, 0, 2.0, 0)
-    bb.StudsOffset  = Vector3.new(0, 4, 0)
-    bb.AlwaysOnTop  = false
-    bb.ResetOnSpawn = false
-    bb.Parent       = root
-
-    local function mkLabel(name, text, posY, color)
-        local lbl = Instance.new("TextLabel", bb)
-        lbl.Name                   = name
-        lbl.Text                   = text
-        lbl.Size                   = UDim2.new(1, 0, 0.34, 0)
-        lbl.Position               = UDim2.new(0, 0, posY, 0)
-        lbl.TextColor3             = color or Color3.new(1, 1, 1)
-        lbl.TextScaled             = true
-        lbl.Font                   = Enum.Font.GothamBold
-        lbl.BackgroundTransparency = 1
-        lbl.TextStrokeTransparency = 0.6
-        lbl.TextStrokeColor3       = Color3.new(0, 0, 0)
-    end
-
-    mkLabel("LNom",    nom,                                    0,    Color3.new(1, 1, 1))
-    mkLabel("LRarete", rarete,                                 0.33, couleur)
-    mkLabel("LCPS",    "$" .. math.floor(cps) .. "/s",        0.67, Color3.fromRGB(255, 215, 0))
-end
 
 -- ============================================================
 -- Restauration des spots depuis playerData (reconnexion)
@@ -716,8 +664,11 @@ local function restaurerDepots(player, playerData)
             end
             valeur = valeur or 0
 
-            -- Recréer le _BRBillboard (le modèle cloné depuis ServerStorage n'en a pas)
-            pcall(creerBillboardSlot, modeleSlot, valeur)
+            -- Billboard base (Nom · Rareté · $Prix · $CPS/s — sans timer)
+            if modeleSlot then
+                pcall(function() modeleSlot:SetAttribute("CashParSeconde", valeur) end)
+                pcall(BrainrotBillboard.SetupBase, modeleSlot)
+            end
 
             -- Restaurer le visuel Mutant (spot doré + particules)
             if isMutant then
@@ -1032,6 +983,12 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Décision : DropSystem ne connaît pas playerData directement —
     -- il délègue la persistance à IncomeSystem.RecalculerIncome qui reçoit getData.
     -- Voir GetSpotsOccupes → appelé par IncomeSystem pour synchro playerData.
+
+    -- Billboard base (Nom · Rareté · $Prix · $CPS/s — sans timer)
+    if modeleSlot then
+        pcall(function() modeleSlot:SetAttribute("CashParSeconde", valeurSec) end)
+        pcall(BrainrotBillboard.SetupBase, modeleSlot)
+    end
 
     -- Mettre à jour le SurfaceGui
     mettreAJourGui(touchPart, valeurSec)

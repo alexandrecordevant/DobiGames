@@ -12,6 +12,7 @@ local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local Workspace           = game:GetService("Workspace")
 local TweenService        = game:GetService("TweenService")
 local ServerScriptService = game:GetService("ServerScriptService")
+local DataStoreService    = game:GetService("DataStoreService")
 
 -- ============================================================
 -- Config
@@ -31,6 +32,8 @@ local MAX_JOUEURS = 6
 local LB_CFG            = Config.Leaderboards or {}
 local UPDATE_CLASSEMENT = LB_CFG.updateClassement or 5   -- secondes entre deux mises à jour classement
 local UPDATE_INFOS      = LB_CFG.updateInfos      or 5   -- secondes entre classement et infos (cycle 10s total)
+local UPDATE_GLOBAL     = LB_CFG.updateGlobal     or 30  -- secondes entre deux refreshes du global LB
+local MAX_GLOBAL        = LB_CFG.maxGlobal        or 10  -- nombre de joueurs affichés dans le global LB
 
 local COULEURS_TOP = {
     [1] = { bg = Color3.fromRGB(255, 215,   0), transp = 0.75 },
@@ -58,8 +61,16 @@ local rowFrames        = {}
 local footerLabel      = nil
 local derniereMaj      = 0
 
--- Cache des Texto Studio — LB1 et LB2, même contenu (rempli dans Init)
+-- Cache des Texto Studio — LB1+LB3 classement local (rempli dans Init)
 local textosLeaderboards = {}
+-- Cache des Texto Studio — LB2+LB4 classement global (rempli dans Init)
+local textosGlobal = {}
+
+-- Global leaderboard via OrderedDataStore
+local globalODS       = nil  -- initialisé dans Init (hors Studio)
+local globalTopCache  = {}   -- { {userId, name, coins} , ... }
+local userNameCache   = {}   -- userId (number) → name (string)
+local lastGlobalFetch = 0
 
 -- ============================================================
 -- Lazy-requires (évite les dépendances circulaires)
@@ -553,6 +564,115 @@ local function GetTopCollecteur()
 end
 
 -- ============================================================
+-- Global Leaderboard — OrderedDataStore
+-- ============================================================
+
+-- Sauvegarde le score d'un joueur dans l'OrderedDataStore global
+local function SauvegarderScoreGlobal(userId, coins)
+    if not globalODS then return end
+    local score = math.floor(coins or 0)
+    if score <= 0 then return end
+    task.spawn(function()
+        local ok, err = pcall(function()
+            globalODS:SetAsync(tostring(userId), score)
+        end)
+        if not ok then
+            Logger.warn("Leaderboard", "GlobalODS SetAsync fail uid=%s : %s", tostring(userId), tostring(err))
+        end
+    end)
+end
+
+-- Résout userId → name (cache + GetNameFromUserIdAsync)
+local function ResolveUserName(userId)
+    if userNameCache[userId] then return userNameCache[userId] end
+    -- Chercher d'abord parmi les joueurs connectés
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.UserId == userId then
+            userNameCache[userId] = p.Name
+            return p.Name
+        end
+    end
+    -- Fallback async
+    local ok, name = pcall(function()
+        return Players:GetNameFromUserIdAsync(userId)
+    end)
+    if ok and name then
+        userNameCache[userId] = name
+        return name
+    end
+    return "Joueur#" .. tostring(userId)
+end
+
+-- Récupère le top global depuis l'ODS (bloquant — appeler dans task.spawn)
+local function FetchTopGlobal()
+    if not globalODS then return end
+    local ok, pages = pcall(function()
+        return globalODS:GetSortedAsync(false, MAX_GLOBAL)
+    end)
+    if not ok or not pages then
+        Logger.warn("Leaderboard", "GlobalODS GetSortedAsync fail : %s", tostring(pages))
+        return
+    end
+    local result = {}
+    local okPage, pageData = pcall(function() return pages:GetCurrentPage() end)
+    if not okPage or not pageData then return end
+    for _, entry in ipairs(pageData) do
+        local uid   = tonumber(entry.key)
+        local score = entry.value
+        if uid then
+            local name = ResolveUserName(uid)
+            table.insert(result, { userId = uid, name = name, coins = score })
+        end
+    end
+    globalTopCache  = result
+    lastGlobalFetch = os.time()
+    Logger.debug("Leaderboard", "Global LB refreshed — %d entrées", #result)
+end
+
+-- Construit le RichText pour LB2+LB4 (global)
+local function BuildTextoGlobal()
+    local sep   = "─────────────────────"
+    local lines = {}
+
+    table.insert(lines, '<b><font color="#00FFFF">🌐 TOP GLOBAL</font></b>')
+    table.insert(lines, sep)
+
+    if #globalTopCache == 0 then
+        table.insert(lines, "  Chargement...")
+    else
+        for i, entry in ipairs(globalTopCache) do
+            local rang   = rangLabel(i)
+            local nom    = tronquer(entry.name, 9)
+            local coins  = "💰" .. formatCoins(entry.coins)
+            local couleur = COULEURS_RICHTEXT[i]
+            if couleur then
+                rang  = '<font color="' .. couleur .. '"><b>' .. rang .. '</b></font>'
+                nom   = '<font color="' .. couleur .. '">'    .. nom  .. '</font>'
+                coins = '<font color="' .. couleur .. '">'    .. coins .. '</font>'
+            end
+            table.insert(lines, rang .. " " .. nom .. " " .. coins)
+        end
+    end
+
+    -- Sous-titre avec âge du refresh
+    local age = os.time() - lastGlobalFetch
+    table.insert(lines, sep)
+    table.insert(lines, '<font color="#888888">🔄 ' .. (age < 60 and age .. "s ago" or math.floor(age/60) .. "m ago") .. ' · tous serveurs</font>')
+
+    return table.concat(lines, "\n")
+end
+
+-- Met à jour les panneaux LB2+LB4 avec le texte global
+local function MettreAJourLeaderboardsGlobal()
+    local texte = BuildTextoGlobal()
+    for _, texto in ipairs(textosGlobal) do
+        if texto and texto.Parent then
+            pcall(function() texto.Text = texte end)
+        end
+    end
+end
+
+-- ============================================================
 -- Leaderboard Classement — LB1 + LB3
 -- Format : RichText, top3 coloré, ligne vide après rang 3
 -- ============================================================
@@ -567,7 +687,6 @@ local NOMS_EVENTS = {
     Rain        = "🌧️ Rain Event",
     Golden      = "✨ Golden Event",
     LuckyHour   = "⭐ Lucky Hour",
-    DoubleCoins = "💰 Double Coins",
     SecretSpawn = "🔴 Secret Spawn",
 }
 
@@ -663,9 +782,6 @@ local function BuildTextoComplet()
 
     return table.concat(lines, "\n")
 end
-
--- ── Table unique : les 2 panneaux reçoivent le même texte ────────────
-local textosLeaderboards = {}
 
 local function MettreAJourLeaderboards()
     local texte = BuildTextoComplet()
@@ -785,11 +901,26 @@ end
 -- ============================================================
 
 local function boucleLeaderboard()
+    local ticksSinceGlobal = 0
+    local ticksParGlobal   = math.max(1, math.floor(UPDATE_GLOBAL / UPDATE_CLASSEMENT))
+
     while true do
-        -- Broadcast classement (panneau 3D custom + clients HUD)
+        -- Broadcast classement local (panneau 3D custom + clients HUD + LB1+LB3)
         pcall(broadcastClassement)
-        -- Mise à jour identique LB1 + LB2 (texte fusionné)
         pcall(MettreAJourLeaderboards)
+
+        -- Refresh global LB (LB2+LB4) toutes les UPDATE_GLOBAL secondes
+        ticksSinceGlobal = ticksSinceGlobal + 1
+        if ticksSinceGlobal >= ticksParGlobal then
+            ticksSinceGlobal = 0
+            task.spawn(function()
+                pcall(FetchTopGlobal)
+                pcall(MettreAJourLeaderboardsGlobal)
+            end)
+        else
+            -- Juste mettre à jour l'affichage (âge du cache) sans refetch
+            pcall(MettreAJourLeaderboardsGlobal)
+        end
 
         -- Footer panneau 3D (compte elapsed en live)
         if footerLabel then
@@ -848,6 +979,19 @@ function LeaderboardSystem.Init()
         leaderboardEvent.Parent = ReplicatedStorage
     end
 
+    -- OrderedDataStore global
+    local okODS, ods = pcall(function()
+        return DataStoreService:GetOrderedDataStore("GlobalLB_Coins_v1")
+    end)
+    if okODS and ods then
+        globalODS = ods
+        Logger.info("Leaderboard", "OrderedDataStore GlobalLB_Coins_v1 ✓")
+        -- Premier fetch global en background
+        task.spawn(FetchTopGlobal)
+    else
+        Logger.warn("Leaderboard", "OrderedDataStore indisponible (Studio sans accès API?) : %s", tostring(ods))
+    end
+
     -- Leaderstats pour les joueurs déjà connectés
     for _, player in ipairs(Players:GetPlayers()) do
         local playerData = LeaderboardSystem.GetPlayerData and LeaderboardSystem.GetPlayerData(player)
@@ -878,17 +1022,33 @@ function LeaderboardSystem.Init()
             Logger.warn("Leaderboard", "Workspace.Leaderboards INTROUVABLE — panneaux Studio désactivés")
         end
 
-        -- Récupérer les 2 textos (LB1 + LB2 — même contenu)
-        local noms = { "Leaderboard1", "Leaderboard2" }
-        local initTexte = "🏆 TOP FARMERS\n─────────────────────\nLoading..."
+        -- LB1 + LB2 → classement local
+        local nomsClassement = { "Leaderboard1", "Leaderboard2" }
+        local initTexteLocal = "🏆 TOP FARMERS\n─────────────────────\nLoading..."
         textosLeaderboards = {}
-        for _, nom in ipairs(noms) do
+        for _, nom in ipairs(nomsClassement) do
             local t = GetLeaderboardTexto(nom)
             if t then
                 pcall(configurerTexto, t)
-                pcall(function() t.Text = initTexte end)
+                pcall(function() t.Text = initTexteLocal end)
                 table.insert(textosLeaderboards, t)
-                Logger.debug("Leaderboard", "%s Texto ✓", nom)
+                Logger.debug("Leaderboard", "%s Texto ✓ (classement local)", nom)
+            else
+                Logger.warn("Leaderboard", "%s Texto INTROUVABLE", nom)
+            end
+        end
+
+        -- LB3 + LB4 → classement global
+        local nomsGlobal = { "Leaderboard3", "Leaderboard4" }
+        local initTexteGlobal = "🌐 TOP GLOBAL\n─────────────────────\nChargement..."
+        textosGlobal = {}
+        for _, nom in ipairs(nomsGlobal) do
+            local t = GetLeaderboardTexto(nom)
+            if t then
+                pcall(configurerTexto, t)
+                pcall(function() t.Text = initTexteGlobal end)
+                table.insert(textosGlobal, t)
+                Logger.debug("Leaderboard", "%s Texto ✓ (global)", nom)
             else
                 Logger.warn("Leaderboard", "%s Texto INTROUVABLE", nom)
             end
@@ -898,13 +1058,17 @@ function LeaderboardSystem.Init()
     -- Lancer la boucle (les textos seront nil pour les 2 premiers ticks, sans effet)
     task.spawn(boucleLeaderboard)
 
-    Logger.info("Leaderboard", "✓ Initialisé (LB1+LB2 identiques · contenu fusionné · cycle %ds)", UPDATE_CLASSEMENT)
+    Logger.info("Leaderboard", "✓ Initialisé (LB1+LB2=local · LB3+LB4=global · cycle %ds · global refresh %ds)", UPDATE_CLASSEMENT, UPDATE_GLOBAL)
 end
 
 -- Mise à jour immédiate (appelée après gain de coins, rebirth, etc.)
 function LeaderboardSystem.MettreAJour(player, playerData)
     if player and playerData then
         pcall(CreerOuMettreAJourLeaderstats, player, playerData)
+        -- Persiste le score dans l'ODS global
+        if playerData.coins and playerData.coins > 0 then
+            SauvegarderScoreGlobal(player.UserId, playerData.coins)
+        end
     end
     task.spawn(function()
         pcall(broadcastClassement)

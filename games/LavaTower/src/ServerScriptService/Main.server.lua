@@ -13,21 +13,21 @@ local Workspace           = game:GetService("Workspace")
 local Config                = require(ReplicatedStorage.Modules.GameConfig)
 local Logger                = require(ServerScriptService.SharedLib.Server.Logger)
 Logger.init(Config.LOG_LEVEL)
-local RebirthConfig         = require(ReplicatedStorage.SharedLib.Shared.RebirthConfig)
+local AmelioConfig          = require(ReplicatedStorage.SharedLib.Shared.AmelioConfig)
 local UpgradeSystem         = require(ReplicatedStorage.Modules.UpgradeSystem)
 local DataStoreManager      = require(ServerScriptService.DataStoreManager)
 local MonetizationHandler   = require(ServerScriptService.MonetizationHandler)
 local AssignationSystem     = require(ServerScriptService.SharedLib.Server.AssignationSystem)
 local BaseProgressionSystem = require(ServerScriptService.SharedLib.Server.BaseProgressionSystem)
-local RebirthSystem         = require(ServerScriptService.SharedLib.Server.RebirthSystem)
+local AmelioSystem          = require(ServerScriptService.SharedLib.Server.AmelioSystem)
 local CarrySystem           = require(ServerScriptService.SharedLib.Server.CarrySystem)
 local DropSystem                = require(ServerScriptService.SharedLib.Server.DropSystem)
 local IncomeSystem              = require(ServerScriptService.SharedLib.Server.IncomeSystem)
-local BoardSystem               = require(ServerScriptService.BoardSystem)
-local RebirthCosmeticsSystem    = require(ServerScriptService.SharedLib.Server.RebirthCosmeticsSystem)
+local BoardSystem               = require(ServerScriptService.SharedLib.Server.BoardSystem)
+local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
 Logger.debug("Main", "[FuseMachine] Chargement du module...")
 local ShopSystem = require(ServerScriptService.ShopSystem)
-local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.FuseMachineSystem)
+local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseMachineSystem)
 if not _fuseOk then
     Logger.error("Main", "[FuseMachine] ERREUR require : %s", tostring(FuseMachineSystem))
     FuseMachineSystem = nil
@@ -56,39 +56,18 @@ DataStoreManager.Setup("LavaTowerV1", function()
         spotsOccupes            = {},
         -- shop upgrades
         shopUpgrades            = { carry = 0, speed = 0, jump = 0 },
+        -- objets boutique
+        hasBat                  = false,
+        batEquipped             = false,
+        hasGoldSlap             = false,
+        goldSlapEquipped        = false,
     }
 end)
 
 -- ═══════════════════════════════════════════════
--- 1b. LOGIQUE REBIRTH → SLOTS
--- Ordre de déblocage des slots par niveau de rebirth :
---   Rebirth 1  → Floor 2, Spot 1
---   Rebirth 2  → Floor 2, Spot 2  ...  Rebirth 10 → Floor 2, Spot 10
---   Rebirth 11 → Floor 3, Spot 1  ...  Rebirth 20 → Floor 3, Spot 10
---   Rebirth 21 → Floor 4, Spot 1  ...  Rebirth 30 → Floor 4, Spot 10
+-- 1b. LOGIQUE REBIRTH → SLOTS  (délégué à shared-lib)
+-- Ordre de déblocage : Floor 2 Spot 1-10, Floor 3 Spot 1-10, Floor 4 Spot 1-10
 -- ═══════════════════════════════════════════════
-
-local REBIRTH_SLOT_ORDER = {}
-do
-    for etage = 2, 4 do
-        for spot = 1, 10 do
-            table.insert(REBIRTH_SLOT_ORDER, { floor = etage, spot = spot })
-        end
-    end
-end
-
--- Construit data.progression depuis le niveau de rebirth.
--- Appelé avant BaseProgressionSystem.Init pour que l'état visuel soit correct.
-local function BuildProgressionFromRebirth(rebirthLevel)
-    local prog = {}
-    for i = 1, (rebirthLevel or 0) do
-        local slotInfo = REBIRTH_SLOT_ORDER[i]
-        if slotInfo then
-            prog[slotInfo.floor .. "_" .. slotInfo.spot] = true
-        end
-    end
-    return prog
-end
 
 -- ═══════════════════════════════════════════════
 -- 2. REMOTEEVENTS
@@ -146,8 +125,8 @@ end
 -- 4. INJECTIONS SHARED-LIB (globales)
 -- ═══════════════════════════════════════════════
 
--- RebirthSystem — config amélioration de base (pas de condition de progression requise)
-RebirthSystem.Config = RebirthConfig
+-- AmelioSystem — config amélioration de base (pas de condition de progression requise)
+AmelioSystem.Config = AmelioConfig
 
 -- CarrySystem — source de vérité pour la base du joueur
 CarrySystem.GetBaseJoueur = function(player)
@@ -156,9 +135,9 @@ end
 
 -- DropSystem — mise à jour du bouton après dépôt/retrait/vente
 DropSystem.OnSpotChange = function(player)
-    RebirthSystem.MettreAJourBouton(player)
+    AmelioSystem.MettreAJourBouton(player)
 end
-RebirthSystem.OnButtonUpdate = function(player, etat)
+AmelioSystem.OnButtonUpdate = function(player, etat)
     BoardSystem.MettreAJourBoard(player, etat)
 end
 
@@ -172,8 +151,8 @@ end
 CarrySystem.Init(BrainrotsFolder)
 DropSystem.SetBrainrotsFolder(BrainrotsFolder)
 
--- RebirthCosmeticsSystem — source de données
-RebirthCosmeticsSystem.GetData = GetData
+-- AmelioCosmeticsSystem — source de données
+AmelioCosmeticsSystem.GetData = GetData
 
 -- ═══════════════════════════════════════════════
 -- 5. CONNEXION JOUEUR
@@ -185,7 +164,7 @@ local function OnPlayerAdded(player)
 
     MonetizationHandler.CheckGamePasses(player, data)
 
-    task.wait(1)
+    task.wait(0.3)
     EnvoyerHUD(player, data)
 
     local baseIndex = AssignationSystem.AssignerJoueur(player)
@@ -193,7 +172,7 @@ local function OnPlayerAdded(player)
         -- Reconstruire la progression à partir du niveau rebirth AVANT Init.
         -- Garantit que les slots débloqués par rebirth sont corrects même après
         -- un changement de système ou une reconnexion.
-        data.progression = BuildProgressionFromRebirth(data.rebirthLevel or 0)
+        data.progression = BaseProgressionSystem.BuildProgressionFromRebirth(data.rebirthLevel or 0)
 
         BaseProgressionSystem.Init(player, baseIndex, data)
         BaseProgressionSystem.VerifierDeblocages(player, data)
@@ -204,20 +183,13 @@ local function OnPlayerAdded(player)
         DropSystem.Init(player, baseIndex, data)
         IncomeSystem.Init(player, function() return GetData(player) end)
 
-        -- Notifier le client de son baseIndex assigné (utilisé pour SlotTextStyle)
-        task.delay(0.5, function()
-            if player.Parent then
-                AssignBase:FireClient(player, baseIndex)
-            end
-        end)
-
-        RebirthSystem.OnLevelUp = function(p, niveau, cfg)
+        AmelioSystem.OnLevelUp = function(p, niveau, cfg)
             local d = GetData(p)
             if not d then return end
-            -- Ajouter le nouveau slot de tour à la progression
-            local slotInfo = REBIRTH_SLOT_ORDER[niveau]
+            -- Appliquer le slot visuellement (floor + spot) via shared-lib
+            local slotInfo = BaseProgressionSystem.GetSlotInfoForRebirth(niveau)
             if slotInfo then
-                d.progression[slotInfo.floor .. "_" .. slotInfo.spot] = true
+                pcall(BaseProgressionSystem.AppliquerSlotRebirth, p, slotInfo.floor, slotInfo.spot)
             end
             -- Réinitialiser les systèmes pour que le nouveau slot soit actif
             local bIndex = AssignationSystem.GetBaseIndex(p)
@@ -229,26 +201,22 @@ local function OnPlayerAdded(player)
                 local spotsApres = BaseProgressionSystem.GetSpotsActifs(p)
                 CarrySystem.InitDepotSpotsBase(p, spotsApres)
             end
-            -- Débloquer un floor visuellement au premier slot de chaque étage
-            -- Amélioration 1 → Floor 2 · Amélioration 11 → Floor 3 · Amélioration 21 → Floor 4
-            local SPOTS_PAR_ETAGE = 10
-            for etageIdx = 2, 4 do
-                if niveau == (etageIdx - 2) * SPOTS_PAR_ETAGE + 1 then
-                    pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, p, etageIdx - 1)
-                    break
-                end
-            end
             -- Mettre à jour le board
-            local nextCfg = RebirthSystem.Config[niveau + 1]
+            local nextCfg = AmelioSystem.Config[niveau + 1]
             pcall(BoardSystem.MettreAJourBoard, p, {
                 rebirthLevel = niveau,
                 coinsActuels = d.coins or 0,
                 coinsRequis  = nextCfg and nextCfg.coinsRequis or 0,
             })
         end
-        RebirthSystem.Init(player, data, baseIndex)
+        AmelioSystem.Init(player, data, baseIndex)
 
-        -- RebirthCosmeticsSystem désactivé pour LavaTower (pas d'auras/trails voulus)
+        -- Notifier le client de son baseIndex (après AmelioSystem.Init pour que le BoardGui soit prêt)
+        if player.Parent then
+            AssignBase:FireClient(player, baseIndex)
+        end
+
+        -- AmelioCosmeticsSystem désactivé pour LavaTower (pas d'auras/trails voulus)
     end
 
     DataStoreManager.StartAutoSave(player, function()
@@ -269,7 +237,7 @@ local function OnPlayerRemoving(player)
         DataStoreManager.Save(player, data)
         playerDataCache[player.UserId] = nil
         BaseProgressionSystem.Reset(player)
-        RebirthSystem.Reset(player)
+        AmelioSystem.Reset(player)
         DropSystem.Stop(player)
         AssignationSystem.LibererBase(player)
         Logger.info("Main", "%s sauvegardé", player.Name)
@@ -346,7 +314,7 @@ end
 
 AssignationSystem.Init()
 BoardSystem.Init()
--- RebirthCosmeticsSystem.Init() désactivé pour LavaTower
+-- AmelioCosmeticsSystem.Init() désactivé pour LavaTower
 
 -- ═══════════════════════════════════════════════
 -- 9. FUSE MACHINE
@@ -374,7 +342,7 @@ end
 
 if FuseMachineSystem then
     Logger.debug("Main", "[FuseMachine] Appel Init()...")
-    local ok, err = pcall(FuseMachineSystem.Init)
+    local ok, err = pcall(FuseMachineSystem.Init, require(ReplicatedStorage.Modules.FuseConfig))
     if not ok then
         Logger.error("Main", "[FuseMachine] ERREUR Init() : %s", tostring(err))
     end

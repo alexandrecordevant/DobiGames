@@ -1,15 +1,15 @@
--- ServerScriptService/RebirthCosmeticsSystem.lua
--- BrainRotFarm — Cosmétiques visuels progressifs par palier de Rebirth
+-- ServerScriptService/AmelioCosmeticsSystem.lua
+-- BrainRotFarm — Cosmétiques visuels progressifs par palier d'Amélioration
 -- Auras + Trails + Effets spéciaux appliqués au character du joueur
--- Dépendance injectée : RebirthCosmeticsSystem.GetData = GetData (depuis Main.server.lua)
+-- Dépendance injectée : AmelioCosmeticsSystem.GetData = GetData (depuis Main.server.lua)
 
-local RebirthCosmeticsSystem = {}
+local AmelioCosmeticsSystem = {}
 
 local Players = game:GetService("Players")
 local Logger = require(script.Parent.Logger)
 
 -- Source de données injectée depuis Main.server.lua
-RebirthCosmeticsSystem.GetData = nil
+AmelioCosmeticsSystem.GetData = nil
 
 -- ============================================================
 -- Paliers cosmétiques par niveau de rebirth
@@ -246,9 +246,9 @@ local function initialiserPourJoueur(player, character)
     if not character or not character.Parent then return end
 
     -- Récupérer les données du joueur via le callback injecté
-    local getData = RebirthCosmeticsSystem.GetData
+    local getData = AmelioCosmeticsSystem.GetData
     if not getData then
-        Logger.warn("Rebirth", "GetData non injecté — cosmétiques ignorés pour %s", player.Name)
+        Logger.warn("Cosmet", "GetData non injecté — cosmétiques ignorés pour %s", player.Name)
         return
     end
     local data = getData(player)
@@ -267,7 +267,7 @@ local function initialiserPourJoueur(player, character)
 
     appliquerCosmetiques(character, config)
 
-    Logger.debug("Rebirth", "%s → Rebirth %d — cosmétiques palier appliqués", player.Name, rebirthLevel)
+    Logger.debug("Cosmet", "%s → Amélioration %d — cosmétiques palier appliqués", player.Name, rebirthLevel)
 end
 
 -- ============================================================
@@ -275,30 +275,30 @@ end
 -- ============================================================
 
 -- Appelé depuis Main.server.lua lors de chaque CharacterAdded
-function RebirthCosmeticsSystem.AppliquerPourJoueur(player, character)
+function AmelioCosmeticsSystem.AppliquerPourJoueur(player, character)
     task.spawn(initialiserPourJoueur, player, character)
 end
 
 -- Initialisation du système (hook Players.PlayerAdded automatique)
-function RebirthCosmeticsSystem.Init()
+function AmelioCosmeticsSystem.Init()
     -- Connecter les joueurs déjà présents (jointure avant Init)
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Character then
-            RebirthCosmeticsSystem.AppliquerPourJoueur(player, player.Character)
+            AmelioCosmeticsSystem.AppliquerPourJoueur(player, player.Character)
         end
         player.CharacterAdded:Connect(function(character)
-            RebirthCosmeticsSystem.AppliquerPourJoueur(player, character)
+            AmelioCosmeticsSystem.AppliquerPourJoueur(player, character)
         end)
     end
 
     -- Connecter les futurs joueurs
     Players.PlayerAdded:Connect(function(player)
         player.CharacterAdded:Connect(function(character)
-            RebirthCosmeticsSystem.AppliquerPourJoueur(player, character)
+            AmelioCosmeticsSystem.AppliquerPourJoueur(player, character)
         end)
     end)
 
-    Logger.info("Rebirth", "Initialisé ✓")
+    Logger.info("Cosmet", "Initialisé ✓")
 end
 
-return RebirthCosmeticsSystem
+return AmelioCosmeticsSystem

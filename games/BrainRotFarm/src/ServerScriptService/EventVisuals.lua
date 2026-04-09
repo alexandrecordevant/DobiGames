@@ -51,72 +51,16 @@ end
 -- ============================================================
 -- Chargement différé des systèmes gameplay
 -- ============================================================
-local _SpawnManager = nil
-local function getBrainRotSpawner()
-    if not _SpawnManager then
-        local ok, m = pcall(require, ServerScriptService.SpawnManager)
-        if ok and m then _SpawnManager = m end
-    end
-    return _SpawnManager
-end
-
-local _IncomeSystem = nil
-local function getIncomeSystem()
-    if not _IncomeSystem then
-        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.IncomeSystem)
-        if ok and m then _IncomeSystem = m end
-    end
-    return _IncomeSystem
-end
-
-local _CollectSystem = nil
-local function getCollectSystem()
-    if not _CollectSystem then
-        local ok, m = pcall(require, ServerScriptService.SharedLib.Shared.CollectSystem)
-        if ok and m then _CollectSystem = m end
-    end
-    return _CollectSystem
-end
 
 -- ============================================================
 -- Config gameplay des events sans module visuel
--- LuckyHour, DoubleCoins, SecretSpawn gardent leurs effets ici
+-- SecretSpawn garde ses effets ici (LuckyHour a son propre module)
 -- ============================================================
 local function getDureeEvent()
     return Config.EventDureeMinutes * 60
 end
 
 local CONFIGS_GAMEPLAY = {
-    LuckyHour = {
-        duree     = getDureeEvent,  -- fonction appelée au lancement
-        msg       = "⭐ LUCKY HOUR! Spawn ×10!",
-        msgFin    = "⭐ Lucky Hour ended.",
-        appliquer = function()
-            local BRS = getBrainRotSpawner()
-            if BRS then pcall(BRS.SetEventMultiplier, 10) end
-        end,
-        terminer  = function()
-            local BRS = getBrainRotSpawner()
-            if BRS then pcall(BRS.SetEventMultiplier, 1) end
-        end,
-    },
-    DoubleCoins = {
-        duree     = getDureeEvent,
-        msg       = "💰 DOUBLE COINS! ×5!",
-        msgFin    = "💰 Double Coins ended.",
-        appliquer = function()
-            local IS = getIncomeSystem()
-            local CS = getCollectSystem()
-            if IS then pcall(IS.SetEventMultiplier, 5) end
-            if CS then pcall(CS.SetEventMultiplier, 5) end
-        end,
-        terminer  = function()
-            local IS = getIncomeSystem()
-            local CS = getCollectSystem()
-            if IS then pcall(IS.SetEventMultiplier, 1) end
-            if CS then pcall(CS.SetEventMultiplier, 1) end
-        end,
-    },
     SecretSpawn = {
         duree     = getDureeEvent,
         msg       = "🔴 SECRET SPAWN! Rare " .. Config.CollectibleName .. "!",
@@ -230,7 +174,7 @@ function EventVisuals.Lancer(nomEvent)
         eventActif = nomEvent
         pcall(module.Demarrer, cfgVisuelle)
     else
-        -- Event sans module visuel (LuckyHour, DoubleCoins, SecretSpawn)
+        -- Event sans module visuel (SecretSpawn — LuckyHour a son propre module)
         local cfgGameplay = CONFIGS_GAMEPLAY[nomEvent]
         if not cfgGameplay then
             Logger.warn("Event", "Event inconnu : %s", tostring(nomEvent))

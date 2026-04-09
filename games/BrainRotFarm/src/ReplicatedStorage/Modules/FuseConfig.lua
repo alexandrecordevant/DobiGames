@@ -1,5 +1,5 @@
 -- ReplicatedStorage/Modules/FuseConfig.lua
--- Configuration de la Fuse Machine — LavaTower
+-- Configuration de la Fuse Machine — BrainRot Farm
 -- Recettes, timer, coûts, couleurs
 
 local FuseConfig = {}

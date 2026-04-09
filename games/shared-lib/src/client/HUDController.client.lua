@@ -4,7 +4,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService     = game:GetService("TweenService")
 local player           = Players.LocalPlayer
 local Config = require(ReplicatedStorage:WaitForChild("GameConfig"))
-local T                = require(ReplicatedStorage.SharedLib.Shared.UITheme)
+local _uiThemeModule = ReplicatedStorage.SharedLib.Shared:FindFirstChild("UITheme")
+if not _uiThemeModule then return end  -- HUDController BRF-only : pas de UITheme = mauvais jeu
+local T = require(_uiThemeModule)
 local Logger           = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local gui = Instance.new("ScreenGui")

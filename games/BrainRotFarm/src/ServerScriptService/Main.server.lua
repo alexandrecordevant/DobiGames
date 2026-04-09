@@ -14,7 +14,7 @@ local RunService         = game:GetService("RunService")
 local Config             = require(ReplicatedStorage.GameConfig)
 local Logger             = require(ServerScriptService.SharedLib.Server.Logger)
 Logger.init(Config.LOG_LEVEL)
-local RebirthConfig      = require(ReplicatedStorage.SharedLib.Shared.RebirthConfig)
+local AmelioConfig       = require(ReplicatedStorage.SharedLib.Shared.AmelioConfig)
 local CollectSystem      = require(ServerScriptService.SharedLib.Shared.CollectSystem)
 local UpgradeSystem      = require(ServerScriptService.SharedLib.Shared.UpgradeSystem)
 
@@ -24,7 +24,7 @@ local MonetizationHandler   = require(ServerScriptService.SharedLib.Server.Monet
 local SpawnManager          = require(ServerScriptService.SpawnManager)
 local BaseProgressionSystem = require(ServerScriptService.SharedLib.Server.BaseProgressionSystem)
 local CarrySystem           = require(ServerScriptService.SharedLib.Server.CarrySystem)
-local RebirthSystem         = require(ServerScriptService.SharedLib.Server.RebirthSystem)
+local AmelioSystem          = require(ServerScriptService.SharedLib.Server.AmelioSystem)
 local AssignationSystem     = require(ServerScriptService.SharedLib.Server.AssignationSystem)
 local DropSystem            = require(ServerScriptService.SharedLib.Server.DropSystem)
 local IncomeSystem          = require(ServerScriptService.SharedLib.Server.IncomeSystem)
@@ -35,10 +35,17 @@ local TracteurSystem        = require(ServerScriptService.TracteurSystem)
 local FlowerPotGrowthSystem = require(ServerScriptService.Systems.FlowerPotSystem.FlowerPotGrowthSystem)
 local SeedInventory         = require(ServerScriptService.SeedInventory)
 local DiscordWebhook        = require(ServerScriptService.DiscordWebhook)
-local BoardSystem               = require(ServerScriptService.BoardSystem)
+local BoardSystem               = require(ServerScriptService.SharedLib.Server.BoardSystem)
 local ArbreSystem               = require(ServerScriptService.ArbreSystem)
 local BaleSystem                = require(ServerScriptService.BaleSystem)
-local RebirthCosmeticsSystem    = require(ServerScriptService.SharedLib.Server.RebirthCosmeticsSystem)
+local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
+local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseMachineSystem)
+if not _fuseOk then
+    Logger.error("Main", "[FuseMachine] ERREUR require : %s", tostring(FuseMachineSystem))
+    FuseMachineSystem = nil
+else
+    Logger.info("Main", "[FuseMachine] Module chargé ✓")
+end
 
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
@@ -63,6 +70,7 @@ local function CreerRemoteFunction(nom)
 end
 
 -- Events serveur → client
+local AssignBase         = CreerRemoteEvent("AssignBase")
 local UpdateHUD          = CreerRemoteEvent("UpdateHUD")
 local NotifEvent         = CreerRemoteEvent("NotifEvent")
 local EventStarted       = CreerRemoteEvent("EventStarted")
@@ -197,7 +205,10 @@ InitialiserPots = function(player, baseIndex, playerData)
 
         -- Cacher/montrer le modèle cadenas physique selon l'état du pot
         local cadenas = base:FindFirstChild("Cadenas_B" .. baseIndex .. "_P" .. potIndex, true)
-        Logger.debug("Main", "[DEBUG Cadenas] Pot%d trouvé=%s debloque=%s", potIndex, tostring(cadenas ~= nil), tostring(potData.debloque))
+            or potModel:FindFirstChild("Cadenas", true)
+        if not cadenas then
+            Logger.warn("Main", "Cadenas introuvable pour Base_%s Pot%d", tostring(baseIndex), potIndex)
+        end
         if cadenas then
             local visible = not potData.debloque
             for _, desc in ipairs(cadenas:GetDescendants()) do
@@ -561,9 +572,12 @@ local function OnPlayerAdded(player)
             pcall(SpawnManager.AssignerBase, player, baseIndex)
         end
 
+        -- Reconstruire la progression à partir du niveau rebirth AVANT Init.
+        -- Garantit que les slots débloqués par rebirth sont corrects après reconnexion.
+        data.progression = BaseProgressionSystem.BuildProgressionFromRebirth(data.rebirthLevel or 0)
+
         -- Initialiser la progression visuelle de la base
         BaseProgressionSystem.Init(player, baseIndex, data)
-        BaseProgressionSystem.VerifierDeblocages(player, data)
 
         -- Créer les ProximityPrompts de dépôt sur les spots actifs
         local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
@@ -615,7 +629,7 @@ local function OnPlayerAdded(player)
             local function onTracteurCollect(rareteNom, valeurBase)
                 local d = GetData(player)
                 if not d then return end
-                local mult = RebirthSystem.GetMultiplicateur(player) or 1
+                local mult = AmelioSystem.GetMultiplicateur(player) or 1
                 local coins = math.floor(valeurBase * mult)
                 d.coins           = d.coins + coins
                 d.totalCoinsGagnes = (d.totalCoinsGagnes or 0) + coins
@@ -651,21 +665,33 @@ local function OnPlayerAdded(player)
         end
 
         -- Initialiser le système d'Amélioration de Base
-        RebirthSystem.Config = RebirthConfig
-        RebirthSystem.OnButtonUpdate = function(p, etat)
+        AmelioSystem.Config = AmelioConfig
+        AmelioSystem.OnButtonUpdate = function(p, etat)
             BoardSystem.MettreAJourBoard(p, etat)
         end
-        RebirthSystem.OnLevelUp = function(p, niveau, cfg)
-            -- Rafraîchir les spots de dépôt (slotsBonus a augmenté)
-            local spotsActifs = BaseProgressionSystem.GetSpotsActifs(p)
-            CarrySystem.InitDepotSpotsBase(p, spotsActifs)
-            -- Vérifier si un nouveau floor se débloque visuellement
-            pcall(BaseProgressionSystem.DebloquerFloorApresRebirth, p, niveau)
+        AmelioSystem.OnLevelUp = function(p, niveau, cfg)
+            local d = GetData(p)
+            if not d then return end
+            -- Appliquer le slot visuellement (floor + spot) via shared-lib
+            local slotInfo = BaseProgressionSystem.GetSlotInfoForRebirth(niveau)
+            if slotInfo then
+                pcall(BaseProgressionSystem.AppliquerSlotRebirth, p, slotInfo.floor, slotInfo.spot)
+            end
+            -- Réinitialiser les systèmes pour que le nouveau slot soit actif
+            local bIndex = AssignationSystem.GetBaseIndex(p)
+            if bIndex then
+                DropSystem.Stop(p)
+                IncomeSystem.Stop(p)
+                DropSystem.Init(p, bIndex, d)
+                IncomeSystem.Init(p, function() return GetData(p) end)
+                local spotsApres = BaseProgressionSystem.GetSpotsActifs(p)
+                CarrySystem.InitDepotSpotsBase(p, spotsApres)
+            end
             -- Mettre à jour le board
-            local nextCfg = RebirthSystem.Config[niveau + 1]
+            local nextCfg = AmelioSystem.Config[niveau + 1]
             pcall(BoardSystem.MettreAJourBoard, p, {
                 rebirthLevel = niveau,
-                coinsActuels = GetData(p) and GetData(p).coins or 0,
+                coinsActuels = d.coins or 0,
                 coinsRequis  = nextCfg and nextCfg.coinsRequis or 0,
             })
             -- Notification Discord
@@ -681,16 +707,23 @@ local function OnPlayerAdded(player)
                 )
             end)
         end
-        RebirthSystem.Init(player, data, baseIndex)
+        AmelioSystem.Init(player, data, baseIndex)
+
+        -- Notifier le client de son baseIndex → RebirthHUD connecte le bouton Board
+        task.delay(0.5, function()
+            if player.Parent then
+                AssignBase:FireClient(player, baseIndex)
+            end
+        end)
 
         -- Toujours respawn devant la base assignée (spawn initial + respawns)
         if player.Character then
             TeleporterVersBaseAssignee(player, baseIndex, player.Character)
-            RebirthCosmeticsSystem.AppliquerPourJoueur(player, player.Character)
+            AmelioCosmeticsSystem.AppliquerPourJoueur(player, player.Character)
         end
         player.CharacterAdded:Connect(function(character)
             TeleporterVersBaseAssignee(player, baseIndex, character)
-            RebirthCosmeticsSystem.AppliquerPourJoueur(player, character)
+            AmelioCosmeticsSystem.AppliquerPourJoueur(player, character)
         end)
     end
 
@@ -734,7 +767,7 @@ local function OnPlayerRemoving(player)
         DataStoreManager.Save(player, data)
         playerDataCache[player.UserId] = nil
         BaseProgressionSystem.Reset(player)
-        RebirthSystem.Reset(player)
+        AmelioSystem.Reset(player)
         DropSystem.Stop(player)
         -- Arrêter l'animation tracteur (évite une boucle orpheline)
         local baseIndexSortie = AssignationSystem.GetBaseIndex(player)
@@ -750,7 +783,9 @@ Players.PlayerAdded:Connect(OnPlayerAdded)
 Players.PlayerRemoving:Connect(OnPlayerRemoving)
 
 -- Sauvegarde d'urgence si le serveur s'arrête
+-- task.wait() laisse OnPlayerRemoving traiter et vider playerDataCache avant qu'on itère
 game:BindToClose(function()
+    task.wait()
     for _, player in ipairs(Players:GetPlayers()) do
         local data = GetData(player)
         if data then
@@ -855,7 +890,7 @@ DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
     -- Appliquer la collecte
     local valeur = rarete and rarete.valeur or 1
     local multiplier = CollectSystem.GetMultiplier(data)
-    local coinsGagnes = math.floor(valeur * multiplier * RebirthSystem.GetMultiplicateur(player))
+    local coinsGagnes = math.floor(valeur * multiplier * AmelioSystem.GetMultiplicateur(player))
 
     data.coins = data.coins + coinsGagnes
     data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coinsGagnes
@@ -870,8 +905,7 @@ DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
     -- Notifier le client (VFX + HUD)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
     EnvoyerHUD(player, data)
-    BaseProgressionSystem.VerifierDeblocages(player, data)
-    RebirthSystem.MettreAJourBouton(player)
+    AmelioSystem.MettreAJourBouton(player)
 end)
 
 -- Upgrade
@@ -912,7 +946,7 @@ end)
 
 -- Ouvrir panel Rebirth depuis le bouton permanent (actualise les données avant d'ouvrir)
 DemandeOuvrirRebirth.OnServerEvent:Connect(function(player)
-    RebirthSystem.MettreAJourBouton(player)  -- fire RebirthButtonUpdate avec données fraîches
+    AmelioSystem.MettreAJourBouton(player)  -- fire RebirthButtonUpdate avec données fraîches
     local ouvrirEv = ReplicatedStorage:FindFirstChild("OuvrirRebirth")
     if ouvrirEv then pcall(function() ouvrirEv:FireClient(player) end) end
 end)
@@ -1127,6 +1161,9 @@ end
 -- 6. INIT DES SYSTÈMES
 -- ═══════════════════════════════════════════════
 
+-- Brainrots dans ReplicatedStorage (pas ServerStorage)
+DropSystem.SetBrainrotsFolder(ReplicatedStorage:WaitForChild("Brainrots"))
+
 -- Spawn des collectibles sur la map
 SpawnManager.Init()
 
@@ -1201,14 +1238,13 @@ CommunSpawner.OnCollecte = function(player, typeNom)
     local cfg = { MYTHIC = { valeur = 300 }, SECRET = { valeur = 1000 } }
     local valeur = cfg[typeNom] and cfg[typeNom].valeur or 100
     local multiplier  = CollectSystem.GetMultiplier(data)
-    local coinsGagnes = math.floor(valeur * multiplier * RebirthSystem.GetMultiplicateur(player))
+    local coinsGagnes = math.floor(valeur * multiplier * AmelioSystem.GetMultiplicateur(player))
     data.coins              = data.coins + coinsGagnes
     data.totalCoinsGagnes   = (data.totalCoinsGagnes or 0) + coinsGagnes
     data.totalCollecte      = (data.totalCollecte or 0) + 1
     EnvoyerHUD(player, data)
     CollectVFX:FireClient(player, coinsGagnes, { nom = typeNom, valeur = valeur })
-    BaseProgressionSystem.VerifierDeblocages(player, data)
-    RebirthSystem.MettreAJourBouton(player)
+    AmelioSystem.MettreAJourBouton(player)
 end
 -- MYTHIC/SECRET utilisent ProximityPrompt sans restriction de base (nil = ZoneCommune)
 CommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture)
@@ -1232,15 +1268,14 @@ BrainrotReward.Event:Connect(function(player, montant, rarete)
     if not data then return end
     local multiplier      = CollectSystem.GetMultiplier(data)
     local coinsGagnes     = math.floor(
-        montant * multiplier * RebirthSystem.GetMultiplicateur(player)
+        montant * multiplier * AmelioSystem.GetMultiplicateur(player)
     )
     data.coins            = data.coins + coinsGagnes
     data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coinsGagnes
     data.totalCollecte    = (data.totalCollecte or 0) + 1
     EnvoyerHUD(player, data)
     CollectVFX:FireClient(player, coinsGagnes, rarete)
-    BaseProgressionSystem.VerifierDeblocages(player, data)
-    RebirthSystem.MettreAJourBouton(player)
+    AmelioSystem.MettreAJourBouton(player)
     LeaderboardSystem.MettreAJour(player, data)
 end)
 
@@ -1367,9 +1402,9 @@ end
 ArbreSystem.GetData = GetData
 ArbreSystem.Init()
 
--- RebirthCosmeticsSystem : auras + trails selon niveau rebirth
-RebirthCosmeticsSystem.GetData = GetData
-RebirthCosmeticsSystem.Init()
+-- AmelioCosmeticsSystem : auras + trails selon niveau rebirth
+AmelioCosmeticsSystem.GetData = GetData
+AmelioCosmeticsSystem.Init()
 
 -- ═══════════════════════════════════════════════
 -- 7. TOP FARMER HEBDOMADAIRE (chaque lundi minuit UTC)
@@ -1423,6 +1458,36 @@ if Config.PvPEnabled then
 	Logger.info("Main", "Systèmes Combat initialisés")
 else
 	Logger.info("Main", "PvP désactivé (Config.PvPEnabled = false)")
+end
+
+-- ═══════════════════════════════════════════════
+-- FUSE MACHINE
+-- ═══════════════════════════════════════════════
+
+if FuseMachineSystem then
+    FuseMachineSystem.GetCoins = function(player)
+        local data = GetData(player)
+        if not data then return 0 end
+        return (data.coins or 0) + (IncomeSystem.GetCoinsEnAttente(player) or 0)
+    end
+
+    FuseMachineSystem.DeductCoins = function(player, montant)
+        local data = GetData(player)
+        if not data then return end
+        data.coins = math.max(0, (data.coins or 0) - montant)
+    end
+
+    FuseMachineSystem.UpdateHUD = function(player)
+        local data = GetData(player)
+        if data then EnvoyerHUD(player, data) end
+    end
+
+    local ok, err = pcall(FuseMachineSystem.Init, require(ReplicatedStorage.Modules.FuseConfig))
+    if not ok then
+        Logger.error("Main", "[FuseMachine] ERREUR Init() : %s", tostring(err))
+    end
+else
+    Logger.warn("Main", "[FuseMachine] Init() ignoré — module non chargé")
 end
 
 Logger.info("Main", "Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))

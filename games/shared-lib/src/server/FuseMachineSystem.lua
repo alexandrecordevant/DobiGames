@@ -1,6 +1,7 @@
--- ServerScriptService/FuseMachineSystem.lua
--- Système Fuse Machine — LavaTower
--- Logique serveur : 4 slots, timer 1h30, 1 fusion par machine, anti-doublon
+-- shared-lib/src/server/FuseMachineSystem.lua
+-- Système Fuse Machine — partagé entre jeux
+-- Logique serveur : 4 slots, timer configurable, 1 fusion par machine, anti-doublon
+-- FuseConfig injecté via Init(fuseConfig)
 
 local FuseMachineSystem = {}
 
@@ -13,19 +14,9 @@ local CollectionService = game:GetService("CollectionService")
 local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ═══════════════════════════════════════════════
--- Config
+-- Config (injectée via Init)
 -- ═══════════════════════════════════════════════
-local _RS        = game:GetService("ReplicatedStorage")
-local _modules   = _RS:WaitForChild("Modules", 10)
-if not _modules then
-    error("[FuseMachine] FATAL : ReplicatedStorage.Modules introuvable après 10s")
-end
-local _fuseConfigModule = _modules:WaitForChild("FuseConfig", 10)
-if not _fuseConfigModule then
-    error("[FuseMachine] FATAL : FuseConfig introuvable dans Modules après 10s")
-end
-Logger.debug("Fuse", "FuseConfig trouvé : %s", _fuseConfigModule:GetFullName())
-local FuseConfig = require(_fuseConfigModule)
+local FuseConfig = nil
 
 -- ═══════════════════════════════════════════════
 -- Callbacks injectés par Main.server.lua
@@ -40,16 +31,6 @@ FuseMachineSystem.UpdateHUD   = nil
 -- ═══════════════════════════════════════════════
 -- État interne par machine (clé = Instance machine)
 -- ═══════════════════════════════════════════════
--- {
---   actif         : bool
---   joueurId      : number   (UserId du lanceur)
---   debutFusion   : number   (tick())
---   inputRaretes  : string[] (4 raretés)
---   outputRarete  : string   (tiré à l'avance)
---   recetteId     : string
---   promptOuvrir  : ProximityPrompt
---   promptCollecte: ProximityPrompt | nil
--- }
 local machineEtats = {}
 
 -- RemoteEvents (assignés dans Init)
@@ -76,14 +57,12 @@ local function notifier(player, type_, msg)
     if ev then pcall(function() ev:FireClient(player, type_, msg) end) end
 end
 
--- Retourne la BasePart sur laquelle accrocher un ProximityPrompt
 local function getPartMachine(machine)
     if machine:IsA("BasePart") then return machine end
     if machine:IsA("Model") and machine.PrimaryPart then return machine.PrimaryPart end
-    return machine:FindFirstChildWhichIsA("BasePart", true)  -- récursif
+    return machine:FindFirstChildWhichIsA("BasePart", true)
 end
 
--- Trie une liste de strings (pour comparaison indépendante de l'ordre)
 local function trierInputs(liste)
     local copie = {}
     for _, v in ipairs(liste) do copie[#copie + 1] = v end
@@ -99,7 +78,6 @@ local function inputsEgaux(a, b)
     return true
 end
 
--- Trouve la recette correspondant aux 4 raretés (ordre libre)
 local function trouverRecette(raretes)
     local tries = trierInputs(raretes)
     for _, recette in ipairs(FuseConfig.Recettes) do
@@ -110,7 +88,6 @@ local function trouverRecette(raretes)
     return nil
 end
 
--- Tire le résultat selon les probabilités (déterminé au lancement)
 local function tirerResultat(recette)
     local rand = math.random(1, 100)
     local cumul = 0
@@ -121,7 +98,6 @@ local function tirerResultat(recette)
     return recette.outputs[1].rarete
 end
 
--- Crée un Tool résultat et le place dans le Backpack du joueur
 local function donnerToolResultat(player, rarete)
     local backpack = player:FindFirstChildOfClass("Backpack")
     if not backpack then return end
@@ -165,13 +141,11 @@ local function reinitialiserMachine(machine)
     local etat = machineEtats[machine]
     if not etat then return end
 
-    -- Nettoyer le prompt de collecte
     if etat.promptCollecte and etat.promptCollecte.Parent then
         etat.promptCollecte:Destroy()
         etat.promptCollecte = nil
     end
 
-    -- Remettre à zéro l'état
     etat.actif         = false
     etat.joueurId      = nil
     etat.debutFusion   = nil
@@ -179,12 +153,10 @@ local function reinitialiserMachine(machine)
     etat.outputRarete  = nil
     etat.recetteId     = nil
 
-    -- Réactiver le prompt d'ouverture
     if etat.promptOuvrir and etat.promptOuvrir.Parent then
         etat.promptOuvrir.Enabled = true
     end
 
-    -- Informer les clients que la machine est libre
     EtatUpdate:FireAllClients(machine, { actif = false })
 
     Logger.debug("Fuse", "Machine réinitialisée : %s", machine.Name)
@@ -194,7 +166,6 @@ local function creerPromptCollecte(machine)
     local etat = machineEtats[machine]
     if not etat then return end
 
-    -- Désactiver le prompt d'ouverture
     if etat.promptOuvrir and etat.promptOuvrir.Parent then
         etat.promptOuvrir.Enabled = false
     end
@@ -205,17 +176,15 @@ local function creerPromptCollecte(machine)
         return
     end
 
-    local icone = FuseConfig.IconeRarete[etat.outputRarete] or "?"
     local prompt = Instance.new("ProximityPrompt")
     prompt.ActionText            = "Collecter"
-    prompt.ObjectText            = icone .. " " .. etat.outputRarete .. " (Fusionné)"
+    prompt.ObjectText            = etat.outputRarete .. " (Fusionné)"
     prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 10
     prompt.Parent                = part
 
     etat.promptCollecte = prompt
 
-    -- Seul le lanceur peut collecter (anti-grief)
     local conn
     conn = prompt.Triggered:Connect(function(player)
         local e = machineEtats[machine]
@@ -229,17 +198,14 @@ local function creerPromptCollecte(machine)
             return
         end
 
-        -- Déconnecter immédiatement (anti-doublon)
         conn:Disconnect()
         prompt:Destroy()
         etat.promptCollecte = nil
 
-        -- Donner le résultat
         donnerToolResultat(player, e.outputRarete)
 
-        local iconeR = FuseConfig.IconeRarete[e.outputRarete] or ""
         notifier(player, "SUCCESS",
-            iconeR .. " Fusion terminée ! Vous obtenez : " .. e.outputRarete)
+            "Fusion terminée ! Vous obtenez : " .. e.outputRarete)
 
         Logger.info("Fuse", "%s collecte : %s", player.Name, e.outputRarete)
 
@@ -257,15 +223,12 @@ local function demarrerTimer(machine)
 
         Logger.info("Fuse", "Fusion terminée sur %s", machine.Name)
 
-        -- Créer le prompt de collecte
         creerPromptCollecte(machine)
 
-        -- Notifier le joueur s'il est encore connecté
         local joueur = Players:GetPlayerByUserId(e.joueurId)
         if joueur then
-            local icone = FuseConfig.IconeRarete[e.outputRarete] or ""
             notifier(joueur, "INFO",
-                icone .. " Fusion prête ! Retournez collecter votre " .. e.outputRarete)
+                "Fusion prête ! Retournez collecter votre " .. e.outputRarete)
 
             EtatUpdate:FireClient(joueur, machine, {
                 actif        = true,
@@ -277,19 +240,17 @@ local function demarrerTimer(machine)
 end
 
 local function setupMachine(machine)
-    Logger.debug("Fuse", "setupMachine → %s | Classe : %s | Parent : %s", machine.Name, machine.ClassName, tostring(machine.Parent and machine.Parent.Name))
+    Logger.debug("Fuse", "setupMachine → %s | Classe : %s | Parent : %s",
+        machine.Name, machine.ClassName, tostring(machine.Parent and machine.Parent.Name))
 
     local part = getPartMachine(machine)
     if not part then
-        Logger.warn("Fuse", "⚠ Aucune BasePart trouvée pour : %s — assigne un PrimaryPart ou vérifie la structure du modèle", machine.Name)
+        Logger.warn("Fuse", "Aucune BasePart trouvée pour : %s", machine.Name)
         return
     end
 
-    Logger.debug("Fuse", "BasePart cible : %s (%s)", part.Name, part.ClassName)
-
-    -- Supprimer un éventuel prompt résiduel du même nom
     for _, child in ipairs(part:GetChildren()) do
-        if child:IsA("ProximityPrompt") and child.ObjectText == "🔥 Fuse Machine" then
+        if child:IsA("ProximityPrompt") and child.ObjectText == "Fuse Machine" then
             child:Destroy()
         end
     end
@@ -305,18 +266,15 @@ local function setupMachine(machine)
         promptCollecte = nil,
     }
 
-    -- Prompt d'ouverture de l'UI
     local prompt = Instance.new("ProximityPrompt")
     prompt.ActionText            = "Fusionner"
-    prompt.ObjectText            = "🔥 Fuse Machine"
+    prompt.ObjectText            = "Fuse Machine"
     prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 20
     prompt.RequiresLineOfSight   = false
     prompt.Parent                = part
 
     machineEtats[machine].promptOuvrir = prompt
-
-    Logger.debug("Fuse", "✓ ProximityPrompt créé sur %s", part:GetFullName())
 
     prompt.Triggered:Connect(function(player)
         Logger.debug("Fuse", "Prompt déclenché par %s sur %s", player.Name, machine.Name)
@@ -340,7 +298,6 @@ end
 -- ═══════════════════════════════════════════════
 
 local function onLancerFusion(player, machine, toolInstances)
-    -- Validation machine
     if not machine or not machine.Parent then return end
     local etat = machineEtats[machine]
     if not etat then
@@ -348,13 +305,11 @@ local function onLancerFusion(player, machine, toolInstances)
         return
     end
 
-    -- Anti-doublon : machine déjà active
     if etat.actif then
         notifier(player, "ERREUR", "Cette machine est déjà en cours de fusion !")
         return
     end
 
-    -- Validation des 4 tools
     if type(toolInstances) ~= "table" or #toolInstances ~= FuseConfig.NbSlots then
         notifier(player, "ERREUR", "Sélection invalide (4 Brainrots requis).")
         return
@@ -365,7 +320,6 @@ local function onLancerFusion(player, machine, toolInstances)
 
     local raretes = {}
     for _, tool in ipairs(toolInstances) do
-        -- Sécurité : le tool DOIT être dans le backpack du joueur
         if not tool or not tool:IsA("Tool") or tool.Parent ~= backpack then
             notifier(player, "ERREUR", "Un Brainrot sélectionné est invalide.")
             return
@@ -378,14 +332,12 @@ local function onLancerFusion(player, machine, toolInstances)
         raretes[#raretes + 1] = rarete
     end
 
-    -- Trouver la recette
     local recette = trouverRecette(raretes)
     if not recette then
         notifier(player, "ERREUR", "Pas de recette pour cette combinaison !")
         return
     end
 
-    -- Vérifier les coins
     local coins = FuseMachineSystem.GetCoins and FuseMachineSystem.GetCoins(player) or 0
     if coins < recette.cout then
         notifier(player, "ERREUR",
@@ -395,12 +347,10 @@ local function onLancerFusion(player, machine, toolInstances)
 
     -- ═══ Tout est valide — on commence la fusion ═══
 
-    -- Consommer les 4 tools
     for _, tool in ipairs(toolInstances) do
         tool:Destroy()
     end
 
-    -- Déduire les coins
     if FuseMachineSystem.DeductCoins then
         FuseMachineSystem.DeductCoins(player, recette.cout)
     end
@@ -408,10 +358,8 @@ local function onLancerFusion(player, machine, toolInstances)
         FuseMachineSystem.UpdateHUD(player)
     end
 
-    -- Tirer le résultat à l'avance
     local outputRarete = tirerResultat(recette)
 
-    -- Mettre à jour l'état machine
     etat.actif        = true
     etat.joueurId     = player.UserId
     etat.debutFusion  = tick()
@@ -419,17 +367,14 @@ local function onLancerFusion(player, machine, toolInstances)
     etat.outputRarete = outputRarete
     etat.recetteId    = recette.id
 
-    -- Désactiver le prompt d'ouverture
     if etat.promptOuvrir and etat.promptOuvrir.Parent then
         etat.promptOuvrir.Enabled = false
     end
 
-    -- Fermer l'UI du lanceur
     FermerUI:FireClient(player)
 
-    notifier(player, "INFO", "🔥 Fusion lancée ! Revenez dans 1h30 !")
+    notifier(player, "INFO", "Fusion lancée ! Revenez dans 1h30 !")
 
-    -- Informer tous les clients de l'état actif (affichage timer)
     EtatUpdate:FireAllClients(machine, {
         actif       = true,
         debutFusion = etat.debutFusion,
@@ -437,45 +382,41 @@ local function onLancerFusion(player, machine, toolInstances)
         termine     = false,
     })
 
-    -- Démarrer le timer serveur
     demarrerTimer(machine)
 
-    Logger.info("Fuse", "Fusion lancée par %s | Recette : %s | Résultat : %s", player.Name, recette.id, outputRarete)
+    Logger.info("Fuse", "Fusion lancée par %s | Recette : %s | Résultat : %s",
+        player.Name, recette.id, outputRarete)
 end
 
 -- ═══════════════════════════════════════════════
 -- Init
 -- ═══════════════════════════════════════════════
 
-function FuseMachineSystem.Init()
-    -- Créer les RemoteEvents
+function FuseMachineSystem.Init(fuseConfig)
+    assert(fuseConfig, "[FuseMachineSystem] fuseConfig requis — passer require(FuseConfig) dans Init()")
+    FuseConfig = fuseConfig
+
     OuvrirUI   = creerRemoteEvent("FuseMachine_OuvrirUI")
     FermerUI   = creerRemoteEvent("FuseMachine_FermerUI")
     EtatUpdate = creerRemoteEvent("FuseMachine_EtatUpdate")
     Lancer     = creerRemoteEvent("FuseMachine_Lancer")
 
-    -- Écouter les demandes de fusion client
     Lancer.OnServerEvent:Connect(onLancerFusion)
 
-    -- Écouter les machines ajoutées (y compris taguées après le démarrage)
     CollectionService:GetInstanceAddedSignal(FuseConfig.MachineTag):Connect(function(machine)
-        Logger.debug("Fuse", "Nouvelle machine détectée via signal : %s", machine.Name)
+        Logger.debug("Fuse", "Nouvelle machine détectée : %s", machine.Name)
         setupMachine(machine)
     end)
     CollectionService:GetInstanceRemovedSignal(FuseConfig.MachineTag):Connect(function(machine)
         machineEtats[machine] = nil
     end)
 
-    -- Scanner les machines déjà taggées
     local tagged = CollectionService:GetTagged(FuseConfig.MachineTag)
-    Logger.debug("Fuse", "Scan tag '%s' → %d machine(s) trouvée(s)", FuseConfig.MachineTag, #tagged)
+    Logger.debug("Fuse", "Scan tag '%s' → %d machine(s)", FuseConfig.MachineTag, #tagged)
 
     for _, machine in ipairs(tagged) do
-        -- Ignorer si déjà setup (peut arriver si le signal a tiré avant)
         if not machineEtats[machine] then
             setupMachine(machine)
-        else
-            Logger.debug("Fuse", "%s déjà setup via signal, ignoré", machine.Name)
         end
     end
 

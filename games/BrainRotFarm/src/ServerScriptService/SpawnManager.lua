@@ -9,9 +9,8 @@ local SpawnManager = {}
 -- Services
 -- ============================================================
 local TweenService       = game:GetService("TweenService")
-local RunService         = game:GetService("RunService")
 local Players            = game:GetService("Players")
-local ServerStorage      = game:GetService("ServerStorage")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 local Workspace          = game:GetService("Workspace")
 local MarketplaceService = game:GetService("MarketplaceService")
 
@@ -33,8 +32,9 @@ end
 -- ============================================================
 -- Config — lue depuis GameConfig
 -- ============================================================
-local Logger      = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
-local _GameConfig = require(game.ReplicatedStorage.GameConfig)
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+local BrainrotBillboard = require(game:GetService("ServerScriptService").SharedLib.Server.BrainrotBillboard)
+local _GameConfig       = require(game.ReplicatedStorage.GameConfig)
 -- Valeurs animation depuis AnimationConfig (fallback si absent)
 local _animCfg = _GameConfig.AnimationConfig or {}
 
@@ -134,7 +134,7 @@ local function getFlowerPotSystem()
     return _FlowerPotSystem
 end
 
-local brainrotsFolder = ServerStorage:WaitForChild(_dosierBrainrots)
+local brainrotsFolder = ReplicatedStorage:WaitForChild(_dosierBrainrots)
 
 -- ============================================================
 -- Utilitaires internes
@@ -217,107 +217,15 @@ local function tweenTransparence(parts, cible, duree, extraProps)
 end
 
 -- ─────────────────────────────────────────────────────────────
--- BILLBOARD — via FilterManager (système de filtres centralisé)
+-- BILLBOARD — délégué à BrainrotBillboard (shared-lib)
 -- ─────────────────────────────────────────────────────────────
 
--- Couleurs par rareté (conservées pour animations spéciales GOD/SECRET)
-local RARETE_COULEURS_BB = {
-	COMMON       = Color3.fromRGB(200, 200, 200),
-	OG           = Color3.fromRGB(100, 220, 255),
-	RARE         = Color3.fromRGB(0,   120, 255),
-	EPIC         = Color3.fromRGB(150, 0,   255),
-	LEGENDARY    = Color3.fromRGB(255, 200, 0  ),
-	MYTHIC       = Color3.fromRGB(148, 0,   211),
-	GOD          = Color3.fromRGB(255, 140, 0  ),
-	SECRET       = Color3.fromRGB(255, 255, 255),
-	BRAINROT_GOD = Color3.fromRGB(255, 140, 0  ),
-}
-
-local function formatTimer(t)
-	t = math.max(0, math.floor(t))
-	local m = math.floor(t / 60)
-	local s = t % 60
-	if m > 0 then return ("%d:%02d"):format(m, s)
-	else return ("%ds"):format(s) end
-end
-
-local function FormatNombre(n)
-	n = tonumber(n) or 0
-	if     n >= 1e12 then return ("%.1fT"):format(n / 1e12)
-	elseif n >= 1e9  then return ("%.1fB"):format(n / 1e9)
-	elseif n >= 1e6  then return ("%.1fM"):format(n / 1e6)
-	elseif n >= 1e3  then return ("%.1fK"):format(n / 1e3)
-	else                  return tostring(math.floor(n))
-	end
-end
-
--- Crée un billboard multi-lignes au-dessus du BR (même style que LavaTower)
-local function ajouterBillboard(clone, racine, nomRarete, nomModele, dureeInitiale)
-	dureeInitiale = dureeInitiale or CONFIG.DUREE_DESPAWN
-	local couleur = RARETE_COULEURS_BB[nomRarete] or Color3.new(1, 1, 1)
-	local valeur  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[nomRarete] or 0
-
-	-- Supprimer ancien billboard si présent
-	local existing = racine:FindFirstChild("BRBillboard")
-	if existing then existing:Destroy() end
-
-	local bb = Instance.new("BillboardGui")
-	bb.Name         = "BRBillboard"
-	bb.Size         = UDim2.new(5, 0, 2.0, 0)
-	bb.StudsOffset  = Vector3.new(0, 6, 0)
-	bb.AlwaysOnTop  = false
-	bb.ResetOnSpawn = false
-	bb.Parent       = racine
-
-	local function makeLabel(name, text, posY, color)
-		local label = Instance.new("TextLabel")
-		label.Name                   = name
-		label.Text                   = text
-		label.Size                   = UDim2.new(1, 0, 0.25, 0)
-		label.Position               = UDim2.new(0, 0, posY, 0)
-		label.TextColor3             = color or Color3.new(1, 1, 1)
-		label.TextScaled             = true
-		label.Font                   = Enum.Font.GothamBold
-		label.BackgroundTransparency = 1
-		label.TextStrokeTransparency = 0.5
-		label.TextStrokeColor3       = Color3.new(0, 0, 0)
-		label.Parent                 = bb
-		return label
-	end
-
-	makeLabel("LNom",   nomModele,                       0,    Color3.new(1, 1, 1))
-	local lRarete =
-	makeLabel("LRarete", nomRarete,                      0.25, couleur)
-	makeLabel("LPrix",  "💰 $" .. FormatNombre(valeur), 0.50, Color3.fromRGB(0, 220, 0))
-	makeLabel("LTimer", formatTimer(dureeInitiale),      0.75, Color3.fromRGB(220, 60, 60))
-
-	-- Animations spéciales sur la ligne rareté
-	if nomRarete == "GOD" or nomRarete == "BRAINROT_GOD" then
-		local hue, conn = 0, nil
-		conn = RunService.Heartbeat:Connect(function(dt)
-			if not lRarete or not lRarete.Parent then conn:Disconnect(); return end
-			hue = (hue + dt * 0.5) % 1
-			lRarete.TextColor3 = Color3.fromHSV(hue, 1, 1)
-		end)
-	elseif nomRarete == "SECRET" then
-		local ti = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, true)
-		TweenService:Create(lRarete, ti, { TextColor3 = Color3.fromRGB(20, 20, 20) }):Play()
-	end
-end
-
--- Countdown mis à jour dans le label "LTimer" du BRBillboard
-local function lancerCountdownBillboard(racine, duree, nomRarete, couleur, valeur)
+-- Countdown mis à jour via BrainrotBillboard.UpdateTimer
+local function lancerCountdownBillboard(clone, duree)
 	task.spawn(function()
 		for t = duree, 0, -1 do
-			if not racine or not racine.Parent then return end
-			local bb = racine:FindFirstChild("BRBillboard")
-			if not bb then return end
-			local label = bb:FindFirstChild("LTimer")
-			if not label then return end
-			label.Text = formatTimer(t)
-			if t <= 10 then
-				label.TextColor3 = Color3.fromRGB(255, 30, 30)
-			end
+			if not clone or not clone.Parent then return end
+			BrainrotBillboard.UpdateTimer(clone, t)
 			if t > 0 then task.wait(1) end
 		end
 	end)
@@ -432,6 +340,12 @@ local function spawnerUnBrainRot(baseIndex)
 	pcall(function() clone:SetAttribute("BaseIndex",    baseIndex)     end)
 	pcall(function() clone:SetAttribute("SpawnId",      id)            end)
 	pcall(function() clone:SetAttribute("OriginalName", modeleSource.Name) end)
+	-- Copier Prix et CashParSeconde depuis le modèle source (comme LavaTower)
+	local prixSrc = modeleSource:GetAttribute("Prix")
+	local cpsSrc  = modeleSource:GetAttribute("CashParSeconde")
+	if prixSrc then pcall(function() clone:SetAttribute("Prix", prixSrc) end) end
+	local cpsVal = cpsSrc or (_GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rarete.nom]) or 0
+	pcall(function() clone:SetAttribute("CashParSeconde", cpsVal) end)
 
 	-- Position aléatoire dans la SpawnZone
 	local x = math.random() * (zone.xMax - zone.xMin) + zone.xMin
@@ -506,10 +420,8 @@ local function spawnerUnBrainRot(baseIndex)
 		-- Billboard affiché uniquement après que le BR soit sorti de terre
 		if clone and clone.Parent then
 			local dureeRestante = math.floor(CONFIG.DUREE_DESPAWN - CONFIG.DUREE_POUSSE)
-			local couleur = RARETE_COULEURS_BB[rarete.nom] or Color3.new(1, 1, 1)
-			local valeur  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rarete.nom] or 0
-			pcall(ajouterBillboard, clone, racine, rarete.nom, modeleSource.Name, dureeRestante)
-			pcall(lancerCountdownBillboard, racine, dureeRestante, rarete.nom, couleur, valeur)
+			BrainrotBillboard.SetupField(clone, dureeRestante)
+			pcall(lancerCountdownBillboard, clone, dureeRestante)
 		end
 
 		-- Ancrer les parts pour qu'elles ne tombent pas
@@ -639,10 +551,10 @@ local function spawnerBRBonus(baseIndex, rareteNom)
     -- Respecter le plafond max par base
     if compteurs[baseIndex] >= CONFIG.MAX_PAR_BASE then return end
 
-    -- Dossier rareté dans ServerStorage (MYTHIC ou SECRET)
+    -- Dossier rareté dans ReplicatedStorage (MYTHIC ou SECRET)
     local dossier = brainrotsFolder:FindFirstChild(rareteNom)
     if not dossier then
-        Logger.warn("Spawn", "Tracteur: dossier '%s' introuvable dans ServerStorage", rareteNom)
+        Logger.warn("Spawn", "Tracteur: dossier '%s' introuvable dans ReplicatedStorage", rareteNom)
         return
     end
     local modeles = dossier:GetChildren()
@@ -667,6 +579,12 @@ local function spawnerBRBonus(baseIndex, rareteNom)
     pcall(function() clone:SetAttribute("BaseIndex",    baseIndex)   end)
     pcall(function() clone:SetAttribute("SpawnId",      id)          end)
     pcall(function() clone:SetAttribute("OriginalName", source.Name) end)
+    -- Copier Prix et CashParSeconde depuis le modèle source (comme LavaTower)
+    local prixSrcT = source:GetAttribute("Prix")
+    local cpsSrcT  = source:GetAttribute("CashParSeconde")
+    if prixSrcT then pcall(function() clone:SetAttribute("Prix", prixSrcT) end) end
+    local cpsValT = cpsSrcT or (_GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rareteNom]) or 0
+    pcall(function() clone:SetAttribute("CashParSeconde", cpsValT) end)
 
     -- Position aléatoire dans la zone de spawn
     local x = math.random() * (zone.xMax - zone.xMin) + zone.xMin
@@ -737,10 +655,8 @@ local function spawnerBRBonus(baseIndex, rareteNom)
 
             -- Billboard et countdown (durée réduite de l'animation)
             local dureeRestante = math.floor(CONFIG.DUREE_DESPAWN - CONFIG.DUREE_POUSSE)
-            local couleur = RARETE_COULEURS_BB[rareteNom] or Color3.new(1, 1, 1)
-            local valeur  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rareteNom] or 0
-            pcall(ajouterBillboard, clone, racine, rareteNom, source.Name, dureeRestante)
-            pcall(lancerCountdownBillboard, racine, dureeRestante, rareteNom, couleur, valeur)
+            BrainrotBillboard.SetupField(clone, dureeRestante)
+            pcall(lancerCountdownBillboard, clone, dureeRestante)
 
             -- FilterManager (visuels rareté centralisés)
             local FM = getFilterManager()
@@ -1033,6 +949,12 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
     clone.Name = string.format("BR_meteor_%d", id)
     pcall(function() clone:SetAttribute("Rarete",       rareteNom)   end)
     pcall(function() clone:SetAttribute("OriginalName", source.Name) end)
+    -- Copier Prix et CashParSeconde depuis le modèle source (comme LavaTower)
+    local prixSrcM = source:GetAttribute("Prix")
+    local cpsSrcM  = source:GetAttribute("CashParSeconde")
+    if prixSrcM then pcall(function() clone:SetAttribute("Prix", prixSrcM) end) end
+    local cpsValM = cpsSrcM or (_GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rareteNom]) or 0
+    pcall(function() clone:SetAttribute("CashParSeconde", cpsValM) end)
     clone.Parent = Workspace
 
     local racine = obtenirRacine(clone)
@@ -1056,11 +978,9 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
         end
     end)
 
-    -- Billboard via FilterManager
-    local couleurMeteor = RARETE_COULEURS_BB[rareteNom] or Color3.new(1, 1, 1)
-    local valeurMeteor  = _GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rareteNom] or 0
-    pcall(ajouterBillboard, clone, racine, rareteNom, source.Name, CONFIG.DUREE_DESPAWN)
-    pcall(lancerCountdownBillboard, racine, CONFIG.DUREE_DESPAWN, rareteNom, couleurMeteor, valeurMeteor)
+    -- Billboard
+    BrainrotBillboard.SetupField(clone, CONFIG.DUREE_DESPAWN)
+    pcall(lancerCountdownBillboard, clone, CONFIG.DUREE_DESPAWN)
 
     -- ProximityPrompt via hook OnBRSpawned (baseIndex = nil → tout le monde peut capturer)
     local rareteObj = { nom = rareteNom, dossier = rareteNom }
@@ -1077,6 +997,20 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
             if clone and clone.Parent then clone:Destroy() end
         end)
     end)
+end
+
+-- Spawne un BR d'une rareté précise à une position aléatoire dans la zone d'une base
+-- Utilisé par EventLuckyHour pour spawner sur les bases occupées
+function SpawnManager.SpawnerBRDansBase(baseIndex, rareteNom)
+    local zone = zones[baseIndex]
+    if not zone then
+        Logger.warn("Spawn", "SpawnerBRDansBase : zone introuvable pour Base_%s", tostring(baseIndex))
+        return
+    end
+    local x   = math.random() * (zone.xMax - zone.xMin) + zone.xMin
+    local z   = math.random() * (zone.zMax - zone.zMin) + zone.zMin
+    local pos = Vector3.new(x, zone.yFixe, z)
+    SpawnManager.SpawnerBRSpecifique(pos, rareteNom)
 end
 
 -- ============================================================

@@ -1,4 +1,4 @@
--- shared-lib/src/shared/RebirthConfig.lua
+-- shared-lib/src/shared/AmelioConfig.lua
 -- Config Amélioration de Base — BrainRotFarm & LavaTower
 --
 -- 30 niveaux · uniquement coins requis (pas de brainrot)
@@ -6,7 +6,7 @@
 -- Slots bonus    : +1 par niveau    →  30 slots débloqués au maximum
 -- Prix           : croissance ×1.45 depuis 10 000 → ~500 M au niveau 30
 --
--- Injecter via : RebirthSystem.Config = require(RS.SharedLib.Shared.RebirthConfig)
+-- Injecter via : AmelioSystem.Config = require(RS.SharedLib.Shared.AmelioConfig)
 
 -- Prix arrondis — calculés avec un facteur ×1.45 entre chaque niveau
 local PRIX = {

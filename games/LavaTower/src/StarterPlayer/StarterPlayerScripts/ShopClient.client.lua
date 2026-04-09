@@ -37,7 +37,7 @@ local C = {
 }
 
 -- ── État local ────────────────────────────────────────────────────────────────
-local currentData = nil   -- { upgrades = {carry,speed,jump}, coins = N }
+local currentData = nil   -- { upgrades = {carry,speed,jump}, coins = N, hasBat, ... }
 local activeTab   = "Upgrades"
 
 -- ── Utilitaires UI ────────────────────────────────────────────────────────────
@@ -134,7 +134,7 @@ local closeBtn = newInst("TextButton", {
     Size               = UDim2.new(0, 36, 0, 36),
     Position           = UDim2.new(1, -43, 0, 7),
     BackgroundColor3   = Color3.fromRGB(200, 60, 60),
-    Text               = "✕",
+    Text               = "X",
     Font               = Enum.Font.GothamBold,
     TextSize           = 16,
     TextColor3         = Color3.new(1, 1, 1),
@@ -206,17 +206,249 @@ local objetsFrame = newInst("Frame", {
     Parent                 = contentFrame,
 })
 
-newInst("TextLabel", {
+local objetsScroll = newInst("ScrollingFrame", {
+    Name                   = "ObjetsScroll",
     Size                   = UDim2.fromScale(1, 1),
     BackgroundTransparency = 1,
-    Text                   = "Aucun objet disponible pour l'instant.",
-    Font                   = Enum.Font.Gotham,
-    TextSize               = 15,
-    TextColor3             = C.TextDim,
-    TextWrapped            = true,
+    BorderSizePixel        = 0,
+    ScrollBarThickness     = 4,
+    ScrollBarImageColor3   = C.TabActive,
+    CanvasSize             = UDim2.new(0, 0, 0, 0),
+    AutomaticCanvasSize    = Enum.AutomaticSize.Y,
     ZIndex                 = 5,
     Parent                 = objetsFrame,
 })
+addPadding(objetsScroll, 8)
+newInst("UIListLayout", {
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding   = UDim.new(0, 8),
+    Parent    = objetsScroll,
+})
+
+-- ── ROW BAT ───────────────────────────────────────────────────────────────────
+local batRow = newInst("Frame", {
+    Name             = "BatRow",
+    Size             = UDim2.new(1, 0, 0, 70),
+    BackgroundColor3 = C.Row,
+    BorderSizePixel  = 0,
+    LayoutOrder      = 1,
+    ZIndex           = 6,
+    Parent           = objetsScroll,
+})
+addCorner(batRow, 8)
+
+-- Espace image (à remplir avec l'ID de l'image)
+newInst("ImageLabel", {
+    Name                   = "BatImage",
+    Size                   = UDim2.new(0, 50, 0, 50),
+    Position               = UDim2.new(0, 10, 0.5, -25),
+    BackgroundColor3       = Color3.fromRGB(50, 50, 50),
+    Image                  = "",  -- TODO: remplacer par rbxassetid://XXXXXXXX
+    BorderSizePixel        = 0,
+    ZIndex                 = 7,
+    Parent                 = batRow,
+})
+
+-- Nom
+newInst("TextLabel", {
+    Size                   = UDim2.new(0, 150, 0, 30),
+    Position               = UDim2.new(0, 70, 0.5, -15),
+    BackgroundTransparency = 1,
+    Text                   = "Bat",
+    Font                   = Enum.Font.GothamBold,
+    TextSize               = 16,
+    TextXAlignment         = Enum.TextXAlignment.Left,
+    TextColor3             = Color3.new(1, 1, 1),
+    ZIndex                 = 7,
+    Parent                 = batRow,
+})
+
+-- Bouton prix (affiché si pas encore acheté)
+local batPriceBtn = newInst("TextButton", {
+    Name             = "BatPriceBtn",
+    Size             = UDim2.new(0, 80, 0, 34),
+    Position         = UDim2.new(1, -90, 0.5, -17),
+    BackgroundColor3 = C.Green,
+    Text             = ShopConfig.FormatNumber(ShopConfig.Bat.Price),
+    Font             = Enum.Font.GothamBold,
+    TextSize         = 14,
+    TextColor3       = Color3.new(1, 1, 1),
+    BorderSizePixel  = 0,
+    ZIndex           = 8,
+    Parent           = batRow,
+})
+addCorner(batPriceBtn, 6)
+
+-- Bouton Équiper (affiché après achat)
+local batEquipBtn = newInst("TextButton", {
+    Name             = "BatEquipBtn",
+    Size             = UDim2.new(0, 80, 0, 34),
+    Position         = UDim2.new(1, -178, 0.5, -17),
+    BackgroundColor3 = C.Green,
+    Text             = "Équiper",
+    Font             = Enum.Font.GothamBold,
+    TextSize         = 13,
+    TextColor3       = Color3.new(1, 1, 1),
+    BorderSizePixel  = 0,
+    Visible          = false,
+    ZIndex           = 8,
+    Parent           = batRow,
+})
+addCorner(batEquipBtn, 6)
+
+-- Bouton Déséquiper (affiché après achat)
+local batUnequipBtn = newInst("TextButton", {
+    Name             = "BatUnequipBtn",
+    Size             = UDim2.new(0, 88, 0, 34),
+    Position         = UDim2.new(1, -90, 0.5, -17),
+    BackgroundColor3 = C.Red,
+    Text             = "Déséquiper",
+    Font             = Enum.Font.GothamBold,
+    TextSize         = 12,
+    TextColor3       = Color3.new(1, 1, 1),
+    BorderSizePixel  = 0,
+    Visible          = false,
+    ZIndex           = 8,
+    Parent           = batRow,
+})
+addCorner(batUnequipBtn, 6)
+
+local function refreshBat(data)
+    local hasBat      = data.hasBat      or false
+    local batEquipped = data.batEquipped or false
+
+    batPriceBtn.Visible   = not hasBat
+    batEquipBtn.Visible   = hasBat
+    batUnequipBtn.Visible = hasBat
+
+    if hasBat then
+        -- Feedback visuel selon l'état équipé
+        batEquipBtn.BackgroundColor3   = batEquipped and C.TabInactive or C.Green
+        batUnequipBtn.BackgroundColor3 = batEquipped and C.Red         or C.TabInactive
+    end
+end
+
+batPriceBtn.MouseButton1Click:Connect(function()
+    ShopPurchase:FireServer("Bat_Buy")
+end)
+batEquipBtn.MouseButton1Click:Connect(function()
+    ShopPurchase:FireServer("Bat_Equip")
+end)
+batUnequipBtn.MouseButton1Click:Connect(function()
+    ShopPurchase:FireServer("Bat_Unequip")
+end)
+
+-- ── ROW GOLDSLAP ──────────────────────────────────────────────────────────────
+local goldSlapRow = newInst("Frame", {
+    Name             = "GoldSlapRow",
+    Size             = UDim2.new(1, 0, 0, 70),
+    BackgroundColor3 = C.Row,
+    BorderSizePixel  = 0,
+    LayoutOrder      = 2,
+    ZIndex           = 6,
+    Parent           = objetsScroll,
+})
+addCorner(goldSlapRow, 8)
+
+-- Espace image (à remplir avec l'ID de l'image)
+newInst("ImageLabel", {
+    Name                   = "GoldSlapImage",
+    Size                   = UDim2.new(0, 50, 0, 50),
+    Position               = UDim2.new(0, 10, 0.5, -25),
+    BackgroundColor3       = Color3.fromRGB(50, 50, 50),
+    Image                  = "",  -- TODO: remplacer par rbxassetid://XXXXXXXX
+    BorderSizePixel        = 0,
+    ZIndex                 = 7,
+    Parent                 = goldSlapRow,
+})
+
+-- Nom
+newInst("TextLabel", {
+    Size                   = UDim2.new(0, 150, 0, 30),
+    Position               = UDim2.new(0, 70, 0.5, -15),
+    BackgroundTransparency = 1,
+    Text                   = "GoldSlap",
+    Font                   = Enum.Font.GothamBold,
+    TextSize               = 16,
+    TextXAlignment         = Enum.TextXAlignment.Left,
+    TextColor3             = Color3.new(1, 1, 1),
+    ZIndex                 = 7,
+    Parent                 = goldSlapRow,
+})
+
+-- Bouton prix
+local goldSlapPriceBtn = newInst("TextButton", {
+    Name             = "GoldSlapPriceBtn",
+    Size             = UDim2.new(0, 80, 0, 34),
+    Position         = UDim2.new(1, -90, 0.5, -17),
+    BackgroundColor3 = C.Green,
+    Text             = ShopConfig.FormatNumber(ShopConfig.GoldSlap.Price),
+    Font             = Enum.Font.GothamBold,
+    TextSize         = 14,
+    TextColor3       = Color3.new(1, 1, 1),
+    BorderSizePixel  = 0,
+    ZIndex           = 8,
+    Parent           = goldSlapRow,
+})
+addCorner(goldSlapPriceBtn, 6)
+
+-- Bouton Équiper
+local goldSlapEquipBtn = newInst("TextButton", {
+    Name             = "GoldSlapEquipBtn",
+    Size             = UDim2.new(0, 80, 0, 34),
+    Position         = UDim2.new(1, -178, 0.5, -17),
+    BackgroundColor3 = C.Green,
+    Text             = "Équiper",
+    Font             = Enum.Font.GothamBold,
+    TextSize         = 13,
+    TextColor3       = Color3.new(1, 1, 1),
+    BorderSizePixel  = 0,
+    Visible          = false,
+    ZIndex           = 8,
+    Parent           = goldSlapRow,
+})
+addCorner(goldSlapEquipBtn, 6)
+
+-- Bouton Déséquiper
+local goldSlapUnequipBtn = newInst("TextButton", {
+    Name             = "GoldSlapUnequipBtn",
+    Size             = UDim2.new(0, 88, 0, 34),
+    Position         = UDim2.new(1, -90, 0.5, -17),
+    BackgroundColor3 = C.Red,
+    Text             = "Déséquiper",
+    Font             = Enum.Font.GothamBold,
+    TextSize         = 12,
+    TextColor3       = Color3.new(1, 1, 1),
+    BorderSizePixel  = 0,
+    Visible          = false,
+    ZIndex           = 8,
+    Parent           = goldSlapRow,
+})
+addCorner(goldSlapUnequipBtn, 6)
+
+local function refreshGoldSlap(data)
+    local has      = data.hasGoldSlap      or false
+    local equipped = data.goldSlapEquipped or false
+
+    goldSlapPriceBtn.Visible   = not has
+    goldSlapEquipBtn.Visible   = has
+    goldSlapUnequipBtn.Visible = has
+
+    if has then
+        goldSlapEquipBtn.BackgroundColor3   = equipped and C.TabInactive or C.Green
+        goldSlapUnequipBtn.BackgroundColor3 = equipped and C.Red         or C.TabInactive
+    end
+end
+
+goldSlapPriceBtn.MouseButton1Click:Connect(function()
+    ShopPurchase:FireServer("GoldSlap_Buy")
+end)
+goldSlapEquipBtn.MouseButton1Click:Connect(function()
+    ShopPurchase:FireServer("GoldSlap_Equip")
+end)
+goldSlapUnequipBtn.MouseButton1Click:Connect(function()
+    ShopPurchase:FireServer("GoldSlap_Unequip")
+end)
 
 -- ── TAB UPGRADES ──────────────────────────────────────────────────────────────
 local upgradesFrame = newInst("Frame", {
@@ -342,11 +574,11 @@ local function creerRowCarry()
         local maxed    = level >= ShopConfig.Carry.MaxLevel
         local bonus    = level * ShopConfig.Carry.BonusPerLevel
         local nextLvl  = level + 1
-        local prix     = maxed and "—" or ShopConfig.FormatNumber(ShopConfig.GetCarryPrice(nextLvl)) .. " 🪙"
+        local prix     = maxed and "—" or ShopConfig.FormatNumber(ShopConfig.GetCarryPrice(nextLvl))
 
-        title.Text     = "🎒 Carry   Niv. " .. level .. "/" .. ShopConfig.Carry.MaxLevel
+        title.Text     = "Carry   Niv. " .. level .. "/" .. ShopConfig.Carry.MaxLevel
         subLabel.Text  = level == 0 and "Aucun Brainrot portable" or (level .. " BR max")
-        priceLabel.Text = maxed and "✅ Maximum atteint" or ("Prochain : " .. prix)
+        priceLabel.Text = maxed and "Maximum atteint" or ("Prochain : " .. prix)
         buyBtn.Visible        = not maxed
         buyBtn.BackgroundColor3 = maxed and C.TabInactive or C.Green
     end
@@ -430,10 +662,9 @@ local function creerRowStatMulti(cfg, upgradeType, layoutOrder)
     local function refresh(data)
         local level = (data.upgrades and data.upgrades[upgradeType:lower()]) or 0
         local maxed = level >= cfg.MaxLevel
-        local icon  = isJump and "🦘" or "⚡"
         local note  = isJump and " (tours)" or ""
 
-        title.Text = icon .. " " .. cfg.Label .. "   Niv. " .. level .. "/" .. cfg.MaxLevel .. note
+        title.Text = cfg.Label .. "   Niv. " .. level .. "/" .. cfg.MaxLevel .. note
 
         if isJump then
             local jp      = ShopConfig.GetJumpStat(level)
@@ -448,10 +679,10 @@ local function creerRowStatMulti(cfg, upgradeType, layoutOrder)
         end
 
         if maxed then
-            priceLabel.Text = "✅ Maximum atteint"
+            priceLabel.Text = "Maximum atteint"
         else
             local prix1 = ShopConfig["Get" .. upgradeType .. "Price"](level + 1)
-            priceLabel.Text = "Prochain : " .. ShopConfig.FormatNumber(prix1) .. " 🪙"
+            priceLabel.Text = "Prochain : " .. ShopConfig.FormatNumber(prix1)
         end
 
         btn1.Visible   = not maxed
@@ -474,6 +705,8 @@ local function refreshUI(data)
     for _, row in pairs(upgradeRows) do
         row.refresh(data)
     end
+    refreshBat(data)
+    refreshGoldSlap(data)
 end
 
 -- ── Gestion des onglets ───────────────────────────────────────────────────────

@@ -11,6 +11,17 @@ local Logger            = require(game:GetService("ServerScriptService").SharedL
 
 local ShopConfig = require(ReplicatedStorage.Modules.ShopConfig)
 
+-- ── CarrySystem — chargement différé (évite dépendance circulaire) ────────────
+local _CarrySystem = nil
+local function getCarrySystem()
+    if not _CarrySystem then
+        local ServerScriptService = game:GetService("ServerScriptService")
+        local ok, m = pcall(require, ServerScriptService.SharedLib.Server.CarrySystem)
+        if ok and m then _CarrySystem = m end
+    end
+    return _CarrySystem
+end
+
 local ShopSystem = {}
 
 -- ── Callbacks injectés depuis Main.server.lua (même pattern que FuseMachineSystem) ──
@@ -61,6 +72,12 @@ local function appliquerCarry(player)
         val.Parent = char
     end
     val.Value = maxCarry
+
+    -- Synchroniser CarrySystem (source de vérité pour la limite réelle du carry)
+    local CS = getCarrySystem()
+    if CS then
+        CS.SetCapacite(player, maxCarry)
+    end
 end
 
 -- ── Application des stats ─────────────────────────────────────────────────────
@@ -123,13 +140,51 @@ local function appliquerJump(player, inTower)
     end
 end
 
+-- ── Helper : récupère un outil depuis ReplicatedStorage/Tools ─────────────────
+local function getTool(name)
+    local folder = ReplicatedStorage:FindFirstChild("Tools")
+    if not folder then
+        Logger.warn("Shop", "ReplicatedStorage.Tools introuvable")
+        return nil
+    end
+    local tool = folder:FindFirstChild(name)
+    if not tool then
+        Logger.warn("Shop", "Tools.%s introuvable", name)
+    end
+    return tool
+end
+
+local function donnerOutil(player, name)
+    local template = getTool(name)
+    if not template then return end
+    local inChar     = player.Character and player.Character:FindFirstChild(name)
+    local inBackpack = player.Backpack:FindFirstChild(name)
+    if not inChar and not inBackpack then
+        template:Clone().Parent = player.Backpack
+    end
+end
+
+local function retirerOutil(player, name)
+    local char = player.Character
+    if char then
+        local t = char:FindFirstChild(name)
+        if t then t:Destroy() end
+    end
+    local t = player.Backpack:FindFirstChild(name)
+    if t then t:Destroy() end
+end
+
 -- ── Payload shop envoyé au client ─────────────────────────────────────────────
 local function makePayload(player)
     local data = ShopSystem.GetData(player)
     if not data then return {} end
     return {
-        upgrades = data.shopUpgrades or { carry = 0, speed = 0, jump = 0 },
-        coins    = (data.coins or 0),
+        upgrades         = data.shopUpgrades or { carry = 0, speed = 0, jump = 0 },
+        coins            = (data.coins or 0),
+        hasBat           = data.hasBat           or false,
+        batEquipped      = data.batEquipped      or false,
+        hasGoldSlap      = data.hasGoldSlap      or false,
+        goldSlapEquipped = data.goldSlapEquipped or false,
     }
 end
 
@@ -255,6 +310,68 @@ local function traiterAchat(player, upgradeType, amount)
         local msg = "Saut amélioré ! Niveau " .. upgrades.jump .. "/" .. ShopConfig.Jump.MaxLevel .. " → " .. newJP .. " JP"
         if not inTowerNow then msg = msg .. " (entre dans une tour pour l'activer)" end
         return true, msg
+
+    -- ── BAT ACHAT ──
+    elseif upgradeType == "Bat_Buy" then
+        if data.hasBat then
+            return false, "Vous possédez déjà la Bat !"
+        end
+        local prix = ShopConfig.Bat.Price
+        if coins < prix then
+            return false, "Pas assez de pièces (" .. prix .. " requis)"
+        end
+        data.coins  = coins - prix
+        data.hasBat = true
+        ShopSystem.SetData(player, data)
+        ShopSystem.UpdateHUD(player)
+        Logger.info("Shop", "%s a acheté la Bat", player.Name)
+        return true, "Bat achetée ! Équipez-la depuis le shop."
+
+    -- ── BAT ÉQUIPER ──
+    elseif upgradeType == "Bat_Equip" then
+        if not data.hasBat then return false, "Vous n'avez pas la Bat !" end
+        if data.batEquipped then return false, "La Bat est déjà équipée." end
+        data.batEquipped = true
+        ShopSystem.SetData(player, data)
+        donnerOutil(player, "Bat")
+        return true, "Bat équipée !"
+
+    -- ── BAT DÉSÉQUIPER ──
+    elseif upgradeType == "Bat_Unequip" then
+        data.batEquipped = false
+        ShopSystem.SetData(player, data)
+        retirerOutil(player, "Bat")
+        return true, "Bat déséquipée."
+
+    -- ── GOLDSLAP ACHAT ──
+    elseif upgradeType == "GoldSlap_Buy" then
+        if data.hasGoldSlap then return false, "Vous possédez déjà le GoldSlap !" end
+        local prix = ShopConfig.GoldSlap.Price
+        if coins < prix then
+            return false, "Pas assez de pièces (" .. ShopConfig.FormatNumber(prix) .. " requis)"
+        end
+        data.coins       = coins - prix
+        data.hasGoldSlap = true
+        ShopSystem.SetData(player, data)
+        ShopSystem.UpdateHUD(player)
+        Logger.info("Shop", "%s a acheté le GoldSlap", player.Name)
+        return true, "GoldSlap acheté ! Équipez-le depuis le shop."
+
+    -- ── GOLDSLAP ÉQUIPER ──
+    elseif upgradeType == "GoldSlap_Equip" then
+        if not data.hasGoldSlap then return false, "Vous n'avez pas le GoldSlap !" end
+        if data.goldSlapEquipped then return false, "Le GoldSlap est déjà équipé." end
+        data.goldSlapEquipped = true
+        ShopSystem.SetData(player, data)
+        donnerOutil(player, "GoldSlap")
+        return true, "GoldSlap équipé !"
+
+    -- ── GOLDSLAP DÉSÉQUIPER ──
+    elseif upgradeType == "GoldSlap_Unequip" then
+        data.goldSlapEquipped = false
+        ShopSystem.SetData(player, data)
+        retirerOutil(player, "GoldSlap")
+        return true, "GoldSlap déséquipé."
 
     else
         return false, "Type d'upgrade inconnu : " .. tostring(upgradeType)
@@ -384,6 +501,12 @@ function ShopSystem.Init()
         playerTowerState[player.UserId] = false
         appliquerSpeed(player)
         appliquerCarry(player)
+        -- Re-donner les outils équipés au respawn
+        local data = ShopSystem.GetData(player)
+        if data then
+            if data.batEquipped      then donnerOutil(player, "Bat")      end
+            if data.goldSlapEquipped then donnerOutil(player, "GoldSlap") end
+        end
     end
 
     Players.PlayerAdded:Connect(function(player)

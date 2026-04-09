@@ -10,7 +10,6 @@ local MutantGenerator = {}
 -- ============================================================
 -- Services
 -- ============================================================
-local ServerStorage     = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local _GameConfig       = require(ReplicatedStorage:WaitForChild("GameConfig"))
@@ -88,9 +87,9 @@ end
             ou nil, nil, nil en cas d'échec
 ]]
 function MutantGenerator.Generate(seedRarity, mutantType)
-    local brainrots = ServerStorage:FindFirstChild("Brainrots")
+    local brainrots = ReplicatedStorage:FindFirstChild("Brainrots")
     if not brainrots then
-        Logger.warn("Spawn", "ServerStorage.Brainrots introuvable")
+        Logger.warn("Spawn", "ReplicatedStorage.Brainrots introuvable")
         return nil, nil, nil
     end
 
@@ -157,6 +156,8 @@ function MutantGenerator.Generate(seedRarity, mutantType)
     local incomeBase   = (_GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[finalRarity]) or 0
     local multElement  = elemCfg.multiplier or 1
     local valeurMutant = incomeBase * multElement
+    -- Stocker CashParSeconde sur le clone (lu par DropSystem et les billboards)
+    pcall(function() clone:SetAttribute("CashParSeconde", valeurMutant) end)
     local valeurTexte  = valeurMutant > 0 and ("  💰 " .. valeurMutant .. "/s") or ""
 
     -- Appliquer les effets visuels via FilterManager (seul point d'entrée autorisé)
