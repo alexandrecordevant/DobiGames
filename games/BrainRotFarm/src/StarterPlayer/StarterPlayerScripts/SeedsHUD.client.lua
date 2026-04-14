@@ -340,10 +340,10 @@ local function majPots(pots)
     end
     -- Mise à jour du texte du bouton avec résumé d'état
     if nbReady > 0 then
-        btnSeeds.Text = "🪴 FlowerPot\n✅ " .. nbReady .. " prêt!"
+        btnSeeds.Text = "🪴 FlowerPot\n✅ " .. nbReady .. " ready!"
         btnSeeds.BackgroundColor3 = Color3.fromRGB(30, 50, 15)
     elseif nbGrowing > 0 then
-        btnSeeds.Text = "🪴 FlowerPot\n🌱 " .. nbGrowing .. " en cours"
+        btnSeeds.Text = "🪴 FlowerPot\n🌱 " .. nbGrowing .. " growing"
         btnSeeds.BackgroundColor3 = Color3.fromRGB(20, 40, 20)
     else
         btnSeeds.Text = "🪴 FlowerPot"
@@ -379,12 +379,12 @@ local function majCalendrier(info)
             f.jour.TextColor3 = C.texteDim
         end
     end
-    lblDailyStatus.Text = graineDispo and "✅ Daily seed disponible!" or ""
+    lblDailyStatus.Text = graineDispo and "✅ Daily seed available!" or ""
 end
 
 local function majArbreTimer()
     if arbreGraineDispo then
-        lblArbreTimer.Text = "🌱 Graine dispo sur les arbres!"; lblArbreTimer.TextColor3 = C.vert
+        lblArbreTimer.Text = "🌱 Seed available on trees!"; lblArbreTimer.TextColor3 = C.vert
     elseif arbreTimerLocal > 0 then
         lblArbreTimer.Text = "⏳ " .. formatTimer(arbreTimerLocal); lblArbreTimer.TextColor3 = C.arbre
     else
@@ -393,7 +393,7 @@ local function majArbreTimer()
 end
 
 local function majDailyTimer()
-    if dailyClaimable then lblDailyTimer.Text = "✅ Daily seed prête!"
+    if dailyClaimable then lblDailyTimer.Text = "✅ Daily seed ready!"
     elseif dailyTimerLocal > 0 then lblDailyTimer.Text = "⏰ " .. formatTimer(dailyTimerLocal)
     else lblDailyTimer.Text = "⏰ --:--:--" end
 end

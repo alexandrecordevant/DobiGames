@@ -867,7 +867,7 @@ fpTitre.Size = UDim2.new(1,-44,0,32) ; fpTitre.Position = UDim2.new(0,10,0,4)
 fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = T.texteTitre
 fpTitre.Font = Enum.Font.GothamBold ; fpTitre.TextSize = 14
 fpTitre.TextXAlignment = Enum.TextXAlignment.Left
-fpTitre.Text = "🪴 État des FlowerPots" ; fpTitre.ZIndex = 21
+fpTitre.Text = "🪴 FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
 fpClose.Size = UDim2.new(0,28,0,28) ; fpClose.Position = UDim2.new(1,-34,0,4)
@@ -953,8 +953,8 @@ local function fpMajAffichage(pots, graines)
     -- Texte bouton
     local btnFlowerPot = screenGui:FindFirstChild("FlowerPotButton")
     if btnFlowerPot then
-        if nbReady > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n✅ "..nbReady.." prêt!"
-        elseif nbGrow > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n🌱 "..nbGrow.." pousse"
+        if nbReady > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n✅ "..nbReady.." ready!"
+        elseif nbGrow > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n🌱 "..nbGrow.." growing"
         else btnFlowerPot.Text = "🪴 FlowerPot" end
     end
 end

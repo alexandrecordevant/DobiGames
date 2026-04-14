@@ -62,13 +62,17 @@ local function getFilterManager()
     return _FilterManager
 end
 
--- Correspondance élément (lowercase) → nom filtre FilterManager
-local ELEMENT_TO_FILTRE = {
-    water = "ElementEau",
-    fire  = "ElementFeu",
-    earth = "ElementTerre",
-    wind  = "ElementVent",
-}
+-- Correspondance type Mutant → nom filtre FilterManager
+-- Construit dynamiquement depuis GameConfig.MutantTypes (source de vérité canonique)
+-- Pattern identique à FlowerPotGrowthSystem : MutantTypes[].Name → MutantTypes[].Filtre
+local ELEMENT_TO_FILTRE = {}
+if Config.MutantTypes then
+    for _, mt in ipairs(Config.MutantTypes) do
+        if mt.Name and mt.Filtre then
+            ELEMENT_TO_FILTRE[mt.Name] = mt.Filtre
+        end
+    end
+end
 
 -- ============================================================
 -- Callback injecté par Main.server.lua (optionnel)

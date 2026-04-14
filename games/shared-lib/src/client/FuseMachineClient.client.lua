@@ -227,7 +227,7 @@ local function creerUI()
     lIngr.Size                  = UDim2.new(1, 0, 0, 20)
     lIngr.Position              = UDim2.new(0, 0, 0, 4)
     lIngr.BackgroundTransparency = 1
-    lIngr.Text                  = "INGRÉDIENTS  (4 Brainrots)"
+    lIngr.Text                  = "INGREDIENTS  (4 Brainrots)"
     lIngr.TextColor3            = C_TITRE
     lIngr.TextSize              = 13
     lIngr.Font                  = Enum.Font.GothamBold
@@ -294,7 +294,7 @@ local function creerUI()
     lFleche.Size                  = UDim2.new(1, 0, 0, 22)
     lFleche.Position              = UDim2.new(0, 0, 0, 122)
     lFleche.BackgroundTransparency = 1
-    lFleche.Text                  = "RÉSULTAT POSSIBLE"
+    lFleche.Text                  = "POSSIBLE RESULT"
     lFleche.TextColor3            = C_ACCENT
     lFleche.TextSize              = 12
     lFleche.Font                  = Enum.Font.GothamBold
@@ -307,7 +307,7 @@ local function creerUI()
     labelResultat.Position              = UDim2.new(0, 0, 0, 147)
     labelResultat.BackgroundColor3      = C_BG2
     labelResultat.BorderSizePixel       = 0
-    labelResultat.Text                  = "<font color='#7a6040'>Sélectionnez 4 Brainrots…</font>"
+    labelResultat.Text                  = "<font color='#7a6040'>Select 4 Brainrots…</font>"
     labelResultat.TextColor3            = C_TEXTE
     labelResultat.TextSize              = 15
     labelResultat.Font                  = Enum.Font.GothamBold
@@ -406,7 +406,7 @@ local function creerUI()
     lSurprise.Size                  = UDim2.new(1, 0, 0, 30)
     lSurprise.Position              = UDim2.new(0, 0, 0, 70)
     lSurprise.BackgroundTransparency = 1
-    lSurprise.Text                  = "Résultat : ???"
+    lSurprise.Text                  = "Result: ???"
     lSurprise.TextColor3            = Color3.fromRGB(160, 138, 100)
     lSurprise.TextSize              = 16
     lSurprise.Font                  = Enum.Font.Gotham
@@ -445,7 +445,7 @@ local function creerUI()
     lRappel.Size                  = UDim2.new(1, 0, 0, 24)
     lRappel.Position              = UDim2.new(0, 0, 0, 204)
     lRappel.BackgroundTransparency = 1
-    lRappel.Text                  = "Revenez avec le ProximityPrompt quand c'est prêt."
+    lRappel.Text                  = "Come back with the ProximityPrompt when it's ready."
     lRappel.TextColor3            = Color3.fromRGB(130, 110, 75)
     lRappel.TextSize              = 12
     lRappel.Font                  = Enum.Font.Gotham
@@ -526,7 +526,7 @@ mettreAJourRecette = function()
     if not complet or #raretes < 4 then
         recetteTrouvee = nil
         if labelResultat then
-            labelResultat.Text = "<font color='#7a6040'>Sélectionnez 4 Brainrots…</font>"
+            labelResultat.Text = "<font color='#7a6040'>Select 4 Brainrots…</font>"
         end
         if labelCout then labelCout.Text = "" end
         if btnLancer then btnLancer.BackgroundColor3 = C_BTN_OFF end
@@ -692,7 +692,7 @@ local function demarrerTimerClient(debutFusion, dureeFusion)
 
         if restant <= 0 then
             if labelTimer then
-                labelTimer.Text      = "PRÊT À COLLECTER !"
+                labelTimer.Text      = "READY TO COLLECT!"
                 labelTimer.TextColor3 = Color3.fromRGB(100, 220, 80)
             end
             if barreProgress then
@@ -796,7 +796,7 @@ EtatUpdate.OnClientEvent:Connect(function(machine, update)
     if update.termine then
         if timerConn then timerConn:Disconnect() timerConn = nil end
         if labelTimer then
-            labelTimer.Text       = "PRÊT À COLLECTER !"
+            labelTimer.Text       = "READY TO COLLECT!"
             labelTimer.TextColor3 = Color3.fromRGB(100, 220, 80)
         end
         if barreProgress then

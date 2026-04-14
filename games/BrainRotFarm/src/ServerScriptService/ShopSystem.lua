@@ -297,10 +297,10 @@ local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
 
     -- 1. Lire l'upgrade depuis Config (jamais depuis le client)
     local upgradeConfig = Config.ShopUpgrades[nomUpgrade]
-    if not upgradeConfig then return false, "Upgrade inconnu" end
+    if not upgradeConfig then return false, "Unknown upgrade" end
 
     local niveauConfig = upgradeConfig.niveaux[niveauDemande]
-    if not niveauConfig then return false, "Niveau invalide" end
+    if not niveauConfig then return false, "Invalid level" end
 
     -- 2. Type doit être "coins" (pas de paiement R$ ici)
     if niveauConfig.type ~= "coins" then
@@ -316,13 +316,13 @@ local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
 
     -- 4. Niveau précédent requis (pas de saut de niveau)
     if niveauDemande > 1 and niveauActuel < niveauDemande - 1 then
-        return false, "Achète d'abord le niveau précédent"
+        return false, "Purchase the previous level first"
     end
 
     -- 5. Vérification des coins
     local prix = niveauConfig.prix
     if (playerData.coins or 0) < prix then
-        return false, "Coins insuffisants (" .. prix .. " requis)"
+        return false, "Not enough coins (" .. prix .. " required)"
     end
 
     -- 6. Déduire les coins et sauvegarder le niveau

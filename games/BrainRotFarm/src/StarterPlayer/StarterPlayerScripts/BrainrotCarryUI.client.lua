@@ -36,18 +36,23 @@ gui.Parent         = player.PlayerGui
 
 local mainBtn = Instance.new("TextButton")
 mainBtn.Name                   = "CarryButton"
-mainBtn.Size                   = UDim2.new(0, 160, 0, 48)
-mainBtn.Position               = UDim2.new(1, -170, 1, -220)
+mainBtn.Size                   = UDim2.new(0, 220, 0, 40)
+mainBtn.Position               = UDim2.new(0, 10, 0, 110)
 mainBtn.AnchorPoint            = Vector2.new(0, 0)
-mainBtn.BackgroundColor3       = Color3.fromRGB(20, 20, 20)
-mainBtn.BackgroundTransparency = 0.2
+mainBtn.BackgroundTransparency = 1
 mainBtn.BorderSizePixel        = 0
 mainBtn.Text                   = "Carry 0/1"
 mainBtn.TextColor3             = Color3.fromRGB(255, 255, 255)
 mainBtn.TextScaled             = true
 mainBtn.TextWrapped            = false
+mainBtn.RichText               = true
 mainBtn.Font                   = Enum.Font.GothamBold
 mainBtn.Parent                 = gui
+
+local mainBtnStroke = Instance.new("UIStroke")
+mainBtnStroke.Color     = Color3.new(0, 0, 0)
+mainBtnStroke.Thickness = 2
+mainBtnStroke.Parent    = mainBtn
 
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 10)
@@ -60,7 +65,7 @@ uiCorner.Parent       = mainBtn
 local panel = Instance.new("Frame")
 panel.Name                   = "UpgradePanel"
 panel.Size                   = UDim2.new(0, 220, 0, 110)
-panel.Position               = UDim2.new(1, -230, 1, -345)
+panel.Position               = UDim2.new(0, 10, 0, 168)
 panel.BackgroundColor3       = Color3.fromRGB(15, 15, 15)
 panel.BackgroundTransparency = 0.1
 panel.BorderSizePixel        = 0
@@ -143,14 +148,10 @@ local errorTweenConn  = nil
 -- ─────────────────────────────────────────────────────────────
 
 local function RefreshUI()
-	mainBtn.Text   = ("Carry %d/%d"):format(currentCarried, currentCapacity)
+	local full = currentCarried >= currentCapacity
+	local numColor = full and "rgb(255,80,80)" or "rgb(255,220,80)"
+	mainBtn.Text   = ('Carry <font color="%s">%d/%d</font>'):format(numColor, currentCarried, currentCapacity)
 	infoLabel.Text = ("Capacity : %d"):format(currentCapacity)
-
-	if currentCarried >= currentCapacity then
-		mainBtn.BackgroundColor3 = Color3.fromRGB(120, 20, 20)
-	else
-		mainBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-	end
 end
 
 local function ShowError(msg)

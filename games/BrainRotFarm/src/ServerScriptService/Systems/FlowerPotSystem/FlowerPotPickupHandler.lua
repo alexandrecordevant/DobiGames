@@ -150,7 +150,7 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
     connexion = prompt.Triggered:Connect(function(triggerPlayer)
         -- Validation : seul le propriétaire peut récolter
         if triggerPlayer ~= player then
-            notifier(triggerPlayer, "INFO", "❌ Ce pot appartient à un autre joueur!")
+            notifier(triggerPlayer, "INFO", "❌ This pot belongs to another player!")
             return
         end
 

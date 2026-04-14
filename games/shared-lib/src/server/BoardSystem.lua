@@ -154,13 +154,13 @@ local function mettreAJourSurfaceGui(board, etat)
 
     local lblNiveau = fond:FindFirstChild("Niveau")
     if lblNiveau then
-        lblNiveau.Text = "Niveau " .. niveau .. " / 30  ·  x" .. string.format("%.1f", mult)
+        lblNiveau.Text = "Level " .. niveau .. " / 30  ·  x" .. string.format("%.1f", mult)
     end
 
     local bouton = fond:FindFirstChild("BoutonAchat")
     if bouton then
         if maxed then
-            bouton.Text             = "NIVEAU MAXIMUM"
+            bouton.Text             = "MAX LEVEL"
             bouton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
             bouton.TextColor3       = Color3.fromRGB(120, 120, 120)
             bouton.Active           = false
