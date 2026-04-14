@@ -43,9 +43,10 @@ mainBtn.BackgroundTransparency = 1
 mainBtn.BorderSizePixel        = 0
 mainBtn.Text                   = "Carry 0/1"
 mainBtn.TextColor3             = Color3.fromRGB(255, 255, 255)
-mainBtn.TextScaled             = true
+mainBtn.TextScaled             = false
+mainBtn.TextSize               = 28
 mainBtn.TextWrapped            = false
-mainBtn.RichText               = true
+mainBtn.RichText               = false
 mainBtn.Font                   = Enum.Font.GothamBold
 mainBtn.Parent                 = gui
 
@@ -149,9 +150,9 @@ local errorTweenConn  = nil
 
 local function RefreshUI()
 	local full = currentCarried >= currentCapacity
-	local numColor = full and "rgb(255,80,80)" or "rgb(255,220,80)"
-	mainBtn.Text   = ('Carry <font color="%s">%d/%d</font>'):format(numColor, currentCarried, currentCapacity)
-	infoLabel.Text = ("Capacity : %d"):format(currentCapacity)
+	mainBtn.Text      = ("Carry %d/%d"):format(currentCarried, currentCapacity)
+	mainBtn.TextColor3 = full and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
+	infoLabel.Text    = ("Capacity : %d"):format(currentCapacity)
 end
 
 local function ShowError(msg)
