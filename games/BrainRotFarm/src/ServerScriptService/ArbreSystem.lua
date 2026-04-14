@@ -181,7 +181,7 @@ local function ActiverGraine(sommetPart, typeGraine, onCollect)
 
     -- Billboard "SEED READY!" — texte flottant
     local bb, label = CreerBillboard(sommetPart,
-        "🌱 " .. typeGraine .. " SEED\n✨ READY! Press E",
+        "🌱 " .. typeGraine .. " SEED\n✨ READY!",
         couleur)
 
     -- Pulse du texte
