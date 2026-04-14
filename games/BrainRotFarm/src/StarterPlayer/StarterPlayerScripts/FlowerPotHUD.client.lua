@@ -1104,15 +1104,7 @@ local function creerBillboard(potModel, plantedAt, dureeStage)
     billboard.ResetOnSpawn     = false
     billboard.Parent           = potPart
 
-    -- Fond arrondi
-    local bg = Instance.new("Frame", billboard)
-    bg.Size                   = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3       = Color3.fromRGB(10, 10, 20)
-    bg.BackgroundTransparency = 0.35
-    bg.BorderSizePixel        = 0
-    Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 8)
-
-    local stageLbl = Instance.new("TextLabel", bg)
+    local stageLbl = Instance.new("TextLabel", billboard)
     stageLbl.Name                  = "StageLabel"
     stageLbl.Size                  = UDim2.new(1, 0, 0.52, 0)
     stageLbl.Position              = UDim2.new(0, 0, 0, 0)
@@ -1120,10 +1112,10 @@ local function creerBillboard(potModel, plantedAt, dureeStage)
     stageLbl.TextColor3            = Color3.fromRGB(255, 255, 255)
     stageLbl.Font                  = Enum.Font.GothamBold
     stageLbl.TextSize              = 20
-    stageLbl.TextStrokeTransparency = 0.4
+    stageLbl.TextStrokeTransparency = 0
     stageLbl.TextStrokeColor3      = Color3.fromRGB(0, 0, 0)
 
-    local timerLbl = Instance.new("TextLabel", bg)
+    local timerLbl = Instance.new("TextLabel", billboard)
     timerLbl.Name                  = "TimerLabel"
     timerLbl.Size                  = UDim2.new(1, 0, 0.48, 0)
     timerLbl.Position              = UDim2.new(0, 0, 0.52, 0)
@@ -1131,7 +1123,7 @@ local function creerBillboard(potModel, plantedAt, dureeStage)
     timerLbl.TextColor3            = Color3.fromRGB(150, 210, 255)
     timerLbl.Font                  = Enum.Font.Gotham
     timerLbl.TextSize              = 17
-    timerLbl.TextStrokeTransparency = 0.4
+    timerLbl.TextStrokeTransparency = 0
     timerLbl.TextStrokeColor3      = Color3.fromRGB(0, 0, 0)
 
     -- Offset Y par stage (monte avec la plante)

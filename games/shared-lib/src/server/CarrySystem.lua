@@ -226,6 +226,15 @@ local function creerTool(player, clone, rarete)
 		local prix = clone:GetAttribute("Prix")
 		if cps  then tool:SetAttribute("CashParSeconde", cps)  end
 		if prix then tool:SetAttribute("Prix",           prix) end
+		-- Attributs mutant du modèle (si rarete ne les fournit pas — BR mutant spawnné sans isMutant dans rarete)
+		if not (rarete and rarete.isMutant) then
+			local isMutantClone = clone:GetAttribute("IsMutant")
+			if isMutantClone then tool:SetAttribute("IsMutant", true) end
+		end
+		if not (rarete and rarete.elementType) then
+			local mutantTypeClone = clone:GetAttribute("MutantType")
+			if mutantTypeClone then tool:SetAttribute("ElementType", mutantTypeClone) end
+		end
 	end
 
 	-- Handle invisible — jamais lâché (CanBeDropped = false)
@@ -408,7 +417,16 @@ local function effectuerRamassage(player, rarete, modeleExistant)
 	local tool = creerTool(player, clone, rarete)
 	if not tool then return false end
 
-	local entree = { rarete = rarete, toolRef = tool }
+	-- Enrichir rarete avec les attributs mutant du clone si non fournis par le spawn
+	-- (un BR mutant a IsMutant/MutantType sur son modèle, mais la table rarete générique ne les contient pas)
+	local rareteDepot = rarete
+	if clone and clone:GetAttribute("IsMutant") and not (rarete and rarete.isMutant) then
+		rareteDepot = {}
+		for k, v in pairs(rarete) do rareteDepot[k] = v end
+		rareteDepot.isMutant    = true
+		rareteDepot.elementType = clone:GetAttribute("MutantType")
+	end
+	local entree = { rarete = rareteDepot, toolRef = tool }
 	table.insert(data.portes, entree)
 
 	jouerSon(player)
@@ -504,17 +522,12 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 			holdingPlayer   = nil
 			prompt.Enabled  = false
 			notifierJoueur(precedent, "INFO", player.Name .. " interrupted you!")
-			notifierJoueur(player,    "INFO", "You can try to capture!")
-			notifierAutresJoueurs(player, "INFO",
-				player.Name .. " is trying to grab a " .. rarete.nom .. "!")
 			task.delay(0.1, function()
 				if prompt and prompt.Parent then prompt.Enabled = true end
 			end)
 		else
 			holdingPlayer = player
 			notifProgression(player, cfg.holdDuration)
-			notifierAutresJoueurs(player, "INFO",
-				player.Name .. " is trying to grab a " .. rarete.nom .. "!")
 		end
 	end)
 
@@ -545,7 +558,10 @@ local function creerPromptCapture(brModel, rarete, baseIndex, onCapture)
 		holdingPlayer  = nil
 		pcall(function() brModel:SetAttribute("Captured", true) end)
 
-		notifierTous(player.Name .. " grabbed [" .. nomModele .. "] " .. rarete.nom .. "!")
+		-- Notifier uniquement pour les raretés notables (valeur >= 8 → RARE et au-dessus)
+		if (rarete.valeur or 0) >= 8 then
+			notifierJoueur(player, "SUCCESS", "✅ [" .. nomModele .. "] " .. rarete.nom .. " grabbed!")
+		end
 
 		local success = effectuerRamassage(player, rarete, brModel)
 		if success then
@@ -767,7 +783,7 @@ local function onMort(player)
 	local hrp     = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	local posMort = hrp and hrp.Position or Vector3.new(0, 5, 0)
 
-	notifierTous(player.Name .. " dropped their Brain Rots!")
+	-- Pas de notification publique — le drop est visible visuellement
 
 	local portesADrop = data.portes
 	data.portes = {}

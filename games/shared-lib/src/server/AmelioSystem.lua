@@ -264,7 +264,7 @@ local function executerAmelioration(player)
     local notif = getNotifEvent()
     if notif then
         local msg = string.format(
-            "Base améliorée au niveau %d ! ×%.1f multiplicateur · +1 slot",
+            "Base upgraded to level %d! ×%.1f multiplier · +1 slot",
             niveau, cfg.multiplicateur
         )
         pcall(function() notif:FireClient(player, "AMELIORATION", msg) end)
@@ -311,13 +311,13 @@ DemandeRebirth.OnServerEvent:Connect(function(player, token)
         if notif then
             local msg
             if manques.maxAtteint then
-                msg = "Votre base est déjà au niveau maximum !"
+                msg = "Your base is already at max level!"
             elseif manques.manqueCoins and manques.manqueCoins > 0 then
-                msg = formaterCoins(manques.manqueCoins) .. " coins manquants"
+                msg = formaterCoins(manques.manqueCoins) .. " coins missing"
             else
-                msg = "Conditions non remplies"
+                msg = "Requirements not met"
             end
-            pcall(function() notif:FireClient(player, "ERREUR", msg) end)
+            pcall(function() notif:FireClient(player, "ERROR", msg) end)
         end
         return
     end

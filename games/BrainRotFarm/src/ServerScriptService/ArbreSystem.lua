@@ -82,45 +82,26 @@ end
 -- CRÉER BILLBOARD
 -- ═══════════════════════════════════════
 
--- avecFond=true  → fond sombre + bordure colorée (graine READY)
--- avecFond=false → texte seul, sans fond ni bordure (compteur)
-local function CreerBillboard(sommetPart, texte, couleur, avecFond)
+-- Texte flottant sans fond (compteur ou graine READY)
+local function CreerBillboard(sommetPart, texte, couleur)
     local existing = sommetPart:FindFirstChild("SeedBillboard")
     if existing then existing:Destroy() end
 
     local bb = Instance.new("BillboardGui", sommetPart)
     bb.Name        = "SeedBillboard"
-    -- Taille différente selon le mode : compteur grand, READY normal
-    bb.Size        = avecFond and UDim2.new(0, 220, 0, 80) or UDim2.new(0, 300, 0, 100)
+    bb.Size        = UDim2.new(0, 300, 0, 100)
     bb.StudsOffset = Vector3.new(0, 10, 0)
     bb.AlwaysOnTop = true   -- visible depuis le bas même derrière le feuillage
     bb.MaxDistance = 300    -- visible de loin
 
-    local parent = bb
-
-    if avecFond then
-        local fond = Instance.new("Frame", bb)
-        fond.Size                   = UDim2.new(1, 0, 1, 0)
-        fond.BackgroundColor3       = Color3.fromRGB(15, 5, 30)
-        fond.BackgroundTransparency = 0.1
-        fond.BorderSizePixel        = 0
-        Instance.new("UICorner", fond).CornerRadius = UDim.new(0, 12)
-
-        local stroke = Instance.new("UIStroke", fond)
-        stroke.Color     = couleur or Color3.fromRGB(180, 0, 255)
-        stroke.Thickness = 3
-
-        parent = fond
-    end
-
-    local label = Instance.new("TextLabel", parent)
+    local label = Instance.new("TextLabel", bb)
     label.Name                   = "Label"
     label.Size                   = UDim2.new(1, 0, 1, 0)
     label.Position               = UDim2.new(0, 0, 0, 0)
     label.BackgroundTransparency = 1
     label.TextColor3             = couleur or Color3.fromRGB(200, 100, 255)
     label.Font                   = Enum.Font.GothamBold
-    label.TextSize               = avecFond and 28 or 52
+    label.TextSize               = 36
     label.TextScaled             = false
     label.TextWrapped            = true
     label.RichText               = true
@@ -128,7 +109,7 @@ local function CreerBillboard(sommetPart, texte, couleur, avecFond)
 
     local txtStroke = Instance.new("UIStroke", label)
     txtStroke.Color     = Color3.fromRGB(0, 0, 0)
-    txtStroke.Thickness = avecFond and 1.5 or 3
+    txtStroke.Thickness = 2.5
 
     return bb, label
 end
@@ -198,10 +179,10 @@ local function ActiverGraine(sommetPart, typeGraine, onCollect)
     local couleur   = (graineCfg and graineCfg.couleurStage4)
                    or Color3.fromRGB(255, 215, 0)
 
-    -- Billboard "SEED READY!" — avec fond et bordure
+    -- Billboard "SEED READY!" — texte flottant
     local bb, label = CreerBillboard(sommetPart,
         "🌱 " .. typeGraine .. " SEED\n✨ READY! Press E",
-        couleur, true)
+        couleur)
 
     -- Pulse du texte
     task.spawn(function()
@@ -259,18 +240,13 @@ local function ActiverGraine(sommetPart, typeGraine, onCollect)
         TweenService:Create(light,
             TweenInfo.new(0.5), { Brightness = 1 }):Play()
 
-        -- Billboard de confirmation
-        label.Text       = "✅ Collected by\n" .. player.Name .. "!"
-        label.TextColor3 = Color3.fromRGB(100, 255, 100)
-
         if onCollect then
             pcall(onCollect, player, typeGraine)
         end
 
-        task.delay(4, function()
-            if bb and bb.Parent then bb:Destroy() end
-            if pp and pp.Parent then pp:Destroy() end
-        end)
+        -- Détruire immédiatement le billboard et le prompt
+        if bb and bb.Parent then bb:Destroy() end
+        if pp and pp.Parent then pp:Destroy() end
     end)
 
     return function() return aEteCollecte end, pp
@@ -351,7 +327,7 @@ local function OnGraineCollectee(player, typeGraine)
         if NotifEventFull then
             pcall(function()
                 NotifEventFull:FireClient(player, "WARNING",
-                    "🎒 Carry plein! Plante ou dépose d'abord avant de collecter une graine.")
+                    "🎒 Carry full! Plant or deposit first before collecting a seed.")
             end)
         end
         Logger.debug("Arbre", "%s — carry plein, graine %s refusée", player.Name, typeGraine)
@@ -386,8 +362,8 @@ local function OnGraineCollectee(player, typeGraine)
     if NotifEvent then
         pcall(function()
             NotifEvent:FireClient(player, "SUCCESS",
-                "🌱 Graine " .. typeGraine .. " récupérée! ("
-                .. total .. " en main) — Va la planter dans ton FlowerPot!")
+                "🌱 " .. typeGraine .. " Seed collected! ("
+                .. total .. " in hand) — Plant it in your FlowerPot!")
         end)
     end
 
@@ -434,10 +410,10 @@ function ArbreSystem.Init()
             -- Lumière violette faible permanente
             AjouterLumiere(sommetPart, 1)
 
-            -- Billboard compteur initial — sans fond ni bordure
+            -- Billboard compteur initial
             CreerBillboard(sommetPart,
                 "⏳ " .. FormatTimer(arbreCfg.intervalleSecondes),
-                Color3.fromRGB(200, 150, 255), false)
+                Color3.fromRGB(200, 150, 255))
 
             table.insert(arbresDonnees, {
                 arbre      = arbre,
@@ -536,7 +512,7 @@ function ArbreSystem.Init()
                 end
                 CreerBillboard(d.sommetPart,
                     "⏳ " .. FormatTimer(intervalle),
-                    Color3.fromRGB(200, 150, 255), false)
+                    Color3.fromRGB(200, 150, 255))
             end
         end
     end)

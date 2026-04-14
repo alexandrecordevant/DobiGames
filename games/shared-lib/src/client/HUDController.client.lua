@@ -213,32 +213,36 @@ local NOTIF_COULEURS = {
     WARNING = Color3.fromRGB(255, 165, 0),
 }
 
--- Label réutilisable (créé une seule fois)
+-- Label réutilisable (créé une seule fois) — texte flottant sans fond
 local notifLabel = Instance.new("TextLabel", gui)
 notifLabel.Name                   = "NotifLabel"
-notifLabel.Size                   = UDim2.new(0, 400, 0, 50)
-notifLabel.Position               = UDim2.new(0.5, -200, 0, 20)
-notifLabel.BackgroundColor3       = T.fondPrincipal
-notifLabel.BackgroundTransparency = 0.1
-notifLabel.TextColor3             = T.texte
+notifLabel.Size                   = UDim2.new(0, 500, 0, 50)
+notifLabel.Position               = UDim2.new(0.5, -250, 0, 20)
+notifLabel.BackgroundTransparency = 1
+notifLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
 notifLabel.Font                   = Enum.Font.GothamBold
 notifLabel.TextSize               = 16
 notifLabel.RichText               = true
 notifLabel.BorderSizePixel        = 0
 notifLabel.Visible                = false
 notifLabel.ZIndex                 = 20
-local notifCorner = Instance.new("UICorner", notifLabel)
-notifCorner.CornerRadius = UDim.new(0, 8)
+
+local notifStroke = Instance.new("UIStroke", notifLabel)
+notifStroke.Color           = Color3.new(0, 0, 0)
+notifStroke.Thickness       = 2
+notifStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 
 local notifMasque = false  -- empêche les chevauchements
 
 NotifEvent.OnClientEvent:Connect(function(typeNotif, message)
     if not message then return end
+    -- REBIRTH_GLOBAL et RARE sont gérés par NotificationHandler → ignorer ici
+    if typeNotif == "REBIRTH_GLOBAL" or typeNotif == "RARE" then return end
 
     -- Couleur selon le type
-    notifLabel.BackgroundColor3 = NOTIF_COULEURS[typeNotif] or Color3.fromRGB(0, 0, 0)
-    notifLabel.Text             = message
-    notifLabel.Visible          = true
+    notifLabel.TextColor3 = NOTIF_COULEURS[typeNotif] or Color3.fromRGB(255, 255, 255)
+    notifLabel.Text       = message
+    notifLabel.Visible    = true
 
     -- Annuler le masquage précédent puis masquer après 3s
     notifMasque = false

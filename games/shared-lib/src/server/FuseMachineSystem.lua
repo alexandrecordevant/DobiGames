@@ -177,8 +177,8 @@ local function creerPromptCollecte(machine)
     end
 
     local prompt = Instance.new("ProximityPrompt")
-    prompt.ActionText            = "Collecter"
-    prompt.ObjectText            = etat.outputRarete .. " (Fusionné)"
+    prompt.ActionText            = "Collect"
+    prompt.ObjectText            = etat.outputRarete .. " (Fused)"
     prompt.HoldDuration          = 0
     prompt.MaxActivationDistance = 10
     prompt.Parent                = part
@@ -205,7 +205,7 @@ local function creerPromptCollecte(machine)
         donnerToolResultat(player, e.outputRarete)
 
         notifier(player, "SUCCESS",
-            "Fusion terminée ! Vous obtenez : " .. e.outputRarete)
+            "Fusion complete! You obtained: " .. e.outputRarete)
 
         Logger.info("Fuse", "%s collecte : %s", player.Name, e.outputRarete)
 
@@ -228,7 +228,7 @@ local function demarrerTimer(machine)
         local joueur = Players:GetPlayerByUserId(e.joueurId)
         if joueur then
             notifier(joueur, "INFO",
-                "Fusion prête ! Retournez collecter votre " .. e.outputRarete)
+                "Fusion ready! Come collect your " .. e.outputRarete)
 
             EtatUpdate:FireClient(joueur, machine, {
                 actif        = true,
@@ -306,12 +306,12 @@ local function onLancerFusion(player, machine, toolInstances)
     end
 
     if etat.actif then
-        notifier(player, "ERREUR", "Cette machine est déjà en cours de fusion !")
+        notifier(player, "ERROR", "This machine is already fusing!")
         return
     end
 
     if type(toolInstances) ~= "table" or #toolInstances ~= FuseConfig.NbSlots then
-        notifier(player, "ERREUR", "Sélection invalide (4 Brainrots requis).")
+        notifier(player, "ERROR", "Invalid selection (4 Brainrots required).")
         return
     end
 
@@ -321,12 +321,12 @@ local function onLancerFusion(player, machine, toolInstances)
     local raretes = {}
     for _, tool in ipairs(toolInstances) do
         if not tool or not tool:IsA("Tool") or tool.Parent ~= backpack then
-            notifier(player, "ERREUR", "Un Brainrot sélectionné est invalide.")
+            notifier(player, "ERROR", "A selected Brainrot is invalid.")
             return
         end
         local rarete = tool:GetAttribute("Rarete")
         if not rarete then
-            notifier(player, "ERREUR", "Un Brainrot n'a pas d'attribut Rareté.")
+            notifier(player, "ERROR", "A Brainrot is missing its Rarity attribute.")
             return
         end
         raretes[#raretes + 1] = rarete
@@ -334,14 +334,14 @@ local function onLancerFusion(player, machine, toolInstances)
 
     local recette = trouverRecette(raretes)
     if not recette then
-        notifier(player, "ERREUR", "Pas de recette pour cette combinaison !")
+        notifier(player, "ERROR", "No recipe found for this combination!")
         return
     end
 
     local coins = FuseMachineSystem.GetCoins and FuseMachineSystem.GetCoins(player) or 0
     if coins < recette.cout then
-        notifier(player, "ERREUR",
-            "Pas assez de coins ! Requis : " .. recette.cout .. " · Vous avez : " .. coins)
+        notifier(player, "ERROR",
+            "Not enough coins! Required: " .. recette.cout .. " · You have: " .. coins)
         return
     end
 
@@ -373,7 +373,7 @@ local function onLancerFusion(player, machine, toolInstances)
 
     FermerUI:FireClient(player)
 
-    notifier(player, "INFO", "Fusion lancée ! Revenez dans 1h30 !")
+    notifier(player, "INFO", "Fusion started! Come back in 1h30!")
 
     EtatUpdate:FireAllClients(machine, {
         actif       = true,

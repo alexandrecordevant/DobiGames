@@ -225,7 +225,7 @@ InitialiserPots = function(player, baseIndex, playerData)
             end
         end
 
-        -- Helper billboard minimaliste pour l'état du pot
+        -- Helper billboard minimaliste pour l'état du pot (texte flottant sans fond)
         local function creerBillboardPot(texte, couleur)
             local bb = Instance.new("BillboardGui", potPart)
             bb.Name        = "PotBillboard"
@@ -233,13 +233,7 @@ InitialiserPots = function(player, baseIndex, playerData)
             bb.StudsOffset = Vector3.new(0, 12, 0)
             bb.AlwaysOnTop = false
             bb.MaxDistance = 60
-            local bg = Instance.new("Frame", bb)
-            bg.Size = UDim2.new(1,0,1,0)
-            bg.BackgroundColor3 = Color3.fromRGB(10,10,20)
-            bg.BackgroundTransparency = 0.3
-            bg.BorderSizePixel = 0
-            Instance.new("UICorner", bg).CornerRadius = UDim.new(0,6)
-            local lbl = Instance.new("TextLabel", bg)
+            local lbl = Instance.new("TextLabel", bb)
             lbl.Size = UDim2.new(1,0,1,0)
             lbl.BackgroundTransparency = 1
             lbl.TextColor3 = couleur or Color3.fromRGB(255,255,255)
@@ -248,6 +242,8 @@ InitialiserPots = function(player, baseIndex, playerData)
             lbl.Text = texte
             lbl.TextWrapped = true
             lbl.RichText = true
+            lbl.TextStrokeTransparency = 0
+            lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         end
 
         -- ── Pot verrouillé ──
@@ -263,7 +259,7 @@ InitialiserPots = function(player, baseIndex, playerData)
 
             local prompt = Instance.new("ProximityPrompt")
             prompt.ActionText            = "Unlock"
-            prompt.ObjectText            = "🔒 FlowerPot " .. potIndex .. " — " .. prixLabel
+            prompt.ObjectText            = "FlowerPot " .. potIndex
             prompt.HoldDuration          = 0
             prompt.MaxActivationDistance = 8
             prompt.RequiresLineOfSight   = false
@@ -312,13 +308,14 @@ InitialiserPots = function(player, baseIndex, playerData)
                 end)
             end
 
-            -- Prompt pour voir l'état du pot en cours de croissance
+            -- Prompt discret pour ouvrir le panel infos (pas de texte visible — le billboard suffit)
             local promptInfos = Instance.new("ProximityPrompt")
-            promptInfos.ActionText            = "Info"
-            promptInfos.ObjectText            = "🌱 FlowerPot " .. potIndex .. " — Growing"
+            promptInfos.ActionText            = ""
+            promptInfos.ObjectText            = ""
             promptInfos.HoldDuration          = 0
             promptInfos.MaxActivationDistance = 8
             promptInfos.RequiresLineOfSight   = false
+            promptInfos.Style                 = Enum.ProximityPromptStyle.Custom
             promptInfos.Parent                = potPart
 
             -- Envoyer les données au client pour la BillboardGui 3D
@@ -815,12 +812,12 @@ DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
     if prixCoins > 0 then
         if data.coins < prixCoins then
             NotifEvent:FireClient(player, "ERROR",
-                "❌ Pas assez de coins! Il te faut " .. prixCoins .. " 💰")
+                "❌ Not enough coins! You need " .. prixCoins .. " 💰")
             return
         end
         data.coins = data.coins - prixCoins
         data.pots[potIndex].debloque = true
-        NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot " .. potIndex .. " débloqué!")
+        NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot " .. potIndex .. " unlocked!")
         EnvoyerHUD(player, data)
         local baseIndex = AssignationSystem.GetBaseIndex(player)
         if baseIndex then InitialiserPots(player, baseIndex, data) end
@@ -836,7 +833,7 @@ DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
         end)
         if ok and owned then
             data.pots[potIndex].debloque = true
-            NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot 4 débloqué via Game Pass!")
+            NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot 4 unlocked via Game Pass!")
             EnvoyerHUD(player, data)
             local baseIndex = AssignationSystem.GetBaseIndex(player)
             if baseIndex then InitialiserPots(player, baseIndex, data) end
@@ -851,7 +848,7 @@ InstantGrowPot.OnServerEvent:Connect(function(player, potIndex)
     local data = GetData(player)
     if not data or not data.pots or not data.pots[potIndex] then return end
     if not data.pots[potIndex].debloque or not data.pots[potIndex].rarete then
-        NotifEvent:FireClient(player, "ERROR", "❌ Aucune graine dans ce pot!")
+        NotifEvent:FireClient(player, "ERROR", "❌ No seed in this pot!")
         return
     end
     local igCfg = Config.FlowerPotConfig and Config.FlowerPotConfig.instantGrow
@@ -867,7 +864,7 @@ InstantGrowPot.OnServerEvent:Connect(function(player, potIndex)
         end
     else
         -- DevProduct → géré dans MonetizationHandler via ProcessReceipt
-        NotifEvent:FireClient(player, "INFO", "⚡ Instant Grow : achat Robux requis.")
+        NotifEvent:FireClient(player, "INFO", "⚡ Instant Grow requires a Robux purchase.")
     end
 end)
 
@@ -957,7 +954,7 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     if not data or not data.dailySeed then return end
 
     if not data.dailySeed.graineDispo then
-        NotifEvent:FireClient(player, "INFO", "⏳ Daily Seed pas encore disponible!")
+        NotifEvent:FireClient(player, "INFO", "⏳ Daily Seed not available yet!")
         return
     end
 
@@ -1065,8 +1062,8 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     data.dailySeed.jourActuel     = (jourActuel % 7) + 1  -- cycle 1 → 7 → 1
 
     local msgGraines = quantite > 1
-        and ("🌱 Daily Seed ×" .. quantite .. " " .. rarity .. " reçues ! (Seed Doubler 🔑) — Jour " .. jourActuel .. "/7")
-        or  ("🌱 Daily Seed " .. rarity .. " reçue ! (Jour " .. jourActuel .. "/7)")
+        and ("🌱 Daily Seed ×" .. quantite .. " " .. rarity .. " received! (Seed Doubler 🔑) — Day " .. jourActuel .. "/7")
+        or  ("🌱 Daily Seed " .. rarity .. " received! (Day " .. jourActuel .. "/7)")
     NotifEvent:FireClient(player, "SUCCESS", msgGraines)
     EnvoyerHUD(player, data)
 end)
@@ -1096,7 +1093,7 @@ CollectAllEvent.OnServerEvent:Connect(function(player)
             else
                 affichage = tostring(math.floor(totalCollecte))
             end
-            NotifEvent:FireClient(player, "SUCCESS", "💰 +" .. affichage .. " coins collectés !")
+            NotifEvent:FireClient(player, "SUCCESS", "💰 +" .. affichage .. " coins collected!")
             EnvoyerHUD(player, data)
         end
     end

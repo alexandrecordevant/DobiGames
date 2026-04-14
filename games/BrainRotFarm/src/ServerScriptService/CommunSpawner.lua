@@ -298,26 +298,17 @@ local function creerCompteurBillboard(spawnPos, typeConfig, typeNom)
 	bb.Adornee     = partCompteur
 	bb.Parent      = partCompteur
 
-	local cadre = Instance.new("Frame")
-	cadre.Size                   = UDim2.new(1, 0, 1, 0)
-	cadre.BackgroundColor3       = typeConfig.couleur
-	cadre.BackgroundTransparency = 0.35
-	cadre.BorderSizePixel        = 0
-	cadre.Parent                 = bb
-
-	local coin = Instance.new("UICorner")
-	coin.CornerRadius = UDim.new(0, 10)
-	coin.Parent       = cadre
-
 	local labelType = Instance.new("TextLabel")
 	labelType.Size                   = UDim2.new(1, 0, 0.5, 0)
 	labelType.Position               = UDim2.new(0, 0, 0, 0)
 	labelType.BackgroundTransparency = 1
 	labelType.Text                   = typeConfig.emoji .. " " .. typeNom
 	labelType.Font                   = Enum.Font.GothamBold
-	labelType.TextColor3             = Color3.new(1, 1, 1)
+	labelType.TextColor3             = typeConfig.couleur
 	labelType.TextScaled             = true
-	labelType.Parent                 = cadre
+	labelType.TextStrokeTransparency = 0
+	labelType.TextStrokeColor3       = Color3.new(0, 0, 0)
+	labelType.Parent                 = bb
 
 	local labelCompteur = Instance.new("TextLabel")
 	labelCompteur.Name                   = "Compteur"
@@ -328,7 +319,9 @@ local function creerCompteurBillboard(spawnPos, typeConfig, typeNom)
 	labelCompteur.Font                   = Enum.Font.GothamBold
 	labelCompteur.TextColor3             = Color3.new(1, 1, 0) -- jaune vif
 	labelCompteur.TextScaled             = true
-	labelCompteur.Parent                 = cadre
+	labelCompteur.TextStrokeTransparency = 0
+	labelCompteur.TextStrokeColor3       = Color3.new(0, 0, 0)
+	labelCompteur.Parent                 = bb
 
 	return bb, labelCompteur, partCompteur
 end
@@ -629,11 +622,6 @@ local function lancerScheduler(typeNom)
 				if LBS and LBS.EnregistrerRare then
 					pcall(LBS.EnregistrerRare, playerCollecte, typeNom)
 				end
-			else
-				-- BR expiré sans être collecté
-				notifierTous("INFO", string.format(
-					"%s disappeared...", nomModele
-				))
 			end
 
 			-- La boucle repart : task.wait(attenteAvantCompteur) au prochain tour

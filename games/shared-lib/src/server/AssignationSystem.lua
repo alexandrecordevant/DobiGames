@@ -118,8 +118,7 @@ local function assigner(player)
     -- Marquer l'attribut BaseAssignee pour que BotSystem détecte la base occupée
     player:SetAttribute("BaseAssignee", "Base_" .. baseIndex)
 
-    -- Informer le joueur et le téléporter
-    notifierJoueur(player, "INFO", "Base " .. baseIndex .. " assigned — welcome!")
+    -- Téléporter le joueur à sa base
     teleporterVersBase(player, baseIndex)
 
     -- Re-téléporter à chaque respawn pour toujours revenir face à la base
@@ -157,7 +156,6 @@ local function liberer(player)
     -- Retirer l'attribut BaseAssignee pour libérer la base côté BotSystem
     pcall(function() player:SetAttribute("BaseAssignee", nil) end)
 
-    notifierTous("INFO", player.Name .. " left — Base " .. baseIndex .. " available!")
     Logger.info("Assign", "Base_%s libérée (départ de %s)", tostring(baseIndex), player.Name)
 end
 

@@ -293,7 +293,7 @@ end
 -- ============================================================
 local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
     local playerData = getData(player)
-    if not playerData then return false, "Données introuvables" end
+    if not playerData then return false, "Data not found" end
 
     -- 1. Lire l'upgrade depuis Config (jamais depuis le client)
     local upgradeConfig = Config.ShopUpgrades[nomUpgrade]
@@ -304,14 +304,14 @@ local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
 
     -- 2. Type doit être "coins" (pas de paiement R$ ici)
     if niveauConfig.type ~= "coins" then
-        return false, "Cet upgrade nécessite R$"
+        return false, "This upgrade requires R$"
     end
 
     -- 3. Joueur n'a pas déjà ce niveau ou supérieur
     assurerUpgrades(playerData)
     local niveauActuel = playerData.upgrades[upgradeConfig.dataField] or 0
     if niveauActuel >= niveauDemande then
-        return false, "Niveau déjà atteint"
+        return false, "Level already reached"
     end
 
     -- 4. Niveau précédent requis (pas de saut de niveau)

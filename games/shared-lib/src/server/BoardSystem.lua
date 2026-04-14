@@ -101,7 +101,7 @@ local function creerSurfaceGui(board)
     lblTitre.TextColor3             = Color3.fromRGB(235, 235, 235)
     lblTitre.Font                   = Enum.Font.GothamBlack
     lblTitre.TextScaled             = true
-    lblTitre.Text                   = "AMÉLIORATION\nDE LA BASE"
+    lblTitre.Text                   = "BASE\nUPGRADE"
 
     local sep = Instance.new("Frame", fond)
     sep.Size             = UDim2.new(0.85, 0, 0, 2)
@@ -117,7 +117,7 @@ local function creerSurfaceGui(board)
     lblNiveau.TextColor3             = Color3.fromRGB(235, 235, 235)
     lblNiveau.Font                   = Enum.Font.GothamBold
     lblNiveau.TextScaled             = true
-    lblNiveau.Text                   = "Niveau 0 / 30  ·  x1.0"
+    lblNiveau.Text                   = "Level 0 / 30  ·  x1.0"
 
     local bouton = Instance.new("TextButton", fond)
     bouton.Name             = "BoutonAchat"

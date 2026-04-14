@@ -42,48 +42,31 @@ local function afficherNotification(message, couleur)
     estEnAffichage = true
     couleur = couleur or Color3.fromRGB(255, 215, 0)
 
-    -- Conteneur principal (hors écran en haut)
-    local frame = Instance.new("Frame")
-    frame.Name                   = "NotifRebirthGlobal"
-    frame.Size                   = UDim2.new(0, 440, 0, 52)
-    frame.Position               = UDim2.new(0.5, -220, 0, -65)  -- Hors écran
-    frame.BackgroundColor3       = Color3.fromRGB(15, 15, 15)
-    frame.BackgroundTransparency = 0.12
-    frame.BorderSizePixel        = 0
-    frame.ZIndex                 = 8
-    frame.Parent                 = screenGui
-
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
-
-    -- Bordure colorée
-    local stroke = Instance.new("UIStroke", frame)
-    stroke.Color     = couleur
-    stroke.Thickness = 2
-
-    -- Texte du message
-    local label = Instance.new("TextLabel", frame)
-    label.Size                   = UDim2.new(1, -18, 1, 0)
-    label.Position               = UDim2.new(0, 9, 0, 0)
+    -- Texte flottant sans fond (slide depuis le haut)
+    local label = Instance.new("TextLabel")
+    label.Name                   = "NotifRebirthGlobal"
+    label.Size                   = UDim2.new(0, 500, 0, 52)
+    label.Position               = UDim2.new(0.5, -250, 0, -65)  -- Hors écran
     label.BackgroundTransparency = 1
     label.Text                   = message
     label.Font                   = Enum.Font.GothamBold
-    label.TextSize               = 16
+    label.TextSize               = 18
     label.TextColor3             = couleur
-    label.TextXAlignment         = Enum.TextXAlignment.Left
+    label.TextXAlignment         = Enum.TextXAlignment.Center
     label.TextWrapped            = true
     label.RichText               = true
     label.ZIndex                 = 9
+    label.Parent                 = screenGui
 
-    -- Contour noir pour lisibilité sur fond clair
     local textStroke = Instance.new("UIStroke", label)
     textStroke.Color            = Color3.new(0, 0, 0)
-    textStroke.Thickness        = 1.5
+    textStroke.Thickness        = 2
     textStroke.ApplyStrokeMode  = Enum.ApplyStrokeMode.Contextual
 
-    -- Slide depuis le haut vers position finale (15px depuis le bord)
-    local posFinale = UDim2.new(0.5, -220, 0, 15)
+    -- Slide depuis le haut vers position finale
+    local posFinale = UDim2.new(0.5, -250, 0, 15)
     TweenService:Create(
-        frame,
+        label,
         TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
         { Position = posFinale }
     ):Play()
@@ -91,12 +74,13 @@ local function afficherNotification(message, couleur)
     -- Maintenir 3 secondes puis fade out
     task.wait(3.4)
 
-    local tweenFade = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-    TweenService:Create(frame, tweenFade, { BackgroundTransparency = 1 }):Play()
-    TweenService:Create(label, tweenFade, { TextTransparency = 1 }):Play()
+    TweenService:Create(label,
+        TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        { TextTransparency = 1 }
+    ):Play()
 
     task.wait(0.45)
-    if frame and frame.Parent then frame:Destroy() end
+    if label and label.Parent then label:Destroy() end
 
     estEnAffichage = false
 
@@ -121,13 +105,13 @@ NotifEvent.OnClientEvent:Connect(function(typeNotif, messageOuData)
         message = "🔄 " .. tostring(messageOuData)
         couleur = Color3.fromRGB(255, 215, 0)
 
-    elseif typeNotif == "INFO" then
-        -- Infos générales (unlock floor, etc.) — affichage discret
-        message = "ℹ️ " .. tostring(messageOuData)
-        couleur = Color3.fromRGB(100, 200, 255)
+    elseif typeNotif == "RARE" then
+        -- Capture d'un MYTHIC/SECRET dans la zone commune
+        message = tostring(messageOuData)
+        couleur = Color3.fromRGB(255, 80, 220)
 
     else
-        -- Types non gérés ici (ERREUR, PROMPT_MONETISATION, etc.) → ignorer
+        -- INFO et autres types : gérés par HUDController → ignorer ici (évite le double affichage)
         return
     end
 

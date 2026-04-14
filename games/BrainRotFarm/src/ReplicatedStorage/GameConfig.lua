@@ -327,8 +327,8 @@ GameConfig.EventsVisuels = {
         rarityPool      = { RARE = 60, EPIC = 35, LEGENDARY = 5 },
         spawnInterval   = 10,
         couleurAmbiance = Color3.fromRGB(180, 0, 255),
-        message         = "⭐ LUCKY HOUR! Des BR rares spawnnent sur votre base!",
-        messageFin      = "⭐ La Lucky Hour est terminée.",
+        message         = "⭐ LUCKY HOUR! Rare BRs are spawning on your base!",
+        messageFin      = "⭐ Lucky Hour is over.",
     },
 }
 
