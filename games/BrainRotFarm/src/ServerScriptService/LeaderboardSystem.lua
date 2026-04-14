@@ -518,11 +518,11 @@ local function configurerTexto(texto)
     pcall(function()
         texto.RichText               = true
         texto.TextScaled             = true
-        texto.Font                   = Enum.Font.GothamBold
-        texto.TextColor3             = Color3.fromRGB(255, 255, 255)
+        texto.Font                   = Enum.Font.Gotham
+        texto.TextColor3             = Color3.fromRGB(220, 220, 220)
         texto.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
         texto.BackgroundTransparency = 0.1   -- fond quasi-noir
-        texto.TextXAlignment         = Enum.TextXAlignment.Left
+        texto.TextXAlignment         = Enum.TextXAlignment.Center
         texto.TextYAlignment         = Enum.TextYAlignment.Top
 
         -- Noircir le Frame parent si présent
@@ -631,24 +631,28 @@ end
 
 -- Construit le RichText pour LB2+LB4 (global)
 local function BuildTextoGlobal()
-    local sep   = "─────────────────────"
+    local sep   = '<font color="#333333">· · · · · · · · · · ·</font>'
     local lines = {}
 
-    table.insert(lines, '<b><font color="#00FFFF">🌐 TOP GLOBAL</font></b>')
+    table.insert(lines, '<b><font color="#00CCFF">🌐 TOP GLOBAL</font></b>')
     table.insert(lines, sep)
 
     if #globalTopCache == 0 then
-        table.insert(lines, "  Chargement...")
+        table.insert(lines, '<font color="#555555">chargement...</font>')
     else
         for i, entry in ipairs(globalTopCache) do
             local rang   = rangLabel(i)
-            local nom    = tronquer(entry.name, 9)
-            local coins  = "💰" .. formatCoins(entry.coins)
+            -- Noms courts + coins compacts pour tenir plus de joueurs
+            local nom    = tronquer(entry.name, 7)
+            local coins  = formatCoins(entry.coins) .. "💰"
             local couleur = COULEURS_RICHTEXT[i]
             if couleur then
                 rang  = '<font color="' .. couleur .. '"><b>' .. rang .. '</b></font>'
-                nom   = '<font color="' .. couleur .. '">'    .. nom  .. '</font>'
-                coins = '<font color="' .. couleur .. '">'    .. coins .. '</font>'
+                nom   = '<font color="' .. couleur .. '">' .. nom .. '</font>'
+                coins = '<font color="' .. couleur .. '">' .. coins .. '</font>'
+            else
+                nom   = '<font color="#BBBBBB">' .. nom .. '</font>'
+                coins = '<font color="#888888">' .. coins .. '</font>'
             end
             table.insert(lines, rang .. " " .. nom .. " " .. coins)
         end
@@ -657,7 +661,7 @@ local function BuildTextoGlobal()
     -- Sous-titre avec âge du refresh
     local age = os.time() - lastGlobalFetch
     table.insert(lines, sep)
-    table.insert(lines, '<font color="#888888">🔄 ' .. (age < 60 and age .. "s ago" or math.floor(age/60) .. "m ago") .. ' · tous serveurs</font>')
+    table.insert(lines, '<font color="#444444">🔄 ' .. (age < 60 and age .. "s" or math.floor(age/60) .. "m") .. ' · all servers</font>')
 
     return table.concat(lines, "\n")
 end
@@ -696,88 +700,87 @@ local NOMS_EVENTS = {
 -- ============================================================
 
 local function BuildTextoComplet()
-    local sep   = "─────────────────────"
+    local sep  = '<font color="#333333">· · · · · · · · · · ·</font>'
     local lines = {}
 
-    -- ── SECTION 1 : Classement ───────────────────────────────────────
-    table.insert(lines, '<b><font color="#FFD700">🏆 TOP FARMERS</font></b>')
-    table.insert(lines, sep)
-
-    for i = 1, MAX_JOUEURS do
-        local entree = classementActuel[i]
-        if entree then
-            local rang   = rangLabel(i)
-            local nom    = tronquer(entree.name, 9)
-            local coins  = "💰" .. formatCoins(entree.coins)
-            local icones = (entree.icones ~= "" and entree.icones) or ""
-            local mutant = "🌱×" .. (entree.mutants or 0)
-
-            local couleur = COULEURS_RICHTEXT[i]
-            if couleur then
-                rang  = '<font color="' .. couleur .. '"><b>' .. rang .. '</b></font>'
-                nom   = '<font color="' .. couleur .. '">'    .. nom  .. '</font>'
-                coins = '<font color="' .. couleur .. '">'    .. coins .. '</font>'
-            end
-
-            local ligne = rang .. " " .. nom .. " " .. coins
-            if icones ~= "" then ligne = ligne .. " " .. icones end
-            ligne = ligne .. " " .. mutant
-            table.insert(lines, ligne)
-        else
-            table.insert(lines, "  " .. i .. ". · · ·")
-        end
-    end
-
-    -- ── SECTION 2 : ChampCommun ──────────────────────────────────────
-    table.insert(lines, sep)
-    table.insert(lines, '<b><font color="#00FFFF">⚡ LIVE</font></b>')
+    -- ── SECTION 1 : LIVE — en haut, centré ──────────────────────────
+    local liveParts = {}
 
     local CCS = getChampCommunSpawner()
     if CCS and CCS.GetProchainSpawn then
         local okM, mythic = pcall(CCS.GetProchainSpawn, "MYTHIC")
         if okM and mythic then
-            local txt = mythic.tempsRestant == 0
-                and "🟢 ACTIF!" or ("⏳ " .. FormatTemps(mythic.tempsRestant))
-            table.insert(lines, "☄️ MYTHIC → " .. txt)
+            local t = mythic.tempsRestant == 0
+                and '<font color="#00FF88">ACTIF</font>'
+                or '<font color="#DDDDDD">' .. FormatTemps(mythic.tempsRestant) .. '</font>'
+            table.insert(liveParts, '☄️<font color="#FFAA00">M</font> ' .. t)
         end
         local okS, secret = pcall(CCS.GetProchainSpawn, "SECRET")
         if okS and secret then
-            local txt = secret.tempsRestant == 0
-                and "🟢 ACTIF!" or ("⏳ " .. FormatTemps(secret.tempsRestant))
-            table.insert(lines, "🔴 SECRET → " .. txt)
+            local t = secret.tempsRestant == 0
+                and '<font color="#00FF88">ACTIF</font>'
+                or '<font color="#DDDDDD">' .. FormatTemps(secret.tempsRestant) .. '</font>'
+            table.insert(liveParts, '🔴<font color="#FF4466">S</font> ' .. t)
         end
     end
 
-    -- ── SECTION 3 : Event actif ou prochain ──────────────────────────
     local EV = getEventVisuals()
     if EV then
         local nomEvent = EV.GetEventActif and EV.GetEventActif()
         if nomEvent then
             local infoEvent    = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
             local tempsRestant = (infoEvent and infoEvent.tempsRestant) or 0
-            local dureeTotal   = (infoEvent and infoEvent.dureeTotal)   or 0
-            local nomAffiche   = NOMS_EVENTS[nomEvent] or nomEvent
-            local barre        = barreProgression(tempsRestant, dureeTotal)
-            local pct          = dureeTotal > 0 and math.floor((tempsRestant / dureeTotal) * 100) or 0
-            table.insert(lines, '<b><font color="#FF8800">⚡ ' .. nomAffiche .. '</font></b>')
-            table.insert(lines, barre .. " " .. pct .. "%  (" .. FormatTemps(tempsRestant) .. ")")
+            table.insert(liveParts, '<font color="#FF8800">⚡</font><font color="#DDDDDD">' .. FormatTemps(tempsRestant) .. '</font>')
         else
             local EM = getEventManager()
             if EM and EM.GetProchainEvent then
                 local ok, tempsAvant = pcall(EM.GetProchainEvent)
                 if ok and tempsAvant and tempsAvant > 0 then
-                    table.insert(lines, "📅 Next event → " .. FormatTemps(tempsAvant))
+                    table.insert(liveParts, '<font color="#666666">📅 ' .. FormatTemps(tempsAvant) .. '</font>')
                 end
             end
         end
     end
 
-    -- ── SECTION 4 : Dernier rare (< 3 min) ──────────────────────────
+    if #liveParts > 0 then
+        table.insert(lines, table.concat(liveParts, '  <font color="#444444">|</font>  '))
+        table.insert(lines, sep)
+    end
+
+    -- ── SECTION 2 : Classement ───────────────────────────────────────
+    table.insert(lines, '<b><font color="#FFD700">🏆 TOP FARMERS</font></b>')
+
+    for i = 1, MAX_JOUEURS do
+        local entree = classementActuel[i]
+        if entree then
+            local rang   = rangLabel(i)
+            local nom    = tronquer(entree.name, 9)
+            local coins  = formatCoins(entree.coins) .. "💰"
+            local icones = (entree.icones ~= "" and entree.icones) or ""
+
+            local couleur = COULEURS_RICHTEXT[i]
+            if couleur then
+                rang  = '<font color="' .. couleur .. '"><b>' .. rang .. '</b></font>'
+                nom   = '<font color="' .. couleur .. '"><b>' .. nom .. '</b></font>'
+                coins = '<font color="' .. couleur .. '">' .. coins .. '</font>'
+            else
+                nom   = '<font color="#CCCCCC">' .. nom .. '</font>'
+                coins = '<font color="#888888">' .. coins .. '</font>'
+            end
+
+            local ligne = rang .. " " .. nom .. "  " .. coins
+            if icones ~= "" then ligne = ligne .. " " .. icones end
+            table.insert(lines, ligne)
+        else
+            table.insert(lines, '<font color="#444444">' .. i .. '.  —</font>')
+        end
+    end
+
+    -- ── SECTION 3 : Dernier rare (< 3 min) ──────────────────────────
     local dr = LeaderboardSystem.DernierRare
     if dr and (os.time() - (dr.timestamp or 0)) < 180 then
         table.insert(lines, sep)
-        table.insert(lines,
-            '<font color="#FFD700">👑 ' .. dr.joueur:sub(1, 10) .. " → " .. dr.rarete .. " 🔥</font>")
+        table.insert(lines, '<font color="#FFD700">👑 ' .. dr.joueur:sub(1, 10) .. "  " .. dr.rarete .. ' 🔥</font>')
     end
 
     return table.concat(lines, "\n")
