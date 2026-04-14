@@ -201,7 +201,7 @@ end
 local function creerTool(player, clone, rarete)
 	local nomRarete = rarete and rarete.nom or "COMMON"
 	local couleur   = RARETE_COULEURS[nomRarete] or Color3.fromRGB(200, 200, 200)
-	local nomBR     = (clone and clone.Name) or nomRarete
+	local nomBR     = (clone and (clone:GetAttribute("OriginalName") or clone.Name)) or nomRarete
 
 	local tool = Instance.new("Tool")
 	tool.Name           = nomBR

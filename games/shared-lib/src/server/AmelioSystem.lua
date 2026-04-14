@@ -294,7 +294,14 @@ end
 -- Gestionnaire de la demande client
 -- ============================================================
 
-DemandeRebirth.OnServerEvent:Connect(function(player)
+-- Token requis pour distinguer un clic manuel d'un fire automatique
+-- (un ancien script sans token sera ignoré silencieusement)
+local AMELIO_TOKEN = "AMELIO_MANUEL"
+
+DemandeRebirth.OnServerEvent:Connect(function(player, token)
+    -- Rejeter tout fire qui ne vient pas du bouton Board officiel
+    if token ~= AMELIO_TOKEN then return end
+
     local dd = donneesJoueurs[player.UserId]
     if not dd or dd.enCoursDeRebirth then return end
 

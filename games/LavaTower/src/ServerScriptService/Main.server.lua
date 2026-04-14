@@ -23,6 +23,7 @@ local AmelioSystem          = require(ServerScriptService.SharedLib.Server.Ameli
 local CarrySystem           = require(ServerScriptService.SharedLib.Server.CarrySystem)
 local DropSystem                = require(ServerScriptService.SharedLib.Server.DropSystem)
 local IncomeSystem              = require(ServerScriptService.SharedLib.Server.IncomeSystem)
+IncomeSystem.AutoVerifierDeblocages = false   -- LavaTower : étages via Board uniquement
 local BoardSystem               = require(ServerScriptService.SharedLib.Server.BoardSystem)
 local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
 Logger.debug("Main", "[FuseMachine] Chargement du module...")
@@ -175,7 +176,8 @@ local function OnPlayerAdded(player)
         data.progression = BaseProgressionSystem.BuildProgressionFromRebirth(data.rebirthLevel or 0)
 
         BaseProgressionSystem.Init(player, baseIndex, data)
-        BaseProgressionSystem.VerifierDeblocages(player, data)
+        -- LavaTower : pas de VerifierDeblocages au join — les étages se débloquent
+        -- uniquement via le Board (AmelioSystem), jamais par seuil de coins.
 
         local spotsActifs = BaseProgressionSystem.GetSpotsActifs(player)
         CarrySystem.InitDepotSpotsBase(player, spotsActifs)

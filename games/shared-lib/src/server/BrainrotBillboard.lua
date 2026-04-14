@@ -22,7 +22,7 @@ local TweenService = game:GetService("TweenService")
 
 local BILLBOARD_NAME    = "_BRBillboard"
 local STUDS_Y_FIELD     = 7   -- hauteur par défaut — champ
-local STUDS_Y_BASE      = 4   -- hauteur par défaut — base (slot dépôt)
+local STUDS_Y_BASE      = 6   -- hauteur par défaut — base (slot dépôt)
 
 -- ─────────────────────────────────────────────────────────────
 -- Couleurs par rareté
@@ -70,7 +70,7 @@ local function FormatTimer(t)
 	return m > 0 and ("%d:%02d"):format(m, s) or ("%ds"):format(s)
 end
 
-local function MakeLabel(parent, name, text, posY, color)
+local function MakeLabel(parent, name, text, posY, color, strokeColor)
 	local label = Instance.new("TextLabel")
 	label.Name                   = name
 	label.Text                   = text
@@ -81,7 +81,7 @@ local function MakeLabel(parent, name, text, posY, color)
 	label.Font                   = Enum.Font.GothamBold
 	label.BackgroundTransparency = 1
 	label.TextStrokeTransparency = 0.5
-	label.TextStrokeColor3       = Color3.new(1, 1, 1)
+	label.TextStrokeColor3       = strokeColor or Color3.new(1, 1, 1)
 	label.Parent                 = parent
 	return label
 end
@@ -141,7 +141,7 @@ function BrainrotBillboard.SetupField(brainrot, duration, studsY)
 
 	local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, 5)
 
-	MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255))
+	MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
 	local lRarete =
 	MakeLabel(bb, "LRarete", rarete,                            0.20, couleur)
 	MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.40, Color3.fromRGB(0, 220, 0))
@@ -170,7 +170,7 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 
 	local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, 4)
 
-	MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255))
+	MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
 	local lRarete =
 	MakeLabel(bb, "LRarete", rarete,                            0.25, couleur)
 	MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.50, Color3.fromRGB(0, 220, 0))

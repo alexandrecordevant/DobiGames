@@ -93,7 +93,7 @@ task.spawn(function()
             btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
             btn.TextColor3       = Color3.fromRGB(150, 150, 150)
 
-            DemandeRebirth:FireServer()
+            DemandeRebirth:FireServer("AMELIO_MANUEL")
         end)
 
         Logger.info("AmelioBase", "Bouton connecté → Base_%d", baseIndex)

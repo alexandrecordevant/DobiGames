@@ -192,41 +192,6 @@ local function lancerPulsationLight(light)
 	end)
 end
 
--- Crée le BillboardGui permanent "✨ Zone Mystérieuse"
-local function creerBillboardPermanent(part, couleur)
-	local ancien = part:FindFirstChild("ZoneBillboard")
-	if ancien then ancien:Destroy() end
-
-	local bb = Instance.new("BillboardGui")
-	bb.Name        = "ZoneBillboard"
-	bb.Size        = UDim2.new(0, 160, 0, 40)
-	bb.StudsOffset = Vector3.new(0, 10, 0)
-	bb.AlwaysOnTop = false
-	bb.Adornee     = part
-	bb.Parent      = part
-
-	local cadre = Instance.new("Frame")
-	cadre.Size                   = UDim2.new(1, 0, 1, 0)
-	cadre.BackgroundColor3       = couleur
-	cadre.BackgroundTransparency = 0.6
-	cadre.BorderSizePixel        = 0
-	cadre.Parent                 = bb
-
-	local coin = Instance.new("UICorner")
-	coin.CornerRadius = UDim.new(0, 6)
-	coin.Parent       = cadre
-
-	local label = Instance.new("TextLabel")
-	label.Size                   = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Text                   = "✨ Mysterious Zone"
-	label.Font                   = Enum.Font.GothamBold
-	label.TextColor3             = Color3.new(1, 1, 1)
-	label.TextScaled             = true
-	label.Parent                 = cadre
-
-	return bb, label
-end
 
 -- Initialise les effets permanents sur tous les points dès Init()
 local function initialiserEffetsPermanents()
@@ -260,15 +225,12 @@ local function initialiserEffetsPermanents()
 
 		lancerPulsationLight(light)
 
-		-- Billboard permanent
-		local bb, label = creerBillboardPermanent(part, COULEUR_DEFAUT)
-
 		pointsData[i] = {
 			part     = part,
 			particle = particle,
 			light    = light,
-			bb       = bb,
-			label    = label,
+			bb       = nil,
+			label    = nil,
 		}
 
 		Logger.debug("Spawn", "Point %d initialisé (%.1f, %.1f, %.1f)", i, position.X, position.Y, position.Z)
@@ -302,11 +264,8 @@ local function restaurerEtatsDefaut(pointIdx)
 	pd.particle.Rate  = PARTICLE_RATE_BASE
 	pd.light.Color    = COULEUR_DEFAUT
 	pd.light.Range    = LIGHT_RANGE_BASE
-
-	-- Recréer le billboard permanent
-	local bb, label = creerBillboardPermanent(pd.part, COULEUR_DEFAUT)
-	pd.bb    = bb
-	pd.label = label
+	pd.bb    = nil
+	pd.label = nil
 end
 
 -- ============================================================

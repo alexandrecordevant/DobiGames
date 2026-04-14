@@ -193,6 +193,14 @@ local function SetupBrainrot(brainrot)
 	-- Ignorer les templates hors workspace
 	if not brainrot:IsDescendantOf(workspace) then return end
 
+	-- Supprimer tous les BillboardGui pré-baked dans le template (ex: BRBillboard)
+	-- avant que SetupField ne crée le _BRBillboard officiel (texte blanc, multi-lignes)
+	for _, desc in ipairs(brainrot:GetDescendants()) do
+		if desc:IsA("BillboardGui") then
+			pcall(function() desc:Destroy() end)
+		end
+	end
+
 	local duration = brainrot:GetAttribute("LifeTime") or DEFAULT_LIFETIME
 	BrainrotBillboard.SetupField(brainrot, duration, BILLBOARD_STUDS_Y)
 	SetupPickup(brainrot)

@@ -4,6 +4,10 @@
 
 local IncomeSystem = {}
 
+-- Si false, IncomeSystem n'appellera pas automatiquement VerifierDeblocages
+-- (à désactiver pour LavaTower où les étages se débloquent uniquement via le Board)
+IncomeSystem.AutoVerifierDeblocages = true
+
 -- ============================================================
 -- Services
 -- ============================================================
@@ -487,9 +491,11 @@ function IncomeSystem.Init(player, getData)
             -- Vérification progression toutes les 10 secondes
             if tickProgression >= 10 then
                 tickProgression = 0
-                local BPS = getBPS()
-                if BPS and revenuTotal > 0 then
-                    pcall(BPS.VerifierDeblocages, player, playerData)
+                if IncomeSystem.AutoVerifierDeblocages then
+                    local BPS = getBPS()
+                    if BPS and revenuTotal > 0 then
+                        pcall(BPS.VerifierDeblocages, player, playerData)
+                    end
                 end
             end
         end
