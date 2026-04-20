@@ -13,8 +13,9 @@ local player = Players.LocalPlayer
 -- ───────────────────────────────────────────────
 -- Style des textes
 -- ───────────────────────────────────────────────
-local COULEUR_TEXTE = Color3.fromRGB(0, 120, 255)  -- bleu
-local TAILLE_TEXTE  = 18                            -- plus grand que le défaut rouge/petit
+local COULEUR_TEXTE  = Color3.fromRGB(255, 255, 255)  -- blanc
+local TAILLE_TEXTE   = 28                              -- bien visible sur la plateforme
+local COULEUR_STROKE = Color3.fromRGB(0, 0, 0)         -- contour noir pour lisibilité
 
 -- ───────────────────────────────────────────────
 -- État local
@@ -43,15 +44,18 @@ local function getTextLabels(spotModel)
     return surfGui:FindFirstChild("$amount"), surfGui:FindFirstChild("$offline")
 end
 
--- Applique le style bleu/grand/centré sur un TextLabel
+-- Applique le style grand/centré avec stroke sur un TextLabel
 local function appliquerStyle(lbl)
     if not lbl or not lbl:IsA("TextLabel") then return end
     pcall(function()
-        lbl.TextColor3     = COULEUR_TEXTE
-        lbl.TextSize       = TAILLE_TEXTE
-        lbl.TextScaled     = false
-        lbl.TextXAlignment = Enum.TextXAlignment.Center
-        lbl.TextYAlignment = Enum.TextYAlignment.Center
+        lbl.TextColor3             = COULEUR_TEXTE
+        lbl.TextSize               = TAILLE_TEXTE
+        lbl.TextScaled             = false
+        lbl.TextXAlignment         = Enum.TextXAlignment.Center
+        lbl.TextYAlignment         = Enum.TextYAlignment.Center
+        lbl.TextStrokeColor3       = COULEUR_STROKE
+        lbl.TextStrokeTransparency = 0.3
+        lbl.Font                   = Enum.Font.GothamBold
     end)
 end
 
@@ -151,4 +155,4 @@ if UpdateHUD then
     end)
 end
 
-Logger.info("HUD", "[SlotTextStyle] Prêt ✓")
+Logger.info("HUD", "[SlotTextStyle] Pret")

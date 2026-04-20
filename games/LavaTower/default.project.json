@@ -13,7 +13,8 @@
                 "Logger": { "$path": "../shared-lib/src/server/Logger.lua" },
                 "Shared": {
                     "$className": "Folder",
-                    "AmelioConfig": { "$path": "../shared-lib/src/shared/AmelioConfig.lua" }
+                    "AmelioConfig":  { "$path": "../shared-lib/src/shared/AmelioConfig.lua" },
+                    "FormatNumber":  { "$path": "../shared-lib/src/shared/FormatNumber.lua" }
                 }
             }
         },

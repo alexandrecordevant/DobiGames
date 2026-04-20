@@ -26,14 +26,13 @@ local IncomeSystem              = require(ServerScriptService.SharedLib.Server.I
 IncomeSystem.AutoVerifierDeblocages = false   -- LavaTower : étages via Board uniquement
 local BoardSystem               = require(ServerScriptService.SharedLib.Server.BoardSystem)
 local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
-Logger.debug("Main", "[FuseMachine] Chargement du module...")
 local ShopSystem = require(ServerScriptService.ShopSystem)
-local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseMachineSystem)
+local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
-    Logger.error("Main", "[FuseMachine] ERREUR require : %s", tostring(FuseMachineSystem))
-    FuseMachineSystem = nil
+    Logger.error("Main", "[FuseSystem] ERREUR require : %s", tostring(FuseSystem))
+    FuseSystem = nil
 else
-    Logger.info("Main", "[FuseMachine] Module chargé ✓")
+    Logger.info("Main", "[FuseSystem] Module chargé ✓")
 end
 
 -- DataStore — inclut les champs requis par shared-lib
@@ -62,6 +61,12 @@ DataStoreManager.Setup("LavaTowerV1", function()
         batEquipped             = false,
         hasGoldSlap             = false,
         goldSlapEquipped        = false,
+        hasSpeedCoil            = false,
+        speedCoilEquipped       = false,
+        hasGravityCoil          = false,
+        gravityCoilEquipped     = false,
+        -- BRs portés non déposés (sauvegardés à la déconnexion, restaurés au login)
+        carryPortes             = {},
     }
 end)
 
@@ -134,6 +139,34 @@ CarrySystem.GetBaseJoueur = function(player)
     return AssignationSystem.GetBaseIndex(player)
 end
 
+-- Sérialiser le carry avant que CarrySystem détruise les Tools (PlayerRemoving)
+CarrySystem.OnBeforeClean = function(player, portes)
+    local data = GetData(player)
+    if not data then return end
+    local carrySerial = {}
+    for _, entree in ipairs(portes) do
+        if entree.rarete and entree.toolRef and entree.toolRef.Parent then
+            local brNom = nil
+            for _, child in ipairs(entree.toolRef:GetChildren()) do
+                if child.Name ~= "Handle" and (child:IsA("Model") or child:IsA("BasePart")) then
+                    brNom = child:GetAttribute("OriginalName") or child.Name
+                    break
+                end
+            end
+            table.insert(carrySerial, {
+                nom         = entree.rarete.nom,
+                dossier     = entree.rarete.dossier or entree.rarete.nom,
+                isMutant    = entree.rarete.isMutant or false,
+                valeur      = entree.rarete.valeur,
+                elementType = entree.rarete.elementType,
+                brNom       = brNom,
+            })
+        end
+    end
+    data.carryPortes = carrySerial
+    Logger.info("Main", "%s carry sauvegardé : %d BR(s)", player.Name, #carrySerial)
+end
+
 -- DropSystem — mise à jour du bouton après dépôt/retrait/vente
 DropSystem.OnSpotChange = function(player)
     AmelioSystem.MettreAJourBouton(player)
@@ -185,6 +218,35 @@ local function OnPlayerAdded(player)
         DropSystem.Init(player, baseIndex, data)
         IncomeSystem.Init(player, function() return GetData(player) end)
 
+        -- Restaurer le carry sauvegardé (BRs portés à la déconnexion)
+        if data.carryPortes and #data.carryPortes > 0 then
+            -- Appliquer la capacité depuis les upgrades sauvés avant de restaurer
+            local carryLevel = data.shopUpgrades and data.shopUpgrades.carry or 0
+            if carryLevel > 0 then
+                CarrySystem.SetCapacite(player, carryLevel)
+            end
+            local BrainrotsFolder = ReplicatedStorage:FindFirstChild("Brainrots")
+            for _, porteeData in ipairs(data.carryPortes) do
+                local rareteObj = {
+                    nom         = porteeData.nom,
+                    dossier     = porteeData.dossier or porteeData.nom,
+                    isMutant    = porteeData.isMutant,
+                    valeur      = porteeData.valeur,
+                    elementType = porteeData.elementType,
+                }
+                local clone = nil
+                if porteeData.brNom and BrainrotsFolder then
+                    local dossier = BrainrotsFolder:FindFirstChild(porteeData.dossier or porteeData.nom)
+                    local modele = dossier and dossier:FindFirstChild(porteeData.brNom)
+                    if modele then
+                        clone = modele:Clone()
+                        clone.Parent = ReplicatedStorage
+                    end
+                end
+                pcall(CarrySystem.AjouterAuCarry, player, clone, rareteObj)
+            end
+        end
+
         AmelioSystem.OnLevelUp = function(p, niveau, cfg)
             local d = GetData(p)
             if not d then return end
@@ -233,6 +295,11 @@ local function OnPlayerRemoving(player)
 
     local data = GetData(player)
     if data then
+        -- Sérialiser le carry maintenant (avant que nettoyerJoueur détruise les Tools)
+        if CarrySystem.OnBeforeClean then
+            pcall(CarrySystem.OnBeforeClean, player, CarrySystem.GetPortes(player))
+        end
+
         -- Synchroniser spotsOccupes avant sauvegarde
         data.spotsOccupes = DropSystem.GetSpotsOccupesSerialisables(player)
 
@@ -319,37 +386,36 @@ BoardSystem.Init()
 -- AmelioCosmeticsSystem.Init() désactivé pour LavaTower
 
 -- ═══════════════════════════════════════════════
--- 9. FUSE MACHINE
+-- 9. FUSE SYSTEM
 -- ═══════════════════════════════════════════════
 
--- GetCoins inclut les coins en attente dans les slots (comme EnvoyerHUD)
-FuseMachineSystem.GetCoins = function(player)
-    local data = GetData(player)
-    if not data then return 0 end
-    return (data.coins or 0) + (IncomeSystem.GetCoinsEnAttente(player) or 0)
-end
-
--- Déduction uniquement sur data.coins (les coins en attente restent dans les slots)
-FuseMachineSystem.DeductCoins = function(player, montant)
-    local data = GetData(player)
-    if not data then return end
-    data.coins = math.max(0, (data.coins or 0) - montant)
-    SetData(player, data)
-end
-
-FuseMachineSystem.UpdateHUD = function(player)
-    local data = GetData(player)
-    if data then EnvoyerHUD(player, data) end
-end
-
-if FuseMachineSystem then
-    Logger.debug("Main", "[FuseMachine] Appel Init()...")
-    local ok, err = pcall(FuseMachineSystem.Init, require(ReplicatedStorage.Modules.FuseConfig))
+if FuseSystem then
+    FuseSystem.OnResultatPret = function(player, brainrotClone)
+        local rarete    = brainrotClone:GetAttribute("Rarete") or "Common"
+        local rareteObj = {
+            nom         = rarete,
+            dossier     = rarete,
+            isMutant    = brainrotClone:GetAttribute("IsMutant") == true,
+            valeur      = brainrotClone:GetAttribute("Valeur")
+                          or (Config.ValeurParRarete and Config.ValeurParRarete[rarete])
+                          or 1,
+            elementType = brainrotClone:GetAttribute("ElementType"),
+        }
+        brainrotClone.Parent = game:GetService("ServerStorage")
+        local ok, err = pcall(CarrySystem.AjouterAuCarry, player, brainrotClone, rareteObj)
+        if not ok then
+            Logger.warn("Main", "[FuseSystem] AjouterAuCarry echec : %s", tostring(err))
+            pcall(function()
+                brainrotClone.Parent = player:FindFirstChildOfClass("Backpack") or player.Character
+            end)
+        end
+    end
+    local ok, err = pcall(FuseSystem.Init, Config)
     if not ok then
-        Logger.error("Main", "[FuseMachine] ERREUR Init() : %s", tostring(err))
+        Logger.error("Main", "[FuseSystem] ERREUR Init() : %s", tostring(err))
     end
 else
-    Logger.warn("Main", "[FuseMachine] Init() ignoré — module non chargé")
+    Logger.warn("Main", "[FuseSystem] Init() ignore — module non charge")
 end
 
 -- ═══════════════════════════════════════════════

@@ -39,12 +39,12 @@ local BoardSystem               = require(ServerScriptService.SharedLib.Server.B
 local ArbreSystem               = require(ServerScriptService.ArbreSystem)
 local BaleSystem                = require(ServerScriptService.BaleSystem)
 local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
-local _fuseOk, FuseMachineSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseMachineSystem)
+local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
-    Logger.error("Main", "[FuseMachine] ERREUR require : %s", tostring(FuseMachineSystem))
-    FuseMachineSystem = nil
+    Logger.error("Main", "[FuseSystem] ERREUR require : %s", tostring(FuseSystem))
+    FuseSystem = nil
 else
-    Logger.info("Main", "[FuseMachine] Module chargé ✓")
+    Logger.info("Main", "[FuseSystem] Module chargé ✓")
 end
 
 -- ═══════════════════════════════════════════════
@@ -204,9 +204,10 @@ InitialiserPots = function(player, baseIndex, playerData)
         end
 
         -- Cacher/montrer le modèle cadenas physique selon l'état du pot
+        -- Pot1 est toujours débloqué et n'a pas de cadenas physique
         local cadenas = base:FindFirstChild("Cadenas_B" .. baseIndex .. "_P" .. potIndex, true)
             or potModel:FindFirstChild("Cadenas", true)
-        if not cadenas then
+        if not cadenas and potIndex > 1 then
             Logger.warn("Main", "Cadenas introuvable pour Base_%s Pot%d", tostring(baseIndex), potIndex)
         end
         if cadenas then
@@ -750,7 +751,10 @@ local function OnPlayerRemoving(player)
         data.tempsJeuTotal   = (data.tempsJeuTotal   or 0) + dureeSession
         sessionStart[player.UserId] = nil
 
-        -- carryPortes déjà sérialisé via CarrySystem.OnBeforeClean (avant destruction des Tools)
+        -- Sérialiser le carry maintenant (avant que nettoyerJoueur détruise les Tools)
+        if CarrySystem.OnBeforeClean then
+            pcall(CarrySystem.OnBeforeClean, player, CarrySystem.GetPortes(player))
+        end
 
         -- Synchroniser spotsOccupes une dernière fois avant sauvegarde
         local spotsSerial = DropSystem.GetSpotsOccupesSerialisables(player)
@@ -1458,33 +1462,39 @@ else
 end
 
 -- ═══════════════════════════════════════════════
--- FUSE MACHINE
+-- FUSE SYSTEM (tier par CashParSeconde, résultat dans le carry)
 -- ═══════════════════════════════════════════════
 
-if FuseMachineSystem then
-    FuseMachineSystem.GetCoins = function(player)
-        local data = GetData(player)
-        if not data then return 0 end
-        return (data.coins or 0) + (IncomeSystem.GetCoinsEnAttente(player) or 0)
+if FuseSystem then
+    -- Résultat : cloner dans le carry via CarrySystem
+    FuseSystem.OnResultatPret = function(player, brainrotClone)
+        local rarete    = brainrotClone:GetAttribute("Rarete") or "COMMON"
+        local rareteObj = {
+            nom         = rarete,
+            dossier     = rarete,
+            isMutant    = brainrotClone:GetAttribute("IsMutant") == true,
+            valeur      = brainrotClone:GetAttribute("Valeur")
+                          or (Config.ValeurParRarete and Config.ValeurParRarete[rarete])
+                          or 1,
+            elementType = brainrotClone:GetAttribute("ElementType"),
+        }
+        -- AjouterAuCarry attend le modèle dans un container valide
+        brainrotClone.Parent = game:GetService("ServerStorage")
+        local ok, err = pcall(CarrySystem.AjouterAuCarry, player, brainrotClone, rareteObj)
+        if not ok then
+            Logger.warn("Main", "[FuseSystem] AjouterAuCarry echec : %s", tostring(err))
+            pcall(function()
+                brainrotClone.Parent = player:FindFirstChildOfClass("Backpack") or player.Character
+            end)
+        end
     end
 
-    FuseMachineSystem.DeductCoins = function(player, montant)
-        local data = GetData(player)
-        if not data then return end
-        data.coins = math.max(0, (data.coins or 0) - montant)
-    end
-
-    FuseMachineSystem.UpdateHUD = function(player)
-        local data = GetData(player)
-        if data then EnvoyerHUD(player, data) end
-    end
-
-    local ok, err = pcall(FuseMachineSystem.Init, require(ReplicatedStorage.Modules.FuseConfig))
+    local ok, err = pcall(FuseSystem.Init, Config)
     if not ok then
-        Logger.error("Main", "[FuseMachine] ERREUR Init() : %s", tostring(err))
+        Logger.error("Main", "[FuseSystem] ERREUR Init() : %s", tostring(err))
     end
 else
-    Logger.warn("Main", "[FuseMachine] Init() ignoré — module non chargé")
+    Logger.warn("Main", "[FuseSystem] Init() ignoré — module non chargé")
 end
 
 Logger.info("Main", "Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))

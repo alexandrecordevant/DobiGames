@@ -17,7 +17,7 @@ local CONFIG = {
     VITESSE_BASE     = 3,     -- studs/seconde (vitesse initiale de la lave)
     ACCELERATION     = 0.5,   -- studs/s ajoutés par palier
     INTERVALLE_ACCEL = 10,    -- secondes entre chaque palier d'accélération
-    HAUTEUR_MAX      = 2000,  -- hauteur Y de reset de la lave
+    HAUTEUR_ARRET    = 1020,  -- studs au-dessus du point de départ avant que la lave s'arrête
 }
 
 -- ============================================================
@@ -101,7 +101,7 @@ local function lancerCycleTour(cfg)
         end
         lavaVitesse   = CONFIG.VITESSE_BASE
         lava.Anchored = true
-        lava.Position = Vector3.new(lava.Position.X, hauteurDepart, lava.Position.Z)
+        lava.CFrame = CFrame.new(lava.Position.X, hauteurDepart, lava.Position.Z)
         Logger.debug("Tower", "%s Lave reset à Y=%d", tag, hauteurDepart)
     end
 
@@ -112,9 +112,10 @@ local function lancerCycleTour(cfg)
         lavaVitesse = CONFIG.VITESSE_BASE
         Logger.info("Tower", "%s Lave démarrée | %d joueur(s)", tag, nbJoueurs)
 
-        local tempsAccel = 0
+        local tempsAccel   = 0
         local dernierTemps = os.clock()
-        local tempsVerif = 0
+        local tempsVerif   = 0
+        local lavaArretee  = false
 
         laveConnexion = RunService.Heartbeat:Connect(function()
             if not lavaActive then return end
@@ -122,13 +123,21 @@ local function lancerCycleTour(cfg)
             local delta = now - dernierTemps
             dernierTemps = now
 
-            lava.Anchored = true
-            lava.Position = lava.Position + Vector3.new(0, lavaVitesse * delta, 0)
+            if not lavaArretee then
+                lava.Anchored = true
+                lava.CFrame = lava.CFrame + Vector3.new(0, lavaVitesse * delta, 0)
 
-            tempsAccel = tempsAccel + delta
-            if tempsAccel >= CONFIG.INTERVALLE_ACCEL then
-                tempsAccel  = 0
-                lavaVitesse = lavaVitesse + CONFIG.ACCELERATION
+                tempsAccel = tempsAccel + delta
+                if tempsAccel >= CONFIG.INTERVALLE_ACCEL then
+                    tempsAccel  = 0
+                    lavaVitesse = lavaVitesse + CONFIG.ACCELERATION
+                end
+
+                if lava.Position.Y >= hauteurDepart + CONFIG.HAUTEUR_ARRET then
+                    lavaArretee = true
+                    lava.CFrame = CFrame.new(lava.Position.X, hauteurDepart + CONFIG.HAUTEUR_ARRET, lava.Position.Z)
+                    Logger.info("Tower", "%s Hauteur max atteinte (Y=%.0f) — lave en attente d'escape", tag, lava.Position.Y)
+                end
             end
 
             tempsVerif = tempsVerif + delta
@@ -149,11 +158,6 @@ local function lancerCycleTour(cfg)
                     Logger.debug("Tower", "%s Plus personne → Reset lave", tag)
                     resetLava()
                 end
-            end
-
-            if lava.Position.Y >= CONFIG.HAUTEUR_MAX then
-                Logger.debug("Tower", "%s Hauteur max → Reset lave", tag)
-                resetLava()
             end
         end)
     end

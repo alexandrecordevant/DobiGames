@@ -69,6 +69,8 @@ function DataStoreManager.Load(player)
     data.derniereConnexion       = os.time()
     data.stats                   = data.stats or {}
     data.stats.sessionsCount     = (data.stats.sessionsCount or 0) + 1
+    -- Migration : BRs portés (absents des anciennes saves)
+    data.carryPortes = data.carryPortes or {}
     return data
 end
 

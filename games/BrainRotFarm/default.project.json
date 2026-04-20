@@ -13,8 +13,9 @@
                 "Logger": { "$path": "../shared-lib/src/server/Logger.lua" },
                 "Shared": {
                     "$className": "Folder",
-                    "UITheme":       { "$path": "../shared-lib/src/shared/UITheme.lua" },
-                    "AmelioConfig": { "$path": "../shared-lib/src/shared/AmelioConfig.lua" }
+                    "UITheme":      { "$path": "../shared-lib/src/shared/UITheme.lua" },
+                    "AmelioConfig": { "$path": "../shared-lib/src/shared/AmelioConfig.lua" },
+                    "FormatNumber": { "$path": "../shared-lib/src/shared/FormatNumber.lua" }
                 }
             },
             "Modules": { "$path": "src/ReplicatedStorage/Modules" },

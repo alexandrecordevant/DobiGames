@@ -10,7 +10,18 @@ local BoardSystem = {}
 -- ============================================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
-local Logger            = require(script.Parent.Logger)
+local Logger = require(script.Parent.Logger)
+
+local function formatPrix(n)
+    n = math.floor(n or 0)
+    local function fmt(v, s)
+        return (math.floor(v * 10) % 10 == 0 and tostring(math.floor(v)) or string.format("%.1f", v)) .. s
+    end
+    if n >= 1e9 then return fmt(n / 1e9, "B")
+    elseif n >= 1e6 then return fmt(n / 1e6, "M")
+    elseif n >= 1e3 then return fmt(n / 1e3, "K")
+    else return tostring(n) end
+end
 
 -- ============================================================
 -- Config
@@ -36,20 +47,6 @@ local function getAssignationSystem()
     return _AssignationSystem
 end
 
--- ============================================================
--- Utilitaires — formate un nombre avec espaces milliers
--- ============================================================
-local function formaterNombre(n)
-    local s      = tostring(math.floor(n or 0))
-    local result = ""
-    local count  = 0
-    for i = #s, 1, -1 do
-        if count > 0 and count % 3 == 0 then result = " " .. result end
-        result = s:sub(i, i) .. result
-        count  = count + 1
-    end
-    return result
-end
 
 -- ============================================================
 -- Création de la SurfaceGui sur le Board
@@ -165,7 +162,7 @@ local function mettreAJourSurfaceGui(board, etat)
             bouton.TextColor3       = Color3.fromRGB(120, 120, 120)
             bouton.Active           = false
         else
-            bouton.Text             = formaterNombre(coinsR) .. " coins"
+            bouton.Text             = formatPrix(coinsR) .. " coins"
             bouton.BackgroundColor3 = dispon
                 and Color3.fromRGB(60, 165, 80)
                 or  Color3.fromRGB(40, 40, 40)

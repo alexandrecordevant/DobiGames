@@ -7,7 +7,8 @@ local Config = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local _uiThemeModule = ReplicatedStorage.SharedLib.Shared:FindFirstChild("UITheme")
 if not _uiThemeModule then return end  -- HUDController BRF-only : pas de UITheme = mauvais jeu
 local T = require(_uiThemeModule)
-local Logger           = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
+local Logger       = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
+local FormatNumber = require(ReplicatedStorage.SharedLib.Shared.FormatNumber)
 
 local gui = Instance.new("ScreenGui")
 gui.Name          = "HUD"
@@ -31,15 +32,19 @@ local function NouveauLabel(parent, size, pos, bgColor, textColor, text)
     return f, l
 end
 
--- Coins
-local _, coinsLabel = NouveauLabel(gui,
-    UDim2.new(0,220,0,50), UDim2.new(0,10,0,10),
-    T.fondPrincipal, T.texteTitre, "💰 0")
-
--- Tier
-local _, tierLabel = NouveauLabel(gui,
-    UDim2.new(0,220,0,40), UDim2.new(0,10,0,65),
-    T.fondPrincipal, T.texte, "Tier 0")
+-- Coins (bas gauche — texte orange, outline blanc, pas de fond)
+local coinsLabel = Instance.new("TextLabel", gui)
+coinsLabel.Size                   = UDim2.new(0, 320, 0, 70)
+coinsLabel.Position               = UDim2.new(0, 10, 1, -90)
+coinsLabel.BackgroundTransparency = 1
+coinsLabel.Text                   = "0"
+coinsLabel.TextColor3             = Color3.fromRGB(255, 140, 42)
+coinsLabel.TextStrokeColor3       = Color3.fromRGB(255, 255, 255)
+coinsLabel.TextStrokeTransparency = 0
+coinsLabel.TextScaled             = false
+coinsLabel.TextSize               = 52
+coinsLabel.Font                   = Enum.Font.GothamBold
+coinsLabel.TextXAlignment         = Enum.TextXAlignment.Left
 
 -- Event banner
 local eventFrame, eventLabel = NouveauLabel(gui,
@@ -50,10 +55,7 @@ eventFrame.Visible = false
 -- Mise à jour HUD
 local UpdateHUD = ReplicatedStorage:WaitForChild("UpdateHUD")
 UpdateHUD.OnClientEvent:Connect(function(data)
-    coinsLabel.Text = "💰 " .. tostring(math.floor(data.coins))
-    local tier = "Tier " .. data.tier .. " / " .. Config.TotalTiers
-    if data.prestige > 0 then tier = tier .. "  (P" .. data.prestige .. ")" end
-    tierLabel.Text = tier
+    coinsLabel.Text = FormatNumber.format(data.coins)
 end)
 
 -- Event démarré

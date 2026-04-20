@@ -171,13 +171,13 @@ local upgradeOrdre     = {}    -- table triée par ordre
 -- ============================================================
 local function FormatCoins(n)
     n = math.floor(n or 0)
-    if n >= 1_000_000 then
-        return string.format("%.1fM", n / 1_000_000)
-    elseif n >= 1_000 then
-        return string.format("%.1fk", n / 1_000)
-    else
-        return tostring(n)
+    local function fmt(v, s)
+        return (math.floor(v * 10) % 10 == 0 and tostring(math.floor(v)) or string.format("%.1f", v)) .. s
     end
+    if n >= 1e9 then return fmt(n / 1e9, "B")
+    elseif n >= 1e6 then return fmt(n / 1e6, "M")
+    elseif n >= 1e3 then return fmt(n / 1e3, "K")
+    else return tostring(n) end
 end
 
 -- Retourne le niveau actuel pour un upgrade dans les données du shop

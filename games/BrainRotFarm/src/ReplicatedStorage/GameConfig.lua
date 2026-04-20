@@ -68,7 +68,7 @@ GameConfig.CoutUpgradeMultiplier  = 2.5
 GameConfig.PrestigeMultiplier     = 2.0
 
 -- === EVENTS AUTOMATIQUES ===
-GameConfig.EventIntervalleMinutes = 6 --120
+GameConfig.EventIntervalleMinutes = 0.1 --120
 GameConfig.EventDureeMinutes      = 5
 GameConfig.EventSpawnMultiplier   = 10
 GameConfig.EarlyBirdBonusMinutes  = 60
@@ -203,7 +203,7 @@ GameConfig.ShopUpgrades = {
         description = "Increases your Brain Rot carry capacity",
         ordre       = 3,
         niveaux = {
-            [1] = { type="coins", prix=1200,  label="Lv.1",   effet={ carryCapacite=3 } },
+            [1] = { type="coins", prix=1000,  label="Lv.1",   effet={ carryCapacite=3 } },
             [2] = { type="coins", prix=5000,  label="Lv.2",   effet={ carryCapacite=5 } },
             [3] = { type="robux", prix=149,   gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
         },
@@ -792,6 +792,34 @@ GameConfig.Combat = {
 	-- Game Pass Protection (bloque le drop des BRs)
 	-- Remplir avec le vrai ID après création sur Roblox
 	ProtectionGamePassId = 0,
+}
+
+-- === FUSE MACHINE ===
+-- Lu par FuseSystem (shared-lib) — injecter via FuseSystem.Init(GameConfig)
+-- FuseBrainrotsFolder : creer ReplicatedStorage/FuseBrainrots/ dans Studio
+-- MachineTag          : appliquer le tag CollectionService sur chaque Fuse Machine dans Workspace
+GameConfig.Fuse = {
+	MachineTag          = "FuseMachine",
+	FuseBrainrotsFolder = game:GetService("ReplicatedStorage"):FindFirstChild("FuseBrainrots"),
+	FuseDuration        = 5400,  -- 1h30 en secondes
+	DataStoreName       = "BrainRotIdleV1",
+	DataStoreKeyPrefix  = "fuse_",
+	Tiers = {
+		{ maxTotal = 1000                },  -- Tier 1
+		{ maxTotal = 100000              },  -- Tier 2
+		{ maxTotal = 1000000             },  -- Tier 3
+		{ maxTotal = 1000000000          },  -- Tier 4
+		{ maxTotal = 1000000000000       },  -- Tier 5
+		{ maxTotal = 1000000000000000    },  -- Tier 6
+		{ maxTotal = 1e18                },  -- Tier 7
+		{ maxTotal = math.huge           },  -- Tier 8
+	},
+	Weights = {
+		{ folder = "50", weight = 50 },
+		{ folder = "30", weight = 30 },
+		{ folder = "18", weight = 18 },
+		{ folder = "2",  weight = 2  },
+	},
 }
 
 return GameConfig

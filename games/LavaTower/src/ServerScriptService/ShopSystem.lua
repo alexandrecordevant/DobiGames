@@ -181,10 +181,12 @@ local function makePayload(player)
     return {
         upgrades         = data.shopUpgrades or { carry = 0, speed = 0, jump = 0 },
         coins            = (data.coins or 0),
-        hasBat           = data.hasBat           or false,
-        batEquipped      = data.batEquipped      or false,
-        hasGoldSlap      = data.hasGoldSlap      or false,
-        goldSlapEquipped = data.goldSlapEquipped or false,
+        hasBat              = data.hasBat              or false,
+        batEquipped         = data.batEquipped         or false,
+        hasGoldSlap         = data.hasGoldSlap         or false,
+        goldSlapEquipped    = data.goldSlapEquipped    or false,
+        hasSpeedCoil        = data.hasSpeedCoil        or false,
+        speedCoilEquipped   = data.speedCoilEquipped   or false,
     }
 end
 
@@ -320,12 +322,14 @@ local function traiterAchat(player, upgradeType, amount)
         if coins < prix then
             return false, "Pas assez de pièces (" .. prix .. " requis)"
         end
-        data.coins  = coins - prix
-        data.hasBat = true
+        data.coins       = coins - prix
+        data.hasBat      = true
+        data.batEquipped = true
         ShopSystem.SetData(player, data)
         ShopSystem.UpdateHUD(player)
-        Logger.info("Shop", "%s a acheté la Bat", player.Name)
-        return true, "Bat achetée ! Équipez-la depuis le shop."
+        donnerOutil(player, "Bat")
+        Logger.info("Shop", "%s a acheté la Bat (équipée)", player.Name)
+        return true, "Bat achetée et équipée !"
 
     -- ── BAT ÉQUIPER ──
     elseif upgradeType == "Bat_Equip" then
@@ -350,12 +354,14 @@ local function traiterAchat(player, upgradeType, amount)
         if coins < prix then
             return false, "Pas assez de pièces (" .. ShopConfig.FormatNumber(prix) .. " requis)"
         end
-        data.coins       = coins - prix
-        data.hasGoldSlap = true
+        data.coins            = coins - prix
+        data.hasGoldSlap      = true
+        data.goldSlapEquipped = true
         ShopSystem.SetData(player, data)
         ShopSystem.UpdateHUD(player)
-        Logger.info("Shop", "%s a acheté le GoldSlap", player.Name)
-        return true, "GoldSlap acheté ! Équipez-le depuis le shop."
+        donnerOutil(player, "GoldSlap")
+        Logger.info("Shop", "%s a acheté le GoldSlap (équipé)", player.Name)
+        return true, "GoldSlap acheté et équipé !"
 
     -- ── GOLDSLAP ÉQUIPER ──
     elseif upgradeType == "GoldSlap_Equip" then
@@ -372,6 +378,38 @@ local function traiterAchat(player, upgradeType, amount)
         ShopSystem.SetData(player, data)
         retirerOutil(player, "GoldSlap")
         return true, "GoldSlap déséquipé."
+
+    -- ── SPEEDCOIL ACHAT ──
+    elseif upgradeType == "SpeedCoil_Buy" then
+        if data.hasSpeedCoil then return false, "Vous possédez déjà le SpeedCoil !" end
+        local prix = ShopConfig.SpeedCoil.Price
+        if coins < prix then
+            return false, "Pas assez de pièces (" .. ShopConfig.FormatNumber(prix) .. " requis)"
+        end
+        data.coins             = coins - prix
+        data.hasSpeedCoil      = true
+        data.speedCoilEquipped = true
+        ShopSystem.SetData(player, data)
+        ShopSystem.UpdateHUD(player)
+        donnerOutil(player, "SpeedCoil")
+        Logger.info("Shop", "%s a acheté le SpeedCoil (équipé)", player.Name)
+        return true, "SpeedCoil acheté et équipé !"
+
+    -- ── SPEEDCOIL ÉQUIPER ──
+    elseif upgradeType == "SpeedCoil_Equip" then
+        if not data.hasSpeedCoil then return false, "Vous n'avez pas le SpeedCoil !" end
+        if data.speedCoilEquipped then return false, "Le SpeedCoil est déjà équipé." end
+        data.speedCoilEquipped = true
+        ShopSystem.SetData(player, data)
+        donnerOutil(player, "SpeedCoil")
+        return true, "SpeedCoil équipé !"
+
+    -- ── SPEEDCOIL DÉSÉQUIPER ──
+    elseif upgradeType == "SpeedCoil_Unequip" then
+        data.speedCoilEquipped = false
+        ShopSystem.SetData(player, data)
+        retirerOutil(player, "SpeedCoil")
+        return true, "SpeedCoil déséquipé."
 
     else
         return false, "Type d'upgrade inconnu : " .. tostring(upgradeType)
@@ -504,8 +542,9 @@ function ShopSystem.Init()
         -- Re-donner les outils équipés au respawn
         local data = ShopSystem.GetData(player)
         if data then
-            if data.batEquipped      then donnerOutil(player, "Bat")      end
-            if data.goldSlapEquipped then donnerOutil(player, "GoldSlap") end
+            if data.batEquipped       then donnerOutil(player, "Bat")       end
+            if data.goldSlapEquipped  then donnerOutil(player, "GoldSlap")  end
+            if data.speedCoilEquipped then donnerOutil(player, "SpeedCoil") end
         end
     end
 

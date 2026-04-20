@@ -65,4 +65,29 @@ GameConfigSpecific.BadgePremierPrestige = 0
 GameConfigSpecific.ZoneUnlockSeuils  = { [1] = 0, [2] = 3, [3] = 6 }
 GameConfigSpecific.ZonePrestigeSeuil = 1
 
+-- === FUSE SYSTEM ===
+GameConfigSpecific.Fuse = {
+	MachineTag          = "FuseMachine",
+	FuseBrainrotsFolder = game:GetService("ReplicatedStorage"):FindFirstChild("FuseBrainrots"),
+	FuseDuration        = 5400,
+	DataStoreName       = "LavaTowerV1",
+	DataStoreKeyPrefix  = "fuse_",
+	Tiers = {
+		{ maxTotal = 1000                },
+		{ maxTotal = 100000              },
+		{ maxTotal = 1000000             },
+		{ maxTotal = 1000000000          },
+		{ maxTotal = 1000000000000       },
+		{ maxTotal = 1000000000000000    },
+		{ maxTotal = 1e18                },
+		{ maxTotal = math.huge           },
+	},
+	Weights = {
+		{ folder = "50", weight = 50 },
+		{ folder = "30", weight = 30 },
+		{ folder = "18", weight = 18 },
+		{ folder = "2",  weight = 2  },
+	},
+}
+
 return GameConfigSpecific

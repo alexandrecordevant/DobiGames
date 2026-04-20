@@ -24,35 +24,35 @@ ShopConfig.Carry = {
 }
 
 -- ── VITESSE ────────────────────────────────────────────────────────────────
--- 4 niveaux, additif : WalkSpeed = BaseSpeed + level × SpeedPerLevel
---   Niv.0 (base) = 15   Niv.1 = 20   Niv.2 = 25   Niv.3 = 30   Niv.4 = 35
+-- 50 niveaux, additif : WalkSpeed = BaseSpeed + level × SpeedPerLevel
+--   Niv.0 (base) = 15   Niv.50 = 35  (valeur max identique à l'ancienne config)
+-- SpeedPerLevel = 0.4 → 15 + 50×0.4 = 35
+-- Coûts : formule exponentielle de CoutDepart à 1Q (niveau max)
 -- Actif partout (base ET tours)
 ShopConfig.Speed = {
-    MaxLevel      = 4,
+    MaxLevel      = 50,
     BaseSpeed     = 15,
-    SpeedPerLevel = 5,
-    Prices        = {
-        1000,    -- Niv.1 → 20 WS
-        5000,    -- Niv.2 → 25 WS
-        20000,   -- Niv.3 → 30 WS
-        75000,   -- Niv.4 → 35 WS
-    },
+    SpeedPerLevel = 0.4,   -- +0.4 WS par niveau ; 15 + 50×0.4 = 35 (inchangé au max)
+    CoutDepart    = 1000,  -- coût du niveau 1 (identique à l'ancienne config)
+    CoutMax       = 1e15,  -- 1Q — coût exact du dernier niveau
     Label         = "Vitesse",
     OnlyInTower   = false,
 }
 
 -- ── SAUT ───────────────────────────────────────────────────────────────────
--- 30 niveaux, additif + effet anti-gravité progressif
--- Niv.0 = 50   Niv.10 = 130   Niv.20 = 210   Niv.30 = 290
--- Anti-gravité : 0 % au Niv.0 → 50 % au Niv.30 (lévitation progressive)
+-- 100 niveaux, additif + effet anti-gravité progressif
+-- Niv.0 = 50   Niv.100 = 290  (valeur max identique à l'ancienne config)
+-- JumpPerLevel = 2.4 → 50 + 100×2.4 = 290
+-- Anti-gravité : 0 % au Niv.0 → 50 % au Niv.100 (lévitation progressive)
+-- Coûts : formule exponentielle de CoutDepart à 1Q (niveau max)
 -- UNIQUEMENT dans les tours
 ShopConfig.Jump = {
-    MaxLevel        = 30,
-    JumpPerLevel    = 8,     -- +8 JumpPower par niveau  (50 + 10×8 = 130 ✓)
+    MaxLevel        = 100,
+    JumpPerLevel    = 2.4,   -- +2.4 JP par niveau ; 50 + 100×2.4 = 290 (inchangé au max)
     BaseJump        = 50,    -- valeur Roblox par défaut
     MaxAntiGravity  = 0.50,  -- 50 % de réduction gravitationnelle au niveau max
-    BasePrice       = 500,
-    PriceMultiplier = 1.45,
+    CoutDepart      = 500,   -- coût du niveau 1 (identique à l'ancienne config)
+    CoutMax         = 1e15,  -- 1Q — coût exact du dernier niveau
     Label           = "Saut",
     OnlyInTower     = true,
 }
@@ -67,6 +67,11 @@ ShopConfig.Bat = {
 ShopConfig.GoldSlap = {
     Price = 10000,
     Label = "GoldSlap",
+}
+
+ShopConfig.SpeedCoil = {
+    Price = 50000,
+    Label = "SpeedCoil",
 }
 
 -- ── HELPERS ────────────────────────────────────────────────────────────────
@@ -87,15 +92,22 @@ function ShopConfig.GetAntiGravFactor(level)
     return (level / ShopConfig.Jump.MaxLevel) * ShopConfig.Jump.MaxAntiGravity
 end
 
--- Prix d'un niveau de Speed (1-indexed)
-function ShopConfig.GetSpeedPrice(level)
-    return ShopConfig.Speed.Prices[level] or math.huge
+-- Formule exponentielle : cost(N) = depart × (coutMax / depart) ^ ((N-1) / (maxN-1))
+local function prixExponentiel(cfg, level)
+    if level < 1 or level > cfg.MaxLevel then return math.huge end
+    if level == 1 then return cfg.CoutDepart end
+    local ratio = cfg.CoutMax / cfg.CoutDepart
+    return math.floor(cfg.CoutDepart * ratio ^ ((level - 1) / (cfg.MaxLevel - 1)) + 0.5)
 end
 
--- Prix d'un niveau de Jump (1-indexed), exponentiel
+-- Prix d'un niveau de Speed (1-indexed)
+function ShopConfig.GetSpeedPrice(level)
+    return prixExponentiel(ShopConfig.Speed, level)
+end
+
+-- Prix d'un niveau de Jump (1-indexed)
 function ShopConfig.GetJumpPrice(level)
-    if level < 1 or level > ShopConfig.Jump.MaxLevel then return math.huge end
-    return math.floor(ShopConfig.Jump.BasePrice * (ShopConfig.Jump.PriceMultiplier ^ (level - 1)))
+    return prixExponentiel(ShopConfig.Jump, level)
 end
 
 -- Prix d'un niveau de Carry (1-indexed)
@@ -103,10 +115,14 @@ function ShopConfig.GetCarryPrice(level)
     return ShopConfig.Carry.Prices[level] or math.huge
 end
 
--- Formate un grand nombre pour l'affichage
+-- Formate un grand nombre pour l'affichage (jusqu'à 1Q = 1e15)
 function ShopConfig.FormatNumber(n)
     if n == math.huge then return "∞" end
-    if n >= 1e9 then
+    if n >= 1e15 then
+        return string.format("%.1fQ", n / 1e15):gsub("%.0Q", "Q")
+    elseif n >= 1e12 then
+        return string.format("%.1fT", n / 1e12):gsub("%.0T", "T")
+    elseif n >= 1e9 then
         return string.format("%.1fB", n / 1e9):gsub("%.0B", "B")
     elseif n >= 1e6 then
         return string.format("%.1fM", n / 1e6):gsub("%.0M", "M")

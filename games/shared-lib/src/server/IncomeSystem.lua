@@ -19,7 +19,8 @@ local _GameConfig = require(
     game.ReplicatedStorage:FindFirstChild("GameConfig")
     or game.ReplicatedStorage.Specialized.GameConfig
 )
-local Logger = require(script.Parent.Logger)
+local Logger       = require(script.Parent.Logger)
+local FormatNumber = require(game.ReplicatedStorage.SharedLib.Shared.FormatNumber)
 
 -- ============================================================
 -- Multiplicateur d'event (partagé pour tous les joueurs)
@@ -77,12 +78,7 @@ end
 -- ============================================================
 
 local function FormatCoins(n)
-    n = math.floor(n or 0)
-    if     n >= 1e9  then return string.format("%.1fB", n / 1e9)
-    elseif n >= 1e6  then return string.format("%.1fM", n / 1e6)
-    elseif n >= 1e3  then return string.format("%.0fK", n / 1e3)
-    else                  return tostring(n)
-    end
+    return FormatNumber.format(n)
 end
 
 -- Remet à zéro l'affichage d'un slot (BillboardGui + SurfaceGui/Frame/CoinsText)

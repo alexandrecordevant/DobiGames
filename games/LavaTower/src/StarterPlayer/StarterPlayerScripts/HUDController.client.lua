@@ -1,66 +1,94 @@
 -- StarterPlayerScripts/HUDController.client.lua
-local Players          = game:GetService("Players")
+-- HUD LavaTower
+
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService     = game:GetService("TweenService")
-local player           = Players.LocalPlayer
-local Config           = require(ReplicatedStorage.Modules.GameConfig)
+local TweenService      = game:GetService("TweenService")
+local player            = Players.LocalPlayer
+local FormatNumber      = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("FormatNumber"))
+
+-- Palette
+local C = {
+    PanelBg  = Color3.fromRGB(10,  10,  10),
+    Bordure  = Color3.fromRGB(60,  60,  60),
+    Accent   = Color3.fromRGB(160, 80,  15),
+    TextPrim = Color3.fromRGB(220, 220, 220),
+    TextSec  = Color3.fromRGB(130, 130, 130),
+}
 
 local gui = Instance.new("ScreenGui")
 gui.Name          = "HUD"
 gui.ResetOnSpawn  = false
 gui.Parent        = player.PlayerGui
 
-local function NouveauLabel(parent, size, pos, bgColor, textColor, text)
-    local f = Instance.new("Frame", parent)
-    f.Size                    = size
-    f.Position                = pos
-    f.BackgroundColor3        = bgColor
-    f.BackgroundTransparency  = 0.3
-    f.BorderSizePixel         = 0
-    local l = Instance.new("TextLabel", f)
-    l.Size                    = UDim2.new(1,0,1,0)
-    l.BackgroundTransparency  = 1
-    l.TextColor3              = textColor
-    l.TextScaled              = true
-    l.Font                    = Enum.Font.GothamBold
-    l.Text                    = text
-    return f, l
-end
+-- Coins (bas gauche)
+local coinsLabel = Instance.new("TextLabel", gui)
+coinsLabel.Size                   = UDim2.new(0, 260, 0, 60)
+coinsLabel.Position               = UDim2.new(0, 10, 1, -70)
+coinsLabel.BackgroundTransparency = 1
+coinsLabel.Text                   = "0"
+coinsLabel.TextColor3             = C.Accent
+coinsLabel.TextStrokeColor3       = Color3.fromRGB(255, 255, 255)
+coinsLabel.TextStrokeTransparency = 0
+coinsLabel.TextScaled             = false
+coinsLabel.TextSize               = 36
+coinsLabel.Font                   = Enum.Font.GothamBold
+coinsLabel.TextXAlignment         = Enum.TextXAlignment.Left
 
--- Coins
-local _, coinsLabel = NouveauLabel(gui,
-    UDim2.new(0,220,0,50), UDim2.new(0,10,0,10),
-    Color3.fromRGB(0,0,0), Config.CouleurAccent, "0")
+-- Banniere evenement (haut centre, cachee par defaut)
+local eventFrame  = Instance.new("Frame", gui)
+eventFrame.Size                   = UDim2.new(0, 320, 0, 50)
+eventFrame.Position               = UDim2.new(0.5, -160, 0, 10)
+eventFrame.BackgroundColor3       = C.PanelBg
+eventFrame.BackgroundTransparency = 0.05
+eventFrame.BorderSizePixel        = 0
+eventFrame.Visible                = false
+local evtCorner = Instance.new("UICorner", eventFrame)
+evtCorner.CornerRadius = UDim.new(0, 0)
+local evtStroke = Instance.new("UIStroke", eventFrame)
+evtStroke.Color     = C.Bordure
+evtStroke.Thickness = 1
+local eventLabel = Instance.new("TextLabel", eventFrame)
+eventLabel.Size                   = UDim2.new(1, 0, 1, 0)
+eventLabel.BackgroundTransparency = 1
+eventLabel.TextColor3             = C.TextPrim
+eventLabel.TextScaled             = false
+eventLabel.TextSize               = 15
+eventLabel.Font                   = Enum.Font.GothamBold
+eventLabel.Text                   = ""
 
--- Tier
-local _, tierLabel = NouveauLabel(gui,
-    UDim2.new(0,220,0,40), UDim2.new(0,10,0,65),
-    Color3.fromRGB(0,0,0), Color3.fromRGB(255,255,255), "Tier 0")
-
--- Event banner
-local eventFrame, eventLabel = NouveauLabel(gui,
-    UDim2.new(0,320,0,55), UDim2.new(0.5,-160,0,10),
-    Color3.fromRGB(200,50,0), Color3.fromRGB(255,255,255), "")
-eventFrame.Visible = false
-
--- Mise à jour HUD
+-- Mise a jour HUD
 local UpdateHUD = ReplicatedStorage:WaitForChild("UpdateHUD", 15)
-if not UpdateHUD then warn("[HUD] UpdateHUD introuvable — Main.server.lua a crashé ?") return end
+if not UpdateHUD then warn("[HUD] UpdateHUD introuvable -- Main.server.lua a crashe ?") return end
+
 UpdateHUD.OnClientEvent:Connect(function(data)
-    coinsLabel.Text = tostring(math.floor(data.coins))
-    local tier = "Tier " .. data.tier .. " / " .. Config.TotalTiers
-    if data.prestige > 0 then tier = tier .. "  (P" .. data.prestige .. ")" end
-    tierLabel.Text = tier
+    coinsLabel.Text = FormatNumber.format(data.coins)
 end)
 
--- Inventaire brainrot
-local brainrotFrame, brainrotLabel = NouveauLabel(gui,
-    UDim2.new(0, 280, 0, 50), UDim2.new(0, 10, 0, 112),
-    Color3.fromRGB(80, 0, 120), Color3.fromRGB(255, 200, 255), "")
-brainrotFrame.Visible = false
+-- Inventaire Brainrot (bas gauche, au-dessus des coins)
+local brainrotFrame = Instance.new("Frame", gui)
+brainrotFrame.Size                   = UDim2.new(0, 280, 0, 50)
+brainrotFrame.Position               = UDim2.new(0, 10, 1, -116)
+brainrotFrame.BackgroundColor3       = C.PanelBg
+brainrotFrame.BackgroundTransparency = 0.05
+brainrotFrame.BorderSizePixel        = 0
+brainrotFrame.Visible                = false
+local brCorner = Instance.new("UICorner", brainrotFrame)
+brCorner.CornerRadius = UDim.new(0, 0)
+local brStroke = Instance.new("UIStroke", brainrotFrame)
+brStroke.Color     = C.Bordure
+brStroke.Thickness = 1
+local brainrotLabel = Instance.new("TextLabel", brainrotFrame)
+brainrotLabel.Size                   = UDim2.new(1, 0, 1, 0)
+brainrotLabel.BackgroundTransparency = 1
+brainrotLabel.TextColor3             = Color3.fromRGB(200, 160, 255)
+brainrotLabel.TextScaled             = false
+brainrotLabel.TextSize               = 13
+brainrotLabel.Font                   = Enum.Font.GothamBold
+brainrotLabel.Text                   = ""
 
-local evtPickedUp = ReplicatedStorage:WaitForChild("BrainrotPickedUp", 15)
-local evtDropped  = ReplicatedStorage:WaitForChild("BrainrotDropped",  15)
+local evtPickedUp = ReplicatedStorage:FindFirstChild("BrainrotPickedUp")
+local evtDropped  = ReplicatedStorage:FindFirstChild("BrainrotDropped")
 
 if evtPickedUp then
     evtPickedUp.OnClientEvent:Connect(function(nom, rarete)
@@ -75,30 +103,34 @@ if evtDropped then
     end)
 end
 
--- ============================================================
--- Bouton "Escape the Tower" (visible uniquement dans la tour)
--- ============================================================
-local ORANGE = Color3.fromRGB(220, 120, 0)
+-- Bouton Escape the Tower (droite ecran)
+local ORANGE = Color3.fromRGB(160, 80, 15)
 
 local escapeFrame = Instance.new("Frame", gui)
 escapeFrame.Size                   = UDim2.new(0, 170, 0, 50)
 escapeFrame.Position               = UDim2.new(1, -180, 0.5, -25)
 escapeFrame.BackgroundColor3       = ORANGE
-escapeFrame.BackgroundTransparency = 0.15
+escapeFrame.BackgroundTransparency = 0.05
 escapeFrame.BorderSizePixel        = 0
 escapeFrame.Visible                = false
-local escapeCorner = Instance.new("UICorner", escapeFrame)
-escapeCorner.CornerRadius = UDim.new(0, 8)
+
+local escCorner = Instance.new("UICorner", escapeFrame)
+escCorner.CornerRadius = UDim.new(0, 2)
+
+local escStroke = Instance.new("UIStroke", escapeFrame)
+escStroke.Color     = Color3.fromRGB(60, 60, 60)
+escStroke.Thickness = 1
 
 local escapeButton = Instance.new("TextButton", escapeFrame)
 escapeButton.Size                   = UDim2.new(1, 0, 1, 0)
 escapeButton.BackgroundTransparency = 1
-escapeButton.TextColor3             = Color3.fromRGB(255, 255, 255)
-escapeButton.TextScaled             = true
+escapeButton.TextColor3             = Color3.fromRGB(220, 220, 220)
+escapeButton.TextScaled             = false
+escapeButton.TextSize               = 15
 escapeButton.Font                   = Enum.Font.GothamBold
 escapeButton.Text                   = "Escape the Tower"
 
--- Countdown affiché en haut au centre
+-- Countdown (haut centre pendant l'escape)
 local countdownFrame = Instance.new("Frame", gui)
 countdownFrame.Size                   = UDim2.new(0, 200, 0, 60)
 countdownFrame.Position               = UDim2.new(0.5, -100, 0, 20)
@@ -117,6 +149,7 @@ countdownLabel.TextSize               = 42
 countdownLabel.Font                   = Enum.Font.GothamBold
 countdownLabel.Text                   = "3"
 
+-- Connexions RemoteEvents tour
 local EscapeTowerRE  = ReplicatedStorage:WaitForChild("EscapeTower",  15)
 local TowerEnteredRE = ReplicatedStorage:WaitForChild("TowerEntered", 15)
 local TowerExitedRE  = ReplicatedStorage:WaitForChild("TowerExited",  15)
@@ -124,14 +157,14 @@ local TowerExitedRE  = ReplicatedStorage:WaitForChild("TowerExited",  15)
 local countdownActive = false
 
 local function resetEscape()
-    countdownActive       = false
+    countdownActive        = false
     countdownFrame.Visible = false
     escapeFrame.Visible    = false
 end
 
 if TowerEnteredRE then
     TowerEnteredRE.OnClientEvent:Connect(function()
-        countdownActive = false
+        countdownActive        = false
         countdownFrame.Visible = false
         escapeFrame.Visible    = true
     end)
@@ -142,6 +175,19 @@ if TowerExitedRE then
         resetEscape()
     end)
 end
+
+if player:GetAttribute("InTower") then
+    escapeFrame.Visible = true
+end
+player:GetAttributeChangedSignal("InTower"):Connect(function()
+    if player:GetAttribute("InTower") then
+        countdownActive        = false
+        countdownFrame.Visible = false
+        escapeFrame.Visible    = true
+    else
+        resetEscape()
+    end
+end)
 
 if EscapeTowerRE then
     escapeButton.Activated:Connect(function()

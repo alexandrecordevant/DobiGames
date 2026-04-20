@@ -724,20 +724,26 @@ local function BuildTextoComplet()
         end
     end
 
-    local EV = getEventVisuals()
-    if EV then
-        local nomEvent = EV.GetEventActif and EV.GetEventActif()
-        if nomEvent then
-            local infoEvent    = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
-            local tempsRestant = (infoEvent and infoEvent.tempsRestant) or 0
-            table.insert(liveParts, '<font color="#FF8800">⚡</font><font color="#DDDDDD">' .. FormatTemps(tempsRestant) .. '</font>')
-        else
-            local EM = getEventManager()
-            if EM and EM.GetProchainEvent then
-                local ok, tempsAvant = pcall(EM.GetProchainEvent)
-                if ok and tempsAvant and tempsAvant > 0 then
-                    table.insert(liveParts, '<font color="#666666">📅 ' .. FormatTemps(tempsAvant) .. '</font>')
-                end
+    local EV       = getEventVisuals()
+    local nomEvent = EV and EV.GetEventActif and EV.GetEventActif()
+    if nomEvent then
+        local infoEvent    = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
+        local tempsRestant = (infoEvent and infoEvent.tempsRestant) or 0
+        local dureeTotal   = (infoEvent and infoEvent.dureeTotal)   or 0
+        local nomAffiche   = NOMS_EVENTS[nomEvent] or nomEvent
+        local barre        = dureeTotal > 0 and (" " .. barreProgression(tempsRestant, dureeTotal)) or ""
+        table.insert(liveParts,
+            '<font color="#FF8800">⚡ ' .. nomAffiche .. '</font>'
+            .. ' <font color="#DDDDDD">' .. FormatTemps(tempsRestant) .. '</font>'
+            .. '<font color="#888888">' .. barre .. '</font>'
+        )
+    else
+        -- Pas d'event actif → afficher le prochain event (même si EV n'a pas chargé)
+        local EM = getEventManager()
+        if EM and EM.GetProchainEvent then
+            local ok, tempsAvant = pcall(EM.GetProchainEvent)
+            if ok and tempsAvant and tempsAvant > 0 then
+                table.insert(liveParts, '<font color="#666666">📅 ' .. FormatTemps(tempsAvant) .. '</font>')
             end
         end
     end
@@ -808,8 +814,10 @@ local function construireInfosServeur()
     if EV then
         infos.eventActif = EV.GetEventActif and EV.GetEventActif()
         if infos.eventActif then
-            local ie         = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
-            infos.eventTemps = (ie and ie.tempsRestant) or 0
+            local ie              = EV.GetTempsRestantEvent and EV.GetTempsRestantEvent()
+            infos.eventTemps      = (ie and ie.tempsRestant) or 0
+            infos.eventDuree      = (ie and ie.dureeTotal)   or 0
+            infos.eventNomAffiche = NOMS_EVENTS[infos.eventActif] or infos.eventActif
         end
     end
 
@@ -1008,10 +1016,8 @@ function LeaderboardSystem.Init()
         pcall(CreerOuMettreAJourLeaderstats, player, playerData or {})
     end)
 
-    -- Panneau 3D custom (fallback)
-    pcall(creerPanneau)
-
     -- Récupérer les 4 textos Studio + remplir les caches de listes
+    -- Le panneau 3D custom (fallback) n'est créé QUE si aucun panneau Studio n'est trouvé
     task.defer(function()
         -- Diagnostic : lister les panneaux présents dans Workspace.Leaderboards
         local lbFolder = Workspace:FindFirstChild("Leaderboards")
@@ -1055,6 +1061,17 @@ function LeaderboardSystem.Init()
             else
                 Logger.warn("Leaderboard", "%s Texto INTROUVABLE", nom)
             end
+        end
+
+        -- Panneau 3D custom uniquement si aucun panneau Studio trouvé (fallback)
+        if #textosLeaderboards == 0 then
+            Logger.warn("Leaderboard", "Aucun panneau Studio trouvé — création du panneau 3D fallback")
+            pcall(creerPanneau)
+        else
+            -- S'assurer qu'aucun panneau fallback résiduel ne traîne dans le Workspace
+            local ancien = Workspace:FindFirstChild("LeaderboardPanel")
+            if ancien then ancien:Destroy() end
+            Logger.debug("Leaderboard", "Panneaux Studio présents — panneau 3D fallback supprimé")
         end
     end)
 
