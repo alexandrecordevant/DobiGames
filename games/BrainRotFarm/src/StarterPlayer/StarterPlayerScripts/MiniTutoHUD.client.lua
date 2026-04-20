@@ -98,17 +98,19 @@ titleLbl.TextXAlignment         = Enum.TextXAlignment.Left
 titleLbl.ZIndex                 = 22
 
 local closeBtn = Instance.new("TextButton", panel)
-closeBtn.Size              = UDim2.new(0, 32, 0, 32)
-closeBtn.Position          = UDim2.new(1, -40, 0, 8)
-closeBtn.BackgroundColor3  = T.fondBoutonDanger
+closeBtn.Size              = UDim2.new(0, 44, 0, 44)
+closeBtn.Position          = UDim2.new(1, -50, 0, 4)
+closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
 closeBtn.Text              = "X"
-closeBtn.TextColor3        = T.texte
+closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
 closeBtn.Font              = Enum.Font.GothamBold
 closeBtn.TextSize          = 16
 closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 22
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 2)
+local _cbs = Instance.new("UIStroke", closeBtn)
+_cbs.Color = T.bordure ; _cbs.Thickness = 1
 
 local sep = Instance.new("Frame", panel)
 sep.Size             = UDim2.new(1, -24, 0, 1)
@@ -217,7 +219,7 @@ makeCard(
 )
 
 makeCard(
-    "🪴", "FLOWER POTS",
+    "🌱", "FLOWER POTS",
     "Plant a seed in a <b>Flower Pot</b> (left button 🪴) and wait for it to grow through <b>4 stages</b>.\n\nOnce fully grown, carry the brainrot that comes out to the deposit — it applies a <b>coin multiplier</b> based on seed rarity. Don't forget to unlock more pots in the Shop!",
     4,
     Color3.fromRGB(220, 150, 50)

@@ -507,7 +507,9 @@ GameConfig.FlowerPotConfig = {
     },
 
     -- Couleur dorée appliquée au spot quand un Mutant y est déposé
-    spotMutantCouleur = Color3.fromRGB(255, 215, 0),
+    spotMutantCouleur   = Color3.fromRGB(255, 215, 0),
+    -- Couleur de restauration du spot après retrait d'un Mutant (fallback si couleur originale inconnue)
+    spotDefaultCouleur  = Color3.fromRGB(106, 127, 63),
 
     -- Texte permanent sur pot vide
     labelPotVide    = "🌱 Plant MYTHIC / SECRET here",

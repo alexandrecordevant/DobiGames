@@ -322,14 +322,19 @@ local function creerShopRobuxPanel()
 
     -- Bouton fermer
     local btnFermer = Instance.new("TextButton", panel)
-    btnFermer.Size                   = UDim2.new(0, 30, 0, 30)
-    btnFermer.Position               = UDim2.new(1, -35, 0, 8)
-    btnFermer.BackgroundTransparency = 1
-    btnFermer.TextColor3             = T.texteSecondaire
+    btnFermer.Size                   = UDim2.new(0, 44, 0, 44)
+    btnFermer.Position               = UDim2.new(1, -50, 0, 4)
+    btnFermer.BackgroundColor3       = Color3.fromRGB(50, 50, 50)
+    btnFermer.TextColor3             = Color3.fromRGB(180, 180, 180)
     btnFermer.Font                   = Enum.Font.GothamBold
     btnFermer.TextSize               = 16
-    btnFermer.Text                   = "✕"
+    btnFermer.TextScaled             = false
+    btnFermer.Text                   = "X"
+    btnFermer.BorderSizePixel        = 0
     btnFermer.ZIndex                 = 11
+    Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 2)
+    local _bcs = Instance.new("UIStroke", btnFermer)
+    _bcs.Color = T.bordure ; _bcs.Thickness = 1
     btnFermer.MouseButton1Click:Connect(function() panel.Visible = false end)
 
     -- ScrollingFrame
