@@ -42,22 +42,19 @@ mainBtn.AnchorPoint            = Vector2.new(0, 0)
 mainBtn.BackgroundTransparency = 1
 mainBtn.BorderSizePixel        = 0
 mainBtn.Text                   = "Carry 0/1"
-mainBtn.TextColor3             = Color3.fromRGB(255, 255, 255)
+mainBtn.TextColor3             = Color3.fromRGB(220, 220, 220)
 mainBtn.TextScaled             = false
 mainBtn.TextSize               = 28
 mainBtn.TextWrapped            = false
 mainBtn.RichText               = false
 mainBtn.Font                   = Enum.Font.GothamBold
+mainBtn.Visible                = false
 mainBtn.Parent                 = gui
 
 local mainBtnStroke = Instance.new("UIStroke")
 mainBtnStroke.Color     = Color3.new(0, 0, 0)
 mainBtnStroke.Thickness = 2
 mainBtnStroke.Parent    = mainBtn
-
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 10)
-uiCorner.Parent       = mainBtn
 
 -- ─────────────────────────────────────────────────────────────
 -- MENU (panneau qui s'ouvre au-dessus du bouton)
@@ -67,50 +64,57 @@ local panel = Instance.new("Frame")
 panel.Name                   = "UpgradePanel"
 panel.Size                   = UDim2.new(0, 220, 0, 110)
 panel.Position               = UDim2.new(0, 10, 0, 168)
-panel.BackgroundColor3       = Color3.fromRGB(15, 15, 15)
-panel.BackgroundTransparency = 0.1
+panel.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel        = 0
 panel.Visible                = false
 panel.Parent                 = gui
 
-local panelCorner = Instance.new("UICorner")
-panelCorner.CornerRadius = UDim.new(0, 12)
-panelCorner.Parent       = panel
+local _panelCorner = Instance.new("UICorner")
+_panelCorner.CornerRadius = UDim.new(0, 2)
+_panelCorner.Parent       = panel
+local _panelStroke = Instance.new("UIStroke", panel)
+_panelStroke.Color = Color3.fromRGB(60, 60, 60) ; _panelStroke.Thickness = 1
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size                   = UDim2.new(1, 0, 0, 32)
-titleLabel.Position               = UDim2.new(0, 0, 0, 8)
+titleLabel.Size                   = UDim2.new(1, 0, 0, 28)
+titleLabel.Position               = UDim2.new(0, 10, 0, 6)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text                   = "Carry Upgrade"
-titleLabel.TextColor3             = Color3.fromRGB(255, 220, 80)
-titleLabel.TextScaled             = true
+titleLabel.TextColor3             = Color3.fromRGB(220, 220, 220)
+titleLabel.TextScaled             = false
+titleLabel.TextSize               = 14
 titleLabel.Font                   = Enum.Font.GothamBold
+titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.Parent                 = panel
 
 local infoLabel = Instance.new("TextLabel")
-infoLabel.Size                   = UDim2.new(1, -20, 0, 24)
-infoLabel.Position               = UDim2.new(0, 10, 0, 42)
+infoLabel.Size                   = UDim2.new(1, -20, 0, 18)
+infoLabel.Position               = UDim2.new(0, 10, 0, 36)
 infoLabel.BackgroundTransparency = 1
 infoLabel.Text                   = "Capacity : 1"
-infoLabel.TextColor3             = Color3.fromRGB(200, 200, 200)
-infoLabel.TextScaled             = true
+infoLabel.TextColor3             = Color3.fromRGB(130, 130, 130)
+infoLabel.TextScaled             = false
+infoLabel.TextSize               = 11
 infoLabel.Font                   = Enum.Font.Gotham
+infoLabel.TextXAlignment         = Enum.TextXAlignment.Left
 infoLabel.Parent                 = panel
 
 local upgradeBtn = Instance.new("TextButton")
-upgradeBtn.Size                  = UDim2.new(1, -20, 0, 36)
-upgradeBtn.Position              = UDim2.new(0, 10, 1, -46)
-upgradeBtn.BackgroundColor3      = Color3.fromRGB(50, 180, 80)
+upgradeBtn.Size                  = UDim2.new(1, -20, 0, 32)
+upgradeBtn.Position              = UDim2.new(0, 10, 1, -42)
+upgradeBtn.BackgroundColor3      = Color3.fromRGB(80, 140, 80)
 upgradeBtn.BorderSizePixel       = 0
-upgradeBtn.Text                  = "Upgrade  +1 Carry  (Free)"
-upgradeBtn.TextColor3            = Color3.fromRGB(255, 255, 255)
-upgradeBtn.TextScaled            = true
+upgradeBtn.Text                  = "Upgrade  +1 Carry"
+upgradeBtn.TextColor3            = Color3.fromRGB(220, 220, 220)
+upgradeBtn.TextScaled            = false
+upgradeBtn.TextSize              = 12
 upgradeBtn.Font                  = Enum.Font.GothamBold
 upgradeBtn.Parent                = panel
-
-local upgradeBtnCorner = Instance.new("UICorner")
-upgradeBtnCorner.CornerRadius = UDim.new(0, 8)
-upgradeBtnCorner.Parent       = upgradeBtn
+local _upCorner = Instance.new("UICorner", upgradeBtn)
+_upCorner.CornerRadius = UDim.new(0, 2)
+local _upStroke = Instance.new("UIStroke", upgradeBtn)
+_upStroke.Color = Color3.fromRGB(60, 60, 60) ; _upStroke.Thickness = 1
 
 -- ─────────────────────────────────────────────────────────────
 -- NOTIFICATION D'ERREUR (centre haut)
@@ -120,19 +124,17 @@ local errorLabel = Instance.new("TextLabel")
 errorLabel.Name                   = "ErrorLabel"
 errorLabel.Size                   = UDim2.new(0, 380, 0, 44)
 errorLabel.Position               = UDim2.new(0.5, -190, 0, 80)
-errorLabel.BackgroundColor3       = Color3.fromRGB(180, 30, 30)
-errorLabel.BackgroundTransparency = 0.15
+errorLabel.BackgroundColor3       = Color3.fromRGB(140, 70, 70)
+errorLabel.BackgroundTransparency = 0.1
 errorLabel.BorderSizePixel        = 0
 errorLabel.Text                   = ""
-errorLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
-errorLabel.TextScaled             = true
+errorLabel.TextColor3             = Color3.fromRGB(220, 220, 220)
+errorLabel.TextScaled             = false
+errorLabel.TextSize               = 13
 errorLabel.Font                   = Enum.Font.GothamBold
 errorLabel.Visible                = false
 errorLabel.Parent                 = gui
-
-local errorCorner = Instance.new("UICorner")
-errorCorner.CornerRadius = UDim.new(0, 10)
-errorCorner.Parent       = errorLabel
+Instance.new("UICorner", errorLabel).CornerRadius = UDim.new(0, 2)
 
 -- ─────────────────────────────────────────────────────────────
 -- ÉTAT LOCAL
@@ -150,9 +152,9 @@ local errorTweenConn  = nil
 
 local function RefreshUI()
 	local full = currentCarried >= currentCapacity
-	mainBtn.Text      = ("Carry %d/%d"):format(currentCarried, currentCapacity)
-	mainBtn.TextColor3 = full and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(255, 220, 80)
-	infoLabel.Text    = ("Capacity : %d"):format(currentCapacity)
+	mainBtn.Text       = ("Carry %d/%d"):format(currentCarried, currentCapacity)
+	mainBtn.TextColor3 = full and Color3.fromRGB(220, 110, 15) or Color3.fromRGB(220, 220, 220)
+	infoLabel.Text     = ("Capacity : %d"):format(currentCapacity)
 end
 
 local function ShowError(msg)

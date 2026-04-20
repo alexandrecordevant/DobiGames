@@ -12,31 +12,6 @@ MutantGALAXY.Config = {
     Emoji          = "🌌",
 }
 
-local function ajouterBillboardMutant(primaryPart, emoji)
-    pcall(function()
-        -- Supprimer l'ancien billboard s'il existe
-        local ancien = primaryPart:FindFirstChild("MutantBillboard")
-        if ancien then ancien:Destroy() end
-
-        local bb = Instance.new("BillboardGui")
-        bb.Name        = "MutantBillboard"
-        bb.StudsOffset = Vector3.new(0, 6, 0)
-        bb.Size        = UDim2.new(0, 80, 0, 80)
-        bb.MaxDistance = 100
-        bb.AlwaysOnTop = true
-        bb.Parent      = primaryPart
-
-        local label = Instance.new("TextLabel")
-        label.Size                   = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.Text                   = emoji
-        label.TextScaled             = true
-        label.Font                   = Enum.Font.GothamBold
-        label.TextStrokeTransparency = 0.5
-        label.TextStrokeColor3       = Color3.new(0, 0, 0)
-        label.Parent                 = bb
-    end)
-end
 
 function MutantGALAXY.Apply(brModel, params)
     local cfg = MutantGALAXY.Config
@@ -119,9 +94,6 @@ function MutantGALAXY.Apply(brModel, params)
         trail.LightEmission = 0.6
         trail.Parent       = primaryPart
     end)
-
-    -- Billboard emoji GALAXY
-    ajouterBillboardMutant(primaryPart, cfg.Emoji)
 
     pcall(function() brModel:SetAttribute("MutantType", cfg.Nom) end)
 end

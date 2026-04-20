@@ -16,24 +16,24 @@ local Config = require(ReplicatedStorage.GameConfig)
 local T      = require(ReplicatedStorage.SharedLib.Shared.UITheme)
 
 -- ============================================================
--- Couleurs (thème Farm Brain Rot)
+-- Couleurs (palette sombre neutre -- aligné LavaTower)
 -- ============================================================
-local C_BG          = T.fondPrincipal
-local C_BG_ALT      = T.fondSecondaire
-local C_BORDER      = T.bordure
-local C_TITLE       = T.texteTitre
-local C_TEXT        = T.texte
-local C_DIM         = T.texteSecondaire
-local C_GREEN_BG    = T.fondBouton
+local C_BG          = T.fondPrincipal       -- RGB(10,10,10)
+local C_BG_ALT      = T.fondSecondaire      -- RGB(20,20,20)
+local C_BORDER      = T.bordure             -- RGB(60,60,60)
+local C_TITLE       = T.texteTitre          -- RGB(220,220,220)
+local C_TEXT        = T.texte               -- RGB(220,220,220)
+local C_DIM         = T.texteSecondaire     -- RGB(130,130,130)
+local C_GREEN_BG    = T.fondBouton          -- RGB(80,140,80)
 local C_GREEN_TXT   = T.texte
-local C_GREY_BG     = Color3.fromRGB(55, 40, 20)
+local C_GREY_BG     = Color3.fromRGB(35, 35, 35)
 local C_GREY_TXT    = T.texteSecondaire
-local C_GOLD_BG     = T.fondBoutonRobux
-local C_GOLD_TXT    = T.fondPrincipal
-local C_MAX_BG      = Color3.fromRGB(60, 80, 20)
-local C_MAX_TXT     = T.barrePleine
+local C_GOLD_BG     = T.fondBoutonRobux     -- RGB(220,110,15)
+local C_GOLD_TXT    = T.texte               -- gris clair (lisible sur orange)
+local C_MAX_BG      = Color3.fromRGB(40, 40, 40)
+local C_MAX_TXT     = T.texteSecondaire
 local C_OVERLAY     = Color3.fromRGB(0, 0, 0)
-local C_COINS       = T.texteTitre
+local C_COINS       = Color3.fromRGB(255, 200, 50) -- gold coins
 local C_SEP         = T.bordure
 
 -- ============================================================
@@ -62,89 +62,113 @@ screenGui.DisplayOrder   = 10
 screenGui.Enabled        = false
 screenGui.Parent         = playerGui
 
--- Overlay sombre
-local overlay = Instance.new("Frame")
+-- Backdrop invisible (ferme en cliquant à côté)
+local overlay = Instance.new("TextButton")
 overlay.Name                   = "Overlay"
 overlay.Size                   = UDim2.new(1, 0, 1, 0)
-overlay.BackgroundColor3       = C_OVERLAY
-overlay.BackgroundTransparency = 0.55
+overlay.BackgroundTransparency = 1
 overlay.BorderSizePixel        = 0
+overlay.Text                   = ""
+overlay.ZIndex                 = 1
 overlay.Parent                 = screenGui
 
 -- Panneau principal
 local panel = Instance.new("Frame")
 panel.Name             = "Panel"
+panel.AnchorPoint      = Vector2.new(0.5, 0.5)
 panel.Size             = UDim2.new(0, PANEL_W, 0, PANEL_H)
-panel.Position         = UDim2.new(0.5, -PANEL_W / 2, 0.5, -PANEL_H / 2)
+panel.Position         = UDim2.new(0.5, 0, 1.5, 0)
 panel.BackgroundColor3 = C_BG
+panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel  = 0
+panel.ZIndex           = 2
 panel.Parent           = screenGui
-
-local panelCorner = Instance.new("UICorner")
-panelCorner.CornerRadius = UDim.new(0, 10)
-panelCorner.Parent       = panel
 
 local panelStroke = Instance.new("UIStroke")
 panelStroke.Color     = C_BORDER
-panelStroke.Thickness = 1.5
+panelStroke.Thickness = 1
 panelStroke.Parent    = panel
+
+-- UIScale pour mobile
+local uiScale = Instance.new("UIScale")
+uiScale.Parent = panel
+local function ajusterScale()
+    local vp = workspace.CurrentCamera.ViewportSize
+    local s  = math.min(vp.X / 500, vp.Y / 620, 1)
+    uiScale.Scale = math.max(0.55, s)
+end
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
+ajusterScale()
 
 -- ── Barre titre ──────────────────────────────────────────────
 local headerBar = Instance.new("Frame")
-headerBar.Name             = "Header"
-headerBar.Size             = UDim2.new(1, 0, 0, HEADER_H)
-headerBar.BackgroundColor3 = T.fondSecondaire
-headerBar.BorderSizePixel  = 0
-headerBar.Parent           = panel
-
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 10)
-headerCorner.Parent       = headerBar
+headerBar.Name                   = "Header"
+headerBar.Size                   = UDim2.new(1, 0, 0, HEADER_H)
+headerBar.BackgroundTransparency = 1
+headerBar.BorderSizePixel        = 0
+headerBar.ZIndex                 = 3
+headerBar.Parent                 = panel
 
 local titreLbl = Instance.new("TextLabel")
 titreLbl.Size                = UDim2.new(1, -60, 1, 0)
-titreLbl.Position            = UDim2.new(0, 14, 0, 0)
+titreLbl.Position            = UDim2.new(0, 16, 0, 0)
 titreLbl.BackgroundTransparency = 1
-titreLbl.Text                = "🛒  SHOP"
+titreLbl.Text                = "SHOP"
 titreLbl.TextColor3          = C_TITLE
 titreLbl.Font                = Enum.Font.GothamBold
-titreLbl.TextScaled          = true
+titreLbl.TextSize            = 18
+titreLbl.TextScaled          = false
 titreLbl.TextXAlignment      = Enum.TextXAlignment.Left
+titreLbl.ZIndex              = 4
 titreLbl.Parent              = headerBar
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name              = "Close"
-closeBtn.Size              = UDim2.new(0, 38, 0, 38)
-closeBtn.Position          = UDim2.new(1, -46, 0.5, -19)
-closeBtn.BackgroundColor3  = T.fondBoutonDanger
-closeBtn.Text              = "✕"
-closeBtn.TextColor3        = T.texte
+closeBtn.Size              = UDim2.new(0, 44, 0, 44)
+closeBtn.Position          = UDim2.new(1, -50, 0, 4)
+closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
+closeBtn.Text              = "X"
+closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
 closeBtn.Font              = Enum.Font.GothamBold
-closeBtn.TextScaled        = true
+closeBtn.TextSize          = 16
+closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
+closeBtn.ZIndex            = 4
 closeBtn.Parent            = headerBar
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 2)
+local closeBtnStroke = Instance.new("UIStroke", closeBtn)
+closeBtnStroke.Color = C_BORDER ; closeBtnStroke.Thickness = 1
+
+-- ── Séparateur titre ─────────────────────────────────────────
+local headerSep = Instance.new("Frame")
+headerSep.Size             = UDim2.new(1, -24, 0, 1)
+headerSep.Position         = UDim2.new(0, 12, 0, HEADER_H)
+headerSep.BackgroundColor3 = C_BORDER
+headerSep.BorderSizePixel  = 0
+headerSep.ZIndex           = 3
+headerSep.Parent           = panel
 
 -- ── Affichage coins ───────────────────────────────────────────
 local coinsBar = Instance.new("Frame")
-coinsBar.Name             = "CoinsBar"
-coinsBar.Size             = UDim2.new(1, -20, 0, COINS_H)
-coinsBar.Position         = UDim2.new(0, 10, 0, HEADER_H + 4)
-coinsBar.BackgroundColor3 = C_BG_ALT
-coinsBar.BorderSizePixel  = 0
-coinsBar.Parent           = panel
-Instance.new("UICorner", coinsBar).CornerRadius = UDim.new(0, 6)
+coinsBar.Name                   = "CoinsBar"
+coinsBar.Size                   = UDim2.new(1, -24, 0, COINS_H)
+coinsBar.Position               = UDim2.new(0, 12, 0, HEADER_H + 6)
+coinsBar.BackgroundTransparency = 1
+coinsBar.BorderSizePixel        = 0
+coinsBar.ZIndex                 = 3
+coinsBar.Parent                 = panel
 
 local coinsLbl = Instance.new("TextLabel")
 coinsLbl.Name                = "CoinsLabel"
-coinsLbl.Size                = UDim2.new(1, -12, 1, 0)
-coinsLbl.Position            = UDim2.new(0, 10, 0, 0)
+coinsLbl.Size                = UDim2.new(1, 0, 1, 0)
 coinsLbl.BackgroundTransparency = 1
-coinsLbl.Text                = "💰 0 coins"
+coinsLbl.Text                = "0 coins"
 coinsLbl.TextColor3          = C_COINS
 coinsLbl.Font                = Enum.Font.GothamBold
-coinsLbl.TextScaled          = true
+coinsLbl.TextSize            = 13
+coinsLbl.TextScaled          = false
 coinsLbl.TextXAlignment      = Enum.TextXAlignment.Left
+coinsLbl.ZIndex              = 4
 coinsLbl.Parent              = coinsBar
 
 -- ── ScrollingFrame ─────────────────────────────────────────────
@@ -155,8 +179,9 @@ scrollFrame.Position              = UDim2.new(0, 5, 0, SCROLL_TOP)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel       = 0
 scrollFrame.ScrollBarThickness    = 4
-scrollFrame.ScrollBarImageColor3  = C_BORDER
+scrollFrame.ScrollBarImageColor3  = T.fondBoutonRobux
 scrollFrame.CanvasSize            = UDim2.new(0, 0, 0, 0)
+scrollFrame.ZIndex                = 3
 scrollFrame.Parent                = panel
 
 -- ============================================================
@@ -232,10 +257,13 @@ local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, 
     btn.Text             = texte
     btn.TextColor3       = couleurTxt
     btn.Font             = Enum.Font.GothamBold
-    btn.TextScaled       = true
+    btn.TextSize         = 12
+    btn.TextScaled       = false
     btn.BorderSizePixel  = 0
     btn.Parent           = parent
     Instance.new("UICorner", btn).CornerRadius = BTN_CORNER
+    local s = Instance.new("UIStroke", btn)
+    s.Color = C_BORDER ; s.Thickness = 1
     return btn
 end
 
@@ -247,36 +275,38 @@ local function construireUpgradeFrame(nomUpgrade, upgradeConfig, yPos)
     frame.BackgroundColor3 = C_BG_ALT
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 0)
 
     local stroke = Instance.new("UIStroke")
     stroke.Color     = C_SEP
     stroke.Thickness = 1
     stroke.Parent    = frame
 
-    -- Icone + Nom
+    -- Nom
     local nomLbl = Instance.new("TextLabel")
     nomLbl.Name                = "Nom"
-    nomLbl.Size                = UDim2.new(1, -12, 0, 28)
-    nomLbl.Position            = UDim2.new(0, 10, 0, 6)
+    nomLbl.Size                = UDim2.new(1, -12, 0, 22)
+    nomLbl.Position            = UDim2.new(0, 10, 0, 8)
     nomLbl.BackgroundTransparency = 1
-    nomLbl.Text                = upgradeConfig.icone .. "  " .. string.upper(upgradeConfig.nom)
+    nomLbl.Text                = string.upper(upgradeConfig.nom)
     nomLbl.TextColor3          = C_TEXT
     nomLbl.Font                = Enum.Font.GothamBold
-    nomLbl.TextScaled          = true
+    nomLbl.TextSize            = 15
+    nomLbl.TextScaled          = false
     nomLbl.TextXAlignment      = Enum.TextXAlignment.Left
     nomLbl.Parent              = frame
 
     -- Description
     local descLbl = Instance.new("TextLabel")
     descLbl.Name               = "Desc"
-    descLbl.Size               = UDim2.new(1, -12, 0, 20)
-    descLbl.Position           = UDim2.new(0, 10, 0, 36)
+    descLbl.Size               = UDim2.new(1, -12, 0, 16)
+    descLbl.Position           = UDim2.new(0, 10, 0, 32)
     descLbl.BackgroundTransparency = 1
     descLbl.Text               = upgradeConfig.description
     descLbl.TextColor3         = C_DIM
     descLbl.Font               = Enum.Font.Gotham
-    descLbl.TextScaled         = true
+    descLbl.TextSize           = 11
+    descLbl.TextScaled         = false
     descLbl.TextXAlignment     = Enum.TextXAlignment.Left
     descLbl.Parent             = frame
 
@@ -549,7 +579,7 @@ local function construireShop(donnes)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
 
     -- Coins
-    coinsLbl.Text = "💰 " .. FormatCoins(donnes.playerCoins) .. " coins"
+    coinsLbl.Text = FormatCoins(donnes.playerCoins) .. " coins"
 end
 
 -- ============================================================
@@ -580,28 +610,25 @@ local function mettreAJourShop(donnes)
 end
 
 -- ============================================================
--- Ouverture / Fermeture
+-- Ouverture / Fermeture (slide depuis le bas)
 -- ============================================================
-local panelPosOuverte = UDim2.new(0.5, -PANEL_W / 2, 0.5, -PANEL_H / 2)
-local panelPosFermee  = UDim2.new(1.5, 0,             0.5, -PANEL_H / 2)
-
 local function ouvrirShop(donnes)
     donneesShop = donnes
     construireShop(donnes)
-    screenGui.Enabled = true
-    panel.Position = panelPosFermee
+    screenGui.Enabled  = true
+    panel.Position     = UDim2.new(0.5, 0, 1.5, 0)
     TweenService:Create(panel,
-        TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        { Position = panelPosOuverte }
+        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Position = UDim2.new(0.5, 0, 0.5, 0) }
     ):Play()
 end
 
 local function fermerShop()
-    TweenService:Create(panel,
-        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-        { Position = panelPosFermee }
-    ):Play()
-    task.delay(0.26, function()
+    local tween = TweenService:Create(panel,
+        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        { Position = UDim2.new(0.5, 0, 1.5, 0) })
+    tween:Play()
+    tween.Completed:Connect(function()
         screenGui.Enabled = false
     end)
 end
@@ -610,14 +637,7 @@ end
 -- Connexions des contrôles
 -- ============================================================
 closeBtn.MouseButton1Click:Connect(fermerShop)
-
--- Fermer en cliquant sur l'overlay
-overlay.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        fermerShop()
-    end
-end)
+overlay.MouseButton1Click:Connect(fermerShop)
 
 -- Fermer avec Escape
 UserInputService.InputBegan:Connect(function(input, gameProcessed)

@@ -1,24 +1,24 @@
 -- shared-lib/src/shared/UITheme.lua
--- Thème "Farm Brain Rot" — marron bois + jaune blé + vert farm
+-- Thème sombre neutre -- noir dominant, orange en accent (aligné LavaTower)
 
 local UITheme = {}
 
 -- ============================================================
 -- Palette principale
 -- ============================================================
-UITheme.fondPrincipal    = Color3.fromRGB(45, 30, 10)    -- marron bois foncé
-UITheme.fondSecondaire   = Color3.fromRGB(60, 40, 15)    -- marron bois moyen
-UITheme.fondBouton       = Color3.fromRGB(80, 140, 30)   -- vert farm
-UITheme.fondBoutonRobux  = Color3.fromRGB(220, 160, 0)   -- jaune blé doré
-UITheme.fondBoutonDanger = Color3.fromRGB(180, 50, 30)   -- rouge danger
-UITheme.fondBoutonRebirth= Color3.fromRGB(200, 140, 0)   -- jaune blé foncé
-UITheme.texte            = Color3.fromRGB(255, 240, 180)  -- jaune blé clair
-UITheme.texteTitre       = Color3.fromRGB(255, 220, 50)   -- jaune blé vif
-UITheme.texteSecondaire  = Color3.fromRGB(200, 180, 120)  -- beige blé
-UITheme.bordure          = Color3.fromRGB(140, 100, 30)   -- bois doré
-UITheme.bordureAccent    = Color3.fromRGB(220, 180, 50)   -- jaune blé bordure
-UITheme.barreVide        = Color3.fromRGB(40, 40, 20)     -- fond barre
-UITheme.barrePleine      = Color3.fromRGB(80, 200, 40)    -- vert farm progression
-UITheme.barreRebirth     = Color3.fromRGB(220, 160, 0)    -- jaune blé rebirth
+UITheme.fondPrincipal    = Color3.fromRGB(10,  10,  10)   -- noir panel
+UITheme.fondSecondaire   = Color3.fromRGB(20,  20,  20)   -- carte sombre
+UITheme.fondBouton       = Color3.fromRGB(80,  140, 80)   -- vert discret
+UITheme.fondBoutonRobux  = Color3.fromRGB(220, 110, 15)   -- orange accent
+UITheme.fondBoutonDanger = Color3.fromRGB(140, 70,  70)   -- rouge discret
+UITheme.fondBoutonRebirth= Color3.fromRGB(220, 110, 15)   -- orange accent
+UITheme.texte            = Color3.fromRGB(220, 220, 220)  -- gris clair
+UITheme.texteTitre       = Color3.fromRGB(220, 220, 220)  -- gris clair (même)
+UITheme.texteSecondaire  = Color3.fromRGB(130, 130, 130)  -- gris moyen
+UITheme.bordure          = Color3.fromRGB(60,  60,  60)   -- gris bordure
+UITheme.bordureAccent    = Color3.fromRGB(220, 110, 15)   -- orange bordure
+UITheme.barreVide        = Color3.fromRGB(30,  30,  30)   -- fond barre
+UITheme.barrePleine      = Color3.fromRGB(80,  140, 80)   -- vert progression
+UITheme.barreRebirth     = Color3.fromRGB(220, 110, 15)   -- orange rebirth
 
 return UITheme

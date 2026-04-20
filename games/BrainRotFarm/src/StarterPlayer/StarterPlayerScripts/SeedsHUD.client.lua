@@ -11,23 +11,23 @@ local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- ============================================================
--- Thème
+-- Thème (palette sombre neutre -- aligné LavaTower)
 -- ============================================================
 local C = {
-    fond       = Color3.fromRGB(12,  10,  22),
-    fondCarte  = Color3.fromRGB(22,  18,  40),
-    bordure    = Color3.fromRGB(120, 60,  200),
-    texte      = Color3.fromRGB(230, 220, 255),
-    texteDim   = Color3.fromRGB(140, 120, 180),
-    mythic     = Color3.fromRGB(180, 0,   255),
-    secret     = Color3.fromRGB(255, 50,  50),
-    vert       = Color3.fromRGB(80,  220, 100),
-    or_        = Color3.fromRGB(255, 215, 0),
-    arbre      = Color3.fromRGB(100, 200, 50),
-    growing    = Color3.fromRGB(100, 200, 255),
-    ready      = Color3.fromRGB(255, 180, 0),
-    vide       = Color3.fromRGB(100, 90,  130),
-    verrouille = Color3.fromRGB(160, 120, 50),
+    fond       = Color3.fromRGB(10,  10,  10),   -- noir panel
+    fondCarte  = Color3.fromRGB(20,  20,  20),   -- carte sombre
+    bordure    = Color3.fromRGB(220, 110, 15),   -- orange accent
+    texte      = Color3.fromRGB(220, 220, 220),  -- gris clair
+    texteDim   = Color3.fromRGB(130, 130, 130),  -- gris moyen
+    mythic     = Color3.fromRGB(180, 100, 255),  -- violet rareté
+    secret     = Color3.fromRGB(255, 80,  80),   -- rouge rareté
+    vert       = Color3.fromRGB(80,  140, 80),   -- vert discret
+    or_        = Color3.fromRGB(255, 200, 50),   -- or coins
+    arbre      = Color3.fromRGB(80,  140, 80),   -- vert arbre
+    growing    = Color3.fromRGB(100, 180, 255),  -- bleu croissance
+    ready      = Color3.fromRGB(220, 110, 15),   -- orange prêt
+    vide       = Color3.fromRGB(70,  70,  70),   -- gris vide
+    verrouille = Color3.fromRGB(70,  70,  70),   -- gris verrouillé
 }
 
 local JOUR_NOMS    = { "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim" }
@@ -53,10 +53,11 @@ local btnSeeds = Instance.new("TextButton", screenGui)
 btnSeeds.Name                   = "BtnFlowerPot"
 btnSeeds.Size                   = UDim2.new(0, 120, 0, 55)
 btnSeeds.Position               = UDim2.new(0, 10, 0.5, 85)
-btnSeeds.BackgroundColor3       = Color3.fromRGB(20, 40, 20)
+btnSeeds.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+btnSeeds.BackgroundTransparency = 0.05
 btnSeeds.BorderSizePixel        = 0
-btnSeeds.Text                   = "🪴 FlowerPot"
-btnSeeds.TextColor3             = Color3.fromRGB(150, 230, 130)
+btnSeeds.Text                   = "FlowerPot"
+btnSeeds.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnSeeds.Font                   = Enum.Font.GothamBold
 btnSeeds.TextSize               = 13
 btnSeeds.TextWrapped            = true
@@ -64,11 +65,11 @@ btnSeeds.AutoButtonColor        = false
 btnSeeds.ZIndex                 = 10
 btnSeeds.Visible                = false  -- bouton géré par FlowerPotHUD
 btnSeeds.Parent                 = screenGui
-Instance.new("UICorner", btnSeeds).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", btnSeeds).CornerRadius = UDim.new(0, 2)
 
 local btnStroke = Instance.new("UIStroke", btnSeeds)
-btnStroke.Color     = Color3.fromRGB(60, 180, 60)
-btnStroke.Thickness = 1.5
+btnStroke.Color     = Color3.fromRGB(60, 60, 60)
+btnStroke.Thickness = 1
 
 -- ============================================================
 -- Panel principal (caché par défaut, s'ouvre à droite du bouton)
@@ -81,12 +82,13 @@ panel.Name                   = "SeedsPanel"
 panel.Size                   = UDim2.new(0, PANEL_W, 0, PANEL_H)
 panel.Position               = UDim2.new(0, 140, 0.5, -PANEL_H / 2)
 panel.BackgroundColor3       = C.fond
+panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel        = 0
 panel.Visible                = false
 panel.ZIndex                 = 20
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
-Instance.new("UIStroke", panel).Color        = C.bordure
-panel:FindFirstChildOfClass("UIStroke").Thickness = 2
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
+local _panelStroke = Instance.new("UIStroke", panel)
+_panelStroke.Color = Color3.fromRGB(60, 60, 60) ; _panelStroke.Thickness = 1
 
 -- ── Titre ──
 local titre = Instance.new("TextLabel", panel)
@@ -104,14 +106,16 @@ titre.ZIndex                 = 21
 local btnFermer = Instance.new("TextButton", panel)
 btnFermer.Size             = UDim2.new(0, 30, 0, 30)
 btnFermer.Position         = UDim2.new(1, -38, 0, 8)
-btnFermer.BackgroundColor3 = Color3.fromRGB(60, 30, 80)
+btnFermer.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 btnFermer.BorderSizePixel  = 0
-btnFermer.Text             = "✕"
-btnFermer.TextColor3       = C.texteDim
+btnFermer.Text             = "X"
+btnFermer.TextColor3       = Color3.fromRGB(180, 180, 180)
 btnFermer.Font             = Enum.Font.GothamBold
-btnFermer.TextSize         = 13
+btnFermer.TextSize         = 12
 btnFermer.ZIndex           = 22
-Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 2)
+local _fermerStroke = Instance.new("UIStroke", btnFermer)
+_fermerStroke.Color = Color3.fromRGB(60, 60, 60) ; _fermerStroke.Thickness = 1
 
 local function makeSep(parent, yPos)
     local s = Instance.new("Frame", parent)
@@ -182,7 +186,7 @@ for i = 1, 4 do
     cell.BackgroundColor3 = C.fondCarte
     cell.BorderSizePixel  = 0
     cell.ZIndex           = 21
-    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 2)
 
     local function potLabel(name, size, pos, text, fontSize, bold)
         local l = Instance.new("TextLabel", cell)
@@ -249,10 +253,10 @@ for i = 1, 7 do
     local cell = Instance.new("Frame", calSection)
     cell.Size             = UDim2.new(0, cellW, 0, 52)
     cell.Position         = UDim2.new(0, 6 + (i-1) * (cellW + 3), 0, 25)
-    cell.BackgroundColor3 = Color3.fromRGB(30, 22, 50)
+    cell.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     cell.BorderSizePixel  = 0
     cell.ZIndex           = 22
-    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 2)
 
     local function calLabel(name, size, pos, text, fs)
         local l = Instance.new("TextLabel", cell)
@@ -326,7 +330,7 @@ local function majPots(pots)
             f.rarity.Text = (s.rarity=="SECRET" and "SEC" or "MYT") .. " S" .. math.max(0, s.stage or 0)
             f.rarity.TextColor3 = s.rarity=="SECRET" and C.secret or C.mythic
             f.elem.Text = s.elementType and ELEMENT_EMOJI[s.elementType] or ""
-            f.cell.BackgroundColor3 = Color3.fromRGB(15,28,35)
+            f.cell.BackgroundColor3 = Color3.fromRGB(15, 22, 30)
             nbGrowing = nbGrowing + 1
         elseif p.statut.statut == "ready" then
             local s = p.statut
@@ -334,7 +338,7 @@ local function majPots(pots)
             f.rarity.Text = s.rarity=="SECRET" and "SECRET" or "MYTHIC"
             f.rarity.TextColor3 = s.rarity=="SECRET" and C.secret or C.mythic
             f.elem.Text = s.elementType and ELEMENT_EMOJI[s.elementType] or "✨"
-            f.cell.BackgroundColor3 = Color3.fromRGB(35,25,10)
+            f.cell.BackgroundColor3 = Color3.fromRGB(28, 20, 10)
             nbReady = nbReady + 1
         end
     end
@@ -365,14 +369,14 @@ local function majCalendrier(info)
         local stroke = f.cell:FindFirstChildOfClass("UIStroke")
         if stroke then stroke:Destroy() end
         if i == jourActuel then
-            f.cell.BackgroundColor3 = Color3.fromRGB(45,30,80)
+            f.cell.BackgroundColor3 = Color3.fromRGB(30, 25, 10)
             local st = Instance.new("UIStroke", f.cell)
-            st.Color = graineDispo and C.vert or C.or_; st.Thickness = 2
+            st.Color = graineDispo and C.vert or C.or_; st.Thickness = 1
             f.jour.TextColor3 = C.or_
         elseif i < jourActuel then
-            f.cell.BackgroundColor3 = Color3.fromRGB(18,15,28)
+            f.cell.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
             f.emoji.TextTransparency = 0.6; f.label.TextTransparency = 0.6
-            f.jour.TextColor3 = Color3.fromRGB(90,80,110)
+            f.jour.TextColor3 = Color3.fromRGB(80, 80, 80)
         else
             f.cell.BackgroundColor3 = Color3.fromRGB(30,22,50)
             f.emoji.TextTransparency = 0; f.label.TextTransparency = 0
@@ -490,10 +494,10 @@ end)
 btnFermer.MouseButton1Click:Connect(fermerPanel)
 
 btnSeeds.MouseEnter:Connect(function()
-    TweenService:Create(btnSeeds, TweenInfo.new(0.12),
-        { BackgroundColor3 = Color3.fromRGB(30, 60, 30) }):Play()
+    TweenService:Create(btnSeeds, TweenInfo.new(0.08),
+        { BackgroundColor3 = Color3.fromRGB(30, 30, 30) }):Play()
 end)
 btnSeeds.MouseLeave:Connect(function()
-    TweenService:Create(btnSeeds, TweenInfo.new(0.12),
-        { BackgroundColor3 = Color3.fromRGB(20, 40, 20) }):Play()
+    TweenService:Create(btnSeeds, TweenInfo.new(0.08),
+        { BackgroundColor3 = Color3.fromRGB(10, 10, 10) }):Play()
 end)

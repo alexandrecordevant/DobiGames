@@ -23,32 +23,6 @@ MutantRAINBOW.Config = {
     DureeCycle = 3,
 }
 
-local TweenService = game:GetService("TweenService")
-
-local function ajouterBillboardMutant(primaryPart, emoji)
-    pcall(function()
-        local ancien = primaryPart:FindFirstChild("MutantBillboard")
-        if ancien then ancien:Destroy() end
-
-        local bb = Instance.new("BillboardGui")
-        bb.Name        = "MutantBillboard"
-        bb.StudsOffset = Vector3.new(0, 6, 0)
-        bb.Size        = UDim2.new(0, 80, 0, 80)
-        bb.MaxDistance = 100
-        bb.AlwaysOnTop = true
-        bb.Parent      = primaryPart
-
-        local label = Instance.new("TextLabel")
-        label.Size                   = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.Text                   = emoji
-        label.TextScaled             = true
-        label.Font                   = Enum.Font.GothamBold
-        label.TextStrokeTransparency = 0.5
-        label.TextStrokeColor3       = Color3.new(0, 0, 0)
-        label.Parent                 = bb
-    end)
-end
 
 function MutantRAINBOW.Apply(brModel, params)
     local cfg = MutantRAINBOW.Config
@@ -138,37 +112,6 @@ function MutantRAINBOW.Apply(brModel, params)
         trail.LightEmission = 0.8
         trail.Parent        = primaryPart
     end)
-
-    -- Boucle hue-shift via TweenService (cycle DureeCycle secondes)
-    -- S'arrête automatiquement quand brModel est détruit
-    if highlight then
-        local couleurs    = cfg.CouleursCycle
-        local nbCouleurs  = #couleurs
-        local dureeCycle  = cfg.DureeCycle
-        local dureeEtape  = dureeCycle / nbCouleurs
-
-        task.spawn(function()
-            local index = 1
-            while highlight and highlight.Parent and brModel and brModel.Parent do
-                local couleurCible = couleurs[index]
-
-                -- Tween vers la prochaine couleur du cycle
-                local tweenInfo = TweenInfo.new(dureeEtape, Enum.EasingStyle.Linear)
-                local tween = TweenService:Create(highlight, tweenInfo, {
-                    FillColor    = couleurCible,
-                    OutlineColor = couleurCible,
-                })
-                tween:Play()
-                task.wait(dureeEtape)
-
-                -- Avancer dans le cycle (retour au début après la dernière couleur)
-                index = (index % nbCouleurs) + 1
-            end
-        end)
-    end
-
-    -- Billboard emoji RAINBOW
-    ajouterBillboardMutant(primaryPart, cfg.Emoji)
 
     pcall(function() brModel:SetAttribute("MutantType", cfg.Nom) end)
 end
