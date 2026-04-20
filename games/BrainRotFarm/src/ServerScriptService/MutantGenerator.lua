@@ -169,7 +169,7 @@ function MutantGenerator.Generate(seedRarity, mutantType)
             {Name = "Billboard", Params = {
                 Text    = elemCfg.nomDisplay .. valeurTexte,
                 Color   = elemCfg.couleur,
-                OffsetY = 3,
+                OffsetY = 6,
             }},
         })
     else

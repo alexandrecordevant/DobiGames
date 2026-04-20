@@ -44,7 +44,8 @@
                 "ShopHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua" },
                 "SlotMenuHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SlotMenuHUD.client.lua" },
                 "CollectAllButton": { "$path": "src/StarterPlayer/StarterPlayerScripts/CollectAllButton.client.lua" },
-                "BrainrotCarryUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/BrainrotCarryUI.client.lua" }
+                "BrainrotCarryUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/BrainrotCarryUI.client.lua" },
+                "MiniTutoHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/MiniTutoHUD.client.lua" }
             }
         }
     }

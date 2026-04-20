@@ -133,22 +133,34 @@ function BrainrotBillboard.SetupField(brainrot, duration, studsY)
 	local root = GetRootPart(brainrot)
 	if not root then return end
 
-	local rarete  = brainrot:GetAttribute("Rarete")         or "COMMON"
-	local nomAff  = brainrot:GetAttribute("OriginalName")   or brainrot.Name
-	local prix    = brainrot:GetAttribute("Prix")           or 0
-	local cps     = brainrot:GetAttribute("CashParSeconde") or 0
-	local couleur = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
+	local rarete     = brainrot:GetAttribute("Rarete")         or "COMMON"
+	local nomAff     = brainrot:GetAttribute("OriginalName")   or brainrot.Name
+	local prix       = brainrot:GetAttribute("Prix")           or 0
+	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
+	local isMutant   = brainrot:GetAttribute("IsMutant")
+	local mutantType = brainrot:GetAttribute("MutantType")
+	local couleur    = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
 
-	local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, 5)
-
-	MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
-	local lRarete =
-	MakeLabel(bb, "LRarete", rarete,                            0.20, couleur)
-	MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.40, Color3.fromRGB(0, 220, 0))
-	MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.60, Color3.fromRGB(255, 215, 0))
-	MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         0.80, Color3.fromRGB(220, 60, 60))
-
-	AppliquerAnimationRarete(lRarete, rarete)
+	if isMutant and mutantType then
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, 6)
+		MakeLabel(bb, "LNom",    nomAff,                            0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        0.17, Color3.fromRGB(255, 215, 0))
+		local lRarete =
+		MakeLabel(bb, "LRarete", rarete,                            0.33, couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.50, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.67, Color3.fromRGB(255, 215, 0))
+		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         0.83, Color3.fromRGB(220, 60, 60))
+		AppliquerAnimationRarete(lRarete, rarete)
+	else
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, 5)
+		MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		local lRarete =
+		MakeLabel(bb, "LRarete", rarete,                            0.20, couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.40, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.60, Color3.fromRGB(255, 215, 0))
+		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         0.80, Color3.fromRGB(220, 60, 60))
+		AppliquerAnimationRarete(lRarete, rarete)
+	end
 end
 
 --[[
@@ -162,21 +174,32 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 	local root = GetRootPart(brainrot)
 	if not root then return end
 
-	local rarete  = brainrot:GetAttribute("Rarete")         or "COMMON"
-	local nomAff  = brainrot:GetAttribute("OriginalName")   or brainrot.Name
-	local prix    = brainrot:GetAttribute("Prix")           or 0
-	local cps     = brainrot:GetAttribute("CashParSeconde") or 0
-	local couleur = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
+	local rarete     = brainrot:GetAttribute("Rarete")         or "COMMON"
+	local nomAff     = brainrot:GetAttribute("OriginalName")   or brainrot.Name
+	local prix       = brainrot:GetAttribute("Prix")           or 0
+	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
+	local isMutant   = brainrot:GetAttribute("IsMutant")
+	local mutantType = brainrot:GetAttribute("MutantType")
+	local couleur    = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
 
-	local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, 4)
-
-	MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
-	local lRarete =
-	MakeLabel(bb, "LRarete", rarete,                            0.25, couleur)
-	MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.50, Color3.fromRGB(0, 220, 0))
-	MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.75, Color3.fromRGB(255, 215, 0))
-
-	AppliquerAnimationRarete(lRarete, rarete)
+	if isMutant and mutantType then
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, 5)
+		MakeLabel(bb, "LNom",    nomAff,                            0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        0.20, Color3.fromRGB(255, 215, 0))
+		local lRarete =
+		MakeLabel(bb, "LRarete", rarete,                            0.40, couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.60, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.80, Color3.fromRGB(255, 215, 0))
+		AppliquerAnimationRarete(lRarete, rarete)
+	else
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, 4)
+		MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		local lRarete =
+		MakeLabel(bb, "LRarete", rarete,                            0.25, couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.50, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.75, Color3.fromRGB(255, 215, 0))
+		AppliquerAnimationRarete(lRarete, rarete)
+	end
 end
 
 --[[

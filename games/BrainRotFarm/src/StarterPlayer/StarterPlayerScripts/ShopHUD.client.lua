@@ -124,20 +124,18 @@ titreLbl.Parent              = headerBar
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name              = "Close"
-closeBtn.Size              = UDim2.new(0, 44, 0, 44)
-closeBtn.Position          = UDim2.new(1, -50, 0, 4)
-closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
+closeBtn.Size              = UDim2.new(0, 32, 0, 32)
+closeBtn.Position          = UDim2.new(1, -38, 0, 8)
+closeBtn.BackgroundColor3  = T.fondBoutonDanger
 closeBtn.Text              = "X"
-closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
+closeBtn.TextColor3        = T.texte
 closeBtn.Font              = Enum.Font.GothamBold
 closeBtn.TextSize          = 16
 closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 4
 closeBtn.Parent            = headerBar
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 2)
-local closeBtnStroke = Instance.new("UIStroke", closeBtn)
-closeBtnStroke.Color = C_BORDER ; closeBtnStroke.Thickness = 1
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 
 -- ── Séparateur titre ─────────────────────────────────────────
 local headerSep = Instance.new("Frame")

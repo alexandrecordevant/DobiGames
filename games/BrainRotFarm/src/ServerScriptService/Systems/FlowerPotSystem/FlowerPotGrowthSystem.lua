@@ -47,6 +47,17 @@ local function getPickupHandler()
     return _PickupHandler
 end
 
+-- Lazy loader BrainrotBillboard (billboard uniformisé)
+local _BRBillboard = nil
+local function getBRBillboard()
+    if not _BRBillboard then
+        local ok, m = pcall(require,
+            ServerScriptService.SharedLib.Server.BrainrotBillboard)
+        if ok and m then _BRBillboard = m end
+    end
+    return _BRBillboard
+end
+
 -- Lazy loader FilterManager (effets visuels élémentaires centralisés)
 local _FilterManager = nil
 local function getFilterManager()
@@ -325,6 +336,10 @@ local function appliquerParticulesElement(clone, elementType)
         return
     end
     FM.Apply(clone, { { Name = nomFiltre } })
+
+    -- Billboard uniformisé (même format que le dépôt en base)
+    local BB = getBRBillboard()
+    if BB then pcall(BB.SetupBase, clone) end
 end
 
 -- Burst de particules au moment de la chute (feedback visuel)
@@ -456,6 +471,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                     mutantClone:SetAttribute("IsMutant",    true)
                     mutantClone:SetAttribute("MutantType",  elementType)
                     mutantClone:SetAttribute("Rarity",      seedRarity)
+                    mutantClone:SetAttribute("Rarete",      seedRarity)
                     mutantClone:SetAttribute("Multiplier",  multiplier)
                 end)
                 appliquerParticulesElement(mutantClone, elementType)
@@ -513,6 +529,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                         mutantClone:SetAttribute("IsMutant",    true)
                         mutantClone:SetAttribute("MutantType",  elementType)
                         mutantClone:SetAttribute("Rarity",      seedRarity)
+                    mutantClone:SetAttribute("Rarete",      seedRarity)
                         mutantClone:SetAttribute("Multiplier",  multiplier)
                     end)
                     appliquerParticulesElement(mutantClone, elementType)
@@ -574,6 +591,7 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                         mutantClone:SetAttribute("IsMutant",    true)
                         mutantClone:SetAttribute("MutantType",  elementType)
                         mutantClone:SetAttribute("Rarity",      seedRarity)
+                    mutantClone:SetAttribute("Rarete",      seedRarity)
                         mutantClone:SetAttribute("Multiplier",  multiplier)
                     end)
 

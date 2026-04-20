@@ -81,7 +81,7 @@ titleLabel.Font                   = Enum.Font.GothamBold
 titleLabel.TextSize               = 18
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.RichText               = true
-titleLabel.Text                   = "🌱 Flower Pot"
+titleLabel.Text                   = "🪴 Flower Pot"
 titleLabel.ZIndex                 = 12
 titleLabel.Parent                 = mainFrame
 
@@ -238,7 +238,7 @@ end
 
 local function afficherMenuEmpty(potIndex, dailySeedData)
     clearContent()
-    titleLabel.Text = "🌱 FLOWER POT " .. potIndex
+    titleLabel.Text = "🪴 FLOWER POT " .. potIndex
 
     -- Instruction principale
     creerLigne(
@@ -369,7 +369,7 @@ local function afficherMenuInfos(potIndex, potData)
     if stage >= 4 then
         titleLabel.Text = "🌟 POT " .. potIndex .. " — MATURE!"
     else
-        titleLabel.Text = "🌱 POT " .. potIndex .. " — Growing..."
+        titleLabel.Text = "🪴 POT " .. potIndex .. " — Growing..."
     end
 
     -- Rareté
@@ -500,7 +500,7 @@ end
 
 local function afficherMenuChoisirPot(extraData)
     clearContent()
-    titleLabel.Text = "🌱 Choose a Pot to Plant"
+    titleLabel.Text = "🪴 Choose a Pot to Plant"
 
     local etatsPots    = extraData and extraData.etatsPots    or {}
     local raretyDuJour = extraData and extraData.raretyDuJour or "MYTHIC"
@@ -883,7 +883,7 @@ fpTitre.Size = UDim2.new(1,-50,0,28) ; fpTitre.Position = UDim2.new(0,12,0,6)
 fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = T.texteTitre
 fpTitre.Font = Enum.Font.GothamBold ; fpTitre.TextSize = 14
 fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
-fpTitre.Text = "FlowerPot Status" ; fpTitre.ZIndex = 21
+fpTitre.Text = "🪴 FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
 fpClose.Size = UDim2.new(0,30,0,30) ; fpClose.Position = UDim2.new(1,-36,0,4)
@@ -949,7 +949,7 @@ local function fpMajAffichage(pots, graines)
             f.ic.Text="🔒"; f.ic.TextColor3=T.texte; f.ra.Text="Verr."; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut == nil then
-            f.ic.Text="🪴"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
+            f.ic.Text="🌺"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut.statut == "growing" then
             local s=p.statut
@@ -975,13 +975,13 @@ local function fpMajAffichage(pots, graines)
     local btnFlowerPot = screenGui:FindFirstChild("FlowerPotButton")
     if btnFlowerPot then
         if nbReady > 0 then
-            btnFlowerPot.Text = "FlowerPot\n"..nbReady.." ready"
+            btnFlowerPot.Text = "🪴 FlowerPot\n"..nbReady.." ready"
             btnFlowerPot.TextColor3 = Color3.fromRGB(220, 110, 15)
         elseif nbGrow > 0 then
-            btnFlowerPot.Text = "FlowerPot\n"..nbGrow.." growing"
+            btnFlowerPot.Text = "🪴 FlowerPot\n"..nbGrow.." growing"
             btnFlowerPot.TextColor3 = Color3.fromRGB(100, 180, 255)
         else
-            btnFlowerPot.Text = "FlowerPot"
+            btnFlowerPot.Text = "🪴 FlowerPot"
             btnFlowerPot.TextColor3 = Color3.fromRGB(220, 220, 220)
         end
     end

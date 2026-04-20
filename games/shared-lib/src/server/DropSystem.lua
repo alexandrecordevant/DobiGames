@@ -670,7 +670,13 @@ local function restaurerDepots(player, playerData)
 
             -- Billboard base (Nom · Rareté · $Prix · $CPS/s — sans timer)
             if modeleSlot then
-                pcall(function() modeleSlot:SetAttribute("CashParSeconde", valeur) end)
+                pcall(function()
+                    modeleSlot:SetAttribute("CashParSeconde", valeur)
+                    if isMutant and info.elementType then
+                        modeleSlot:SetAttribute("IsMutant",   true)
+                        modeleSlot:SetAttribute("MutantType", info.elementType)
+                    end
+                end)
                 pcall(BrainrotBillboard.SetupBase, modeleSlot)
             end
 
@@ -708,13 +714,14 @@ local function restaurerDepots(player, playerData)
             end
 
             spotsData[uid][touchPart] = {
-                spotKey     = spotKey,
-                rarete      = info.rarete,
-                brNom       = info.brNom,
-                isMutant    = isMutant,
-                elementType = info.elementType,
-                valeurSec   = valeur,
-                modeleSlot  = modeleSlot,
+                spotKey           = spotKey,
+                rarete            = info.rarete,
+                brNom             = info.brNom,
+                isMutant          = isMutant,
+                elementType       = info.elementType,
+                valeurSec         = valeur,
+                modeleSlot        = modeleSlot,
+                originalSpotColor = nil,  -- inconnue après reconnexion → fallback spotDefaultCouleur
             }
 
             mettreAJourGui(touchPart, valeur)
@@ -942,6 +949,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     if isMutant then
         local spotColor = (Config.FlowerPotConfig and Config.FlowerPotConfig.spotMutantCouleur)
                        or Color3.fromRGB(255, 215, 0)
+        local originalSpotColor = touchPart.Color
         pcall(function()
             touchPart.Color = spotColor
             local light = touchPart:FindFirstChild("MutantLight")
@@ -973,13 +981,14 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Enregistrer en mémoire locale
     spotsData[uid][touchPart] = {
-        spotKey     = spotKey,
-        rarete      = rarete,
-        brNom       = brNom,        -- nom exact du modèle BR (ex: "Tralalero_Tralala")
-        isMutant    = isMutant,     -- pour restauration fidèle après reconnexion
-        elementType = elementType,  -- type élément Mutant ("water"/"fire"/"earth"/"wind")
-        valeurSec   = valeurSec,
-        modeleSlot  = modeleSlot,
+        spotKey           = spotKey,
+        rarete            = rarete,
+        brNom             = brNom,        -- nom exact du modèle BR (ex: "Tralalero_Tralala")
+        isMutant          = isMutant,     -- pour restauration fidèle après reconnexion
+        elementType       = elementType,  -- type élément Mutant ("water"/"fire"/"earth"/"wind")
+        valeurSec         = valeurSec,
+        modeleSlot        = modeleSlot,
+        originalSpotColor = isMutant and originalSpotColor or nil,
     }
 
     -- Persister dans playerData pour le DataStore
@@ -990,7 +999,13 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Billboard base (Nom · Rareté · $Prix · $CPS/s — sans timer)
     if modeleSlot then
-        pcall(function() modeleSlot:SetAttribute("CashParSeconde", valeurSec) end)
+        pcall(function()
+            modeleSlot:SetAttribute("CashParSeconde", valeurSec)
+            if isMutant and elementType then
+                modeleSlot:SetAttribute("IsMutant",   true)
+                modeleSlot:SetAttribute("MutantType", elementType)
+            end
+        end)
         pcall(BrainrotBillboard.SetupBase, modeleSlot)
     end
 
@@ -1056,6 +1071,18 @@ function DropSystem.RecupererBrainRot(player, touchPart)
 
     -- Supprimer le mini modèle
     supprimerModeleSlot(modeleSlot)
+
+    -- Réinitialiser la couleur du spot si c'était un Mutant
+    if entree.isMutant then
+        local defaultColor = entree.originalSpotColor
+            or (Config.FlowerPotConfig and Config.FlowerPotConfig.spotDefaultCouleur)
+            or Color3.fromRGB(106, 127, 63)
+        pcall(function()
+            touchPart.Color = defaultColor
+            local light = touchPart:FindFirstChild("MutantLight")
+            if light then light:Destroy() end
+        end)
+    end
 
     -- Supprimer le prompt de récupération et recalculer les prompts selon le carry réel
     supprimerPromptRecuperer(player, touchPart)
@@ -1273,6 +1300,18 @@ function DropSystem.EjecterBR(player, touchPart)
     supprimerPromptRecuperer(player, touchPart)
     viderGui(touchPart)
 
+    -- Réinitialiser la couleur du spot si c'était un Mutant
+    if entree.isMutant then
+        local defaultColor = entree.originalSpotColor
+            or (Config.FlowerPotConfig and Config.FlowerPotConfig.spotDefaultCouleur)
+            or Color3.fromRGB(106, 127, 63)
+        pcall(function()
+            touchPart.Color = defaultColor
+            local light = touchPart:FindFirstChild("MutantLight")
+            if light then light:Destroy() end
+        end)
+    end
+
     -- Cloner un modèle taille réelle dans le terrain près du spot
     local brainrots = getBrainrotsFolder()
     if brainrots then
@@ -1377,6 +1416,18 @@ function DropSystem.VendreBR(player, touchPart)
     supprimerModeleSlot(modeleSlot)
     supprimerPromptRecuperer(player, touchPart)
     viderGui(touchPart)
+
+    -- Réinitialiser la couleur du spot si c'était un Mutant
+    if entree.isMutant then
+        local defaultColor = entree.originalSpotColor
+            or (Config.FlowerPotConfig and Config.FlowerPotConfig.spotDefaultCouleur)
+            or Color3.fromRGB(106, 127, 63)
+        pcall(function()
+            touchPart.Color = defaultColor
+            local light = touchPart:FindFirstChild("MutantLight")
+            if light then light:Destroy() end
+        end)
+    end
 
     -- Recalculer l'income
     if IS then IS.RecalculerIncome(player, construireSpotsTable(player)) end
