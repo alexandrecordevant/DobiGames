@@ -59,16 +59,16 @@ mainFrame.Name                   = "MainFrame"
 mainFrame.Size                   = UDim2.new(0, 340, 0, 320)
 mainFrame.Position               = UDim2.new(0.5, -170, 0.5, -160)
 mainFrame.BackgroundColor3       = T.fondPrincipal
-mainFrame.BackgroundTransparency = 0
+mainFrame.BackgroundTransparency = 0.05
 mainFrame.BorderSizePixel        = 0
 mainFrame.Visible                = false
 mainFrame.ZIndex                 = 11
 mainFrame.Parent                 = screenGui
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 14)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 0)
 
 local uiStroke = Instance.new("UIStroke", mainFrame)
-uiStroke.Color     = T.bordureAccent
-uiStroke.Thickness = 2
+uiStroke.Color     = T.bordure
+uiStroke.Thickness = 1
 
 -- Titre
 local titleLabel = Instance.new("TextLabel")
@@ -98,15 +98,18 @@ sep.Parent           = mainFrame
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size              = UDim2.new(0, 32, 0, 32)
 closeBtn.Position          = UDim2.new(1, -38, 0, 6)
-closeBtn.BackgroundColor3  = T.fondBoutonDanger
-closeBtn.Text              = "✕"
-closeBtn.TextColor3        = T.texte
+closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
+closeBtn.Text              = "X"
+closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
 closeBtn.Font              = Enum.Font.GothamBold
-closeBtn.TextSize          = 16
+closeBtn.TextSize          = 13
+closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 12
 closeBtn.Parent            = mainFrame
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 2)
+local _closeBtnStroke = Instance.new("UIStroke", closeBtn)
+_closeBtnStroke.Color = Color3.fromRGB(60, 60, 60) ; _closeBtnStroke.Thickness = 1
 
 -- Zone de contenu scrollable
 local scrollFrame = Instance.new("ScrollingFrame")
@@ -615,24 +618,27 @@ local dailySeedButton = Instance.new("TextButton", screenGui)
 dailySeedButton.Name                   = "DailySeedButton"
 dailySeedButton.Size                   = UDim2.new(0, 120, 0, 55)
 dailySeedButton.Position               = UDim2.new(0, 10, 0.5, 50)
-dailySeedButton.BackgroundColor3       = T.fondBouton
-dailySeedButton.BackgroundTransparency = 0.1
-dailySeedButton.TextColor3             = T.texte
+dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+dailySeedButton.BackgroundTransparency = 0.05
+dailySeedButton.TextColor3             = Color3.fromRGB(220, 220, 220)
 dailySeedButton.Font                   = Enum.Font.GothamBold
-dailySeedButton.TextSize               = 14
-dailySeedButton.RichText               = true
-dailySeedButton.Text                   = "🌱 Day 1/7"
+dailySeedButton.TextSize               = 13
+dailySeedButton.RichText               = false
+dailySeedButton.Text                   = "Day 1/7"
 dailySeedButton.BorderSizePixel        = 0
 dailySeedButton.ZIndex                 = 10
 local _dsCorner = Instance.new("UICorner", dailySeedButton)
-_dsCorner.CornerRadius = UDim.new(0, 10)
+_dsCorner.CornerRadius = UDim.new(0, 2)
+local _dsStroke = Instance.new("UIStroke", dailySeedButton)
+_dsStroke.Color = Color3.fromRGB(60, 60, 60) ; _dsStroke.Thickness = 1
 
 local _pulseTween = nil
 
 local function SetSeedReady(ready)
     if _pulseTween then _pulseTween:Cancel() end
     if ready then
-        dailySeedButton.BackgroundColor3 = T.barrePleine
+        dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+        dailySeedButton.TextColor3             = Color3.fromRGB(220, 110, 15)
         _pulseTween = TweenService:Create(
             dailySeedButton,
             TweenInfo.new(0.8, Enum.EasingStyle.Sine,
@@ -641,8 +647,9 @@ local function SetSeedReady(ready)
         )
         _pulseTween:Play()
     else
-        dailySeedButton.BackgroundColor3       = T.fondBouton
-        dailySeedButton.BackgroundTransparency = 0.1
+        dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+        dailySeedButton.BackgroundTransparency = 0.05
+        dailySeedButton.TextColor3             = Color3.fromRGB(220, 220, 220)
     end
 end
 
@@ -676,33 +683,39 @@ local function OuvrirDailySeedPanel()
     panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0
     panel.ZIndex                 = 20
-    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
     local _panelStroke = Instance.new("UIStroke", panel)
-    _panelStroke.Color     = T.bordureAccent
-    _panelStroke.Thickness = 2
+    _panelStroke.Color     = T.bordure
+    _panelStroke.Thickness = 1
 
     -- Titre
     local titre = Instance.new("TextLabel", panel)
-    titre.Size                   = UDim2.new(1, -50, 0, 40)
-    titre.Position               = UDim2.new(0, 10, 0, 10)
+    titre.Size                   = UDim2.new(1, -60, 0, 40)
+    titre.Position               = UDim2.new(0, 16, 0, 6)
     titre.BackgroundTransparency = 1
-    titre.Text                   = "🌱 DAILY SEEDS"
+    titre.Text                   = "DAILY SEEDS"
     titre.TextColor3             = T.texteTitre
     titre.Font                   = Enum.Font.GothamBold
     titre.TextSize               = 18
+    titre.TextScaled             = false
     titre.TextXAlignment         = Enum.TextXAlignment.Left
     titre.ZIndex                 = 21
 
     -- Bouton fermer
     local btnClose = Instance.new("TextButton", panel)
-    btnClose.Size                   = UDim2.new(0, 30, 0, 30)
-    btnClose.Position               = UDim2.new(1, -40, 0, 8)
-    btnClose.BackgroundTransparency = 1
-    btnClose.Text                   = "✕"
-    btnClose.TextColor3             = T.texteSecondaire
+    btnClose.Size                   = UDim2.new(0, 44, 0, 44)
+    btnClose.Position               = UDim2.new(1, -50, 0, 4)
+    btnClose.BackgroundColor3       = Color3.fromRGB(50, 50, 50)
+    btnClose.Text                   = "X"
+    btnClose.TextColor3             = Color3.fromRGB(180, 180, 180)
     btnClose.Font                   = Enum.Font.GothamBold
-    btnClose.TextSize               = 18
+    btnClose.TextSize               = 16
+    btnClose.TextScaled             = false
+    btnClose.BorderSizePixel        = 0
     btnClose.ZIndex                 = 21
+    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, 2)
+    local _bcs = Instance.new("UIStroke", btnClose)
+    _bcs.Color = T.bordure ; _bcs.Thickness = 1
     btnClose.MouseButton1Click:Connect(function() panel:Destroy() end)
 
     -- Separateur
@@ -743,12 +756,15 @@ local function OuvrirDailySeedPanel()
         local ligne = Instance.new("Frame", panel)
         ligne.Size                   = UDim2.new(1, -20, 0, 42)
         ligne.Position               = UDim2.new(0, 10, 0, yPos)
-        ligne.BackgroundTransparency = statut == "dispo" and 0.3 or 0.7
+        ligne.BackgroundTransparency = 0
         ligne.BackgroundColor3       = statut == "dispo"
-            and T.fondBouton or T.fondSecondaire
+            and Color3.fromRGB(25, 35, 20) or Color3.fromRGB(20, 20, 20)
         ligne.BorderSizePixel        = 0
         ligne.ZIndex                 = 21
-        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 6)
+        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 2)
+        local _ls = Instance.new("UIStroke", ligne)
+        _ls.Color = statut == "dispo" and Color3.fromRGB(80, 140, 80) or Color3.fromRGB(60, 60, 60)
+        _ls.Thickness = 1
 
         local function lbl(text, x, w, color, bold, size)
             local l = Instance.new("TextLabel", ligne)
@@ -858,23 +874,26 @@ fpPanel.BackgroundTransparency = 0.05
 fpPanel.BorderSizePixel        = 0
 fpPanel.Visible                = false
 fpPanel.ZIndex                 = 20
-Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, 0)
 local _fpStroke = Instance.new("UIStroke", fpPanel)
-_fpStroke.Color = T.bordureAccent ; _fpStroke.Thickness = 2
+_fpStroke.Color = T.bordure ; _fpStroke.Thickness = 1
 
 local fpTitre = Instance.new("TextLabel", fpPanel)
-fpTitre.Size = UDim2.new(1,-44,0,32) ; fpTitre.Position = UDim2.new(0,10,0,4)
+fpTitre.Size = UDim2.new(1,-50,0,28) ; fpTitre.Position = UDim2.new(0,12,0,6)
 fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = T.texteTitre
 fpTitre.Font = Enum.Font.GothamBold ; fpTitre.TextSize = 14
-fpTitre.TextXAlignment = Enum.TextXAlignment.Left
-fpTitre.Text = "🪴 FlowerPot Status" ; fpTitre.ZIndex = 21
+fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
+fpTitre.Text = "FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
-fpClose.Size = UDim2.new(0,28,0,28) ; fpClose.Position = UDim2.new(1,-34,0,4)
-fpClose.BackgroundColor3 = T.fondBoutonDanger ; fpClose.Text = "✕"
-fpClose.TextColor3 = T.texte ; fpClose.Font = Enum.Font.GothamBold
-fpClose.TextSize = 13 ; fpClose.BorderSizePixel = 0 ; fpClose.ZIndex = 21
-Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, 6)
+fpClose.Size = UDim2.new(0,30,0,30) ; fpClose.Position = UDim2.new(1,-36,0,4)
+fpClose.BackgroundColor3 = Color3.fromRGB(50,50,50) ; fpClose.Text = "X"
+fpClose.TextColor3 = Color3.fromRGB(180,180,180) ; fpClose.Font = Enum.Font.GothamBold
+fpClose.TextSize = 12 ; fpClose.TextScaled = false
+fpClose.BorderSizePixel = 0 ; fpClose.ZIndex = 21
+Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, 2)
+local _fpcs = Instance.new("UIStroke", fpClose)
+_fpcs.Color = Color3.fromRGB(60,60,60) ; _fpcs.Thickness = 1
 fpClose.MouseButton1Click:Connect(function() fpPanel.Visible = false end)
 
 -- Inventaire graines
@@ -904,7 +923,9 @@ for i = 1, 4 do
     cell.Size = UDim2.new(0,cw,0,ch)
     cell.Position = UDim2.new(0, 10+(i-1)*(cw+6), 0, 74)
     cell.BackgroundColor3 = T.fondSecondaire ; cell.BorderSizePixel = 0 ; cell.ZIndex = 21
-    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 2)
+    local _cs = Instance.new("UIStroke", cell)
+    _cs.Color = Color3.fromRGB(60, 60, 60) ; _cs.Thickness = 1
     local function cl(txt, sz, pos, ts, bold)
         local l = Instance.new("TextLabel", cell)
         l.Size=sz ; l.Position=pos ; l.BackgroundTransparency=1
@@ -932,18 +953,18 @@ local function fpMajAffichage(pots, graines)
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut.statut == "growing" then
             local s=p.statut
-            f.ic.Text="🌱"; f.ic.TextColor3=Color3.fromRGB(100,200,255)
+            f.ic.Text="🌱"; f.ic.TextColor3=Color3.fromRGB(100,180,255)
             f.ra.Text=(s.rarity=="SECRET" and "SEC" or "MYT").." S"..math.max(0,s.stage or 0)
             f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
             f.el.Text=s.elementType and FP_ELEM[s.elementType] or ""
-            f.cell.BackgroundColor3=Color3.fromRGB(15,28,35); nbGrow=nbGrow+1
+            f.cell.BackgroundColor3=Color3.fromRGB(15, 22, 30); nbGrow=nbGrow+1
         elseif p.statut.statut == "ready" then
             local s=p.statut
-            f.ic.Text="🎯"; f.ic.TextColor3=Color3.fromRGB(255,180,0)
+            f.ic.Text="🎯"; f.ic.TextColor3=Color3.fromRGB(220,110,15)
             f.ra.Text=s.rarity=="SECRET" and "SECRET" or "MYTHIC"
             f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
             f.el.Text=s.elementType and FP_ELEM[s.elementType] or "✨"
-            f.cell.BackgroundColor3=Color3.fromRGB(35,25,10); nbReady=nbReady+1
+            f.cell.BackgroundColor3=Color3.fromRGB(28, 20, 10); nbReady=nbReady+1
         end
     end
     if graines then
@@ -953,9 +974,16 @@ local function fpMajAffichage(pots, graines)
     -- Texte bouton
     local btnFlowerPot = screenGui:FindFirstChild("FlowerPotButton")
     if btnFlowerPot then
-        if nbReady > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n✅ "..nbReady.." ready!"
-        elseif nbGrow > 0 then btnFlowerPot.Text = "🪴 FlowerPot\n🌱 "..nbGrow.." growing"
-        else btnFlowerPot.Text = "🪴 FlowerPot" end
+        if nbReady > 0 then
+            btnFlowerPot.Text = "FlowerPot\n"..nbReady.." ready"
+            btnFlowerPot.TextColor3 = Color3.fromRGB(220, 110, 15)
+        elseif nbGrow > 0 then
+            btnFlowerPot.Text = "FlowerPot\n"..nbGrow.." growing"
+            btnFlowerPot.TextColor3 = Color3.fromRGB(100, 180, 255)
+        else
+            btnFlowerPot.Text = "FlowerPot"
+            btnFlowerPot.TextColor3 = Color3.fromRGB(220, 220, 220)
+        end
     end
 end
 
@@ -981,16 +1009,18 @@ local btnFlowerPot = Instance.new("TextButton", screenGui)
 btnFlowerPot.Name                   = "FlowerPotButton"
 btnFlowerPot.Size                   = UDim2.new(0, 120, 0, 55)
 btnFlowerPot.Position               = UDim2.new(0, 10, 0.5, 113)
-btnFlowerPot.BackgroundColor3       = T.fondBouton
-btnFlowerPot.BackgroundTransparency = 0.1
-btnFlowerPot.TextColor3             = T.texte
+btnFlowerPot.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+btnFlowerPot.BackgroundTransparency = 0.05
+btnFlowerPot.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnFlowerPot.Font                   = Enum.Font.GothamBold
-btnFlowerPot.TextSize               = 14
-btnFlowerPot.Text                   = "🪴 FlowerPot"
+btnFlowerPot.TextSize               = 13
+btnFlowerPot.Text                   = "FlowerPot"
 btnFlowerPot.TextWrapped            = true
 btnFlowerPot.BorderSizePixel        = 0
 btnFlowerPot.ZIndex                 = 10
-Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 2)
+local _bfpS = Instance.new("UIStroke", btnFlowerPot)
+_bfpS.Color = Color3.fromRGB(60, 60, 60) ; _bfpS.Thickness = 1
 
 btnFlowerPot.MouseButton1Click:Connect(function()
     fpPanel.Visible = not fpPanel.Visible
@@ -1044,15 +1074,15 @@ if LeaderboardUpdate then
         if dailySeedInfo then
             _dailySeedData = dailySeedInfo
             if dailySeedInfo.graineDispo then
-                dailySeedButton.Text = "🌱 Seed Ready!"
+                dailySeedButton.Text = "Seed Ready!"
                 SetSeedReady(true)
             else
                 local j         = dailySeedInfo.jourActuel or 1
                 local remaining = dailySeedInfo.tempsRestant or 0
                 if remaining > 0 then
-                    dailySeedButton.Text = "🌱 Day " .. j .. "/7 " .. FormatTempsLocal(remaining)
+                    dailySeedButton.Text = "Day " .. j .. "/7 " .. FormatTempsLocal(remaining)
                 else
-                    dailySeedButton.Text = "🌱 Day " .. j .. "/7"
+                    dailySeedButton.Text = "Day " .. j .. "/7"
                 end
                 SetSeedReady(false)
             end

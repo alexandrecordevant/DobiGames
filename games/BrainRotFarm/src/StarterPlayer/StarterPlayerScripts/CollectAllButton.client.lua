@@ -21,12 +21,12 @@ local playerGui   = localPlayer:WaitForChild("PlayerGui")
 
 local BOUTON_LARGEUR  = 120
 local BOUTON_HAUTEUR  = 55
-local COIN_RADIUS     = 10
+local COIN_RADIUS     = 2
 
-local COULEUR_NORMALE  = Color3.fromRGB(200, 160, 0)    -- or sombre (cohérent thème)
-local COULEUR_CLIC     = Color3.fromRGB(80,  200, 80)   -- vert flash
-local COULEUR_TEXTE    = Color3.fromRGB(255, 240, 180)  -- texte clair
-local COULEUR_OMBRE    = Color3.fromRGB(255, 215, 0)    -- or vif (stroke)
+local COULEUR_NORMALE  = Color3.fromRGB(10,  10,  10)   -- noir panel
+local COULEUR_CLIC     = Color3.fromRGB(80,  140, 80)   -- vert flash
+local COULEUR_TEXTE    = Color3.fromRGB(220, 220, 220)  -- gris clair
+local COULEUR_OMBRE    = Color3.fromRGB(60,  60,  60)   -- gris bordure
 
 local DUREE_ANIMATION = 0.15   -- secondes
 local COOLDOWN        = 1      -- secondes entre deux clics (anti-spam client)
@@ -52,8 +52,9 @@ bouton.Size                  = UDim2.new(0, BOUTON_LARGEUR, 0, BOUTON_HAUTEUR)
 bouton.Position              = UDim2.new(0, 10, 0.5, 180)
 bouton.AnchorPoint           = Vector2.new(0, 0)
 bouton.BackgroundColor3      = COULEUR_NORMALE
+bouton.BackgroundTransparency = 0.05
 bouton.BorderSizePixel       = 0
-bouton.Text                  = "💰 Collect\nAll"
+bouton.Text                  = "Collect\nAll"
 bouton.TextColor3            = COULEUR_TEXTE
 bouton.Font                  = Enum.Font.GothamBold
 bouton.TextSize              = 13
@@ -96,7 +97,7 @@ end
 
 local function animerHover(active)
     local couleurCible = active
-        and Color3.fromRGB(255, 230, 60)
+        and Color3.fromRGB(30, 30, 30)
         or  COULEUR_NORMALE
     TweenService:Create(bouton, TweenInfo.new(0.1), {
         BackgroundColor3 = couleurCible,

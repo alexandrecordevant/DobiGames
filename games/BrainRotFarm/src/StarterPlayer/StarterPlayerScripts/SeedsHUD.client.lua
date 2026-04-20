@@ -344,14 +344,14 @@ local function majPots(pots)
     end
     -- Mise à jour du texte du bouton avec résumé d'état
     if nbReady > 0 then
-        btnSeeds.Text = "🪴 FlowerPot\n✅ " .. nbReady .. " ready!"
-        btnSeeds.BackgroundColor3 = Color3.fromRGB(30, 50, 15)
+        btnSeeds.Text = "FlowerPot\n" .. nbReady .. " ready"
+        btnSeeds.TextColor3 = Color3.fromRGB(220, 110, 15)
     elseif nbGrowing > 0 then
-        btnSeeds.Text = "🪴 FlowerPot\n🌱 " .. nbGrowing .. " growing"
-        btnSeeds.BackgroundColor3 = Color3.fromRGB(20, 40, 20)
+        btnSeeds.Text = "FlowerPot\n" .. nbGrowing .. " growing"
+        btnSeeds.TextColor3 = Color3.fromRGB(100, 180, 255)
     else
-        btnSeeds.Text = "🪴 FlowerPot"
-        btnSeeds.BackgroundColor3 = Color3.fromRGB(20, 40, 20)
+        btnSeeds.Text = "FlowerPot"
+        btnSeeds.TextColor3 = Color3.fromRGB(220, 220, 220)
     end
 end
 
