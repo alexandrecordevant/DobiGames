@@ -16,6 +16,7 @@ local TweenService        = game:GetService("TweenService")
 local CollectionService   = game:GetService("CollectionService")
 local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
 local BrainrotBillboard   = require(ServerScriptService.SharedLib.Server.BrainrotBillboard)
+local BrainrotPositioner  = require(ServerScriptService.SharedLib.Server.BrainrotPositioner)
 
 -- ============================================================
 -- Config
@@ -80,6 +81,27 @@ end
 -- Exemple : DropSystem.OnSpotChange = function(player) RebirthSystem.MettreAJourBouton(player) end
 -- ============================================================
 DropSystem.OnSpotChange = nil
+
+-- ============================================================
+-- Centre de base par joueur (calculé à l'Init, utilisé pour orienter les BRs)
+-- ============================================================
+local baseCentres = {}
+
+-- Retourne le centre XZ de la base (Vector3 avec Y=0) depuis le modèle workspace
+local function calculerCentreBase(baseIndex)
+    local bases = Workspace:FindFirstChild("Bases")
+    if not bases then return nil end
+    local baseRoot = bases:FindFirstChild("Base_" .. tostring(baseIndex))
+    if not baseRoot then return nil end
+    local ok, bbCF = pcall(function()
+        local cf, _ = baseRoot:GetBoundingBox()
+        return cf
+    end)
+    if ok and bbCF then
+        return Vector3.new(bbCF.Position.X, 0, bbCF.Position.Z)
+    end
+    return nil
+end
 
 -- ============================================================
 -- État interne par joueur
@@ -298,7 +320,8 @@ end
 
 -- Place et anime le modèle sur un spot (taille originale)
 -- modeleSource (optionnel) = le modèle exact porté par le joueur (prioritaire sur ServerStorage)
-local function placerModeleSlot(touchPart, rarete, modeleSource)
+-- baseCenter   (optionnel) = Vector3 vers lequel le modèle doit regarder (centre de la base)
+local function placerModeleSlot(touchPart, rarete, modeleSource, baseCenter)
     local clone
 
     -- Priorité : cloner le modèle porté (évite les cubes gris si ServerStorage mal configuré)
@@ -320,8 +343,10 @@ local function placerModeleSlot(touchPart, rarete, modeleSource)
     -- (PromptAnchor, VfxInstance, constraints → cubes gris si laissés)
     nettoyerParasites(clone)
 
-    -- Position : au-dessus du TouchPart
-    local pos = touchPart.Position + Vector3.new(0, touchPart.Size.Y * 0.5 + 0.6, 0)
+    -- Surface du slot : dessus du TouchPart
+    local surfaceY = touchPart.Position.Y + touchPart.Size.Y * 0.5
+    local posX     = touchPart.Position.X
+    local posZ     = touchPart.Position.Z
 
     -- Mémoriser la transparence ORIGINALE de chaque part avant le fade-in
     -- IMPORTANT : ne jamais tweener vers 0 — certaines parts sont intentionnellement
@@ -340,11 +365,12 @@ local function placerModeleSlot(touchPart, rarete, modeleSource)
 
     clone.Parent = Workspace
 
-    -- Pivoter au bon endroit
+    -- Positionner : bas du bounding box sur la surface + offset 0.6 stud,
+    -- droit et orienté vers le centre de la base si disponible.
+    -- (corrige le bug : avant, le PIVOT était placé à surfaceY, enfouissant
+    --  les grands modèles à moitié sous le sol)
     if clone:IsA("Model") then
-        pcall(function()
-            clone:PivotTo(CFrame.new(pos) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
-        end)
+        BrainrotPositioner.positionnerSurSurface(clone, surfaceY, posX, posZ, baseCenter, 0.6)
     end
 
     -- Fade in vers la transparence ORIGINALE (pas vers 0)
@@ -650,7 +676,7 @@ local function restaurerDepots(player, playerData)
                     end
                 end
             end
-            local modeleSlot = placerModeleSlot(touchPart, info.rarete, modeleSource)
+            local modeleSlot = placerModeleSlot(touchPart, info.rarete, modeleSource, baseCentres[uid])
 
             -- Fallback définitif : lire CashParSeconde depuis le modèle restauré sur le slot.
             -- Le clone conserve tous les attributs du modèle source même sans brNom sauvegardé.
@@ -767,6 +793,7 @@ end
 -- Initialise DropSystem pour un joueur (appelé depuis Main.server.lua après chargement des données)
 function DropSystem.Init(player, baseIndex, playerData)
     spotsData[player.UserId] = {}
+    baseCentres[player.UserId] = calculerCentreBase(baseIndex)
 
     -- Construire le lookup spots
     scannerSpots(player, baseIndex)
@@ -922,7 +949,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     end
 
     -- Placer le mini modèle sur le spot (utilise le modèle exact du carry)
-    local modeleSlot = placerModeleSlot(touchPart, rarete, modeleSource)
+    local modeleSlot = placerModeleSlot(touchPart, rarete, modeleSource, baseCentres[uid])
     -- Détruire le modèle pleine taille (le mini clone suffit)
     if modeleSource and modeleSource.Parent then
         pcall(function() modeleSource:Destroy() end)
@@ -1254,7 +1281,7 @@ function DropSystem.DeposerBRDirect(player, touchPart, rarete, cashParSeconde)
     if spotsData[uid][touchPart] then return false end
 
     local valeurSec = cashParSeconde or 0
-    local modeleSlot = placerModeleSlot(touchPart, rarete)
+    local modeleSlot = placerModeleSlot(touchPart, rarete, nil, baseCentres[uid])
 
     spotsData[uid][touchPart] = {
         spotKey   = spotKey,
@@ -1485,8 +1512,9 @@ function DropSystem.Stop(player)
             end
         end
     end
-    spotsData[uid] = nil
-    spotIndex[uid] = nil
+    spotsData[uid]   = nil
+    spotIndex[uid]   = nil
+    baseCentres[uid] = nil
 end
 
 return DropSystem

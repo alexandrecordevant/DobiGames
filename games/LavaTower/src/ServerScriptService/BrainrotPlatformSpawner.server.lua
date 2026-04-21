@@ -128,9 +128,27 @@ local RARITY_ZONES = {
 -- INITIALISATION
 -- ════════════════════════════════════════════════════════════════
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CollectionService = game:GetService("CollectionService")
-local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+local ReplicatedStorage    = game:GetService("ReplicatedStorage")
+local CollectionService    = game:GetService("CollectionService")
+local Logger               = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+local BrainrotPositioner   = require(game:GetService("ServerScriptService").SharedLib.Server.BrainrotPositioner)
+
+-- Cache des centres de tours (évite GetBoundingBox répété à chaque spawn)
+local tourCentresCache = {}
+
+-- Retourne le centre XZ (Vector3 Y=0) d'un modèle de tour
+local function getTourCentre(tourModel)
+	if not tourModel then return nil end
+	local cached = tourCentresCache[tourModel]
+	if cached then return cached end
+	local ok, bbCF = pcall(function()
+		local cf, _ = tourModel:GetBoundingBox()
+		return cf
+	end)
+	local centre = (ok and bbCF) and Vector3.new(bbCF.Position.X, 0, bbCF.Position.Z) or nil
+	tourCentresCache[tourModel] = centre
+	return centre
+end
 
 local brainrotsRoot = ReplicatedStorage:FindFirstChild(DOSSIER_BRAINROTS_NOM)
 if not brainrotsRoot then
@@ -238,15 +256,24 @@ local function spawnBrainrot(plateforme)
 	-- 3. Cloner depuis le template (jamais depuis un clone actif)
 	local clone = modele:Clone()
 
-	-- 4. Positionner le clone sur la surface de la plateforme
-	local bbCF, bbSize  = clone:GetBoundingBox()
-	local pivotCF       = clone:GetPivot()
-	local pivotToBottom = (bbCF.Position.Y - bbSize.Y / 2) - pivotCF.Position.Y
-	local surfaceY      = plateforme.Position.Y + plateforme.Size.Y / 2
-	local targetPivotY  = surfaceY - pivotToBottom + CONFIG.HAUTEUR_OFFSET
-	clone:PivotTo(CFrame.new(
-		plateforme.Position.X, targetPivotY, plateforme.Position.Z
-	))
+	-- 4. Positionner le clone sur la surface de la plateforme,
+	--    droit et orienté vers le centre de la tour.
+	local surfaceY   = plateforme.Position.Y + plateforme.Size.Y / 2
+	-- Remonter : plateforme → dossier Plateformes → modèle de la tour
+	local platDossier = plateforme.Parent
+	local tourModel   = platDossier and platDossier.Parent
+	local towerCentre = (tourModel and tourModel:IsA("Model")) and getTourCentre(tourModel) or nil
+
+	-- Parenter avant PivotTo (requis pour GetBoundingBox sur le clone)
+	clone.Parent = workspaceBrainrots or workspace
+
+	BrainrotPositioner.positionnerSurSurface(
+		clone,
+		surfaceY,
+		plateforme.Position.X, plateforme.Position.Z,
+		towerCentre,
+		CONFIG.HAUTEUR_OFFSET
+	)
 
 	-- 5. Attributs requis par BrainrotService (billboard + Tool)
 	-- Durée de vie aléatoire : lisse les disparitions dans le temps
@@ -259,8 +286,7 @@ local function spawnBrainrot(plateforme)
 	if prixSrc then clone:SetAttribute("Prix",           prixSrc) end
 	if cpsSrc  then clone:SetAttribute("CashParSeconde", cpsSrc)  end
 
-	-- 6. Parenter dans workspace.Brainrots AVANT le tag
-	clone.Parent = workspaceBrainrots or workspace
+	-- 6. Parent déjà défini ci-dessus (avant BrainrotPositioner.positionnerSurSurface)
 
 	-- 7. Tagguer → déclenche BrainrotService (billboard + pickup + countdown)
 	CollectionService:AddTag(clone, TAG_COLLECTIBLE)

@@ -42,6 +42,7 @@ local PREFIXES = {
     Inventory = "[INVENTORY]",
     Safe     = "[SAFE]",
     Bat      = "[BAT]",
+    Place    = "[PLACE]",
 }
 
 -- Appeler une seule fois au boot du jeu
