@@ -610,9 +610,35 @@ local function mettreAJourShop(donnes)
 end
 
 -- ============================================================
+-- Fermeture des autres menus (1 seul ouvert a la fois)
+-- ============================================================
+local function fermerAutresMenus()
+    local tutoGui = playerGui:FindFirstChild("MiniTutoHUD")
+    if tutoGui then
+        local p = tutoGui:FindFirstChild("TutoPanel")
+        if p then p.Visible = false end
+    end
+    local fpGui = playerGui:FindFirstChild("FlowerPotHUD")
+    if fpGui then
+        local mf = fpGui:FindFirstChild("MainFrame")
+        if mf then mf.Visible = false end
+        local ds = fpGui:FindFirstChild("DailySeedPanel")
+        if ds then ds:Destroy() end
+        local fp = fpGui:FindFirstChild("FlowerPotPanel")
+        if fp then fp.Visible = false end
+    end
+    local hud = playerGui:FindFirstChild("HUD")
+    if hud then
+        local rp = hud:FindFirstChild("ShopRobuxPanel")
+        if rp then rp.Visible = false end
+    end
+end
+
+-- ============================================================
 -- Ouverture / Fermeture (slide depuis le bas)
 -- ============================================================
 local function ouvrirShop(donnes)
+    fermerAutresMenus()
     donneesShop = donnes
     construireShop(donnes)
     screenGui.Enabled  = true
@@ -632,6 +658,13 @@ local function fermerShop()
         screenGui.Enabled = false
     end)
 end
+
+-- Reinitialiser position si ferme par un autre menu
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+    if not screenGui.Enabled then
+        panel.Position = UDim2.new(0.5, 0, 1.5, 0)
+    end
+end)
 
 -- ============================================================
 -- Connexions des contrôles

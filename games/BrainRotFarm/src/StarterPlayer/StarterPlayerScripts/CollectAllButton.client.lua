@@ -47,9 +47,9 @@ screenGui.Parent         = playerGui
 -- ============================================================
 local bouton = Instance.new("TextButton")
 bouton.Name                  = "CollectAllBtn"
-bouton.Size                  = UDim2.new(0, BOUTON_LARGEUR, 0, BOUTON_HAUTEUR)
+bouton.Size                  = UDim2.new(0.25, 0, 0, BOUTON_HAUTEUR)
 -- Aligné avec les autres boutons gauche (Shop, Rebirth, FlowerPot)
-bouton.Position              = UDim2.new(0, 10, 0.5, 180)
+bouton.Position              = UDim2.new(0, 10, 0.5, 99)
 bouton.AnchorPoint           = Vector2.new(0, 0)
 bouton.BackgroundColor3      = COULEUR_NORMALE
 bouton.BackgroundTransparency = 0.05
@@ -66,6 +66,9 @@ bouton.Parent                = screenGui
 local coin = Instance.new("UICorner")
 coin.CornerRadius = UDim.new(0, COIN_RADIUS)
 coin.Parent       = bouton
+local _collectConstraint = Instance.new("UISizeConstraint", bouton)
+_collectConstraint.MinSize = Vector2.new(80, 44)
+_collectConstraint.MaxSize = Vector2.new(120, 55)
 
 local stroke = Instance.new("UIStroke")
 stroke.Color           = COULEUR_OMBRE

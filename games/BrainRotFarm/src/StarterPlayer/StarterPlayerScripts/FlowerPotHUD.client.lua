@@ -56,8 +56,9 @@ overlay.Parent                 = screenGui
 -- Frame principale
 local mainFrame = Instance.new("Frame")
 mainFrame.Name                   = "MainFrame"
+mainFrame.AnchorPoint            = Vector2.new(0.5, 0.5)
 mainFrame.Size                   = UDim2.new(0, 340, 0, 320)
-mainFrame.Position               = UDim2.new(0.5, -170, 0.5, -160)
+mainFrame.Position               = UDim2.new(0.5, 0, 0.5, 0)
 mainFrame.BackgroundColor3       = T.fondPrincipal
 mainFrame.BackgroundTransparency = 0.05
 mainFrame.BorderSizePixel        = 0
@@ -65,6 +66,15 @@ mainFrame.Visible                = false
 mainFrame.ZIndex                 = 11
 mainFrame.Parent                 = screenGui
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 0)
+
+local _mainScale = Instance.new("UIScale", mainFrame)
+local function _ajusterMainFrame()
+    local vp = workspace.CurrentCamera.ViewportSize
+    local s = math.min(vp.X / 380, vp.Y / 360, 1)
+    _mainScale.Scale = math.max(0.5, s)
+end
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterMainFrame)
+_ajusterMainFrame()
 
 local uiStroke = Instance.new("UIStroke", mainFrame)
 uiStroke.Color     = T.bordure
@@ -81,7 +91,7 @@ titleLabel.Font                   = Enum.Font.GothamBold
 titleLabel.TextSize               = 18
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.RichText               = true
-titleLabel.Text                   = "🪴 Flower Pot"
+titleLabel.Text                   = "Flower Pot"
 titleLabel.ZIndex                 = 12
 titleLabel.Parent                 = mainFrame
 
@@ -185,29 +195,53 @@ local function creerLigne(texte, couleur, taille, ordre, zIndex)
     return lbl
 end
 
+-- Fermeture des autres menus (1 seul ouvert a la fois)
+local function fermerAutresMenus()
+    local shopGui = playerGui:FindFirstChild("ShopGui")
+    if shopGui and shopGui.Enabled then shopGui.Enabled = false end
+    local tutoGui = playerGui:FindFirstChild("MiniTutoHUD")
+    if tutoGui then
+        local p = tutoGui:FindFirstChild("TutoPanel")
+        if p then p.Visible = false end
+    end
+    local hud = playerGui:FindFirstChild("HUD")
+    if hud then
+        local rp = hud:FindFirstChild("ShopRobuxPanel")
+        if rp then rp.Visible = false end
+    end
+    -- fpPanel ferme via sa propre reference (definie plus bas, cherche par nom)
+    local fp = screenGui:FindFirstChild("FlowerPotPanel")
+    if fp and fp.Visible then
+        fp.Visible      = false
+        overlay.Visible = false
+    end
+end
+
 local function ouvrirPanel()
+    fermerAutresMenus()
     overlay.Visible   = true
     mainFrame.Visible = true
     mainFrame.Size    = UDim2.new(0, 0, 0, 0)
-    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(mainFrame, TweenInfo.new(0.22, Enum.EasingStyle.Back),
-        {
-            Size     = UDim2.new(0, 340, 0, 320),
-            Position = UDim2.new(0.5, -170, 0.5, -160),
-        }):Play()
+        { Size = UDim2.new(0, 340, 0, 320) }):Play()
 end
 
 local function fermer()
     TweenService:Create(mainFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad),
-        {
-            Size     = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0.5, 0, 0.5, 0),
-        }):Play()
+        { Size = UDim2.new(0, 0, 0, 0) }):Play()
     task.wait(0.16)
     mainFrame.Visible = false
     overlay.Visible   = false
     currentPotIndex   = nil
 end
+
+-- Reinitialiser l'etat si ferme par un autre menu
+mainFrame:GetPropertyChangedSignal("Visible"):Connect(function()
+    if not mainFrame.Visible then
+        overlay.Visible = false
+        currentPotIndex = nil
+    end
+end)
 
 closeBtn.MouseButton1Click:Connect(fermer)
 overlay.InputBegan:Connect(function(inp)
@@ -238,7 +272,7 @@ end
 
 local function afficherMenuEmpty(potIndex, dailySeedData)
     clearContent()
-    titleLabel.Text = "🪴 FLOWER POT " .. potIndex
+    titleLabel.Text = "FLOWER POT " .. potIndex
 
     -- Instruction principale
     creerLigne(
@@ -274,7 +308,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
             Color3.fromRGB(100, 255, 120), 24, 5)
 
         local claimBtn = creerBouton(scrollFrame,
-            "🌱 Claim",
+            "Claim",
             T.fondBouton,
             nil,
             UDim2.new(1, 0, 0, 36),
@@ -367,9 +401,9 @@ local function afficherMenuInfos(potIndex, potData)
     local graineCfg = FPConfig and FPConfig.graines and FPConfig.graines[rarete]
 
     if stage >= 4 then
-        titleLabel.Text = "🌟 POT " .. potIndex .. " — MATURE!"
+        titleLabel.Text = "POT " .. potIndex .. " — MATURE!"
     else
-        titleLabel.Text = "🪴 POT " .. potIndex .. " — Growing..."
+        titleLabel.Text = "POT " .. potIndex .. " — Growing..."
     end
 
     -- Rareté
@@ -458,7 +492,7 @@ end
 
 local function afficherMenuDebloque(potIndex)
     clearContent()
-    titleLabel.Text = "🔒 POT " .. potIndex .. " — Locked"
+    titleLabel.Text = "POT " .. potIndex .. " — Locked"
 
     local potCfg = FPConfig and FPConfig.pots and FPConfig.pots[potIndex]
 
@@ -500,7 +534,7 @@ end
 
 local function afficherMenuChoisirPot(extraData)
     clearContent()
-    titleLabel.Text = "🪴 Choose a Pot to Plant"
+    titleLabel.Text = "Choose a Pot to Plant"
 
     local etatsPots    = extraData and extraData.etatsPots    or {}
     local raretyDuJour = extraData and extraData.raretyDuJour or "MYTHIC"
@@ -545,7 +579,7 @@ end
 
 local function afficherMenuConfirmerEcrasement(potIndex, extraData)
     clearContent()
-    titleLabel.Text = "⚠️ Overwrite Pot " .. potIndex .. "?"
+    titleLabel.Text = "Overwrite Pot " .. potIndex .. "?"
 
     local ancienne = extraData and extraData.ancienne or "?"
     local stage    = extraData and extraData.stage    or 0
@@ -616,8 +650,8 @@ end
 
 local dailySeedButton = Instance.new("TextButton", screenGui)
 dailySeedButton.Name                   = "DailySeedButton"
-dailySeedButton.Size                   = UDim2.new(0, 120, 0, 55)
-dailySeedButton.Position               = UDim2.new(0, 10, 0.5, 50)
+dailySeedButton.Size                   = UDim2.new(0.25, 0, 0, 55)
+dailySeedButton.Position               = UDim2.new(0, 10, 0.5, -27)
 dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 dailySeedButton.BackgroundTransparency = 0.05
 dailySeedButton.TextColor3             = Color3.fromRGB(220, 220, 220)
@@ -631,6 +665,9 @@ local _dsCorner = Instance.new("UICorner", dailySeedButton)
 _dsCorner.CornerRadius = UDim.new(0, 2)
 local _dsStroke = Instance.new("UIStroke", dailySeedButton)
 _dsStroke.Color = Color3.fromRGB(60, 60, 60) ; _dsStroke.Thickness = 1
+local _dsConstraint = Instance.new("UISizeConstraint", dailySeedButton)
+_dsConstraint.MinSize = Vector2.new(80, 44)
+_dsConstraint.MaxSize = Vector2.new(120, 55)
 
 local _pulseTween = nil
 
@@ -638,18 +675,21 @@ local function SetSeedReady(ready)
     if _pulseTween then _pulseTween:Cancel() end
     if ready then
         dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+        dailySeedButton.BackgroundTransparency = 0.05
         dailySeedButton.TextColor3             = Color3.fromRGB(220, 110, 15)
+        dailySeedButton.TextSize               = 13
         _pulseTween = TweenService:Create(
             dailySeedButton,
-            TweenInfo.new(0.8, Enum.EasingStyle.Sine,
+            TweenInfo.new(0.7, Enum.EasingStyle.Sine,
                 Enum.EasingDirection.InOut, -1, true),
-            { BackgroundTransparency = 0.5 }
+            { TextSize = 17 }
         )
         _pulseTween:Play()
     else
         dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
         dailySeedButton.BackgroundTransparency = 0.05
         dailySeedButton.TextColor3             = Color3.fromRGB(220, 220, 220)
+        dailySeedButton.TextSize               = 13
     end
 end
 
@@ -671,14 +711,16 @@ local function FormatTempsLocal(secondes)
 end
 
 local function OuvrirDailySeedPanel()
-    -- Fermer panel existant
     local existing = screenGui:FindFirstChild("DailySeedPanel")
     if existing then existing:Destroy() end
 
+    fermerAutresMenus()
+
     local panel = Instance.new("Frame", screenGui)
     panel.Name                   = "DailySeedPanel"
+    panel.AnchorPoint            = Vector2.new(0.5, 0.5)
     panel.Size                   = UDim2.new(0, 320, 0, 480)
-    panel.Position               = UDim2.new(0.5, -160, 0.5, -240)
+    panel.Position               = UDim2.new(0.5, 0, 0.5, 0)
     panel.BackgroundColor3       = T.fondPrincipal
     panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0
@@ -687,6 +729,16 @@ local function OuvrirDailySeedPanel()
     local _panelStroke = Instance.new("UIStroke", panel)
     _panelStroke.Color     = T.bordure
     _panelStroke.Thickness = 1
+
+    -- Adaptation mobile
+    local _dsScale = Instance.new("UIScale", panel)
+    local function _ajusterDS()
+        local vp = workspace.CurrentCamera.ViewportSize
+        local s = math.min(vp.X / 360, vp.Y / 520, 1)
+        _dsScale.Scale = math.max(0.5, s)
+    end
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterDS)
+    _ajusterDS()
 
     -- Titre
     local titre = Instance.new("TextLabel", panel)
@@ -810,7 +862,7 @@ local function OuvrirDailySeedPanel()
             lbl("⏱ " .. FormatTempsLocal(tempsRestant), 160, 130,
                 Color3.fromRGB(150, 150, 150), false, 12)
         else
-            lbl("🔒 Locked", 160, 100, Color3.fromRGB(100, 100, 100), false, 12)
+            lbl("Locked", 160, 100, Color3.fromRGB(100, 100, 100), false, 12)
         end
     end
 
@@ -867,8 +919,9 @@ dailySeedButton.MouseButton1Click:Connect(OuvrirDailySeedPanel)
 -- Panel pots (caché par défaut)
 local fpPanel = Instance.new("Frame", screenGui)
 fpPanel.Name                   = "FlowerPotPanel"
+fpPanel.AnchorPoint            = Vector2.new(0.5, 0.5)
 fpPanel.Size                   = UDim2.new(0, 280, 0, 180)
-fpPanel.Position               = UDim2.new(0, 140, 0.5, 50)
+fpPanel.Position               = UDim2.new(0.5, 0, 0.5, 0)
 fpPanel.BackgroundColor3       = T.fondPrincipal
 fpPanel.BackgroundTransparency = 0.05
 fpPanel.BorderSizePixel        = 0
@@ -877,13 +930,21 @@ fpPanel.ZIndex                 = 20
 Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, 0)
 local _fpStroke = Instance.new("UIStroke", fpPanel)
 _fpStroke.Color = T.bordure ; _fpStroke.Thickness = 1
+local _fpScale = Instance.new("UIScale", fpPanel)
+local function _ajusterFpPanel()
+    local vp = workspace.CurrentCamera.ViewportSize
+    local s = math.max(0.6, math.min(vp.X / 320, vp.Y / 200, 1))
+    _fpScale.Scale = s
+end
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterFpPanel)
+_ajusterFpPanel()
 
 local fpTitre = Instance.new("TextLabel", fpPanel)
 fpTitre.Size = UDim2.new(1,-50,0,28) ; fpTitre.Position = UDim2.new(0,12,0,6)
 fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = T.texteTitre
 fpTitre.Font = Enum.Font.GothamBold ; fpTitre.TextSize = 14
 fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
-fpTitre.Text = "🪴 FlowerPot Status" ; fpTitre.ZIndex = 21
+fpTitre.Text = "FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
 fpClose.Size = UDim2.new(0,30,0,30) ; fpClose.Position = UDim2.new(1,-36,0,4)
@@ -894,7 +955,15 @@ fpClose.BorderSizePixel = 0 ; fpClose.ZIndex = 21
 Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, 2)
 local _fpcs = Instance.new("UIStroke", fpClose)
 _fpcs.Color = Color3.fromRGB(60,60,60) ; _fpcs.Thickness = 1
-fpClose.MouseButton1Click:Connect(function() fpPanel.Visible = false end)
+fpClose.MouseButton1Click:Connect(function()
+    fpPanel.Visible = false
+end)
+
+fpPanel:GetPropertyChangedSignal("Visible"):Connect(function()
+    if not fpPanel.Visible then
+        overlay.Visible = false
+    end
+end)
 
 -- Inventaire graines
 local fpInv = Instance.new("Frame", fpPanel)
@@ -949,7 +1018,7 @@ local function fpMajAffichage(pots, graines)
             f.ic.Text="🔒"; f.ic.TextColor3=T.texte; f.ra.Text="Verr."; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut == nil then
-            f.ic.Text="🌺"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
+            f.ic.Text="🌱"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut.statut == "growing" then
             local s=p.statut
@@ -975,13 +1044,13 @@ local function fpMajAffichage(pots, graines)
     local btnFlowerPot = screenGui:FindFirstChild("FlowerPotButton")
     if btnFlowerPot then
         if nbReady > 0 then
-            btnFlowerPot.Text = "🪴 FlowerPot\n"..nbReady.." ready"
+            btnFlowerPot.Text = "FlowerPot\n"..nbReady.." ready"
             btnFlowerPot.TextColor3 = Color3.fromRGB(220, 110, 15)
         elseif nbGrow > 0 then
-            btnFlowerPot.Text = "🪴 FlowerPot\n"..nbGrow.." growing"
+            btnFlowerPot.Text = "FlowerPot\n"..nbGrow.." growing"
             btnFlowerPot.TextColor3 = Color3.fromRGB(100, 180, 255)
         else
-            btnFlowerPot.Text = "🪴 FlowerPot"
+            btnFlowerPot.Text = "FlowerPot"
             btnFlowerPot.TextColor3 = Color3.fromRGB(220, 220, 220)
         end
     end
@@ -1007,8 +1076,8 @@ end)
 -- Bouton FlowerPot
 local btnFlowerPot = Instance.new("TextButton", screenGui)
 btnFlowerPot.Name                   = "FlowerPotButton"
-btnFlowerPot.Size                   = UDim2.new(0, 120, 0, 55)
-btnFlowerPot.Position               = UDim2.new(0, 10, 0.5, 113)
+btnFlowerPot.Size                   = UDim2.new(0.25, 0, 0, 55)
+btnFlowerPot.Position               = UDim2.new(0, 10, 0.5, 36)
 btnFlowerPot.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 btnFlowerPot.BackgroundTransparency = 0.05
 btnFlowerPot.TextColor3             = Color3.fromRGB(220, 220, 220)
@@ -1021,14 +1090,24 @@ btnFlowerPot.ZIndex                 = 10
 Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 2)
 local _bfpS = Instance.new("UIStroke", btnFlowerPot)
 _bfpS.Color = Color3.fromRGB(60, 60, 60) ; _bfpS.Thickness = 1
+local _fpConstraint = Instance.new("UISizeConstraint", btnFlowerPot)
+_fpConstraint.MinSize = Vector2.new(80, 44)
+_fpConstraint.MaxSize = Vector2.new(120, 55)
 
 btnFlowerPot.MouseButton1Click:Connect(function()
-    fpPanel.Visible = not fpPanel.Visible
-    if fpPanel.Visible and fpGetSeedInfo then
-        task.spawn(function()
-            local ok, info = pcall(function() return fpGetSeedInfo:InvokeServer() end)
-            if ok and info then fpMajAffichage(info.pots, info.graines) end
-        end)
+    if fpPanel.Visible then
+        fpPanel.Visible = false
+        overlay.Visible = false
+    else
+        fermerAutresMenus()
+        overlay.Visible = true
+        fpPanel.Visible = true
+        if fpGetSeedInfo then
+            task.spawn(function()
+                local ok, info = pcall(function() return fpGetSeedInfo:InvokeServer() end)
+                if ok and info then fpMajAffichage(info.pots, info.graines) end
+            end)
+        end
     end
 end)
 
@@ -1172,11 +1251,11 @@ local function creerBillboard(potModel, plantedAt, dureeStage)
             billboard.StudsOffset = Vector3.new(0, offsetY, 0)
 
             if etape >= 5 then
-                stageLbl.Text = "🌱 Ready!"
+                stageLbl.Text = "Ready!"
                 timerLbl.Text = "Tap to collect"
                 task.wait(2)
             else
-                stageLbl.Text = "🌱 Stage " .. stageAffiche .. " / 4"
+                stageLbl.Text = "Stage " .. stageAffiche .. " / 4"
                 timerLbl.Text = "⏱ " .. formatTemps(remaining)
                 task.wait(1)
             end

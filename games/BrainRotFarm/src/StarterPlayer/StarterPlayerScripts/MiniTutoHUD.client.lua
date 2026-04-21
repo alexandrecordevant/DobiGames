@@ -30,32 +30,27 @@ screenGui.Parent         = playerGui
 -- FlowerPot   : (0,10, 0.5,113)  h=55
 -- Collect All : (0,10, 0.5,180)  h=55
 -- ============================================================
+-- Bouton Tutorial — style identique au bouton FlowerPot (reference)
 local btn = Instance.new("TextButton", screenGui)
 btn.Name                   = "TutoButton"
-btn.Size                   = UDim2.new(0, 120, 0, 55)
-btn.Position               = UDim2.new(0, 10, 0.5, -25)
-btn.BackgroundColor3       = Color3.fromRGB(30, 30, 60)
-btn.BackgroundTransparency = 0.1
-btn.TextColor3             = T.texte
+btn.Size                   = UDim2.new(0.25, 0, 0, 55)
+btn.Position               = UDim2.new(0, 10, 0.5, -90)
+btn.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+btn.BackgroundTransparency = 0.05
+btn.TextColor3             = Color3.fromRGB(220, 220, 220)
 btn.Font                   = Enum.Font.GothamBold
 btn.TextSize               = 13
-btn.Text                   = "❓ Tutorial"
+btn.Text                   = "Tutorial"
 btn.TextWrapped            = true
 btn.BorderSizePixel        = 0
 btn.ZIndex                 = 10
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 2)
 local btnStroke = Instance.new("UIStroke", btn)
-btnStroke.Color     = Color3.fromRGB(80, 80, 140)
+btnStroke.Color     = Color3.fromRGB(60, 60, 60)
 btnStroke.Thickness = 1
-
-btn.MouseEnter:Connect(function()
-    TweenService:Create(btn, TweenInfo.new(0.12),
-        { BackgroundColor3 = Color3.fromRGB(50, 50, 100) }):Play()
-end)
-btn.MouseLeave:Connect(function()
-    TweenService:Create(btn, TweenInfo.new(0.12),
-        { BackgroundColor3 = Color3.fromRGB(30, 30, 60) }):Play()
-end)
+local _tutoConstraint = Instance.new("UISizeConstraint", btn)
+_tutoConstraint.MinSize = Vector2.new(80, 44)
+_tutoConstraint.MaxSize = Vector2.new(120, 55)
 
 -- ============================================================
 -- Tutorial panel
@@ -73,24 +68,25 @@ overlay.ZIndex                 = 20
 
 local panel = Instance.new("Frame", screenGui)
 panel.Name                   = "TutoPanel"
+panel.AnchorPoint            = Vector2.new(0.5, 0.5)
 panel.Size                   = UDim2.new(0, PANEL_W, 0, PANEL_H)
-panel.Position               = UDim2.new(0.5, -PANEL_W / 2, 0.5, -PANEL_H / 2)
+panel.Position               = UDim2.new(0.5, 0, 0.5, 0)
 panel.BackgroundColor3       = T.fondPrincipal
 panel.BackgroundTransparency = 0.04
 panel.BorderSizePixel        = 0
 panel.Visible                = false
 panel.ZIndex                 = 21
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
 local panelStroke = Instance.new("UIStroke", panel)
-panelStroke.Color     = Color3.fromRGB(80, 80, 200)
-panelStroke.Thickness = 2
+panelStroke.Color     = T.bordure
+panelStroke.Thickness = 1
 
 -- Title bar
 local titleLbl = Instance.new("TextLabel", panel)
 titleLbl.Size                   = UDim2.new(1, -50, 0, 44)
 titleLbl.Position               = UDim2.new(0, 14, 0, 6)
 titleLbl.BackgroundTransparency = 1
-titleLbl.Text                   = "❓ HOW TO PLAY"
+titleLbl.Text                   = "HOW TO PLAY"
 titleLbl.TextColor3             = T.texteTitre
 titleLbl.Font                   = Enum.Font.GothamBold
 titleLbl.TextSize               = 18
@@ -220,17 +216,46 @@ makeCard(
 
 makeCard(
     "🌱", "FLOWER POTS",
-    "Plant a seed in a <b>Flower Pot</b> (left button 🪴) and wait for it to grow through <b>4 stages</b>.\n\nOnce fully grown, carry the brainrot that comes out to the deposit — it applies a <b>coin multiplier</b> based on seed rarity. Don't forget to unlock more pots in the Shop!",
+    "Plant a seed in a <b>Flower Pot</b> (left button 🌱) and wait for it to grow through <b>4 stages</b>.\n\nOnce fully grown, carry the brainrot that comes out to the deposit — it applies a <b>coin multiplier</b> based on seed rarity. Don't forget to unlock more pots in the Shop!",
     4,
     Color3.fromRGB(220, 150, 50)
 )
 
 makeCard(
     "💡", "TIPS",
-    "• Upgrade <b>Carry Slots</b> first — more brainrots per trip = faster coins.\n• Check the <b>Daily Seed</b> button every day for a free seed.\n• Mutant brainrots stack with FlowerPot multipliers!\n• Sacred Trees reset on a timer — check the 🪴 panel for the countdown.",
+    "• Upgrade <b>Carry Slots</b> first — more brainrots per trip = faster coins.\n• Check the <b>Daily Seed</b> button every day for a free seed.\n• Mutant brainrots stack with FlowerPot multipliers!\n• Sacred Trees reset on a timer — check the 🌱 panel for the countdown.",
     5,
     Color3.fromRGB(255, 200, 50)
 )
+
+-- Recalcul du CanvasSize apres generation du contenu
+task.wait(0)
+scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+
+-- ============================================================
+-- Fermeture des autres menus (1 seul ouvert a la fois)
+-- ============================================================
+local function fermerAutresMenus()
+    -- Fermer le ShopGui (coin shop)
+    local shopGui = playerGui:FindFirstChild("ShopGui")
+    if shopGui and shopGui.Enabled then shopGui.Enabled = false end
+    -- Fermer le FlowerPotHUD panneau principal
+    local fpGui = playerGui:FindFirstChild("FlowerPotHUD")
+    if fpGui then
+        local mf = fpGui:FindFirstChild("MainFrame")
+        if mf then mf.Visible = false end
+        local ds = fpGui:FindFirstChild("DailySeedPanel")
+        if ds then ds:Destroy() end
+        local fp = fpGui:FindFirstChild("FlowerPotPanel")
+        if fp then fp.Visible = false end
+    end
+    -- Fermer le Robux shop
+    local hud = playerGui:FindFirstChild("HUD")
+    if hud then
+        local rp = hud:FindFirstChild("ShopRobuxPanel")
+        if rp then rp.Visible = false end
+    end
+end
 
 -- ============================================================
 -- Open / Close
@@ -238,14 +263,13 @@ makeCard(
 local panelOpen = false
 
 local function openPanel()
+    fermerAutresMenus()
     panelOpen       = true
     overlay.Visible = true
     panel.Visible   = true
     panel.Size      = UDim2.new(0, 0, 0, 0)
-    panel.Position  = UDim2.new(0.5, 0, 0.5, 0)
     TweenService:Create(panel, TweenInfo.new(0.22, Enum.EasingStyle.Back), {
-        Size     = UDim2.new(0, PANEL_W, 0, PANEL_H),
-        Position = UDim2.new(0.5, -PANEL_W / 2, 0.5, -PANEL_H / 2),
+        Size = UDim2.new(0, PANEL_W, 0, PANEL_H),
     }):Play()
 end
 
@@ -253,14 +277,31 @@ local function closePanel()
     if not panelOpen then return end
     panelOpen = false
     TweenService:Create(panel, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-        Size     = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(0, 0, 0, 0),
     }):Play()
     task.delay(0.16, function()
         panel.Visible   = false
         overlay.Visible = false
     end)
 end
+
+-- Reinitialiser l'etat si ferme par un autre menu
+panel:GetPropertyChangedSignal("Visible"):Connect(function()
+    if not panel.Visible then
+        panelOpen       = false
+        overlay.Visible = false
+    end
+end)
+
+-- Adaptation mobile
+local uiScale = Instance.new("UIScale", panel)
+local function ajusterScaleTuto()
+    local vp = workspace.CurrentCamera.ViewportSize
+    local s = math.min(vp.X / 400, vp.Y / 540, 1)
+    uiScale.Scale = math.max(0.5, s)
+end
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScaleTuto)
+ajusterScaleTuto()
 
 btn.MouseButton1Click:Connect(function()
     if panelOpen then closePanel() else openPanel() end

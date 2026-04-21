@@ -179,12 +179,11 @@ local function rafraichirSlot(i)
 	local slot = slotsFrames[i]
 	if not slot then return end
 
-	local tool     = slotsSelectionnes[i]
-	local iconeL   = slot:FindFirstChild("Icone")
-	local lNom     = slot:FindFirstChild("Nom")
-	local lCPS     = slot:FindFirstChild("CPS")
-	local st       = slot:FindFirstChild("Stroke")
-	local numStrip = slot:FindFirstChild("NumStrip")
+	local tool   = slotsSelectionnes[i]
+	local iconeL = slot:FindFirstChild("Icone")
+	local lNom   = slot:FindFirstChild("Nom")
+	local lCPS   = slot:FindFirstChild("CPS")
+	local st     = slot:FindFirstChild("Stroke")
 
 	if tool and tool.Parent then
 		local nom = tool:GetAttribute("BrainrotName") or tool.Name
@@ -194,17 +193,8 @@ local function rafraichirSlot(i)
 		if st then st.Color = C_ACCENT_LIGHT ; st.Thickness = 2 end
 
 		if iconeL then iconeL.Visible = false end
-		if lNom   then
-			lNom.Text    = nom
-			lNom.Visible = true
-		end
-		if lCPS then
-			lCPS.Text    = formaterCPS(cps) .. "/s"
-			lCPS.Visible = true
-		end
-		if numStrip then
-			numStrip.BackgroundColor3 = Color3.fromRGB(35, 18, 5)
-		end
+		if lNom   then lNom.Text = nom ; lNom.Visible = true end
+		if lCPS   then lCPS.Text = formaterCPS(cps) .. "/s" ; lCPS.Visible = true end
 	else
 		slotsSelectionnes[i] = nil
 		slot.BackgroundColor3 = C_SLOT
@@ -213,9 +203,6 @@ local function rafraichirSlot(i)
 		if iconeL then iconeL.Visible = true end
 		if lNom   then lNom.Visible  = false end
 		if lCPS   then lCPS.Visible  = false end
-		if numStrip then
-			numStrip.BackgroundColor3 = C_BORDURE_SOMBRE
-		end
 	end
 end
 
@@ -240,7 +227,7 @@ mettreAJourBouton = function()
 	end
 	if btnLancer then
 		btnLancer.BackgroundColor3 = complet and C_BTN_ON or C_BTN_OFF
-		btnLancer.Text             = complet and "LANCER LA FUSION" or "Choisissez 4 Brainrots"
+		btnLancer.Text             = complet and "LAUNCH FUSION" or "Select 4 Brainrots"
 		btnLancer.TextColor3       = complet and C_TEXTE or C_TEXTE2
 		btnLancer.Font             = complet and Enum.Font.GothamBold or Enum.Font.Gotham
 		btnLancer.TextSize         = complet and 16 or 14
@@ -342,7 +329,7 @@ rafraichirCarry = function()
 		local vide = Instance.new("TextLabel")
 		vide.Size                   = UDim2.new(0, 340, 1, 0)
 		vide.BackgroundTransparency = 1
-		vide.Text                   = "Aucun Brainrot dans votre carry"
+		vide.Text                   = "No Brainrot in your carry"
 		vide.TextColor3             = C_TEXTE2
 		vide.TextSize               = 13
 		vide.TextScaled             = false
@@ -410,7 +397,7 @@ local function onLancer()
 	if btnLancer then
 		btnLancer.BackgroundColor3 = C_BTN_OFF
 		btnLancer.Active           = false
-		btnLancer.Text             = "Envoi..."
+		btnLancer.Text             = "Sending..."
 		btnLancer.TextColor3       = C_TEXTE2
 		btnLancer.Font             = Enum.Font.Gotham
 	end
@@ -434,10 +421,10 @@ local function creerUI()
 	screenGui.Enabled        = false
 	screenGui.Parent         = playerGui
 
-	-- Cadre principal 480x430, ancre centre
+	-- Cadre principal 480x380, ancre centre
 	cadre = Instance.new("Frame")
 	cadre.Name                   = "Cadre"
-	cadre.Size                   = UDim2.new(0, 480, 0, 430)
+	cadre.Size                   = UDim2.new(0, 480, 0, 380)
 	cadre.AnchorPoint            = Vector2.new(0.5, 0.5)
 	cadre.Position               = UDim2.new(0.5, 0, 1.5, 0)
 	cadre.BackgroundColor3       = C_BG
@@ -487,7 +474,7 @@ local function creerUI()
 	lSousTitre.Size                   = UDim2.new(1, -60, 0, 16)
 	lSousTitre.Position               = UDim2.new(0, 16, 0, 32)
 	lSousTitre.BackgroundTransparency = 1
-	lSousTitre.Text                   = "Combinez 4 Brainrots pour en obtenir un meilleur"
+	lSousTitre.Text                   = "Combine 4 Brainrots to get a better one!"
 	lSousTitre.TextColor3             = C_TEXTE2
 	lSousTitre.TextSize               = 10
 	lSousTitre.TextScaled             = false
@@ -527,13 +514,10 @@ local function creerUI()
 	contenu.BackgroundTransparency = 1
 	contenu.Parent                 = cadre
 
-	-- Section INGREDIENTS (y=0)
-	creerSectionLabel(contenu, "INGREDIENTS  --  4 Brainrots requis", 0)
-
-	-- Conteneur 4 slots (y=22, h=100)
+	-- Conteneur 4 slots (y=0, h=100)
 	local slotsConteneur = Instance.new("Frame")
 	slotsConteneur.Size                   = UDim2.new(1, 0, 0, 100)
-	slotsConteneur.Position               = UDim2.new(0, 0, 0, 22)
+	slotsConteneur.Position               = UDim2.new(0, 0, 0, 0)
 	slotsConteneur.BackgroundTransparency = 1
 	slotsConteneur.Parent                 = contenu
 
@@ -603,46 +587,24 @@ local function creerUI()
 		lCPS.Visible                = false
 		lCPS.Parent                 = slot
 
-		-- Bandeau bas avec numero
-		local numStrip = Instance.new("Frame")
-		numStrip.Name             = "NumStrip"
-		numStrip.Size             = UDim2.new(1, 0, 0, 18)
-		numStrip.Position         = UDim2.new(0, 0, 1, -18)
-		numStrip.BackgroundColor3 = C_BORDURE_SOMBRE
-		numStrip.BorderSizePixel  = 0
-		numStrip.Parent           = slot
-
-		local numLbl = Instance.new("TextLabel")
-		numLbl.Size                   = UDim2.new(1, 0, 1, 0)
-		numLbl.BackgroundTransparency = 1
-		numLbl.Text                   = "SLOT " .. i
-		numLbl.TextColor3             = C_TEXTE2
-		numLbl.TextSize               = 9
-		numLbl.TextScaled             = false
-		numLbl.Font                   = Enum.Font.GothamBold
-		numLbl.Parent                 = numStrip
-
 		local idx = i
 		slot.MouseButton1Click:Connect(function() viderSlot(idx) end)
 		slotsFrames[i] = slot
 	end
 
-	-- Separateur (y=126)
+	-- Separateur (y=106)
 	local sep = Instance.new("Frame")
 	sep.Size             = UDim2.new(1, 0, 0, 1)
-	sep.Position         = UDim2.new(0, 0, 0, 128)
+	sep.Position         = UDim2.new(0, 0, 0, 106)
 	sep.BackgroundColor3 = C_BORDURE
 	sep.BorderSizePixel  = 0
 	sep.Parent           = contenu
 
-	-- Section VOS BRAINROTS (y=133)
-	creerSectionLabel(contenu, "VOS BRAINROTS  --  Cliquez pour ajouter", 133)
-
-	-- ScrollingFrame carry (y=155, h=118)
+	-- ScrollingFrame carry (y=111, h=118)
 	carryFrame = Instance.new("ScrollingFrame")
 	carryFrame.Name                   = "CarryFrame"
 	carryFrame.Size                   = UDim2.new(1, 0, 0, 118)
-	carryFrame.Position               = UDim2.new(0, 0, 0, 155)
+	carryFrame.Position               = UDim2.new(0, 0, 0, 111)
 	carryFrame.BackgroundColor3       = C_BG2
 	carryFrame.BackgroundTransparency = 0
 	carryFrame.BorderSizePixel        = 0
@@ -668,14 +630,14 @@ local function creerUI()
 	carryPad.PaddingBottom = UDim.new(0, 6)
 	carryPad.Parent        = carryFrame
 
-	-- Bouton Lancer (y=277, h=52)
+	-- Bouton Lancer (y=234, h=52)
 	btnLancer = Instance.new("TextButton")
 	btnLancer.Name             = "BtnLancer"
 	btnLancer.Size             = UDim2.new(1, 0, 0, 52)
-	btnLancer.Position         = UDim2.new(0, 0, 0, 278)
+	btnLancer.Position         = UDim2.new(0, 0, 0, 234)
 	btnLancer.BackgroundColor3 = C_BTN_OFF
 	btnLancer.BorderSizePixel  = 0
-	btnLancer.Text             = "Choisissez 4 Brainrots"
+	btnLancer.Text             = "Select 4 Brainrots"
 	btnLancer.TextColor3       = C_TEXTE2
 	btnLancer.TextSize         = 14
 	btnLancer.TextScaled       = false

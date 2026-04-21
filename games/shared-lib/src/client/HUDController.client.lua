@@ -259,34 +259,80 @@ end)
 Logger.info("HUD", "NotifEvent connecté ✓")
 
 -- ============================================================
--- Bouton Shop R$ (gauche, au-dessus du Rebirth)
+-- Bouton Shop (gauche) — ScreenGui separe avec IgnoreGuiInset=true
+-- pour aligner les coordonnees avec les autres boutons gauche
 -- ============================================================
-local btnShop = Instance.new("TextButton", gui)
+local shopBtnGui = Instance.new("ScreenGui")
+shopBtnGui.Name           = "ShopRobuxButtonGui"
+shopBtnGui.ResetOnSpawn   = false
+shopBtnGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+shopBtnGui.IgnoreGuiInset = true
+shopBtnGui.Parent         = player.PlayerGui
+
+local btnShop = Instance.new("TextButton", shopBtnGui)
 btnShop.Name                   = "ShopRobuxButton"
-btnShop.Size                   = UDim2.new(0, 120, 0, 55)
-btnShop.Position               = UDim2.new(0, 10, 0.5, -132)
-btnShop.BackgroundColor3       = T.fondBoutonRobux
-btnShop.TextColor3             = T.fondPrincipal
+btnShop.Size                   = UDim2.new(0.25, 0, 0, 55)
+btnShop.Position               = UDim2.new(0, 10, 0.5, -153)
+btnShop.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
+btnShop.BackgroundTransparency = 0.05
+btnShop.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnShop.Font                   = Enum.Font.GothamBold
 btnShop.TextSize               = 13
-btnShop.Text                   = "🛒 Shop"
+btnShop.Text                   = "Shop"
 btnShop.TextWrapped            = true
 btnShop.BorderSizePixel        = 0
 btnShop.ZIndex                 = 5
-Instance.new("UICorner", btnShop).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", btnShop).CornerRadius = UDim.new(0, 2)
+local _btnShopStroke = Instance.new("UIStroke", btnShop)
+_btnShopStroke.Color = Color3.fromRGB(60, 60, 60) ; _btnShopStroke.Thickness = 1
+local _shopConstraint = Instance.new("UISizeConstraint", btnShop)
+_shopConstraint.MinSize = Vector2.new(80, 44)
+_shopConstraint.MaxSize = Vector2.new(120, 55)
 
-local lblShopSub = Instance.new("TextLabel", btnShop)
-lblShopSub.Size                   = UDim2.new(1, 0, 0, 16)
-lblShopSub.Position               = UDim2.new(0, 0, 1, -18)
-lblShopSub.BackgroundTransparency = 1
-lblShopSub.TextColor3             = T.fondPrincipal
-lblShopSub.Font                   = Enum.Font.Gotham
-lblShopSub.TextSize               = 11
-lblShopSub.Text                   = "Robux only"
+-- Fermeture des autres menus (1 seul ouvert a la fois)
+local function fermerAutresMenusRobux()
+    local shopGui = player.PlayerGui:FindFirstChild("ShopGui")
+    if shopGui and shopGui.Enabled then shopGui.Enabled = false end
+    local tutoGui = player.PlayerGui:FindFirstChild("MiniTutoHUD")
+    if tutoGui then
+        local p = tutoGui:FindFirstChild("TutoPanel")
+        if p then p.Visible = false end
+    end
+    local fpGui = player.PlayerGui:FindFirstChild("FlowerPotHUD")
+    if fpGui then
+        local mf = fpGui:FindFirstChild("MainFrame")
+        if mf then mf.Visible = false end
+        local ds = fpGui:FindFirstChild("DailySeedPanel")
+        if ds then ds:Destroy() end
+    end
+end
+
+local robuxPanelOpen = false
+
+local function ouvrirRobuxPanel()
+    local panel = gui:FindFirstChild("ShopRobuxPanel")
+    if not panel then return end
+    fermerAutresMenusRobux()
+    robuxPanelOpen = true
+    panel.Visible  = true
+    panel.Size     = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(panel, TweenInfo.new(0.22, Enum.EasingStyle.Back),
+        { Size = UDim2.new(0, 340, 0, 500) }):Play()
+end
+
+local function fermerRobuxPanel()
+    local panel = gui:FindFirstChild("ShopRobuxPanel")
+    if not panel or not robuxPanelOpen then return end
+    robuxPanelOpen = false
+    TweenService:Create(panel, TweenInfo.new(0.15, Enum.EasingStyle.Quad),
+        { Size = UDim2.new(0, 0, 0, 0) }):Play()
+    task.delay(0.16, function()
+        if panel.Parent then panel.Visible = false end
+    end)
+end
 
 btnShop.MouseButton1Click:Connect(function()
-    local panel = gui:FindFirstChild("ShopRobuxPanel")
-    if panel then panel.Visible = not panel.Visible end
+    if robuxPanelOpen then fermerRobuxPanel() else ouvrirRobuxPanel() end
 end)
 
 -- ============================================================
@@ -295,18 +341,37 @@ end)
 local function creerShopRobuxPanel()
     local panel = Instance.new("Frame", gui)
     panel.Name                   = "ShopRobuxPanel"
+    panel.AnchorPoint            = Vector2.new(0.5, 0.5)
     panel.Size                   = UDim2.new(0, 340, 0, 500)
-    panel.Position               = UDim2.new(0, 140, 0.5, -250)
+    panel.Position               = UDim2.new(0.5, 0, 0.5, 0)
     panel.BackgroundColor3       = T.fondPrincipal
     panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0
     panel.Visible                = false
     panel.ZIndex                 = 10
-    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
+
+    -- Reinitialiser l'etat si ferme par un autre menu
+    panel:GetPropertyChangedSignal("Visible"):Connect(function()
+        if not panel.Visible then
+            robuxPanelOpen = false
+            panel.Size = UDim2.new(0, 340, 0, 500)
+        end
+    end)
+
+    -- Adaptation mobile
+    local uiScale = Instance.new("UIScale", panel)
+    local function ajusterScale()
+        local vp = workspace.CurrentCamera.ViewportSize
+        local s = math.min(vp.X / 380, vp.Y / 540, 1)
+        uiScale.Scale = math.max(0.5, s)
+    end
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
+    ajusterScale()
 
     local stroke = Instance.new("UIStroke", panel)
-    stroke.Color     = T.bordureAccent
-    stroke.Thickness = 2
+    stroke.Color     = T.bordure
+    stroke.Thickness = 1
 
     -- Titre
     local titre = Instance.new("TextLabel", panel)
@@ -317,7 +382,7 @@ local function creerShopRobuxPanel()
     titre.Font                   = Enum.Font.GothamBold
     titre.TextSize               = 18
     titre.TextXAlignment         = Enum.TextXAlignment.Left
-    titre.Text                   = "🛒 ROBUX SHOP"
+    titre.Text                   = "ROBUX SHOP"
     titre.ZIndex                 = 11
 
     -- Bouton fermer

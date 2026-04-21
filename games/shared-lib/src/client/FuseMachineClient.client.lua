@@ -1,46 +1,48 @@
 -- shared-lib/src/client/FuseMachineClient.client.lua
--- UI Fuse Machine — partagé entre jeux
--- Affiche les 4 slots, sélection du carry, résultat, timer
+-- UI Fuse Machine -- commune BrainRotFarm & LavaTower
 
 local Players          = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService       = game:GetService("RunService")
+local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Logger           = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ═══════════════════════════════════════════════
--- Attente des RemoteEvents (créés par FuseMachineSystem.Init)
--- ═══════════════════════════════════════════════
-Logger.info("Fuse", "Script démarré ✓")
+Logger.info("Fuse", "Script demarre")
 local OuvrirUI   = ReplicatedStorage:WaitForChild("FuseMachine_OuvrirUI",   60)
 local FermerUI   = ReplicatedStorage:WaitForChild("FuseMachine_FermerUI",   60)
 local EtatUpdate = ReplicatedStorage:WaitForChild("FuseMachine_EtatUpdate", 60)
 local Lancer     = ReplicatedStorage:WaitForChild("FuseMachine_Lancer",     60)
 
 if not OuvrirUI then
-    Logger.warn("Fuse", "RemoteEvents introuvables après 60s — FuseMachineSystem.Init() appelé ?")
+    Logger.warn("Fuse", "RemoteEvents introuvables apres 60s -- FuseMachineSystem.Init() appele ?")
     return
 end
-Logger.info("Fuse", "RemoteEvents trouvés ✓")
+Logger.info("Fuse", "RemoteEvents trouves")
 
--- ═══════════════════════════════════════════════
--- Couleurs thème LavaTower
--- ═══════════════════════════════════════════════
-local C_BG          = Color3.fromRGB(20, 16, 12)
-local C_BG2         = Color3.fromRGB(35, 28, 20)
-local C_ACCENT      = Color3.fromRGB(220, 80, 20)   -- orange lave
-local C_TITRE       = Color3.fromRGB(255, 210, 80)
-local C_TEXTE       = Color3.fromRGB(255, 235, 200)
-local C_SLOT        = Color3.fromRGB(42, 34, 24)
-local C_SLOT_FILL   = Color3.fromRGB(58, 48, 32)
-local C_BTN_ON      = Color3.fromRGB(220, 80, 20)
-local C_BTN_OFF     = Color3.fromRGB(80, 55, 35)
-local C_STROKE      = Color3.fromRGB(80, 58, 36)
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Palette
+-- ═══════════════════════════════════════════════════════════════════════════════
+local C_BG            = Color3.fromRGB(10,  10,  10)
+local C_BG2           = Color3.fromRGB(18,  18,  18)
+local C_BG3           = Color3.fromRGB(25,  25,  25)
+local C_ACCENT        = Color3.fromRGB(160, 80,  15)
+local C_ACCENT_LIGHT  = Color3.fromRGB(180, 95,  20)
+local C_TEXTE         = Color3.fromRGB(220, 220, 220)
+local C_TEXTE2        = Color3.fromRGB(130, 130, 130)
+local C_BORDURE       = Color3.fromRGB(60,  60,  60)
+local C_SLOT          = Color3.fromRGB(18,  18,  18)
+local C_SLOT_FILL     = Color3.fromRGB(32,  32,  32)
+local C_BTN_ON        = Color3.fromRGB(160, 80,  15)
+local C_BTN_OFF       = Color3.fromRGB(40,  40,  40)
+local C_FERMER        = Color3.fromRGB(50,  50,  50)
+local C_ORANGE_STROKE = Color3.fromRGB(180, 90,  20)
+local C_INVALIDE      = Color3.fromRGB(160, 60,  60)
+local C_VALIDE        = Color3.fromRGB(123, 198, 126)
 
--- Couleurs raretés (copie locale, pas de require côté client)
 local COULEUR_RARETE = {
     Common    = Color3.fromRGB(200, 200, 200),
     Uncommon  = Color3.fromRGB(100, 200, 100),
@@ -50,74 +52,118 @@ local COULEUR_RARETE = {
     Secret    = Color3.fromRGB(255, 50,  50),
 }
 local ICONE_RARETE = {
-    Common    = "",
-    Uncommon  = "",
-    Rare      = "",
-    Epic      = "",
-    Legendary = "",
-    Secret    = "",
+    Common    = "C",
+    Uncommon  = "U",
+    Rare      = "R",
+    Epic      = "E",
+    Legendary = "L",
+    Secret    = "S",
 }
 
--- ═══════════════════════════════════════════════
--- État client
--- ═══════════════════════════════════════════════
-local machineActuelle     = nil   -- Instance machine en cours
-local etatMachine         = {}    -- données reçues du serveur
-local recettesDisponibles = {}    -- recettes reçues du serveur
-local slotsSelectionnes   = {}    -- [1..4] → Tool | nil
-local recetteTrouvee      = nil   -- recette matchée par les 4 slots
-local timerConn           = nil   -- connexion Heartbeat pour le countdown
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Etat client
+-- ═══════════════════════════════════════════════════════════════════════════════
+local machineActuelle     = nil
+local etatMachine         = {}
+local recettesDisponibles = {}
+local slotsSelectionnes   = {}
+local recetteTrouvee      = nil
+local timerConn           = nil
+local estEnFermeture      = false
 
--- ═══════════════════════════════════════════════
--- Références UI (assignées par creerUI)
--- ═══════════════════════════════════════════════
 local screenGui, cadre
 local frameSelection, frameTimer
 local slotsFrames = {}
 local carryFrame
 local labelResultat, labelCout, btnLancer
 local barreProgress, labelTimer
+local barreResultatGauche
 
--- ═══════════════════════════════════════════════
--- Déclarations forward
--- ═══════════════════════════════════════════════
 local fermerUI
 local viderSlot
 local mettreAJourRecette
 local rafraichirCarry
 local rafraichirSlot
 
--- ═══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════════
 -- Helpers UI
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
 local function coin(parent, radius)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 8)
+    c.CornerRadius = UDim.new(0, radius or 0)
     c.Parent = parent
     return c
 end
 
 local function stroke(parent, color, thickness)
     local s = Instance.new("UIStroke")
-    s.Color     = color or C_STROKE
+    s.Color     = color or C_BORDURE
     s.Thickness = thickness or 1
     s.Name      = "Stroke"
     s.Parent    = parent
     return s
 end
 
-local function label(parent, text, size, font, color, xAlign)
-    local l = Instance.new("TextLabel")
-    l.Text               = text or ""
-    l.TextSize           = size or 14
-    l.Font               = font or Enum.Font.Gotham
-    l.TextColor3         = color or C_TEXTE
-    l.BackgroundTransparency = 1
-    l.TextXAlignment     = xAlign or Enum.TextXAlignment.Center
-    l.Size               = UDim2.new(1, 0, 1, 0)
-    l.Parent             = parent
-    return l
+local function addHover(btn)
+    local couleurBase = nil
+    local tweenActif  = nil
+    local strokeInst  = btn:FindFirstChild("Stroke")
+
+    btn.MouseEnter:Connect(function()
+        if not couleurBase then couleurBase = btn.BackgroundColor3 end
+        local cible = Color3.new(
+            math.min(1, couleurBase.R + 0.08),
+            math.min(1, couleurBase.G + 0.08),
+            math.min(1, couleurBase.B + 0.08)
+        )
+        if tweenActif then tweenActif:Cancel() end
+        tweenActif = TweenService:Create(btn, TweenInfo.new(0.08), { BackgroundColor3 = cible })
+        tweenActif:Play()
+        if strokeInst then
+            TweenService:Create(strokeInst, TweenInfo.new(0.08), { Color = C_ORANGE_STROKE }):Play()
+        end
+    end)
+
+    btn.MouseLeave:Connect(function()
+        if not couleurBase then return end
+        local restaurer = couleurBase
+        couleurBase = nil
+        if tweenActif then tweenActif:Cancel() end
+        tweenActif = TweenService:Create(btn, TweenInfo.new(0.08), { BackgroundColor3 = restaurer })
+        tweenActif:Play()
+        if strokeInst then
+            TweenService:Create(strokeInst, TweenInfo.new(0.08), { Color = C_BORDURE }):Play()
+        end
+    end)
+end
+
+local function creerSectionLabel(parent, texte, yPos)
+    local cont = Instance.new("Frame")
+    cont.Size                   = UDim2.new(1, 0, 0, 18)
+    cont.Position               = UDim2.new(0, 0, 0, yPos)
+    cont.BackgroundTransparency = 1
+    cont.BorderSizePixel        = 0
+    cont.Parent                 = parent
+
+    local barre = Instance.new("Frame")
+    barre.Size             = UDim2.new(0, 3, 1, 0)
+    barre.BackgroundColor3 = C_ACCENT
+    barre.BorderSizePixel  = 0
+    barre.Parent           = cont
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size                   = UDim2.new(1, -10, 1, 0)
+    lbl.Position               = UDim2.new(0, 10, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text                   = texte
+    lbl.TextColor3             = C_ACCENT
+    lbl.TextSize               = 11
+    lbl.TextScaled             = false
+    lbl.Font                   = Enum.Font.GothamBold
+    lbl.TextXAlignment         = Enum.TextXAlignment.Left
+    lbl.Parent                 = cont
+
+    return cont
 end
 
 local function hexColor(c3)
@@ -135,25 +181,23 @@ local function formaterTemps(sec)
     return string.format("%02dh %02dm %02ds", h, m, s)
 end
 
--- Trie les inputs pour comparer recettes (ordre libre)
 local function trierInputs(liste)
     local c = {}
     for _, v in ipairs(liste) do c[#c + 1] = v end
     table.sort(c)
     return c
 end
+
 local function inputsEgaux(a, b)
     if #a ~= #b then return false end
     for i, v in ipairs(a) do if v ~= b[i] then return false end end
     return true
 end
 
--- ═══════════════════════════════════════════════
--- Construction de l'UI
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Construction UI
+-- ═══════════════════════════════════════════════════════════════════════════════
 local function creerUI()
-    -- ScreenGui
     screenGui = Instance.new("ScreenGui")
     screenGui.Name           = "FuseMachineUI"
     screenGui.ResetOnSpawn   = false
@@ -162,264 +206,325 @@ local function creerUI()
     screenGui.Enabled        = false
     screenGui.Parent         = playerGui
 
-    -- Cadre principal (480 × 530)
     cadre = Instance.new("Frame")
-    cadre.Name             = "Cadre"
-    cadre.Size             = UDim2.new(0, 480, 0, 530)
-    cadre.Position         = UDim2.new(0.5, -240, 0.5, -265)
-    cadre.BackgroundColor3 = C_BG
-    cadre.BorderSizePixel  = 0
-    cadre.Parent           = screenGui
-    coin(cadre, 12)
-    stroke(cadre, C_ACCENT, 2)
+    cadre.Name                   = "Cadre"
+    cadre.Size                   = UDim2.new(0, 480, 0, 510)
+    cadre.AnchorPoint            = Vector2.new(0.5, 0.5)
+    cadre.Position               = UDim2.new(0.5, 0, 1.5, 0)
+    cadre.BackgroundColor3       = C_BG
+    cadre.BackgroundTransparency = 0.05
+    cadre.BorderSizePixel        = 0
+    cadre.Parent                 = screenGui
+    coin(cadre, 0)
+    stroke(cadre, C_BORDURE, 1)
 
-    -- ─── Titre ───────────────────────────────
+    local uiScale = Instance.new("UIScale")
+    uiScale.Parent = cadre
+    local function ajusterScale()
+        local vp = workspace.CurrentCamera.ViewportSize
+        local s  = math.min(vp.X / 540, vp.Y / 630, 1)
+        uiScale.Scale = math.max(0.55, s)
+    end
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
+    ajusterScale()
+
+    -- ─── Header ──────────────────────────────────────────────────────────────
+    local accentBande = Instance.new("Frame")
+    accentBande.Size             = UDim2.new(0, 3, 0, 52)
+    accentBande.BackgroundColor3 = C_ACCENT
+    accentBande.BorderSizePixel  = 0
+    accentBande.ZIndex           = 3
+    accentBande.Parent           = cadre
+
     local titreBar = Instance.new("Frame")
-    titreBar.Size             = UDim2.new(1, 0, 0, 50)
-    titreBar.BackgroundColor3 = C_ACCENT
-    titreBar.BorderSizePixel  = 0
-    titreBar.Parent           = cadre
-    coin(titreBar, 12)
-    -- Masque les coins inférieurs du titre
-    local fixBot = Instance.new("Frame")
-    fixBot.Size             = UDim2.new(1, 0, 0, 12)
-    fixBot.Position         = UDim2.new(0, 0, 1, -12)
-    fixBot.BackgroundColor3 = C_ACCENT
-    fixBot.BorderSizePixel  = 0
-    fixBot.Parent           = titreBar
+    titreBar.Name                   = "TitreBar"
+    titreBar.Size                   = UDim2.new(1, 0, 0, 52)
+    titreBar.BackgroundTransparency = 1
+    titreBar.BorderSizePixel        = 0
+    titreBar.Parent                 = cadre
 
     local lTitre = Instance.new("TextLabel")
-    lTitre.Size                  = UDim2.new(1, -55, 1, 0)
-    lTitre.Position              = UDim2.new(0, 14, 0, 0)
+    lTitre.Size                   = UDim2.new(1, -60, 0, 28)
+    lTitre.Position               = UDim2.new(0, 16, 0, 8)
     lTitre.BackgroundTransparency = 1
-    lTitre.Text                  = "FUSE MACHINE"
-    lTitre.TextColor3            = Color3.fromRGB(255, 255, 255)
-    lTitre.TextSize              = 20
-    lTitre.Font                  = Enum.Font.GothamBold
-    lTitre.TextXAlignment        = Enum.TextXAlignment.Left
-    lTitre.Parent                = titreBar
+    lTitre.Text                   = "FUSE MACHINE"
+    lTitre.TextColor3             = C_TEXTE
+    lTitre.TextSize               = 18
+    lTitre.TextScaled             = false
+    lTitre.Font                   = Enum.Font.GothamBold
+    lTitre.TextXAlignment         = Enum.TextXAlignment.Left
+    lTitre.Parent                 = titreBar
+
+    local lSousTitre = Instance.new("TextLabel")
+    lSousTitre.Size                   = UDim2.new(1, -60, 0, 16)
+    lSousTitre.Position               = UDim2.new(0, 16, 0, 32)
+    lSousTitre.BackgroundTransparency = 1
+    lSousTitre.Text                   = "Combine 4 Brainrots to get a better one!"
+    lSousTitre.TextColor3             = C_TEXTE2
+    lSousTitre.TextSize               = 10
+    lSousTitre.TextScaled             = false
+    lSousTitre.Font                   = Enum.Font.Gotham
+    lSousTitre.TextXAlignment         = Enum.TextXAlignment.Left
+    lSousTitre.Parent                 = titreBar
+
+    local sep = Instance.new("Frame")
+    sep.Size             = UDim2.new(1, 0, 0, 1)
+    sep.Position         = UDim2.new(0, 0, 0, 52)
+    sep.BackgroundColor3 = C_BORDURE
+    sep.BorderSizePixel  = 0
+    sep.Parent           = cadre
 
     local btnX = Instance.new("TextButton")
-    btnX.Size             = UDim2.new(0, 34, 0, 34)
-    btnX.Position         = UDim2.new(1, -44, 0, 8)
-    btnX.BackgroundColor3 = Color3.fromRGB(190, 50, 20)
+    btnX.Size             = UDim2.new(0, 44, 0, 44)
+    btnX.Position         = UDim2.new(1, -50, 0, 4)
+    btnX.BackgroundColor3 = C_FERMER
     btnX.BorderSizePixel  = 0
     btnX.Text             = "X"
-    btnX.TextColor3       = Color3.fromRGB(255, 255, 255)
+    btnX.TextColor3       = Color3.fromRGB(180, 180, 180)
     btnX.TextSize         = 16
+    btnX.TextScaled       = false
     btnX.Font             = Enum.Font.GothamBold
     btnX.AutoButtonColor  = false
     btnX.Parent           = titreBar
-    coin(btnX, 6)
+    coin(btnX, 2)
+    stroke(btnX, C_BORDURE, 1)
+    addHover(btnX)
     btnX.MouseButton1Click:Connect(function() fermerUI() end)
 
-    -- ─── FRAME SÉLECTION ─────────────────────
+    -- ─── FRAME SELECTION ─────────────────────────────────────────────────────
     frameSelection = Instance.new("Frame")
-    frameSelection.Name             = "FrameSelection"
-    frameSelection.Size             = UDim2.new(1, -20, 1, -60)
-    frameSelection.Position         = UDim2.new(0, 10, 0, 55)
+    frameSelection.Name                   = "FrameSelection"
+    frameSelection.Size                   = UDim2.new(1, -24, 1, -62)
+    frameSelection.Position               = UDim2.new(0, 12, 0, 58)
     frameSelection.BackgroundTransparency = 1
-    frameSelection.Visible          = true
-    frameSelection.Parent           = cadre
+    frameSelection.Visible                = true
+    frameSelection.Parent                 = cadre
 
-    -- Label "INGRÉDIENTS"
-    local lIngr = Instance.new("TextLabel")
-    lIngr.Size                  = UDim2.new(1, 0, 0, 20)
-    lIngr.Position              = UDim2.new(0, 0, 0, 4)
-    lIngr.BackgroundTransparency = 1
-    lIngr.Text                  = "INGREDIENTS  (4 Brainrots)"
-    lIngr.TextColor3            = C_TITRE
-    lIngr.TextSize              = 13
-    lIngr.Font                  = Enum.Font.GothamBold
-    lIngr.TextXAlignment        = Enum.TextXAlignment.Left
-    lIngr.Parent                = frameSelection
-
-    -- Conteneur 4 slots
     local slotsConteneur = Instance.new("Frame")
-    slotsConteneur.Size                  = UDim2.new(1, 0, 0, 90)
-    slotsConteneur.Position              = UDim2.new(0, 0, 0, 26)
+    slotsConteneur.Size                   = UDim2.new(1, 0, 0, 100)
+    slotsConteneur.Position               = UDim2.new(0, 0, 0, 0)
     slotsConteneur.BackgroundTransparency = 1
-    slotsConteneur.Parent                = frameSelection
+    slotsConteneur.Parent                 = frameSelection
 
     local slotLayout = Instance.new("UIListLayout")
-    slotLayout.FillDirection        = Enum.FillDirection.Horizontal
-    slotLayout.HorizontalAlignment  = Enum.HorizontalAlignment.Center
-    slotLayout.Padding              = UDim.new(0, 8)
-    slotLayout.Parent               = slotsConteneur
+    slotLayout.FillDirection       = Enum.FillDirection.Horizontal
+    slotLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    slotLayout.VerticalAlignment   = Enum.VerticalAlignment.Center
+    slotLayout.Padding             = UDim.new(0, 7)
+    slotLayout.Parent              = slotsConteneur
 
     slotsFrames = {}
     for i = 1, 4 do
         local slot = Instance.new("TextButton")
-        slot.Name             = "Slot" .. i
-        slot.Size             = UDim2.new(0, 96, 0, 90)
-        slot.BackgroundColor3 = C_SLOT
-        slot.BorderSizePixel  = 0
-        slot.Text             = ""
-        slot.AutoButtonColor  = false
-        slot.Parent           = slotsConteneur
-        coin(slot, 8)
-        stroke(slot, C_STROKE, 1)
+        slot.Name                   = "Slot" .. i
+        slot.Size                   = UDim2.new(0, 100, 0, 100)
+        slot.BackgroundColor3       = C_SLOT
+        slot.BackgroundTransparency = 0
+        slot.BorderSizePixel        = 0
+        slot.Text                   = ""
+        slot.AutoButtonColor        = false
+        slot.Parent                 = slotsConteneur
+        coin(slot, 0)
+        stroke(slot, C_BORDURE, 1)
 
         local iconeL = Instance.new("TextLabel")
-        iconeL.Name                  = "Icone"
-        iconeL.Size                  = UDim2.new(1, 0, 0, 44)
-        iconeL.Position              = UDim2.new(0, 0, 0, 4)
+        iconeL.Name                   = "Icone"
+        iconeL.Size                   = UDim2.new(1, 0, 0, 52)
+        iconeL.Position               = UDim2.new(0, 0, 0, 14)
         iconeL.BackgroundTransparency = 1
-        iconeL.Text                  = "+"
-        iconeL.TextColor3            = Color3.fromRGB(110, 88, 60)
-        iconeL.TextSize              = 30
-        iconeL.Font                  = Enum.Font.GothamBold
-        iconeL.Parent                = slot
+        iconeL.Text                   = "+"
+        iconeL.TextColor3             = C_BORDURE
+        iconeL.TextSize               = 26
+        iconeL.TextScaled             = false
+        iconeL.Font                   = Enum.Font.GothamBold
+        iconeL.Parent                 = slot
 
         local nomL = Instance.new("TextLabel")
-        nomL.Name                  = "Nom"
-        nomL.Size                  = UDim2.new(1, -4, 0, 34)
-        nomL.Position              = UDim2.new(0, 2, 1, -36)
+        nomL.Name                   = "Nom"
+        nomL.Size                   = UDim2.new(1, -6, 0, 22)
+        nomL.Position               = UDim2.new(0, 3, 0, 66)
         nomL.BackgroundTransparency = 1
-        nomL.Text                  = "Slot " .. i
-        nomL.TextColor3            = Color3.fromRGB(110, 88, 60)
-        nomL.TextSize              = 10
-        nomL.Font                  = Enum.Font.Gotham
-        nomL.TextWrapped           = true
-        nomL.Parent                = slot
+        nomL.Text                   = ""
+        nomL.TextColor3             = C_TEXTE2
+        nomL.TextSize               = 9
+        nomL.TextScaled             = false
+        nomL.Font                   = Enum.Font.Gotham
+        nomL.TextWrapped            = true
+        nomL.TextXAlignment         = Enum.TextXAlignment.Center
+        nomL.Parent                 = slot
 
         local idx = i
         slot.MouseButton1Click:Connect(function() viderSlot(idx) end)
-
         slotsFrames[i] = slot
     end
 
-    -- Flèche résultat
-    local lFleche = Instance.new("TextLabel")
-    lFleche.Size                  = UDim2.new(1, 0, 0, 22)
-    lFleche.Position              = UDim2.new(0, 0, 0, 122)
-    lFleche.BackgroundTransparency = 1
-    lFleche.Text                  = "POSSIBLE RESULT"
-    lFleche.TextColor3            = C_ACCENT
-    lFleche.TextSize              = 12
-    lFleche.Font                  = Enum.Font.GothamBold
-    lFleche.Parent                = frameSelection
+    local sep2 = Instance.new("Frame")
+    sep2.Size             = UDim2.new(1, 0, 0, 1)
+    sep2.Position         = UDim2.new(0, 0, 0, 106)
+    sep2.BackgroundColor3 = C_BORDURE
+    sep2.BorderSizePixel  = 0
+    sep2.Parent           = frameSelection
 
-    -- Affichage du résultat
+    creerSectionLabel(frameSelection, "POSSIBLE RESULT", 111)
+
+    local resultFrame = Instance.new("Frame")
+    resultFrame.Name                   = "ResultFrame"
+    resultFrame.Size                   = UDim2.new(1, 0, 0, 56)
+    resultFrame.Position               = UDim2.new(0, 0, 0, 133)
+    resultFrame.BackgroundColor3       = C_BG2
+    resultFrame.BackgroundTransparency = 0
+    resultFrame.BorderSizePixel        = 0
+    resultFrame.Parent                 = frameSelection
+    coin(resultFrame, 0)
+    stroke(resultFrame, C_BORDURE, 1)
+
+    barreResultatGauche = Instance.new("Frame")
+    barreResultatGauche.Name             = "BarreGauche"
+    barreResultatGauche.Size             = UDim2.new(0, 4, 1, 0)
+    barreResultatGauche.BackgroundColor3 = C_BORDURE
+    barreResultatGauche.BorderSizePixel  = 0
+    barreResultatGauche.Parent           = resultFrame
+
     labelResultat = Instance.new("TextLabel")
-    labelResultat.Name                  = "LabelResultat"
-    labelResultat.Size                  = UDim2.new(1, 0, 0, 46)
-    labelResultat.Position              = UDim2.new(0, 0, 0, 147)
-    labelResultat.BackgroundColor3      = C_BG2
-    labelResultat.BorderSizePixel       = 0
-    labelResultat.Text                  = "<font color='#7a6040'>Select 4 Brainrots…</font>"
-    labelResultat.TextColor3            = C_TEXTE
-    labelResultat.TextSize              = 15
-    labelResultat.Font                  = Enum.Font.GothamBold
-    labelResultat.RichText              = true
-    labelResultat.Parent                = frameSelection
-    coin(labelResultat, 8)
+    labelResultat.Name                   = "LabelResultat"
+    labelResultat.Size                   = UDim2.new(1, -14, 1, 0)
+    labelResultat.Position               = UDim2.new(0, 14, 0, 0)
+    labelResultat.BackgroundTransparency = 1
+    labelResultat.Text                   = "<font color='#828282'>Select 4 Brainrots!</font>"
+    labelResultat.TextColor3             = C_TEXTE
+    labelResultat.TextSize               = 13
+    labelResultat.TextScaled             = false
+    labelResultat.Font                   = Enum.Font.GothamBold
+    labelResultat.RichText               = true
+    labelResultat.Parent                 = resultFrame
 
-    -- Coût + durée
+    local coutFrame = Instance.new("Frame")
+    coutFrame.Size                   = UDim2.new(1, 0, 0, 28)
+    coutFrame.Position               = UDim2.new(0, 0, 0, 193)
+    coutFrame.BackgroundColor3       = C_BG3
+    coutFrame.BackgroundTransparency = 0
+    coutFrame.BorderSizePixel        = 0
+    coutFrame.Parent                 = frameSelection
+    coin(coutFrame, 0)
+    stroke(coutFrame, C_BORDURE, 1)
+
     labelCout = Instance.new("TextLabel")
-    labelCout.Name                  = "LabelCout"
-    labelCout.Size                  = UDim2.new(1, 0, 0, 24)
-    labelCout.Position              = UDim2.new(0, 0, 0, 197)
+    labelCout.Name                   = "LabelCout"
+    labelCout.Size                   = UDim2.new(1, -10, 1, 0)
+    labelCout.Position               = UDim2.new(0, 10, 0, 0)
     labelCout.BackgroundTransparency = 1
-    labelCout.Text                  = ""
-    labelCout.TextColor3            = C_TEXTE
-    labelCout.TextSize              = 13
-    labelCout.Font                  = Enum.Font.Gotham
-    labelCout.RichText              = true
-    labelCout.Parent                = frameSelection
+    labelCout.Text                   = ""
+    labelCout.TextColor3             = C_TEXTE2
+    labelCout.TextSize               = 12
+    labelCout.TextScaled             = false
+    labelCout.Font                   = Enum.Font.Gotham
+    labelCout.RichText               = true
+    labelCout.TextXAlignment         = Enum.TextXAlignment.Left
+    labelCout.Parent                 = coutFrame
 
-    -- Label "VOS BRAINROTS"
-    local lCarry = Instance.new("TextLabel")
-    lCarry.Size                  = UDim2.new(1, 0, 0, 20)
-    lCarry.Position              = UDim2.new(0, 0, 0, 225)
-    lCarry.BackgroundTransparency = 1
-    lCarry.Text                  = "VOS BRAINROTS"
-    lCarry.TextColor3            = C_TITRE
-    lCarry.TextSize              = 12
-    lCarry.Font                  = Enum.Font.GothamBold
-    lCarry.TextXAlignment        = Enum.TextXAlignment.Left
-    lCarry.Parent                = frameSelection
-
-    -- ScrollingFrame carry
     carryFrame = Instance.new("ScrollingFrame")
-    carryFrame.Name                  = "CarryFrame"
-    carryFrame.Size                  = UDim2.new(1, 0, 0, 118)
-    carryFrame.Position              = UDim2.new(0, 0, 0, 247)
-    carryFrame.BackgroundColor3      = C_BG2
-    carryFrame.BorderSizePixel       = 0
-    carryFrame.ScrollBarThickness    = 4
-    carryFrame.ScrollBarImageColor3  = C_ACCENT
-    carryFrame.CanvasSize            = UDim2.new(0, 0, 0, 0)
-    carryFrame.AutomaticCanvasSize   = Enum.AutomaticSize.XY
-    carryFrame.ScrollingDirection    = Enum.ScrollingDirection.X
-    carryFrame.Parent                = frameSelection
-    coin(carryFrame, 8)
+    carryFrame.Name                   = "CarryFrame"
+    carryFrame.Size                   = UDim2.new(1, 0, 0, 112)
+    carryFrame.Position               = UDim2.new(0, 0, 0, 225)
+    carryFrame.BackgroundColor3       = C_BG2
+    carryFrame.BackgroundTransparency = 0
+    carryFrame.BorderSizePixel        = 0
+    carryFrame.ScrollBarThickness     = 4
+    carryFrame.ScrollBarImageColor3   = C_ACCENT
+    carryFrame.CanvasSize             = UDim2.new(0, 0, 0, 0)
+    carryFrame.AutomaticCanvasSize    = Enum.AutomaticSize.XY
+    carryFrame.ScrollingDirection     = Enum.ScrollingDirection.X
+    carryFrame.Parent                 = frameSelection
+    coin(carryFrame, 0)
+    stroke(carryFrame, C_BORDURE, 1)
 
     local carryLayout = Instance.new("UIListLayout")
-    carryLayout.FillDirection       = Enum.FillDirection.Horizontal
-    carryLayout.VerticalAlignment   = Enum.VerticalAlignment.Center
-    carryLayout.Padding             = UDim.new(0, 6)
-    carryLayout.Parent              = carryFrame
+    carryLayout.FillDirection     = Enum.FillDirection.Horizontal
+    carryLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    carryLayout.Padding           = UDim.new(0, 6)
+    carryLayout.Parent            = carryFrame
 
     local carryPad = Instance.new("UIPadding")
-    carryPad.PaddingLeft  = UDim.new(0, 8)
-    carryPad.PaddingRight = UDim.new(0, 8)
-    carryPad.Parent       = carryFrame
+    carryPad.PaddingLeft   = UDim.new(0, 8)
+    carryPad.PaddingRight  = UDim.new(0, 8)
+    carryPad.PaddingTop    = UDim.new(0, 6)
+    carryPad.PaddingBottom = UDim.new(0, 6)
+    carryPad.Parent        = carryFrame
 
-    -- Bouton lancer
     btnLancer = Instance.new("TextButton")
     btnLancer.Name             = "BtnLancer"
-    btnLancer.Size             = UDim2.new(1, 0, 0, 46)
-    btnLancer.Position         = UDim2.new(0, 0, 0, 374)
+    btnLancer.Size             = UDim2.new(1, 0, 0, 52)
+    btnLancer.Position         = UDim2.new(0, 0, 0, 342)
     btnLancer.BackgroundColor3 = C_BTN_OFF
     btnLancer.BorderSizePixel  = 0
-    btnLancer.Text             = "LANCER LA FUSION"
-    btnLancer.TextColor3       = Color3.fromRGB(255, 255, 255)
-    btnLancer.TextSize         = 17
-    btnLancer.Font             = Enum.Font.GothamBold
+    btnLancer.Text             = "Select 4 Brainrots"
+    btnLancer.TextColor3       = C_TEXTE2
+    btnLancer.TextSize         = 14
+    btnLancer.TextScaled       = false
+    btnLancer.Font             = Enum.Font.Gotham
     btnLancer.AutoButtonColor  = false
     btnLancer.Parent           = frameSelection
-    coin(btnLancer, 10)
+    coin(btnLancer, 2)
+    stroke(btnLancer, C_BORDURE, 1)
+    addHover(btnLancer)
     btnLancer.MouseButton1Click:Connect(function() onLancerFusion() end)
 
-    -- ─── FRAME TIMER ─────────────────────────
+    -- ─── FRAME TIMER ─────────────────────────────────────────────────────────
     frameTimer = Instance.new("Frame")
-    frameTimer.Name                  = "FrameTimer"
-    frameTimer.Size                  = UDim2.new(1, -20, 1, -60)
-    frameTimer.Position              = UDim2.new(0, 10, 0, 55)
+    frameTimer.Name                   = "FrameTimer"
+    frameTimer.Size                   = UDim2.new(1, -24, 1, -62)
+    frameTimer.Position               = UDim2.new(0, 12, 0, 58)
     frameTimer.BackgroundTransparency = 1
-    frameTimer.Visible               = false
-    frameTimer.Parent                = cadre
+    frameTimer.Visible                = false
+    frameTimer.Parent                 = cadre
+
+    local bandeauTimer = Instance.new("Frame")
+    bandeauTimer.Size             = UDim2.new(1, 0, 0, 44)
+    bandeauTimer.Position         = UDim2.new(0, 0, 0, 0)
+    bandeauTimer.BackgroundColor3 = Color3.fromRGB(50, 25, 5)
+    bandeauTimer.BorderSizePixel  = 0
+    bandeauTimer.Parent           = frameTimer
+    coin(bandeauTimer, 0)
+    stroke(bandeauTimer, C_ACCENT, 1)
+
+    local lBandeauAccent = Instance.new("Frame")
+    lBandeauAccent.Size             = UDim2.new(0, 4, 1, 0)
+    lBandeauAccent.BackgroundColor3 = C_ACCENT
+    lBandeauAccent.BorderSizePixel  = 0
+    lBandeauAccent.Parent           = bandeauTimer
 
     local lEnCours = Instance.new("TextLabel")
-    lEnCours.Size                  = UDim2.new(1, 0, 0, 42)
-    lEnCours.Position              = UDim2.new(0, 0, 0, 20)
+    lEnCours.Size                   = UDim2.new(1, -14, 1, 0)
+    lEnCours.Position               = UDim2.new(0, 14, 0, 0)
     lEnCours.BackgroundTransparency = 1
-    lEnCours.Text                  = "FUSION EN COURS..."
-    lEnCours.TextColor3            = C_TITRE
-    lEnCours.TextSize              = 22
-    lEnCours.Font                  = Enum.Font.GothamBold
-    lEnCours.Parent                = frameTimer
+    lEnCours.Text                   = "FUSION IN PROGRESS..."
+    lEnCours.TextColor3             = C_ACCENT_LIGHT
+    lEnCours.TextSize               = 16
+    lEnCours.TextScaled             = false
+    lEnCours.Font                   = Enum.Font.GothamBold
+    lEnCours.TextXAlignment         = Enum.TextXAlignment.Left
+    lEnCours.Parent                 = bandeauTimer
 
     local lSurprise = Instance.new("TextLabel")
-    lSurprise.Name                  = "Surprise"
-    lSurprise.Size                  = UDim2.new(1, 0, 0, 30)
-    lSurprise.Position              = UDim2.new(0, 0, 0, 70)
+    lSurprise.Name                   = "Surprise"
+    lSurprise.Size                   = UDim2.new(1, 0, 0, 28)
+    lSurprise.Position               = UDim2.new(0, 0, 0, 54)
     lSurprise.BackgroundTransparency = 1
-    lSurprise.Text                  = "Result: ???"
-    lSurprise.TextColor3            = Color3.fromRGB(160, 138, 100)
-    lSurprise.TextSize              = 16
-    lSurprise.Font                  = Enum.Font.Gotham
-    lSurprise.Parent                = frameTimer
+    lSurprise.Text                   = "Result: ???"
+    lSurprise.TextColor3             = C_TEXTE2
+    lSurprise.TextSize               = 14
+    lSurprise.TextScaled             = false
+    lSurprise.Font                   = Enum.Font.Gotham
+    lSurprise.Parent                 = frameTimer
 
-    -- Barre de progression
     local barreConteneur = Instance.new("Frame")
-    barreConteneur.Size             = UDim2.new(1, 0, 0, 20)
-    barreConteneur.Position         = UDim2.new(0, 0, 0, 114)
-    barreConteneur.BackgroundColor3 = Color3.fromRGB(38, 28, 18)
+    barreConteneur.Size             = UDim2.new(1, 0, 0, 28)
+    barreConteneur.Position         = UDim2.new(0, 0, 0, 92)
+    barreConteneur.BackgroundColor3 = C_BG2
     barreConteneur.BorderSizePixel  = 0
     barreConteneur.Parent           = frameTimer
-    coin(barreConteneur, 10)
+    coin(barreConteneur, 2)
+    stroke(barreConteneur, C_BORDURE, 1)
 
     barreProgress = Instance.new("Frame")
     barreProgress.Name             = "Barre"
@@ -427,36 +532,66 @@ local function creerUI()
     barreProgress.BackgroundColor3 = C_ACCENT
     barreProgress.BorderSizePixel  = 0
     barreProgress.Parent           = barreConteneur
-    coin(barreProgress, 10)
+    coin(barreProgress, 2)
+
+    local timerConteneur = Instance.new("Frame")
+    timerConteneur.Size                   = UDim2.new(1, 0, 0, 56)
+    timerConteneur.Position               = UDim2.new(0, 0, 0, 130)
+    timerConteneur.BackgroundColor3       = C_BG2
+    timerConteneur.BackgroundTransparency = 0
+    timerConteneur.BorderSizePixel        = 0
+    timerConteneur.Parent                 = frameTimer
+    coin(timerConteneur, 0)
+    stroke(timerConteneur, C_BORDURE, 1)
+
+    local timerAccent = Instance.new("Frame")
+    timerAccent.Size             = UDim2.new(0, 4, 1, 0)
+    timerAccent.BackgroundColor3 = C_ACCENT
+    timerAccent.BorderSizePixel  = 0
+    timerAccent.Parent           = timerConteneur
+
+    local timerPrefixe = Instance.new("TextLabel")
+    timerPrefixe.Size                   = UDim2.new(0, 80, 1, 0)
+    timerPrefixe.Position               = UDim2.new(0, 14, 0, 0)
+    timerPrefixe.BackgroundTransparency = 1
+    timerPrefixe.Text                   = "TIME"
+    timerPrefixe.TextColor3             = C_TEXTE2
+    timerPrefixe.TextSize               = 10
+    timerPrefixe.TextScaled             = false
+    timerPrefixe.Font                   = Enum.Font.GothamBold
+    timerPrefixe.TextXAlignment         = Enum.TextXAlignment.Left
+    timerPrefixe.Parent                 = timerConteneur
 
     labelTimer = Instance.new("TextLabel")
-    labelTimer.Name                  = "LabelTimer"
-    labelTimer.Size                  = UDim2.new(1, 0, 0, 46)
-    labelTimer.Position              = UDim2.new(0, 0, 0, 148)
+    labelTimer.Name                   = "LabelTimer"
+    labelTimer.Size                   = UDim2.new(1, -14, 1, 0)
+    labelTimer.Position               = UDim2.new(0, 14, 0, 0)
     labelTimer.BackgroundTransparency = 1
-    labelTimer.Text                  = "--h --m --s"
-    labelTimer.TextColor3            = C_TEXTE
-    labelTimer.TextSize              = 26
-    labelTimer.Font                  = Enum.Font.GothamBold
-    labelTimer.Parent                = frameTimer
+    labelTimer.Text                   = "--h --m --s"
+    labelTimer.TextColor3             = C_TEXTE
+    labelTimer.TextSize               = 26
+    labelTimer.TextScaled             = false
+    labelTimer.Font                   = Enum.Font.GothamBold
+    labelTimer.TextXAlignment         = Enum.TextXAlignment.Right
+    labelTimer.Parent                 = timerConteneur
 
-    -- Rappel "revenez collecter"
     local lRappel = Instance.new("TextLabel")
-    lRappel.Size                  = UDim2.new(1, 0, 0, 24)
-    lRappel.Position              = UDim2.new(0, 0, 0, 204)
+    lRappel.Size                   = UDim2.new(1, 0, 0, 28)
+    lRappel.Position               = UDim2.new(0, 0, 0, 196)
     lRappel.BackgroundTransparency = 1
-    lRappel.Text                  = "Come back with the ProximityPrompt when it's ready."
-    lRappel.TextColor3            = Color3.fromRGB(130, 110, 75)
-    lRappel.TextSize              = 12
-    lRappel.Font                  = Enum.Font.Gotham
-    lRappel.TextWrapped           = true
-    lRappel.Parent                = frameTimer
+    lRappel.Text                   = "Come back with the ProximityPrompt when it's ready."
+    lRappel.TextColor3             = C_TEXTE2
+    lRappel.TextSize               = 11
+    lRappel.TextScaled             = false
+    lRappel.Font                   = Enum.Font.Gotham
+    lRappel.TextWrapped            = true
+    lRappel.TextXAlignment         = Enum.TextXAlignment.Center
+    lRappel.Parent                 = frameTimer
 end
 
--- ═══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════════
 -- Logique slots
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
 rafraichirSlot = function(i)
     local slot = slotsFrames[i]
     if not slot then return end
@@ -474,25 +609,26 @@ rafraichirSlot = function(i)
         slot.BackgroundColor3 = C_SLOT_FILL
         if st then st.Color = coul ; st.Thickness = 2 end
         if iconeL then
-            iconeL.Text      = ICONE_RARETE[rarete] or "?"
+            iconeL.Text       = ICONE_RARETE[rarete] or "?"
             iconeL.TextColor3 = coul
+            iconeL.TextSize   = 28
         end
         if nomL then
-            nomL.Text      = brName .. "\n[" .. rarete .. "]"
+            nomL.Text       = brName
             nomL.TextColor3 = C_TEXTE
         end
     else
-        -- Slot vide
         slotsSelectionnes[i] = nil
         slot.BackgroundColor3 = C_SLOT
-        if st then st.Color = C_STROKE ; st.Thickness = 1 end
+        if st then st.Color = C_BORDURE ; st.Thickness = 1 end
         if iconeL then
-            iconeL.Text      = "+"
-            iconeL.TextColor3 = Color3.fromRGB(110, 88, 60)
+            iconeL.Text       = "+"
+            iconeL.TextColor3 = C_BORDURE
+            iconeL.TextSize   = 26
         end
         if nomL then
-            nomL.Text      = "Slot " .. i
-            nomL.TextColor3 = Color3.fromRGB(110, 88, 60)
+            nomL.Text       = ""
+            nomL.TextColor3 = C_TEXTE2
         end
     end
 end
@@ -526,14 +662,20 @@ mettreAJourRecette = function()
     if not complet or #raretes < 4 then
         recetteTrouvee = nil
         if labelResultat then
-            labelResultat.Text = "<font color='#7a6040'>Select 4 Brainrots…</font>"
+            labelResultat.Text = "<font color='#828282'>Select 4 Brainrots!</font>"
         end
+        if barreResultatGauche then barreResultatGauche.BackgroundColor3 = C_BORDURE end
         if labelCout then labelCout.Text = "" end
-        if btnLancer then btnLancer.BackgroundColor3 = C_BTN_OFF end
+        if btnLancer then
+            btnLancer.BackgroundColor3 = C_BTN_OFF
+            btnLancer.Text             = "Select 4 Brainrots"
+            btnLancer.TextColor3       = C_TEXTE2
+            btnLancer.Font             = Enum.Font.Gotham
+            btnLancer.TextSize         = 14
+        end
         return
     end
 
-    -- Chercher la recette
     local inputsTries = trierInputs(raretes)
     recetteTrouvee = nil
     for _, recette in ipairs(recettesDisponibles) do
@@ -545,41 +687,53 @@ mettreAJourRecette = function()
 
     if not recetteTrouvee then
         if labelResultat then
-            labelResultat.Text = "<font color='#e05030'>Combinaison invalide</font>"
+            labelResultat.Text = "<font color='#e07070'>Invalid combination</font>"
         end
+        if barreResultatGauche then barreResultatGauche.BackgroundColor3 = C_INVALIDE end
         if labelCout then labelCout.Text = "" end
-        if btnLancer then btnLancer.BackgroundColor3 = C_BTN_OFF end
+        if btnLancer then
+            btnLancer.BackgroundColor3 = C_BTN_OFF
+            btnLancer.Text             = "Invalid combination"
+            btnLancer.TextColor3       = C_TEXTE2
+            btnLancer.Font             = Enum.Font.Gotham
+            btnLancer.TextSize         = 14
+        end
         return
     end
 
-    -- Afficher les résultats possibles
     local parties = {}
     for _, sortie in ipairs(recetteTrouvee.outputs) do
-        local coul  = COULEUR_RARETE[sortie.rarete] or Color3.fromRGB(200, 200, 200)
-        local hex   = hexColor(coul)
-        parties[#parties + 1] = "<font color='" .. hex .. "'>"
-            .. sortie.rarete .. "  <b>" .. sortie.chance .. "%</b></font>"
+        local coul = COULEUR_RARETE[sortie.rarete] or Color3.fromRGB(200, 200, 200)
+        local hex  = hexColor(coul)
+        local abr  = ICONE_RARETE[sortie.rarete] or "?"
+        parties[#parties + 1] = "<font color='" .. hex .. "'><b>"
+            .. abr .. "</b>  " .. sortie.rarete .. "  " .. sortie.chance .. "%</font>"
     end
     if labelResultat then
-        labelResultat.Text = table.concat(parties, "      ")
+        labelResultat.Text = table.concat(parties, "    |    ")
     end
+    if barreResultatGauche then barreResultatGauche.BackgroundColor3 = C_ACCENT end
 
     if labelCout then
-        labelCout.Text = "<font color='#ffd050'>Cout : " .. recetteTrouvee.cout
-            .. " coins</font>    <font color='#aaaaaa'>1h 30m</font>"
+        labelCout.Text = "<font color='#ffd050'>Cost: " .. recetteTrouvee.cout
+            .. " coins</font>   <font color='#828282'>|   Duration: 1h 30m</font>"
     end
 
-    if btnLancer then btnLancer.BackgroundColor3 = C_BTN_ON end
+    if btnLancer then
+        btnLancer.BackgroundColor3 = C_BTN_ON
+        btnLancer.Text             = "LAUNCH FUSION"
+        btnLancer.TextColor3       = C_TEXTE
+        btnLancer.Font             = Enum.Font.GothamBold
+        btnLancer.TextSize         = 16
+    end
 end
 
--- ═══════════════════════════════════════════════
--- Refresh carry (liste de brainrots sélectionnables)
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Refresh carry
+-- ═══════════════════════════════════════════════════════════════════════════════
 rafraichirCarry = function()
     if not carryFrame then return end
 
-    -- Vider le contenu
     for _, child in ipairs(carryFrame:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("TextLabel") then
             child:Destroy()
@@ -589,7 +743,6 @@ rafraichirCarry = function()
     local backpack = player:FindFirstChildOfClass("Backpack")
     if not backpack then return end
 
-    -- Index des tools déjà sélectionnés
     local dejaSelec = {}
     for i = 1, 4 do
         if slotsSelectionnes[i] then
@@ -604,45 +757,52 @@ rafraichirCarry = function()
             if rarete then
                 count = count + 1
                 local selectionne = dejaSelec[tool] == true
-                local coul = COULEUR_RARETE[rarete] or Color3.fromRGB(200, 200, 200)
+                local coul        = COULEUR_RARETE[rarete] or Color3.fromRGB(200, 200, 200)
 
                 local btn = Instance.new("TextButton")
-                btn.Name             = "BT_" .. tool.Name
-                btn.Size             = UDim2.new(0, 78, 0, 90)
-                btn.BackgroundColor3 = selectionne and Color3.fromRGB(36, 30, 20) or C_SLOT
-                btn.BorderSizePixel  = 0
-                btn.Text             = ""
-                btn.AutoButtonColor  = false
-                btn.Parent           = carryFrame
-                coin(btn, 8)
-
-                local st = stroke(btn, selectionne and coul or C_STROKE,
-                    selectionne and 1.5 or 1)
+                btn.Name                   = "BT_" .. tool.Name
+                btn.Size                   = UDim2.new(0, 82, 0, 88)
+                btn.BackgroundColor3       = selectionne and C_SLOT_FILL or C_SLOT
+                btn.BackgroundTransparency = 0
+                btn.BorderSizePixel        = 0
+                btn.Text                   = ""
+                btn.AutoButtonColor        = false
+                btn.Parent                 = carryFrame
+                coin(btn, 0)
+                local st = stroke(btn, selectionne and coul or C_BORDURE, 1)
                 if selectionne then st.Transparency = 0.5 end
 
+                local topBar = Instance.new("Frame")
+                topBar.Name             = "TopBar"
+                topBar.Size             = UDim2.new(1, 0, 0, 5)
+                topBar.BackgroundColor3 = selectionne and C_BORDURE or coul
+                topBar.BorderSizePixel  = 0
+                topBar.Parent           = btn
+
                 local iconeL = Instance.new("TextLabel")
-                iconeL.Size                  = UDim2.new(1, 0, 0, 40)
-                iconeL.Position              = UDim2.new(0, 0, 0, 8)
+                iconeL.Size                   = UDim2.new(1, 0, 0, 38)
+                iconeL.Position               = UDim2.new(0, 0, 0, 8)
                 iconeL.BackgroundTransparency = 1
-                iconeL.Text                  = selectionne and "+" or (ICONE_RARETE[rarete] or "?")
-                iconeL.TextColor3            = selectionne and Color3.fromRGB(90, 78, 52) or coul
-                iconeL.TextSize              = 26
-                iconeL.Font                  = Enum.Font.GothamBold
-                iconeL.Parent                = btn
+                iconeL.Text                   = selectionne and "V" or (ICONE_RARETE[rarete] or "?")
+                iconeL.TextColor3             = selectionne and C_TEXTE2 or coul
+                iconeL.TextSize               = 22
+                iconeL.TextScaled             = false
+                iconeL.Font                   = Enum.Font.GothamBold
+                iconeL.Parent                 = btn
 
                 local brName = tool:GetAttribute("BrainrotName") or tool.Name
                 local nomL = Instance.new("TextLabel")
-                nomL.Size                  = UDim2.new(1, -4, 0, 36)
-                nomL.Position              = UDim2.new(0, 2, 1, -38)
+                nomL.Size                   = UDim2.new(1, -4, 0, 36)
+                nomL.Position               = UDim2.new(0, 2, 1, -38)
                 nomL.BackgroundTransparency = 1
-                nomL.Text                  = brName .. "\n[" .. rarete .. "]"
-                nomL.TextColor3            = selectionne
-                    and Color3.fromRGB(80, 68, 46)
-                    or C_TEXTE
-                nomL.TextSize              = 9
-                nomL.Font                  = Enum.Font.Gotham
-                nomL.TextWrapped           = true
-                nomL.Parent                = btn
+                nomL.Text                   = brName .. "\n" .. rarete
+                nomL.TextColor3             = selectionne and C_TEXTE2 or C_TEXTE
+                nomL.TextSize               = 9
+                nomL.TextScaled             = false
+                nomL.Font                   = Enum.Font.Gotham
+                nomL.TextWrapped            = true
+                nomL.TextXAlignment         = Enum.TextXAlignment.Center
+                nomL.Parent                 = btn
 
                 if not selectionne then
                     local toolRef = tool
@@ -661,42 +821,40 @@ rafraichirCarry = function()
 
     if count == 0 then
         local vide = Instance.new("TextLabel")
-        vide.Size                  = UDim2.new(0, 300, 1, 0)
+        vide.Size                   = UDim2.new(0, 340, 1, 0)
         vide.BackgroundTransparency = 1
-        vide.Text                  = "Aucun Brainrot dans votre carry"
-        vide.TextColor3            = Color3.fromRGB(120, 100, 65)
-        vide.TextSize              = 13
-        vide.Font                  = Enum.Font.Gotham
-        vide.Parent                = carryFrame
+        vide.Text                   = "No Brainrot in your carry"
+        vide.TextColor3             = C_TEXTE2
+        vide.TextSize               = 13
+        vide.TextScaled             = false
+        vide.Font                   = Enum.Font.Gotham
+        vide.TextXAlignment         = Enum.TextXAlignment.Center
+        vide.Parent                 = carryFrame
     end
 end
 
--- ═══════════════════════════════════════════════
--- Timer client (Heartbeat)
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Timer client
+-- ═══════════════════════════════════════════════════════════════════════════════
 local function demarrerTimerClient(debutFusion, dureeFusion)
     if timerConn then timerConn:Disconnect() timerConn = nil end
 
     timerConn = RunService.Heartbeat:Connect(function()
-        local elapsed = tick() - debutFusion
-        local restant = math.max(0, dureeFusion - elapsed)
+        local elapsed  = tick() - debutFusion
+        local restant  = math.max(0, dureeFusion - elapsed)
         local fraction = math.min(1, elapsed / dureeFusion)
 
-        if labelTimer then
-            labelTimer.Text = formaterTemps(restant)
-        end
-        if barreProgress then
-            barreProgress.Size = UDim2.new(fraction, 0, 1, 0)
-        end
+        if labelTimer then labelTimer.Text = formaterTemps(restant) end
+        if barreProgress then barreProgress.Size = UDim2.new(fraction, 0, 1, 0) end
 
         if restant <= 0 then
             if labelTimer then
-                labelTimer.Text      = "READY TO COLLECT!"
-                labelTimer.TextColor3 = Color3.fromRGB(100, 220, 80)
+                labelTimer.Text       = "READY TO COLLECT!"
+                labelTimer.TextColor3 = C_VALIDE
+                labelTimer.TextSize   = 20
             end
             if barreProgress then
-                barreProgress.BackgroundColor3 = Color3.fromRGB(80, 200, 60)
+                barreProgress.BackgroundColor3 = C_VALIDE
             end
             timerConn:Disconnect()
             timerConn = nil
@@ -704,29 +862,26 @@ local function demarrerTimerClient(debutFusion, dureeFusion)
     end)
 end
 
--- ═══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════════
 -- Ouvrir / Fermer
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
 local function ouvrirUI(machine, etatData, recettes)
-    machineActuelle      = machine
-    etatMachine          = etatData or {}
-    recettesDisponibles  = recettes or {}
-    slotsSelectionnes    = {}
-    recetteTrouvee       = nil
+    machineActuelle     = machine
+    etatMachine         = etatData or {}
+    recettesDisponibles = recettes or {}
+    slotsSelectionnes   = {}
+    recetteTrouvee      = nil
+    estEnFermeture      = false
 
     for i = 1, 4 do rafraichirSlot(i) end
 
     if etatData and etatData.actif then
-        -- Fusion en cours : afficher uniquement le timer
         frameSelection.Visible = false
         frameTimer.Visible     = true
-
         if etatData.debutFusion and etatData.dureeFusion then
             demarrerTimerClient(etatData.debutFusion, etatData.dureeFusion)
         end
     else
-        -- Machine libre : afficher la sélection
         frameTimer.Visible     = false
         frameSelection.Visible = true
         mettreAJourRecette()
@@ -734,20 +889,33 @@ local function ouvrirUI(machine, etatData, recettes)
     end
 
     screenGui.Enabled = true
+    cadre.Position    = UDim2.new(0.5, 0, 1.5, 0)
+    TweenService:Create(cadre,
+        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Position = UDim2.new(0.5, 0, 0.5, 0) }):Play()
 end
 
 fermerUI = function()
-    screenGui.Enabled = false
+    if estEnFermeture then return end
+    estEnFermeture    = true
     machineActuelle   = nil
     slotsSelectionnes = {}
     recetteTrouvee    = nil
     if timerConn then timerConn:Disconnect() timerConn = nil end
+
+    local tween = TweenService:Create(cadre,
+        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        { Position = UDim2.new(0.5, 0, 1.5, 0) })
+    tween:Play()
+    tween.Completed:Connect(function()
+        screenGui.Enabled = false
+        estEnFermeture    = false
+    end)
 end
 
--- ═══════════════════════════════════════════════
--- Lancer la fusion (client → serveur)
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Lancer la fusion
+-- ═══════════════════════════════════════════════════════════════════════════════
 function onLancerFusion()
     if not machineActuelle then return end
     if not recetteTrouvee  then return end
@@ -759,26 +927,24 @@ function onLancerFusion()
         tools[#tools + 1] = t
     end
 
-    -- Désactiver le bouton (anti-double clic)
     if btnLancer then
         btnLancer.BackgroundColor3 = C_BTN_OFF
-        btnLancer.Text             = "Envoi..."
+        btnLancer.Text             = "Sending..."
+        btnLancer.TextColor3       = C_TEXTE2
     end
 
     Lancer:FireServer(machineActuelle, tools)
 
-    -- Fermer après un court délai (le serveur envoie FermerUI aussi)
     task.delay(0.4, function()
-        if screenGui.Enabled then fermerUI() end
+        if screenGui.Enabled and not estEnFermeture then fermerUI() end
     end)
 end
 
--- ═══════════════════════════════════════════════
--- Événements serveur → client
--- ═══════════════════════════════════════════════
-
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Evenements serveur
+-- ═══════════════════════════════════════════════════════════════════════════════
 OuvrirUI.OnClientEvent:Connect(function(machine, etatData, recettes)
-    Logger.debug("Fuse", "OuvrirUI reçu ✓ machine=%s", tostring(machine and machine.Name))
+    Logger.debug("Fuse", "OuvrirUI recu machine=%s", tostring(machine and machine.Name))
     ouvrirUI(machine, etatData, recettes)
 end)
 
@@ -789,39 +955,36 @@ end)
 EtatUpdate.OnClientEvent:Connect(function(machine, update)
     if machine ~= machineActuelle then return end
 
-    if update.actif ~= nil then
-        etatMachine.actif = update.actif
-    end
+    if update.actif ~= nil then etatMachine.actif = update.actif end
 
     if update.termine then
         if timerConn then timerConn:Disconnect() timerConn = nil end
         if labelTimer then
             labelTimer.Text       = "READY TO COLLECT!"
-            labelTimer.TextColor3 = Color3.fromRGB(100, 220, 80)
+            labelTimer.TextColor3 = C_VALIDE
+            labelTimer.TextSize   = 20
         end
         if barreProgress then
             barreProgress.Size             = UDim2.new(1, 0, 1, 0)
-            barreProgress.BackgroundColor3 = Color3.fromRGB(80, 200, 60)
+            barreProgress.BackgroundColor3 = C_VALIDE
         end
     end
 
     if not update.actif then
-        -- Machine libérée (collecte terminée)
-        if screenGui.Enabled and machineActuelle == machine then
+        if screenGui.Enabled and not estEnFermeture and machineActuelle == machine then
             fermerUI()
         end
     end
 end)
 
--- Échap pour fermer
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
-    if input.KeyCode == Enum.KeyCode.Escape and screenGui.Enabled then
+    if input.KeyCode == Enum.KeyCode.Escape and screenGui.Enabled and not estEnFermeture then
         fermerUI()
     end
 end)
 
--- ═══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════════
 -- Init
--- ═══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════════════════════════════════
 creerUI()

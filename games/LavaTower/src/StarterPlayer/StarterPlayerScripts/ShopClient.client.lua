@@ -503,7 +503,7 @@ end
 local function creerRowCarry()
     local row = newInst("Frame", {
         Name                   = "RowCarry",
-        Size                   = UDim2.new(1, 0, 0, 90),
+        Size                   = UDim2.new(1, 0, 0, 72),
         BackgroundColor3       = C.CardBg,
         BackgroundTransparency = 0,
         BorderSizePixel        = 0,
@@ -527,22 +527,9 @@ local function creerRowCarry()
         Parent                 = row,
     })
 
-    local subLabel = newInst("TextLabel", {
-        Size                   = UDim2.new(0.6, 0, 0, 18),
-        Position               = UDim2.new(0, 0, 0, 26),
-        BackgroundTransparency = 1,
-        Font                   = Enum.Font.Gotham,
-        TextSize               = 12,
-        TextScaled             = false,
-        TextXAlignment         = Enum.TextXAlignment.Left,
-        TextColor3             = C.TextSec,
-        ZIndex                 = 7,
-        Parent                 = row,
-    })
-
     local priceLabel = newInst("TextLabel", {
         Size                   = UDim2.new(0.6, 0, 0, 18),
-        Position               = UDim2.new(0, 0, 0, 48),
+        Position               = UDim2.new(0, 0, 0, 28),
         BackgroundTransparency = 1,
         Font                   = Enum.Font.GothamBold,
         TextSize               = 12,
@@ -581,7 +568,6 @@ local function creerRowCarry()
         local prix    = maxed and "--" or ShopConfig.FormatNumber(ShopConfig.GetCarryPrice(nextLvl))
 
         title.Text      = "Carry   Niv. " .. level .. "/" .. ShopConfig.Carry.MaxLevel
-        subLabel.Text   = level == 0 and "Aucun Brainrot portable" or (level .. " BR max")
         priceLabel.Text = maxed and "Maximum atteint" or ("Prochain : " .. prix)
         buyBtn.Visible          = not maxed
         buyBtn.BackgroundColor3 = maxed and C.Bordure or C.Succes
@@ -596,7 +582,7 @@ local function creerRowStatMulti(cfg, upgradeType, layoutOrder)
 
     local row = newInst("Frame", {
         Name                   = "Row" .. upgradeType,
-        Size                   = UDim2.new(1, 0, 0, 120),
+        Size                   = UDim2.new(1, 0, 0, 96),
         BackgroundColor3       = C.CardBg,
         BackgroundTransparency = 0,
         BorderSizePixel        = 0,
@@ -620,22 +606,9 @@ local function creerRowStatMulti(cfg, upgradeType, layoutOrder)
         Parent                 = row,
     })
 
-    local subLabel = newInst("TextLabel", {
-        Size                   = UDim2.new(1, 0, 0, 16),
-        Position               = UDim2.new(0, 0, 0, 26),
-        BackgroundTransparency = 1,
-        Font                   = Enum.Font.Gotham,
-        TextSize               = 11,
-        TextScaled             = false,
-        TextXAlignment         = Enum.TextXAlignment.Left,
-        TextColor3             = C.TextSec,
-        ZIndex                 = 7,
-        Parent                 = row,
-    })
-
     local priceLabel = newInst("TextLabel", {
         Size                   = UDim2.new(1, 0, 0, 16),
-        Position               = UDim2.new(0, 0, 0, 46),
+        Position               = UDim2.new(0, 0, 0, 26),
         BackgroundTransparency = 1,
         Font                   = Enum.Font.GothamBold,
         TextSize               = 12,
@@ -648,7 +621,7 @@ local function creerRowStatMulti(cfg, upgradeType, layoutOrder)
 
     local btnContainer = newInst("Frame", {
         Size                   = UDim2.new(1, 0, 0, 44),
-        Position               = UDim2.new(0, 0, 0, 66),
+        Position               = UDim2.new(0, 0, 0, 46),
         BackgroundTransparency = 1,
         ZIndex                 = 7,
         Parent                 = row,
@@ -670,21 +643,8 @@ local function creerRowStatMulti(cfg, upgradeType, layoutOrder)
     local function refresh(data)
         local level = (data.upgrades and data.upgrades[upgradeType:lower()]) or 0
         local maxed = level >= cfg.MaxLevel
-        local note  = isJump and " (tours)" or ""
 
-        title.Text = cfg.Label .. "   Niv. " .. level .. "/" .. cfg.MaxLevel .. note
-
-        if isJump then
-            local jp      = ShopConfig.GetJumpStat(level)
-            local antiPct = math.floor(ShopConfig.GetAntiGravFactor(level) * 100)
-            local antiTxt = antiPct > 0 and ("  |  Anti-grav : " .. antiPct .. "%") or ""
-            subLabel.Text = "JumpPower : " .. jp .. antiTxt
-        else
-            local ws     = ShopConfig.GetSpeedStat(level)
-            local bon    = level * cfg.SpeedPerLevel
-            local bonTxt = bon > 0 and ("  (+" .. bon .. ")") or "  (base)"
-            subLabel.Text = "WalkSpeed : " .. ws .. bonTxt
-        end
+        title.Text = cfg.Label .. "   Niv. " .. level .. "/" .. cfg.MaxLevel
 
         if maxed then
             priceLabel.Text = "Maximum atteint"

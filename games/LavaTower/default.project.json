@@ -36,7 +36,6 @@
             "StarterPlayerScripts": {
                 "$className": "StarterPlayerScripts",
                 "Shared": { "$path": "../shared-lib/src/client" },
-                "FuseMachineClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/FuseMachineClient.client.lua" },
                 "SlotTextStyle": { "$path": "src/StarterPlayer/StarterPlayerScripts/SlotTextStyle.client.lua" },
                 "HUDController": { "$path": "src/StarterPlayer/StarterPlayerScripts/HUDController.client.lua" },
                 "ShopClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopClient.client.lua" }

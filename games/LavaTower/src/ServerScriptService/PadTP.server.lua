@@ -5,6 +5,7 @@
 
 local Players             = game:GetService("Players")
 local RunService          = game:GetService("RunService")
+local CollectionService   = game:GetService("CollectionService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local Workspace           = game:GetService("Workspace")
@@ -137,16 +138,30 @@ local function setupTour(tour, baseIndex)
 		Logger.warn("Pad", "'Lava' manquant dans %s — lave désactivée pour cette tour", tour.Name)
 	end
 
+	-- Hauteurs d'arrêt : bas des parties taggées "Stop" dans la tour
+	local stopHeights = {}
+	if lava then
+		for _, desc in ipairs(tour:GetDescendants()) do
+			if desc:IsA("BasePart") and CollectionService:HasTag(desc, "Stop") then
+				local bottomY = desc.Position.Y - desc.Size.Y / 2
+				table.insert(stopHeights, bottomY)
+			end
+		end
+		table.sort(stopHeights)
+	end
+
 	-- ── État lave (closure isolée par tour) ───────────────────────
 	local lavaActive    = false
+	local lavaArretee   = false
 	local laveConnexion = nil
 	local lavaVitesse   = LAVA_CONFIG.VITESSE_BASE
 	local hauteurDepart = lava and lava.Position.Y or 0
 	local lavaOwner     = nil -- joueur propriétaire actuellement dans cette tour
 
 	local function resetLava()
-		lavaActive = false
-		lavaOwner  = nil
+		lavaActive  = false
+		lavaArretee = false
+		lavaOwner   = nil
 		if laveConnexion then
 			laveConnexion:Disconnect()
 			laveConnexion = nil
@@ -180,6 +195,20 @@ local function setupTour(tour, baseIndex)
 			local now   = os.clock()
 			local delta = now - dernierTemps
 			dernierTemps = now
+
+			-- Vérifier arrêt sur tag Stop (10 studs à l'intérieur de la partie)
+			if not lavaArretee and #stopHeights > 0 then
+				local lavaTopY = lava.Position.Y + lava.Size.Y / 2
+				for _, stopY in ipairs(stopHeights) do
+					if lavaTopY >= stopY + 24 then
+						lavaArretee = true
+						lava.Position = Vector3.new(lava.Position.X, (stopY + 24) - lava.Size.Y / 2, lava.Position.Z)
+						Logger.info("Pad", "%s Lave stoppée (tag Stop Y=%.0f, Base_%d)", tour.Name, stopY, baseIndex)
+						break
+					end
+				end
+			end
+			if lavaArretee then return end
 
 			-- Monter la lave
 			lava.Anchored = true
