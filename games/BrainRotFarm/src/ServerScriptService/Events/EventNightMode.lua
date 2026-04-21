@@ -72,23 +72,46 @@ local function lancerPulsation(light, brightnessBase)
     return thread
 end
 
--- Booste les PointLights des BR EPIC+ dans le Workspace
+local RARETE_COULEUR = {
+    EPIC         = Color3.fromRGB(163, 73, 255),
+    LEGENDARY    = Color3.fromRGB(255, 165, 0),
+    MYTHIC       = Color3.fromRGB(255, 50, 50),
+    SECRET       = Color3.fromRGB(0, 255, 200),
+    BRAINROT_GOD = Color3.fromRGB(255, 255, 100),
+}
+local RARETE_LIGHT = {
+    EPIC         = { brightness = 2,  range = 18 },
+    LEGENDARY    = { brightness = 3,  range = 25 },
+    MYTHIC       = { brightness = 5,  range = 35 },
+    SECRET       = { brightness = 7,  range = 42 },
+    BRAINROT_GOD = { brightness = 10, range = 55 },
+}
+local createdLights = {}  -- PointLights créés dynamiquement (à détruire à la fin)
+
+-- Booste les PointLights des BR EPIC+ dans le Workspace (champ uniquement, pas les slots dépôt)
 local function boosterLumieresBR()
-    -- Chercher tous les objets dont le nom commence par "BR_"
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and obj.Name:match("^BR_") then
-            local rareteNom = pcall(function() return obj:GetAttribute("Rarete") end)
-                and obj:GetAttribute("Rarete") or nil
-            local ordre = rareteNom and (RARETE_ORDRE[rareteNom] or 0) or 0
+            local rareteNom = obj:GetAttribute("Rarete")
+            -- Normaliser en majuscules pour gérer "Legendary" et "LEGENDARY"
+            local rareteKey = rareteNom and rareteNom:upper() or nil
+            local ordre = rareteKey and (RARETE_ORDRE[rareteKey] or 0) or 0
             if ordre >= SEUIL_BOOST_NIGHT then
-                -- Chercher les PointLights dans ce modèle
-                for _, desc in ipairs(obj:GetDescendants()) do
-                    if desc:IsA("PointLight") then
-                        local brightnessSaved = desc.Brightness
-                        table.insert(savedLights, { light = desc, brightness = brightnessSaved })
-                        local thread = lancerPulsation(desc, brightnessSaved)
-                        table.insert(pulseTasks, thread)
+                local root = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                if root then
+                    local cfg = RARETE_LIGHT[rareteKey] or { brightness = 2, range = 18 }
+                    local light = root:FindFirstChildOfClass("PointLight")
+                    if not light then
+                        light = Instance.new("PointLight")
+                        light.Parent = root
+                        table.insert(createdLights, light)
                     end
+                    light.Brightness = cfg.brightness
+                    light.Range      = cfg.range
+                    light.Color      = RARETE_COULEUR[rareteKey] or Color3.fromRGB(255, 255, 255)
+                    table.insert(savedLights, { light = light, brightness = cfg.brightness })
+                    local thread = lancerPulsation(light, cfg.brightness)
+                    table.insert(pulseTasks, thread)
                 end
             end
         end
@@ -108,6 +131,12 @@ local function stopperPulsations()
         end
     end
     savedLights = {}
+
+    -- Détruire les PointLights créés dynamiquement
+    for _, light in ipairs(createdLights) do
+        if light and light.Parent then pcall(function() light:Destroy() end) end
+    end
+    createdLights = {}
 end
 
 -- ============================================================

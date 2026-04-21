@@ -44,17 +44,25 @@ local prochainEventTimestamp = nil
 local function BoucleAuto()
     local intervalle = Config.EventIntervalleMinutes * 60
     local earlyBird  = Config.EarlyBirdBonusMinutes * 60
-    local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
+    --local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
+    local types      = { "NightMode"}
     while true do
-        -- Enregistrer le moment prévu du prochain event
         prochainEventTimestamp = os.time() + intervalle
-        task.wait(intervalle - earlyBird)
-        NotifierTous("Event in 1h! Stay connected for the Early Bird bonus", Color3.fromRGB(100,200,255))
-        task.wait(earlyBird)
-        prochainEventTimestamp = nil  -- event imminant, effacer le timer
+        -- Early bird uniquement si l'intervalle est assez long
+        if intervalle > earlyBird then
+            task.wait(intervalle - earlyBird)
+            NotifierTous("Event in 1h! Stay connected for the Early Bird bonus", Color3.fromRGB(100,200,255))
+            task.wait(earlyBird)
+        else
+            task.wait(intervalle)
+        end
+        prochainEventTimestamp = nil
         local choix = types[math.random(1, #types)]
         DemarrerEvent(choix)
-        -- Pas de Discord pour ces events fréquents (Lucky Hour, Golden, etc.)
+        -- Attendre la durée de l'event avant d'en lancer un nouveau
+        local dureeEvent = (Config.EventsVisuels and Config.EventsVisuels[choix] and Config.EventsVisuels[choix].duree)
+            or (Config.EventDureeMinutes * 60)
+        task.wait(dureeEvent + 5)  -- +5s de marge pour la transition retour
     end
 end
 

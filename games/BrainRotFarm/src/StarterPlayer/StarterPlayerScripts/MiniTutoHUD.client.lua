@@ -228,6 +228,13 @@ makeCard(
     Color3.fromRGB(255, 200, 50)
 )
 
+makeCard(
+    "🔥", "ROBUX UPGRADES",
+    "Some Shop upgrades show an <b>orange 🔥 button</b> — those require <b>Robux</b> and are permanent (GamePass).\n\n<b>Shop upgrades:</b>\n• <b>Tracteur</b> (299 R$) — bonus MYTHIC &amp; SECRET spawns in your field\n• <b>LuckyCharm</b> (99 R$) — +25% rarity chance on every spawn\n• <b>Arroseur MAX / Speed MAX / Carry+ MAX</b> — unlock the final level of each upgrade\n\n<b>Flower Pot:</b>\n• <b>Pot 4</b> (149 R$) — 4th pot slot\n• <b>SeedDoubler</b> — claim 2 Daily Seeds per day instead of 1\n• <b>Instant Grow</b> (35 R$) — skip the grow timer on any pot\n\nAll Robux purchases are <b>one-time</b> and stay forever on your account.",
+    6,
+    Color3.fromRGB(255, 140, 30)
+)
+
 -- Recalcul du CanvasSize apres generation du contenu
 task.wait(0)
 scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)

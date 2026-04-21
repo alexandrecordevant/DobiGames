@@ -90,8 +90,9 @@ GameConfig.Raretes = {
     { nom = "Uncommon",  chance = 25,  valeur = 3,   couleur = Color3.fromRGB(100, 200, 100) },
     { nom = "Rare",      chance = 10,  valeur = 10,  couleur = Color3.fromRGB(100, 100, 255) },
     { nom = "Epic",      chance = 4,   valeur = 30,  couleur = Color3.fromRGB(180, 50,  255) },
-    { nom = "Legendary", chance = 0.9, valeur = 100, couleur = Color3.fromRGB(255, 200, 0  ) },
-    { nom = "Secret",    chance = 0.1, valeur = 500, couleur = Color3.fromRGB(255, 50,  50 ) },
+    { nom = "Legendary", chance = 0.9,  valeur = 100,  couleur = Color3.fromRGB(255, 200, 0  ) },
+    { nom = "Mythic",    chance = 0.3,  valeur = 250,  couleur = Color3.fromRGB(255, 20,  180) },
+    { nom = "Secret",    chance = 0.1,  valeur = 500,  couleur = Color3.fromRGB(255, 50,  50 ) },
 }
 
 -- === ANIMATION CONFIG ===
