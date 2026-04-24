@@ -102,33 +102,60 @@ end
 -- ============================================================
 local function assombrirCiel()
     savedLighting = {
-        Brightness     = Lighting.Brightness,
-        Ambient        = Lighting.Ambient,
-        OutdoorAmbient = Lighting.OutdoorAmbient,
-        FogEnd         = Lighting.FogEnd,
-        FogColor       = Lighting.FogColor,
+        Brightness        = Lighting.Brightness,
+        Ambient           = Lighting.Ambient,
+        OutdoorAmbient    = Lighting.OutdoorAmbient,
+        FogEnd            = Lighting.FogEnd,
+        FogColor          = Lighting.FogColor,
+        ColorShift_Top    = Lighting.ColorShift_Top,
+        ColorShift_Bottom = Lighting.ColorShift_Bottom,
+        ClockTime         = Lighting.ClockTime,
     }
+    -- ClockTime direct (non tweenable) → crépuscule pour ciel rouge sans trop obscurcir
+    pcall(function() Lighting.ClockTime = 17.0 end)
+
     local info = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     pcall(function()
         TweenService:Create(Lighting, info, {
-            Brightness     = 0.15,
-            Ambient        = Color3.fromRGB(90, 5, 5),
-            OutdoorAmbient = Color3.fromRGB(60, 0, 0),
-            FogEnd         = 350,
-            FogColor       = Color3.fromRGB(50, 5, 5),
+            Brightness        = 1.2,
+            Ambient           = Color3.fromRGB(120, 10, 0),
+            OutdoorAmbient    = Color3.fromRGB(100, 8, 0),
+            FogEnd            = 1200,
+            FogColor          = Color3.fromRGB(100, 10, 0),
+            ColorShift_Top    = Color3.fromRGB(255, 0, 0),
+            ColorShift_Bottom = Color3.fromRGB(200, 0, 0),
         }):Play()
     end)
+
+    -- ColorCorrectionEffect pour renforcer la teinte rouge sur tout l'écran
+    local cc = Lighting:FindFirstChild("MeteorColorCorrection")
+    if cc then cc:Destroy() end
+    local correction = Instance.new("ColorCorrectionEffect")
+    correction.Name       = "MeteorColorCorrection"
+    correction.TintColor  = Color3.fromRGB(255, 80, 80)
+    correction.Brightness = 0
+    correction.Contrast   = 0.1
+    correction.Saturation = 0.3
+    correction.Parent     = Lighting
 end
 
 local function restaurerCiel()
+    local cc = Lighting:FindFirstChild("MeteorColorCorrection")
+    if cc then pcall(function() cc:Destroy() end) end
+
+    pcall(function()
+        Lighting.ClockTime = savedLighting.ClockTime or 14
+    end)
     local info = TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     pcall(function()
         TweenService:Create(Lighting, info, {
-            Brightness     = savedLighting.Brightness     or 2,
-            Ambient        = savedLighting.Ambient        or Color3.fromRGB(70, 70, 70),
-            OutdoorAmbient = savedLighting.OutdoorAmbient or Color3.fromRGB(70, 70, 70),
-            FogEnd         = savedLighting.FogEnd         or 100000,
-            FogColor       = savedLighting.FogColor       or Color3.fromRGB(191, 191, 191),
+            Brightness        = savedLighting.Brightness        or 2,
+            Ambient           = savedLighting.Ambient           or Color3.fromRGB(70, 70, 70),
+            OutdoorAmbient    = savedLighting.OutdoorAmbient    or Color3.fromRGB(70, 70, 70),
+            FogEnd            = savedLighting.FogEnd            or 100000,
+            FogColor          = savedLighting.FogColor          or Color3.fromRGB(191, 191, 191),
+            ColorShift_Top    = savedLighting.ColorShift_Top    or Color3.new(0, 0, 0),
+            ColorShift_Bottom = savedLighting.ColorShift_Bottom or Color3.new(0, 0, 0),
         }):Play()
     end)
 end

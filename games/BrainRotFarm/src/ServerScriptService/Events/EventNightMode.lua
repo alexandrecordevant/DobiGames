@@ -129,16 +129,20 @@ local function appliquerMateriauMap()
     if not map then return end
     for _, obj in ipairs(map:GetDescendants()) do
         if obj:IsA("BasePart") then
-            materiauOriginel[obj] = obj.Material
-            obj.Material = Enum.Material.Limestone
+            materiauOriginel[obj] = { Material = obj.Material, Color = obj.Color }
+            obj.Material = Enum.Material.Basalt
+            obj.Color    = Color3.fromRGB(30, 30, 35)
         end
     end
 end
 
 local function restaurerMateriauMap()
-    for part, mat in pairs(materiauOriginel) do
+    for part, saved in pairs(materiauOriginel) do
         if part and part.Parent then
-            pcall(function() part.Material = mat end)
+            pcall(function()
+                part.Material = saved.Material
+                part.Color    = saved.Color
+            end)
         end
     end
     materiauOriginel = {}

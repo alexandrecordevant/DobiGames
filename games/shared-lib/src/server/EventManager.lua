@@ -44,8 +44,8 @@ local prochainEventTimestamp = nil
 local function BoucleAuto()
     local intervalle = Config.EventIntervalleMinutes * 60
     local earlyBird  = Config.EarlyBirdBonusMinutes * 60
-    --local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour", "DoubleCoins" }
-    local types      = { "Rain"}
+    --local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
+    local types      = { "LuckyHour"}
     while true do
         prochainEventTimestamp = os.time() + intervalle
         -- Early bird uniquement si l'intervalle est assez long

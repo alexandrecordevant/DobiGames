@@ -357,7 +357,7 @@ GameConfig.EventsVisuels = {
         duree           = 60,
         rarityPool      = { RARE = 60, EPIC = 35, LEGENDARY = 5 },
         spawnInterval   = 10,
-        couleurAmbiance = Color3.fromRGB(180, 0, 255),
+        couleurAmbiance = Color3.fromRGB(255, 180, 220),
         message         = "⭐ LUCKY HOUR! Rare BRs are spawning on your base!",
         messageFin      = "⭐ Lucky Hour is over.",
     },
@@ -866,5 +866,51 @@ GameConfig.Fuse = {
 
 -- Injecter la zone dans la config Rain (définie plus haut dans ce fichier)
 GameConfig.EventsVisuels.Rain.champCommunZone = GameConfig.ChampCommunZone
+
+-- === LUCKY HOUR — MUTATION CONFIG ===
+GameConfig.LuckyHourMutationConfig = {
+    enabled = true,
+    chance  = 0.15,  -- 15% de chance qu'un spawn LuckyHour soit muté
+
+    -- Poids et multiplicateur d'income par type de mutation
+    types = {
+        { name = "BrainrotsToxic",   weight = 20, multiplier = 2   },
+        { name = "BrainrotsLava",    weight = 15, multiplier = 2.5 },
+        { name = "BrainrotsGold",    weight = 15, multiplier = 3   },
+        { name = "BrainrotsDiamant", weight = 10, multiplier = 4   },
+        { name = "BrainrotsRainbow", weight = 10, multiplier = 5   },
+        { name = "BrainrotsNebula",  weight = 15, multiplier = 3   },
+        { name = "CrazyBrainrots",   weight = 15, multiplier = 2   },
+    },
+
+    -- Mapping rareté : Mutation/ utilise "GOD" au lieu de "BRAINROT_GOD"
+    rareteMapping = { BRAINROT_GOD = "GOD" },
+
+    -- Sous-dossiers à ignorer dans chaque type de mutation
+    ignoredFolders = { "LUCKY_BLOCK", "ToUseAfter" },
+}
+
+-- === CHAMP PERSO — MUTATION CONFIG ===
+GameConfig.PersonalFieldMutationConfig = {
+    enabled = true,
+    chance  = 0.002,  -- 0.2% par spawn (jamais sur COMMON)
+
+    -- Raretés exclues de la mutation (toujours normales)
+    raretesExclues = { "COMMON" },
+
+    -- Poids et multiplicateur d'income par type
+    types = {
+        { name = "BrainrotsToxic",   weight = 20, multiplier = 3 },
+        { name = "BrainrotsLava",    weight = 15, multiplier = 4 },
+        { name = "BrainrotsGold",    weight = 15, multiplier = 5 },
+        { name = "BrainrotsDiamant", weight = 10, multiplier = 6 },
+        { name = "BrainrotsRainbow", weight = 10, multiplier = 8 },
+        { name = "BrainrotsNebula",  weight = 15, multiplier = 4 },
+        { name = "CrazyBrainrots",   weight = 15, multiplier = 3 },
+    },
+
+    rareteMapping  = { BRAINROT_GOD = "GOD" },
+    ignoredFolders = { "LUCKY_BLOCK", "ToUseAfter" },
+}
 
 return GameConfig

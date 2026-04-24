@@ -45,6 +45,7 @@ local PREFIXES = {
     Bat      = "[BAT]",
     Place    = "[PLACE]",
     Weather  = "[WEATHER]",
+    Mutation = "[MUTATION]",
 }
 
 -- Appeler une seule fois au boot du jeu

@@ -25,13 +25,25 @@ local modulesCache = {}
 local function chargerModule(nomEvent)
     if modulesCache[nomEvent] ~= nil then return modulesCache[nomEvent] end
 
+    local nomModule = "Event" .. nomEvent
+
+    -- 1. Chercher dans ServerScriptService.Events (modules BrainRotFarm)
+    local moduleScript = nil
     local Events = ServerScriptService:FindFirstChild("Events")
-    if not Events then
-        modulesCache[nomEvent] = false
-        return false
+    if Events then
+        moduleScript = Events:FindFirstChild(nomModule)
     end
 
-    local moduleScript = Events:FindFirstChild("Event" .. nomEvent)
+    -- 2. Fallback : SharedLib.Server.Events (modules shared-lib)
+    if not moduleScript then
+        local ok, sharedEvents = pcall(function()
+            return ServerScriptService.SharedLib.Server.Events
+        end)
+        if ok and sharedEvents then
+            moduleScript = sharedEvents:FindFirstChild(nomModule)
+        end
+    end
+
     if not moduleScript then
         modulesCache[nomEvent] = false
         return false

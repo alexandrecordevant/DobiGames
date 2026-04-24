@@ -44,6 +44,8 @@ local savedAmbient     = nil
 local savedColorShift  = nil
 local bloomEffect      = nil
 local highlights       = {}    -- Highlight instances créées sur les BR
+local connDescendant   = nil   -- connexion DescendantAdded pour les nouveaux BR
+local couleurActive    = nil   -- couleur golden en cours
 
 -- ============================================================
 -- Utilitaires
@@ -53,29 +55,43 @@ local function notifierTous(message)
     if ev then pcall(function() ev:FireAllClients("INFO", message) end) end
 end
 
--- Ajoute un Highlight doré sur tous les BR actifs du Workspace
+-- Applique un Highlight doré sur un BR Model
+-- Utilise l'attribut Rarete (plus robuste que le nom qui varie selon l'origine)
+local function highlighterBR(obj, couleur)
+    if not obj:IsA("Model") then return end
+    if not obj:GetAttribute("Rarete") then return end
+    if obj:FindFirstChild("GoldenHighlight") then return end
+    local ok, hl = pcall(function()
+        local h = Instance.new("Highlight")
+        h.Name                = "GoldenHighlight"
+        h.FillColor           = couleur or Color3.fromRGB(255, 215, 0)
+        h.FillTransparency    = 0.4
+        h.OutlineColor        = Color3.fromRGB(255, 200, 0)
+        h.OutlineTransparency = 0
+        h.Adornee             = obj
+        h.Parent              = obj
+        return h
+    end)
+    if ok and hl then table.insert(highlights, hl) end
+end
+
+-- Ajoute un Highlight doré sur tous les BR actifs + écoute les nouveaux
 local function appliquerHighlightsBR(couleurGolden)
+    couleurActive = couleurGolden
+    -- BR déjà présents
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj.Name:match("^BR_") then
-            -- Vérifier qu'il n'a pas déjà un highlight golden
-            if not obj:FindFirstChild("GoldenHighlight") then
-                local ok, hl = pcall(function()
-                    local h = Instance.new("Highlight")
-                    h.Name                = "GoldenHighlight"
-                    h.FillColor           = couleurGolden or Color3.fromRGB(255, 215, 0)
-                    h.FillTransparency    = 0.4
-                    h.OutlineColor        = Color3.fromRGB(255, 200, 0)
-                    h.OutlineTransparency = 0
-                    h.Adornee             = obj
-                    h.Parent              = obj
-                    return h
-                end)
-                if ok and hl then
-                    table.insert(highlights, hl)
-                end
-            end
-        end
+        highlighterBR(obj, couleurActive)
     end
+    -- BR qui spawent ou sont déposés pendant l'event
+    connDescendant = Workspace.DescendantAdded:Connect(function(obj)
+        if not obj:IsA("Model") then return end
+        -- Petit délai pour laisser le BR finir son init et recevoir ses attributs
+        task.delay(0.3, function()
+            if obj and obj.Parent and obj:GetAttribute("Rarete") then
+                highlighterBR(obj, couleurActive)
+            end
+        end)
+    end)
 end
 
 -- Supprime tous les Highlights golden
@@ -88,7 +104,7 @@ local function supprimerHighlights()
     highlights = {}
     -- Nettoyer aussi tout résidu dans le workspace (sécurité)
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj.Name == "GoldenHighlight" then
+        if obj:IsA("Highlight") and obj.Name == "GoldenHighlight" then
             pcall(function() obj:Destroy() end)
         end
     end
@@ -180,6 +196,13 @@ function EventGolden.Terminer()
     -- Sécurité : supprimer tout GoldenBloom résiduel
     local residuel = Lighting:FindFirstChild("GoldenBloom")
     if residuel then pcall(function() residuel:Destroy() end) end
+
+    -- Arrêter l'écoute des nouveaux BR
+    if connDescendant then
+        connDescendant:Disconnect()
+        connDescendant = nil
+    end
+    couleurActive = nil
 
     -- Supprimer les Highlights
     supprimerHighlights()

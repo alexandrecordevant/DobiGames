@@ -46,11 +46,24 @@ coinsLabel.TextSize               = 52
 coinsLabel.Font                   = Enum.Font.GothamBold
 coinsLabel.TextXAlignment         = Enum.TextXAlignment.Left
 
--- Event banner
-local eventFrame, eventLabel = NouveauLabel(gui,
-    UDim2.new(0,320,0,55), UDim2.new(0.5,-160,0,10),
-    Color3.fromRGB(200,50,0), Color3.fromRGB(255,255,255), "")
-eventFrame.Visible = false
+-- Event banner — bas droite, sans fond, sans emoji
+local eventLabel = Instance.new("TextLabel", gui)
+eventLabel.Name                   = "EventLabel"
+eventLabel.Size                   = UDim2.new(0, 260, 0, 36)
+eventLabel.AnchorPoint            = Vector2.new(1, 1)
+eventLabel.Position               = UDim2.new(1, -12, 1, -12)
+eventLabel.BackgroundTransparency = 1
+eventLabel.TextColor3             = Color3.fromRGB(220, 220, 220)
+eventLabel.TextXAlignment         = Enum.TextXAlignment.Right
+eventLabel.TextScaled             = false
+eventLabel.TextSize               = 20
+eventLabel.Font                   = Enum.Font.Gotham
+eventLabel.Text                   = ""
+eventLabel.Visible                = false
+local eventStroke = Instance.new("UIStroke", eventLabel)
+eventStroke.Color     = Color3.new(0, 0, 0)
+eventStroke.Thickness = 1.5
+local eventFrame = eventLabel  -- alias pour compatibilité
 
 -- Mise à jour HUD
 local UpdateHUD = ReplicatedStorage:WaitForChild("UpdateHUD")
@@ -60,13 +73,21 @@ end)
 
 -- Event démarré
 local EventStarted = ReplicatedStorage:WaitForChild("EventStarted")
+local function formatDuree(s)
+    s = math.ceil(s)
+    if s >= 60 then
+        return string.format("%dm %02ds", math.floor(s/60), s % 60)
+    end
+    return s .. "s"
+end
+
 EventStarted.OnClientEvent:Connect(function(typeEvent, duree)
     eventFrame.Visible = true
-    local nomAffiche = typeEvent or "EVENT"
+    local nomAffiche = typeEvent or "Event"
     local t = duree
     task.spawn(function()
         while t > 0 do
-            eventLabel.Text = "🔥 " .. nomAffiche .. "  " .. math.ceil(t) .. "s"
+            eventLabel.Text = nomAffiche .. "  " .. formatDuree(t)
             task.wait(1) ; t = t - 1
         end
         eventFrame.Visible = false

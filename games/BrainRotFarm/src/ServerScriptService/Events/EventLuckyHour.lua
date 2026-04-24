@@ -11,6 +11,8 @@ EventLuckyHour.DUREE_DEFAUT = 60
 -- ============================================================
 local Players             = game:GetService("Players")
 local Lighting            = game:GetService("Lighting")
+local TweenService        = game:GetService("TweenService")
+local Workspace           = game:GetService("Workspace")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
@@ -18,6 +20,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- Dépendances
 -- ============================================================
 local Logger      = require(ServerScriptService.SharedLib.Server.Logger)
+local GameConfig  = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 -- ============================================================
 -- Chargement différé de SpawnManager
@@ -34,9 +37,11 @@ end
 -- ============================================================
 -- État interne
 -- ============================================================
-local actif          = false
-local spawnThread    = nil
-local colorCorrection = nil  -- Instance ColorCorrection créée pendant l'event
+local actif           = false
+local spawnThread     = nil
+local colorCorrection = nil
+local savedLighting   = {}
+local savedMap        = {}   -- { [BasePart] = { Material, Color } }
 
 -- ============================================================
 -- Utilitaires
@@ -68,36 +73,134 @@ end
 -- ============================================================
 -- Visuel : ColorCorrection violette
 -- ============================================================
-local function activerAmbiance(couleur)
-    -- Chercher ou créer le ColorCorrection dans Lighting
-    colorCorrection = Lighting:FindFirstChildOfClass("ColorCorrection")
-    if not colorCorrection then
-        colorCorrection = Instance.new("ColorCorrection")
-        colorCorrection.Parent = Lighting
+-- ============================================================
+-- Sol CrackedLava rose
+-- ============================================================
+local function appliquerSol()
+    savedMap = {}
+    local map = Workspace:FindFirstChild("Map")
+    if not map then return end
+    for _, obj in ipairs(map:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            savedMap[obj] = { Material = obj.Material, Color = obj.Color }
+            obj.Material  = Enum.Material.CrackedLava
+            obj.Color     = Color3.fromRGB(255, 150, 180)
+        end
     end
-    -- Teinte violette via TintColor
+end
+
+local function restaurerSol()
+    for part, saved in pairs(savedMap) do
+        if part and part.Parent then
+            pcall(function()
+                part.Material = saved.Material
+                part.Color    = saved.Color
+            end)
+        end
+    end
+    savedMap = {}
+end
+
+-- ============================================================
+-- Ciel rosé
+-- ============================================================
+local function appliquerCiel()
+    savedLighting = {
+        Ambient           = Lighting.Ambient,
+        OutdoorAmbient    = Lighting.OutdoorAmbient,
+        ColorShift_Top    = Lighting.ColorShift_Top,
+        ColorShift_Bottom = Lighting.ColorShift_Bottom,
+    }
+    local info = TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     pcall(function()
-        colorCorrection.TintColor = couleur
-        colorCorrection.Saturation = 0.4
-        colorCorrection.Brightness = 0.05
+        TweenService:Create(Lighting, info, {
+            Ambient           = Color3.fromRGB(180, 140, 165),
+            OutdoorAmbient    = Color3.fromRGB(160, 120, 145),
+            ColorShift_Top    = Color3.fromRGB(255, 160, 200),
+            ColorShift_Bottom = Color3.fromRGB(220, 130, 170),
+        }):Play()
     end)
 end
 
+local function restaurerCiel()
+    local info = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    pcall(function()
+        TweenService:Create(Lighting, info, {
+            Ambient           = savedLighting.Ambient           or Color3.fromRGB(70, 70, 70),
+            OutdoorAmbient    = savedLighting.OutdoorAmbient    or Color3.fromRGB(70, 70, 70),
+            ColorShift_Top    = savedLighting.ColorShift_Top    or Color3.new(0, 0, 0),
+            ColorShift_Bottom = savedLighting.ColorShift_Bottom or Color3.new(0, 0, 0),
+        }):Play()
+    end)
+end
+
+-- ============================================================
+-- Visuel : ColorCorrection violette
+-- ============================================================
+local function activerAmbiance(couleur)
+    local existing = Lighting:FindFirstChild("LuckyHourCC")
+    if existing then existing:Destroy() end
+
+    colorCorrection            = Instance.new("ColorCorrectionEffect")
+    colorCorrection.Name       = "LuckyHourCC"
+    colorCorrection.TintColor  = couleur or Color3.fromRGB(255, 180, 220)
+    colorCorrection.Saturation = 0.2
+    colorCorrection.Brightness = 0.08
+    colorCorrection.Contrast   = 0
+    colorCorrection.Parent     = Lighting
+end
+
 local function desactiverAmbiance()
-    if colorCorrection then
-        pcall(function()
-            colorCorrection.TintColor   = Color3.fromRGB(255, 255, 255)
-            colorCorrection.Saturation  = 0
-            colorCorrection.Brightness  = 0
-        end)
-        -- Ne pas détruire si le ColorCorrection existait déjà avant l'event
-        colorCorrection = nil
+    if colorCorrection and colorCorrection.Parent then
+        pcall(function() colorCorrection:Destroy() end)
     end
+    colorCorrection = nil
+    -- Sécurité
+    local residuel = Lighting:FindFirstChild("LuckyHourCC")
+    if residuel then residuel:Destroy() end
+end
+
+-- ============================================================
+-- Tirage mutation (LuckyHour Mutation)
+-- ============================================================
+local function tirerTypeMutation(mutCfg)
+    local total = 0
+    for _, t in ipairs(mutCfg.types) do total = total + t.weight end
+    local roll  = math.random() * total
+    local cumul = 0
+    for _, t in ipairs(mutCfg.types) do
+        cumul = cumul + t.weight
+        if roll <= cumul then return t end
+    end
+    return mutCfg.types[1]
+end
+
+local function doitMuter(mutCfg)
+    if not mutCfg or not mutCfg.enabled then return false end
+    return math.random() < (mutCfg.chance or 0)
 end
 
 -- ============================================================
 -- Boucle de spawn sur les bases occupées
 -- ============================================================
+local function spawnPourJoueur(SM, player, rarityPool)
+    local baseIndex = SM.GetBase(player)
+    if not baseIndex then return end
+
+    local rareteNom = tirerRarete(rarityPool)
+    local mutCfg    = GameConfig.LuckyHourMutationConfig
+
+    if doitMuter(mutCfg) then
+        local typeMutation = tirerTypeMutation(mutCfg)
+        pcall(SM.SpawnerBRMuteeDansBase, baseIndex, rareteNom, typeMutation.name, typeMutation.multiplier)
+        Logger.info("Mutation", "LuckyHour mute : %s %s x%.1f sur Base_%d (%s)",
+            typeMutation.name, rareteNom, typeMutation.multiplier, baseIndex, player.Name)
+    else
+        pcall(SM.SpawnerBRDansBase, baseIndex, rareteNom)
+        Logger.debug("Event", "LuckyHour : %s spawne sur Base_%d (%s)", rareteNom, baseIndex, player.Name)
+    end
+end
+
 local function boucleSpawn(config)
     local rarityPool    = config.rarityPool    or { RARE = 60, EPIC = 35, LEGENDARY = 5 }
     local spawnInterval = config.spawnInterval or 10
@@ -109,14 +212,8 @@ local function boucleSpawn(config)
         local SM = getSpawnManager()
         if not SM then continue end
 
-        -- Itérer sur tous les joueurs connectés
         for _, player in ipairs(Players:GetPlayers()) do
-            local baseIndex = SM.GetBase(player)
-            if baseIndex then
-                local rareteNom = tirerRarete(rarityPool)
-                pcall(SM.SpawnerBRDansBase, baseIndex, rareteNom)
-                Logger.debug("Event", "LuckyHour : %s spawné sur Base_%d (%s)", rareteNom, baseIndex, player.Name)
-            end
+            spawnPourJoueur(SM, player, rarityPool)
         end
     end
 end
@@ -133,7 +230,9 @@ function EventLuckyHour.Demarrer(config)
     local es = ReplicatedStorage:FindFirstChild("EventStarted")
     if es then pcall(function() es:FireAllClients("LuckyHour", config.duree) end) end
 
-    -- Ambiance violette
+    -- Sol + ciel + ambiance
+    appliquerSol()
+    appliquerCiel()
     activerAmbiance(config.couleurAmbiance or Color3.fromRGB(180, 0, 255))
 
     -- Lancer la boucle de spawn
@@ -144,12 +243,9 @@ function EventLuckyHour.Demarrer(config)
 
         local SM = getSpawnManager()
         if SM then
+            local rarityPool = config.rarityPool or { RARE = 60, EPIC = 35, LEGENDARY = 5 }
             for _, player in ipairs(Players:GetPlayers()) do
-                local baseIndex = SM.GetBase(player)
-                if baseIndex then
-                    local rareteNom = tirerRarete(config.rarityPool or { RARE = 60, EPIC = 35, LEGENDARY = 5 })
-                    pcall(SM.SpawnerBRDansBase, baseIndex, rareteNom)
-                end
+                spawnPourJoueur(SM, player, rarityPool)
             end
         end
 
@@ -168,7 +264,9 @@ function EventLuckyHour.Terminer()
         spawnThread = nil
     end
 
-    -- Restaurer l'ambiance
+    -- Restaurer sol + ciel + ambiance
+    restaurerSol()
+    restaurerCiel()
     desactiverAmbiance()
 
     Logger.info("Event", "■ Lucky Hour terminé")

@@ -11,6 +11,7 @@ local SpawnManager = {}
 local TweenService       = game:GetService("TweenService")
 local Players            = game:GetService("Players")
 local ReplicatedStorage  = game:GetService("ReplicatedStorage")
+local ServerStorage      = game:GetService("ServerStorage")
 local Workspace          = game:GetService("Workspace")
 local MarketplaceService = game:GetService("MarketplaceService")
 
@@ -308,18 +309,72 @@ end
 -- Spawn d'un seul Brain Rot dans une base
 -- ============================================================
 
-local function spawnerUnBrainRot(baseIndex)
+-- rareteForce   : { nom, dossier } — rareté imposée (LuckyHour), nil = tirage normal
+-- modeleForce   : modèle source imposé (BR muté), nil = choisirModele()
+-- mutTypeForce  : nom du type de mutation (pour attributs + income mult)
+-- incomeMultForce : multiplicateur income appliqué sur CashParSeconde
+local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeForce, incomeMultForce)
 	local zone = zones[baseIndex]
 	if not zone then return end
 
-	-- Limite max par base
-	if compteurs[baseIndex] >= CONFIG.MAX_PAR_BASE then return end
+	-- Limite max par base (ignorée pour spawns forcés LuckyHour)
+	if not rareteForce and compteurs[baseIndex] >= CONFIG.MAX_PAR_BASE then return end
 
-	-- Tirage de rareté
-	local rarete = tirerRarete()
+	-- Tirage de rareté (ou rareté imposée)
+	local rarete = rareteForce or tirerRarete()
 
-	-- Choix du modèle
-	local modeleSource = choisirModele(rarete.dossier)
+	-- ── Tentative mutation champ perso (0.2%, jamais COMMON) — ignorée si spawn forcé ──
+	local mutSourcePerso  = nil
+	local mutTypePerso    = mutTypeForce or nil
+	local mutMultPerso    = incomeMultForce or 1
+	local pfMutCfg        = _GameConfig.PersonalFieldMutationConfig
+
+	if not rareteForce and pfMutCfg and pfMutCfg.enabled and mutationFolder then
+		-- Vérifier rareté non exclue
+		local exclu = false
+		for _, r in ipairs(pfMutCfg.raretesExclues or {}) do
+			if r == rarete.nom then exclu = true ; break end
+		end
+
+		if not exclu and math.random() < (pfMutCfg.chance or 0.002) then
+			-- Tirage pondéré du type
+			local total = 0
+			for _, t in ipairs(pfMutCfg.types) do total = total + t.weight end
+			local roll, cumul = math.random() * total, 0
+			local typeTire = nil
+			for _, t in ipairs(pfMutCfg.types) do
+				cumul = cumul + t.weight
+				if roll <= cumul then typeTire = t ; break end
+			end
+
+			if typeTire then
+				local typeFolder = mutationFolder:FindFirstChild(typeTire.name)
+				if typeFolder then
+					-- Mapper la rareté (BRAINROT_GOD → GOD)
+					local rareteMappe = (pfMutCfg.rareteMapping and pfMutCfg.rareteMapping[rarete.nom]) or rarete.nom
+					local rareteFolder = typeFolder:FindFirstChild(rareteMappe)
+					if rareteFolder then
+						local ignored = {}
+						for _, nom in ipairs(pfMutCfg.ignoredFolders or {}) do ignored[nom] = true end
+						local candidats = {}
+						for _, child in ipairs(rareteFolder:GetChildren()) do
+							if not ignored[child.Name] and (child:IsA("Model") or child:IsA("BasePart")) then
+								table.insert(candidats, child)
+							end
+						end
+						if #candidats > 0 then
+							mutSourcePerso = candidats[math.random(1, #candidats)]
+							mutTypePerso   = typeTire.name
+							mutMultPerso   = typeTire.multiplier
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- Choix du modèle (forcé, muté perso, ou normal)
+	local modeleSource = modeleForce or mutSourcePerso or choisirModele(rarete.dossier)
 	if not modeleSource then return end
 
 	-- Clonage
@@ -345,7 +400,18 @@ local function spawnerUnBrainRot(baseIndex)
 	local cpsSrc  = modeleSource:GetAttribute("CashParSeconde")
 	if prixSrc then pcall(function() clone:SetAttribute("Prix", prixSrc) end) end
 	local cpsVal = cpsSrc or (_GameConfig.IncomeParRarete and _GameConfig.IncomeParRarete[rarete.nom]) or 0
+	if mutTypePerso then
+		cpsVal = math.floor(cpsVal * mutMultPerso)
+	end
 	pcall(function() clone:SetAttribute("CashParSeconde", cpsVal) end)
+
+	-- Attributs mutation champ perso
+	if mutTypePerso then
+		pcall(function() clone:SetAttribute("IsMutated",    true)        end)
+		pcall(function() clone:SetAttribute("MutationType", mutTypePerso) end)
+		Logger.info("Mutation", "Champ perso : %s %s x%.0f sur Base_%d",
+			mutTypePerso, rarete.nom, mutMultPerso, baseIndex)
+	end
 
 	-- Position aléatoire dans la SpawnZone
 	local x = math.random() * (zone.xMax - zone.xMin) + zone.xMin
@@ -999,18 +1065,135 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
     end)
 end
 
--- Spawne un BR d'une rareté précise à une position aléatoire dans la zone d'une base
--- Utilisé par EventLuckyHour pour spawner sur les bases occupées
+-- Spawne un BR d'une rareté précise dans la zone d'une base (LuckyHour normal)
+-- Utilise spawnerUnBrainRot : registration, despawn, billboard, ProximityPrompt inclus
 function SpawnManager.SpawnerBRDansBase(baseIndex, rareteNom)
-    local zone = zones[baseIndex]
-    if not zone then
+    if not zones[baseIndex] then
         Logger.warn("Spawn", "SpawnerBRDansBase : zone introuvable pour Base_%s", tostring(baseIndex))
         return
     end
-    local x   = math.random() * (zone.xMax - zone.xMin) + zone.xMin
-    local z   = math.random() * (zone.zMax - zone.zMin) + zone.zMin
-    local pos = Vector3.new(x, zone.yFixe, z)
-    SpawnManager.SpawnerBRSpecifique(pos, rareteNom)
+    -- Construire l'objet rareté attendu par spawnerUnBrainRot
+    local rareteObj = nil
+    for _, r in ipairs(RARITES) do
+        if r.nom == rareteNom then rareteObj = r ; break end
+    end
+    -- Fallback pour MYTHIC/SECRET (absents de RARITES SpawnManager)
+    if not rareteObj then
+        rareteObj = { nom = rareteNom, dossier = rareteNom, poids = 0 }
+    end
+    spawnerUnBrainRot(baseIndex, rareteObj)
+end
+
+-- ============================================================
+-- Spawn BR Muté (LuckyHour Mutation)
+-- Clone depuis ServerStorage/Mutation/[type]/[rareteNom]
+-- Applique les attributs IsMutated, MutationType, CashParSeconde × multiplicateur
+-- ============================================================
+
+local mutationFolder = ServerStorage:FindFirstChild("Mutation")
+
+-- Dossiers à ignorer dans chaque type de mutation
+local MUTATION_IGNORED = { LUCKY_BLOCK = true, ToUseAfter = true }
+
+-- Mapping rareté → nom de dossier dans Mutation/ (GOD au lieu de BRAINROT_GOD)
+local function mapperRarete(rareteNom, mutCfg)
+    if mutCfg and mutCfg.rareteMapping and mutCfg.rareteMapping[rareteNom] then
+        return mutCfg.rareteMapping[rareteNom]
+    end
+    return rareteNom
+end
+
+-- Tire un modèle aléatoire depuis un dossier de rareté, en ignorant les sous-dossiers exclus
+local function clonerBRMute(typeFolder, rareteNom, mutCfg)
+    local rareteFolder = typeFolder:FindFirstChild(rareteNom)
+    if not rareteFolder then
+        Logger.warn("Mutation", "Dossier rareté introuvable : %s/%s", typeFolder.Name, rareteNom)
+        return nil
+    end
+
+    -- Filtrer les enfants valides (exclure LUCKY_BLOCK, ToUseAfter, scripts)
+    local ignored = {}
+    if mutCfg and mutCfg.ignoredFolders then
+        for _, nom in ipairs(mutCfg.ignoredFolders) do ignored[nom] = true end
+    end
+
+    local modeles = {}
+    for _, child in ipairs(rareteFolder:GetChildren()) do
+        if not ignored[child.Name] and (child:IsA("Model") or child:IsA("BasePart")) then
+            table.insert(modeles, child)
+        end
+    end
+
+    if #modeles == 0 then
+        Logger.warn("Mutation", "Aucun modèle valide dans %s/%s", typeFolder.Name, rareteNom)
+        return nil
+    end
+
+    local source = modeles[math.random(1, #modeles)]
+    local clone
+    local ok, err = pcall(function() clone = source:Clone() end)
+    if not ok or not clone then
+        Logger.warn("Mutation", "Erreur clonage muté : %s", tostring(err))
+        return nil
+    end
+    return clone, source.Name
+end
+
+function SpawnManager.SpawnerBRMuteeDansBase(baseIndex, rareteNom, mutationType, multiplier)
+    if not mutationFolder then
+        Logger.warn("Mutation", "ServerStorage/Mutation introuvable")
+        return
+    end
+    if not zones[baseIndex] then
+        Logger.warn("Mutation", "Zone introuvable pour Base_%s", tostring(baseIndex))
+        return
+    end
+
+    local mutCfg     = _GameConfig.LuckyHourMutationConfig
+    local typeFolder = mutationFolder:FindFirstChild(mutationType)
+    if not typeFolder then
+        Logger.warn("Mutation", "Type mutation introuvable : %s", tostring(mutationType))
+        return
+    end
+
+    -- Trouver le modèle source muté
+    local rareteMappe = mapperRarete(rareteNom, mutCfg)
+    local source, _   = clonerBRMute(typeFolder, rareteMappe, mutCfg)
+    -- clonerBRMute retourne déjà un clone — on a besoin du SOURCE pour spawnerUnBrainRot
+    -- On relit le dossier pour obtenir le modèle source (pas le clone)
+    if source then pcall(function() source:Destroy() end) end  -- détruire le clone temporaire
+
+    local ignored = {}
+    for _, nom in ipairs((mutCfg and mutCfg.ignoredFolders) or {}) do ignored[nom] = true end
+    local rareteFolder = typeFolder:FindFirstChild(rareteMappe)
+    if not rareteFolder then
+        Logger.warn("Mutation", "Dossier rareté muté introuvable : %s/%s", mutationType, rareteMappe)
+        return
+    end
+    local candidats = {}
+    for _, child in ipairs(rareteFolder:GetChildren()) do
+        if not ignored[child.Name] and (child:IsA("Model") or child:IsA("BasePart")) then
+            table.insert(candidats, child)
+        end
+    end
+    if #candidats == 0 then
+        Logger.warn("Mutation", "Aucun modèle muté dans %s/%s", mutationType, rareteMappe)
+        return
+    end
+    local modeleSource = candidats[math.random(1, #candidats)]
+
+    -- Construire l'objet rareté
+    local rareteObj = nil
+    for _, r in ipairs(RARITES) do
+        if r.nom == rareteNom then rareteObj = r ; break end
+    end
+    rareteObj = rareteObj or { nom = rareteNom, dossier = rareteNom, poids = 0 }
+
+    -- Déléguer à spawnerUnBrainRot : registration, despawn, billboard, ProximityPrompt inclus
+    spawnerUnBrainRot(baseIndex, rareteObj, modeleSource, mutationType, multiplier or 1)
+
+    Logger.info("Mutation", "LuckyHour mute : %s %s x%.1f sur Base_%d",
+        mutationType, rareteNom, multiplier or 1, baseIndex)
 end
 
 -- ============================================================
