@@ -10,6 +10,7 @@ EventMeteorDrop.DUREE_DEFAUT = 60
 -- Services
 -- ============================================================
 local TweenService        = game:GetService("TweenService")
+local Lighting            = game:GetService("Lighting")
 local Workspace           = game:GetService("Workspace")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -35,9 +36,11 @@ end
 -- ============================================================
 -- État interne
 -- ============================================================
-local actif           = false
+local actif             = false
 local meteorActifsCount = 0
-local meteorsParts    = {}   -- liste des Parts météores en vol (pour nettoyage)
+local meteorsParts      = {}  -- liste des Parts météores en vol (pour nettoyage)
+local materiauOriginel  = {}  -- { [Part] = Enum.Material } pour restauration
+local savedLighting     = {}  -- snapshot Lighting avant l'event
 
 -- ============================================================
 -- Utilitaires
@@ -47,14 +50,111 @@ local function notifierTous(message)
     if ev then pcall(function() ev:FireAllClients("INFO", message) end) end
 end
 
--- Choisit un point ChampCommun aléatoire depuis GameConfig
-local function choisirPoint()
-    local pts = Config.ChampCommunPoints
-    if not pts or #pts == 0 then
-        return Vector3.new(190, 16, 66)  -- fallback hardcodé
+-- Paramètres raycast : exclut les embankments (GrassTop, Dirt, BaseSeparators)
+-- construits une seule fois et réutilisés
+local _rayParams = nil
+local function getRayParams()
+    if _rayParams then return _rayParams end
+    _rayParams = RaycastParams.new()
+    _rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    local excl = {}
+    local map = Workspace:FindFirstChild("Map")
+    if map then
+        for _, child in ipairs(map:GetChildren()) do
+            local n = child.Name
+            if n:find("GrassTop") or n:find("Dirt") or n == "BaseSeparators" then
+                table.insert(excl, child)
+            end
+        end
     end
-    local pt = pts[math.random(1, #pts)]
-    return Vector3.new(pt.x, pt.y, pt.z)
+    _rayParams.FilterDescendantsInstances = excl
+    return _rayParams
+end
+
+-- Choisit une position aléatoire dans la zone ChampCommun
+-- Raycast depuis Y=500 pour trouver le sol réel (ignore embankments)
+local function choisirPoint()
+    local zone = Config.ChampCommunZone
+    local x, z, fallbackY
+    if zone then
+        x         = zone.xMin + math.random() * (zone.xMax - zone.xMin)
+        z         = zone.zMin + math.random() * (zone.zMax - zone.zMin)
+        fallbackY = zone.y or 16
+    else
+        local pts = Config.ChampCommunPoints
+        if pts and #pts > 0 then
+            local pt = pts[math.random(1, #pts)]
+            return Vector3.new(pt.x, pt.y, pt.z)
+        end
+        return Vector3.new(190, 16, 66)
+    end
+    local result = Workspace:Raycast(
+        Vector3.new(x, 500, z),
+        Vector3.new(0, -600, 0),
+        getRayParams()
+    )
+    local y = result and result.Position.Y or fallbackY
+    return Vector3.new(x, y, z)
+end
+
+-- ============================================================
+-- Lighting : ciel sombre orangé pendant l'event
+-- ============================================================
+local function assombrirCiel()
+    savedLighting = {
+        Brightness     = Lighting.Brightness,
+        Ambient        = Lighting.Ambient,
+        OutdoorAmbient = Lighting.OutdoorAmbient,
+        FogEnd         = Lighting.FogEnd,
+        FogColor       = Lighting.FogColor,
+    }
+    local info = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    pcall(function()
+        TweenService:Create(Lighting, info, {
+            Brightness     = 0.15,
+            Ambient        = Color3.fromRGB(90, 5, 5),
+            OutdoorAmbient = Color3.fromRGB(60, 0, 0),
+            FogEnd         = 350,
+            FogColor       = Color3.fromRGB(50, 5, 5),
+        }):Play()
+    end)
+end
+
+local function restaurerCiel()
+    local info = TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    pcall(function()
+        TweenService:Create(Lighting, info, {
+            Brightness     = savedLighting.Brightness     or 2,
+            Ambient        = savedLighting.Ambient        or Color3.fromRGB(70, 70, 70),
+            OutdoorAmbient = savedLighting.OutdoorAmbient or Color3.fromRGB(70, 70, 70),
+            FogEnd         = savedLighting.FogEnd         or 100000,
+            FogColor       = savedLighting.FogColor       or Color3.fromRGB(191, 191, 191),
+        }):Play()
+    end)
+end
+
+-- ============================================================
+-- Matériau Map : CrackedLava pendant l'event
+-- ============================================================
+local function appliquerMateriauMap()
+    materiauOriginel = {}
+    local map = Workspace:FindFirstChild("Map")
+    if not map then return end
+    for _, obj in ipairs(map:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            materiauOriginel[obj] = obj.Material
+            obj.Material = Enum.Material.CrackedLava
+        end
+    end
+end
+
+local function restaurerMateriauMap()
+    for part, mat in pairs(materiauOriginel) do
+        if part and part.Parent then
+            pcall(function() part.Material = mat end)
+        end
+    end
+    materiauOriginel = {}
 end
 
 -- ============================================================
@@ -109,19 +209,12 @@ local function spawnerMeteore(config)
     if meteorActifsCount >= (config.nbMeteores or 5) then return end
 
     local solPoint = choisirPoint()
-    -- Décalage horizontal aléatoire autour du point
-    local offsetX  = math.random(-20, 20)
-    local offsetZ  = math.random(-20, 20)
     local posDepart = Vector3.new(
-        solPoint.X + offsetX,
-        solPoint.Y + (config.hauteurSpawn or 200),
-        solPoint.Z + offsetZ
+        solPoint.X,
+        solPoint.Y + (config.hauteurSpawn or 400),
+        solPoint.Z
     )
-    local posImpact = Vector3.new(
-        solPoint.X + offsetX,
-        solPoint.Y,
-        solPoint.Z + offsetZ
-    )
+    local posImpact = Vector3.new(solPoint.X, solPoint.Y, solPoint.Z)
 
     -- Créer la Part météore
     local meteor = Instance.new("Part")
@@ -165,7 +258,7 @@ local function spawnerMeteore(config)
     table.insert(meteorsParts, meteor)
 
     -- Animation de chute (linéaire)
-    local dureeChute = (config.hauteurSpawn or 200) / (config.vitesseTombee or 80)
+    local dureeChute = (config.hauteurSpawn or 400) / (config.vitesseTombee or 80)
     local infoChute  = TweenInfo.new(dureeChute, Enum.EasingStyle.Linear)
     local tween = TweenService:Create(meteor, infoChute, { Position = posImpact })
     tween:Play()
@@ -224,6 +317,9 @@ function EventMeteorDrop.Demarrer(config)
     meteorActifsCount = 0
     meteorsParts      = {}
 
+    assombrirCiel()
+    appliquerMateriauMap()
+
     -- Notifier + EventStarted
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
     if ev then pcall(function() ev:FireAllClients("INFO", config.message) end) end
@@ -237,7 +333,6 @@ function EventMeteorDrop.Demarrer(config)
         boucleSpawn(config)
     end)
 
-    Logger.info("Event", "▶ Meteor Drop démarré (%ds)", config.duree or 60)
 end
 
 function EventMeteorDrop.Terminer()
@@ -252,7 +347,9 @@ function EventMeteorDrop.Terminer()
     meteorsParts      = {}
     meteorActifsCount = 0
 
-    Logger.info("Event", "■ Meteor Drop terminé")
+    restaurerMateriauMap()
+    restaurerCiel()
+
 end
 
 return EventMeteorDrop

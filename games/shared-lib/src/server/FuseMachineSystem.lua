@@ -8,10 +8,11 @@ local FuseMachineSystem = {}
 -- ═══════════════════════════════════════════════
 -- Services
 -- ═══════════════════════════════════════════════
-local Players           = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CollectionService = game:GetService("CollectionService")
-local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+local Players            = game:GetService("Players")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
+local CollectionService  = game:GetService("CollectionService")
+local DataStoreService   = game:GetService("DataStoreService")
+local Logger             = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
 -- ═══════════════════════════════════════════════
 -- Config (injectée via Init)
@@ -32,6 +33,53 @@ FuseMachineSystem.UpdateHUD   = nil
 -- État interne par machine (clé = Instance machine)
 -- ═══════════════════════════════════════════════
 local machineEtats = {}
+
+-- ═══════════════════════════════════════════════
+-- DataStore (persistance fuse hors-ligne)
+-- ═══════════════════════════════════════════════
+local fuseDataStore = nil
+
+local function initDataStore()
+    local dsName = FuseConfig.DataStoreName or "FuseMachineData_v1"
+    local ok, result = pcall(function()
+        fuseDataStore = DataStoreService:GetDataStore(dsName)
+    end)
+    if not ok then
+        Logger.warn("Fuse", "DataStore inaccessible : %s", tostring(result))
+    end
+end
+
+local function sauvegarderFuse(player, data)
+    if not fuseDataStore then return end
+    local key = "fuse_" .. player.UserId
+    local ok, err = pcall(function() fuseDataStore:SetAsync(key, data) end)
+    if not ok then Logger.error("Fuse", "SetAsync echec %s : %s", player.Name, tostring(err)) end
+end
+
+local function effacerFuse(player)
+    if not fuseDataStore then return end
+    local key = "fuse_" .. player.UserId
+    local ok, err = pcall(function() fuseDataStore:RemoveAsync(key) end)
+    if not ok then Logger.warn("Fuse", "RemoveAsync echec %s : %s", player.Name, tostring(err)) end
+end
+
+local function chargerFuse(player)
+    if not fuseDataStore then return nil end
+    local key = "fuse_" .. player.UserId
+    local ok, data = pcall(function() return fuseDataStore:GetAsync(key) end)
+    if not ok then
+        Logger.warn("Fuse", "GetAsync echec %s : %s", player.Name, tostring(data))
+        return nil
+    end
+    return data
+end
+
+local function trouverMachineParNom(nom)
+    for machine in pairs(machineEtats) do
+        if machine.Name == nom then return machine end
+    end
+    return nil
+end
 
 -- RemoteEvents (assignés dans Init)
 local OuvrirUI    -- server → client : ouvre l'UI
@@ -159,7 +207,6 @@ local function reinitialiserMachine(machine)
 
     EtatUpdate:FireAllClients(machine, { actif = false })
 
-    Logger.debug("Fuse", "Machine réinitialisée : %s", machine.Name)
 end
 
 local function creerPromptCollecte(machine)
@@ -171,10 +218,7 @@ local function creerPromptCollecte(machine)
     end
 
     local part = getPartMachine(machine)
-    if not part then
-        Logger.warn("Fuse", "Pas de BasePart pour le prompt collecte : %s", machine.Name)
-        return
-    end
+    if not part then return end
 
     local prompt = Instance.new("ProximityPrompt")
     prompt.ActionText            = "Collect"
@@ -203,11 +247,10 @@ local function creerPromptCollecte(machine)
         etat.promptCollecte = nil
 
         donnerToolResultat(player, e.outputRarete)
+        effacerFuse(player)
 
         notifier(player, "SUCCESS",
             "Fusion complete! You obtained: " .. e.outputRarete)
-
-        Logger.info("Fuse", "%s collecte : %s", player.Name, e.outputRarete)
 
         reinitialiserMachine(machine)
     end)
@@ -220,8 +263,6 @@ local function demarrerTimer(machine)
     task.delay(FuseConfig.DureeFusion, function()
         local e = machineEtats[machine]
         if not e or not e.actif then return end
-
-        Logger.info("Fuse", "Fusion terminée sur %s", machine.Name)
 
         creerPromptCollecte(machine)
 
@@ -240,14 +281,8 @@ local function demarrerTimer(machine)
 end
 
 local function setupMachine(machine)
-    Logger.debug("Fuse", "setupMachine → %s | Classe : %s | Parent : %s",
-        machine.Name, machine.ClassName, tostring(machine.Parent and machine.Parent.Name))
-
     local part = getPartMachine(machine)
-    if not part then
-        Logger.warn("Fuse", "Aucune BasePart trouvée pour : %s", machine.Name)
-        return
-    end
+    if not part then return end
 
     for _, child in ipairs(part:GetChildren()) do
         if child:IsA("ProximityPrompt") and child.ObjectText == "Fuse Machine" then
@@ -277,7 +312,6 @@ local function setupMachine(machine)
     machineEtats[machine].promptOuvrir = prompt
 
     prompt.Triggered:Connect(function(player)
-        Logger.debug("Fuse", "Prompt déclenché par %s sur %s", player.Name, machine.Name)
         local etat = machineEtats[machine]
         if not etat then return end
 
@@ -300,10 +334,7 @@ end
 local function onLancerFusion(player, machine, toolInstances)
     if not machine or not machine.Parent then return end
     local etat = machineEtats[machine]
-    if not etat then
-        Logger.warn("Fuse", "Machine non gérée reçue de %s", player.Name)
-        return
-    end
+    if not etat then return end
 
     if etat.actif then
         notifier(player, "ERROR", "This machine is already fusing!")
@@ -315,12 +346,14 @@ local function onLancerFusion(player, machine, toolInstances)
         return
     end
 
-    local backpack = player:FindFirstChildOfClass("Backpack")
-    if not backpack then return end
+    local backpack  = player:FindFirstChildOfClass("Backpack")
+    local character = player.Character
 
     local raretes = {}
     for _, tool in ipairs(toolInstances) do
-        if not tool or not tool:IsA("Tool") or tool.Parent ~= backpack then
+        local parentOk = backpack and tool.Parent == backpack
+            or character and tool.Parent == character
+        if not tool or not tool:IsA("Tool") or not parentOk then
             notifier(player, "ERROR", "A selected Brainrot is invalid.")
             return
         end
@@ -360,12 +393,22 @@ local function onLancerFusion(player, machine, toolInstances)
 
     local outputRarete = tirerResultat(recette)
 
+    local fuseEndTime = os.time() + FuseConfig.DureeFusion
+
     etat.actif        = true
     etat.joueurId     = player.UserId
-    etat.debutFusion  = tick()
+    etat.fuseEndTime  = fuseEndTime
+    etat.debutFusion  = fuseEndTime - FuseConfig.DureeFusion
     etat.inputRaretes = raretes
     etat.outputRarete = outputRarete
     etat.recetteId    = recette.id
+
+    sauvegarderFuse(player, {
+        fuseEndTime  = fuseEndTime,
+        outputRarete = outputRarete,
+        recetteId    = recette.id,
+        machineName  = machine.Name,
+    })
 
     if etat.promptOuvrir and etat.promptOuvrir.Parent then
         etat.promptOuvrir.Enabled = false
@@ -384,13 +427,62 @@ local function onLancerFusion(player, machine, toolInstances)
 
     demarrerTimer(machine)
 
-    Logger.info("Fuse", "Fusion lancée par %s | Recette : %s | Résultat : %s",
-        player.Name, recette.id, outputRarete)
 end
 
 -- ═══════════════════════════════════════════════
 -- Init
 -- ═══════════════════════════════════════════════
+
+local function restaurerFuseJoueur(player)
+    task.wait(3)
+    if not player or not player.Parent then return end
+
+    local data = chargerFuse(player)
+    if not data or not data.fuseEndTime then return end
+
+    local machine = trouverMachineParNom(data.machineName)
+    if not machine then
+        effacerFuse(player)
+        return
+    end
+
+    local etat = machineEtats[machine]
+    if etat.actif then return end
+
+    local restant = data.fuseEndTime - os.time()
+
+    etat.actif        = true
+    etat.joueurId     = player.UserId
+    etat.fuseEndTime  = data.fuseEndTime
+    etat.debutFusion  = data.fuseEndTime - FuseConfig.DureeFusion
+    etat.outputRarete = data.outputRarete
+    etat.recetteId    = data.recetteId
+    etat.inputRaretes = {}
+
+    if etat.promptOuvrir and etat.promptOuvrir.Parent then
+        etat.promptOuvrir.Enabled = false
+    end
+
+    if restant <= 0 then
+        creerPromptCollecte(machine)
+        notifier(player, "INFO", "Fusion ready! Come collect your " .. etat.outputRarete)
+    else
+        task.delay(restant, function()
+            local e = machineEtats[machine]
+            if not e or not e.actif or e.joueurId ~= player.UserId then return end
+            creerPromptCollecte(machine)
+            local joueur = Players:GetPlayerByUserId(e.joueurId)
+            if joueur then
+                notifier(joueur, "INFO", "Fusion ready! Come collect your " .. e.outputRarete)
+                EtatUpdate:FireClient(joueur, machine, {
+                    actif        = true,
+                    termine      = true,
+                    outputRarete = e.outputRarete,
+                })
+            end
+        end)
+    end
+end
 
 function FuseMachineSystem.Init(fuseConfig)
     assert(fuseConfig, "[FuseMachineSystem] fuseConfig requis — passer require(FuseConfig) dans Init()")
@@ -401,10 +493,15 @@ function FuseMachineSystem.Init(fuseConfig)
     EtatUpdate = creerRemoteEvent("FuseMachine_EtatUpdate")
     Lancer     = creerRemoteEvent("FuseMachine_Lancer")
 
+    initDataStore()
+
     Lancer.OnServerEvent:Connect(onLancerFusion)
 
+    Players.PlayerAdded:Connect(function(player)
+        task.spawn(restaurerFuseJoueur, player)
+    end)
+
     CollectionService:GetInstanceAddedSignal(FuseConfig.MachineTag):Connect(function(machine)
-        Logger.debug("Fuse", "Nouvelle machine détectée : %s", machine.Name)
         setupMachine(machine)
     end)
     CollectionService:GetInstanceRemovedSignal(FuseConfig.MachineTag):Connect(function(machine)
@@ -412,15 +509,12 @@ function FuseMachineSystem.Init(fuseConfig)
     end)
 
     local tagged = CollectionService:GetTagged(FuseConfig.MachineTag)
-    Logger.debug("Fuse", "Scan tag '%s' → %d machine(s)", FuseConfig.MachineTag, #tagged)
-
     for _, machine in ipairs(tagged) do
         if not machineEtats[machine] then
             setupMachine(machine)
         end
     end
 
-    Logger.info("Fuse", "Système initialisé ✓ (%d machine(s))", #tagged)
 end
 
 return FuseMachineSystem

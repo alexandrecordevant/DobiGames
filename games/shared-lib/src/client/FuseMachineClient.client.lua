@@ -740,9 +740,6 @@ rafraichirCarry = function()
         end
     end
 
-    local backpack = player:FindFirstChildOfClass("Backpack")
-    if not backpack then return end
-
     local dejaSelec = {}
     for i = 1, 4 do
         if slotsSelectionnes[i] then
@@ -750,72 +747,86 @@ rafraichirCarry = function()
         end
     end
 
-    local count = 0
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            local rarete = tool:GetAttribute("Rarete")
-            if rarete then
-                count = count + 1
-                local selectionne = dejaSelec[tool] == true
-                local coul        = COULEUR_RARETE[rarete] or Color3.fromRGB(200, 200, 200)
-
-                local btn = Instance.new("TextButton")
-                btn.Name                   = "BT_" .. tool.Name
-                btn.Size                   = UDim2.new(0, 82, 0, 88)
-                btn.BackgroundColor3       = selectionne and C_SLOT_FILL or C_SLOT
-                btn.BackgroundTransparency = 0
-                btn.BorderSizePixel        = 0
-                btn.Text                   = ""
-                btn.AutoButtonColor        = false
-                btn.Parent                 = carryFrame
-                coin(btn, 0)
-                local st = stroke(btn, selectionne and coul or C_BORDURE, 1)
-                if selectionne then st.Transparency = 0.5 end
-
-                local topBar = Instance.new("Frame")
-                topBar.Name             = "TopBar"
-                topBar.Size             = UDim2.new(1, 0, 0, 5)
-                topBar.BackgroundColor3 = selectionne and C_BORDURE or coul
-                topBar.BorderSizePixel  = 0
-                topBar.Parent           = btn
-
-                local iconeL = Instance.new("TextLabel")
-                iconeL.Size                   = UDim2.new(1, 0, 0, 38)
-                iconeL.Position               = UDim2.new(0, 0, 0, 8)
-                iconeL.BackgroundTransparency = 1
-                iconeL.Text                   = selectionne and "V" or (ICONE_RARETE[rarete] or "?")
-                iconeL.TextColor3             = selectionne and C_TEXTE2 or coul
-                iconeL.TextSize               = 22
-                iconeL.TextScaled             = false
-                iconeL.Font                   = Enum.Font.GothamBold
-                iconeL.Parent                 = btn
-
-                local brName = tool:GetAttribute("BrainrotName") or tool.Name
-                local nomL = Instance.new("TextLabel")
-                nomL.Size                   = UDim2.new(1, -4, 0, 36)
-                nomL.Position               = UDim2.new(0, 2, 1, -38)
-                nomL.BackgroundTransparency = 1
-                nomL.Text                   = brName .. "\n" .. rarete
-                nomL.TextColor3             = selectionne and C_TEXTE2 or C_TEXTE
-                nomL.TextSize               = 9
-                nomL.TextScaled             = false
-                nomL.Font                   = Enum.Font.Gotham
-                nomL.TextWrapped            = true
-                nomL.TextXAlignment         = Enum.TextXAlignment.Center
-                nomL.Parent                 = btn
-
-                if not selectionne then
-                    local toolRef = tool
-                    btn.MouseButton1Click:Connect(function()
-                        local slot = premierSlotVide()
-                        if not slot then return end
-                        slotsSelectionnes[slot] = toolRef
-                        rafraichirSlot(slot)
-                        mettreAJourRecette()
-                        rafraichirCarry()
-                    end)
-                end
+    -- Collecte les tools du backpack ET de l'outil équipé (dans Character)
+    local allTools = {}
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool:GetAttribute("Rarete") then
+                allTools[#allTools + 1] = tool
             end
+        end
+    end
+    local character = player.Character
+    if character then
+        for _, tool in ipairs(character:GetChildren()) do
+            if tool:IsA("Tool") and tool:GetAttribute("Rarete") then
+                allTools[#allTools + 1] = tool
+            end
+        end
+    end
+
+    local count = #allTools
+    for _, tool in ipairs(allTools) do
+        local rarete      = tool:GetAttribute("Rarete")
+        local selectionne = dejaSelec[tool] == true
+        local coul        = COULEUR_RARETE[rarete] or Color3.fromRGB(200, 200, 200)
+
+        local btn = Instance.new("TextButton")
+        btn.Name                   = "BT_" .. tool.Name
+        btn.Size                   = UDim2.new(0, 82, 0, 88)
+        btn.BackgroundColor3       = selectionne and C_SLOT_FILL or C_SLOT
+        btn.BackgroundTransparency = 0
+        btn.BorderSizePixel        = 0
+        btn.Text                   = ""
+        btn.AutoButtonColor        = false
+        btn.Parent                 = carryFrame
+        coin(btn, 0)
+        local st = stroke(btn, selectionne and coul or C_BORDURE, 1)
+        if selectionne then st.Transparency = 0.5 end
+
+        local topBar = Instance.new("Frame")
+        topBar.Name             = "TopBar"
+        topBar.Size             = UDim2.new(1, 0, 0, 5)
+        topBar.BackgroundColor3 = selectionne and C_BORDURE or coul
+        topBar.BorderSizePixel  = 0
+        topBar.Parent           = btn
+
+        local iconeL = Instance.new("TextLabel")
+        iconeL.Size                   = UDim2.new(1, 0, 0, 38)
+        iconeL.Position               = UDim2.new(0, 0, 0, 8)
+        iconeL.BackgroundTransparency = 1
+        iconeL.Text                   = selectionne and "V" or (ICONE_RARETE[rarete] or "?")
+        iconeL.TextColor3             = selectionne and C_TEXTE2 or coul
+        iconeL.TextSize               = 22
+        iconeL.TextScaled             = false
+        iconeL.Font                   = Enum.Font.GothamBold
+        iconeL.Parent                 = btn
+
+        local brName = tool:GetAttribute("BrainrotName") or tool.Name
+        local nomL = Instance.new("TextLabel")
+        nomL.Size                   = UDim2.new(1, -4, 0, 36)
+        nomL.Position               = UDim2.new(0, 2, 1, -38)
+        nomL.BackgroundTransparency = 1
+        nomL.Text                   = brName .. "\n" .. rarete
+        nomL.TextColor3             = selectionne and C_TEXTE2 or C_TEXTE
+        nomL.TextSize               = 9
+        nomL.TextScaled             = false
+        nomL.Font                   = Enum.Font.Gotham
+        nomL.TextWrapped            = true
+        nomL.TextXAlignment         = Enum.TextXAlignment.Center
+        nomL.Parent                 = btn
+
+        if not selectionne then
+            local toolRef = tool
+            btn.MouseButton1Click:Connect(function()
+                local slot = premierSlotVide()
+                if not slot then return end
+                slotsSelectionnes[slot] = toolRef
+                rafraichirSlot(slot)
+                mettreAJourRecette()
+                rafraichirCarry()
+            end)
         end
     end
 

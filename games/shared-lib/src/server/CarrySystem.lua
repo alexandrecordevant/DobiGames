@@ -227,6 +227,19 @@ local function creerTool(player, clone, rarete)
 		if cps  then tool:SetAttribute("CashParSeconde", cps)  end
 		if prix then tool:SetAttribute("Prix",           prix) end
 	end
+	-- Type de mutation : depuis rarete (PickupSystem) ou depuis le clone (fallback)
+	local mutation = (rarete and rarete.mutation)
+		or (clone and clone:GetAttribute("Mutation"))
+	if mutation then
+		tool:SetAttribute("Mutation", mutation)
+		tool:SetAttribute("IsMutant", true)
+	end
+	local isToxic = (rarete and rarete.isToxic)
+		or (clone and clone:GetAttribute("IsToxic") == true)
+	if isToxic then
+		tool:SetAttribute("IsToxic", true)
+		tool:SetAttribute("IsMutant", true)
+	end
 
 	-- Handle invisible — jamais lâché (CanBeDropped = false)
 	local handle = Instance.new("Part")
@@ -258,6 +271,15 @@ local function creerTool(player, clone, rarete)
 		end
 
 		-- Centrer le visuel à l'origine avant de souder
+		-- Assigner PrimaryPart si absent (modeles avec FakeRootPart : Strawberry Elephant, Los Noobinis)
+		-- Sans cela, PivotTo echoue silencieusement et le fallback deplace chaque part
+		-- individuellement a (0,0,0), detruisant la structure du modele.
+		if clone:IsA("Model") and not clone.PrimaryPart then
+			local fakePart = clone:FindFirstChild("FakeRootPart")
+			if fakePart then
+				clone.PrimaryPart = fakePart
+			end
+		end
 		-- Fallback BasePart si PivotTo échoue (modèle sans PrimaryPart ou model vide)
 		local pivotOk = pcall(function() clone:PivotTo(CFrame.new(0, 0, 0)) end)
 		if not pivotOk then
@@ -273,6 +295,16 @@ local function creerTool(player, clone, rarete)
 				pivotOk = true  -- on continue même si le centrage est approximatif
 			end
 			Logger.warn("Carry", "PivotTo échoué pour %s — centrage de secours utilisé", nomBR)
+		end
+		-- Supprimer Motor6D apres centrage, avant la creation des WeldConstraints.
+		-- Motor6D et WeldConstraint sont des contraintes incompatibles : Motor6D
+		-- repositionne les parts animees (Cube, Cube.001...) independamment du pivot,
+		-- ce qui produit l'explosion visuelle sur le slot pour les modeles comme
+		-- Strawberry Elephant et Los Noobinis (FakeRootPart + joints Motor6D).
+		for _, v in ipairs(clone:GetDescendants()) do
+			if v:IsA("Motor6D") or v:IsA("Animator") or v:IsA("AnimationController") then
+				pcall(function() v:Destroy() end)
+			end
 		end
 		for _, part in ipairs(clone:GetDescendants()) do
 			if part:IsA("BasePart") then

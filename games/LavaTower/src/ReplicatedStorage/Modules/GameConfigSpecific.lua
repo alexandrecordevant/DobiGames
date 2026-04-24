@@ -69,9 +69,11 @@ GameConfigSpecific.ZonePrestigeSeuil = 1
 GameConfigSpecific.Fuse = {
 	MachineTag          = "FuseMachine",
 	FuseBrainrotsFolder = game:GetService("ReplicatedStorage"):FindFirstChild("FuseBrainrots"),
-	FuseDuration        = 5400,
+	MutationRoot        = game:GetService("ReplicatedStorage"):FindFirstChild("Mutation"),
+	FuseDuration        = 5,  -- TODO remettre 5400 après test
 	DataStoreName       = "LavaTowerV1",
 	DataStoreKeyPrefix  = "fuse_",
+	MutationCPS = { GOLD=2, DIAMANT=3, RAINBOW=10, TOXIC=5 },
 	Tiers = {
 		{ maxTotal = 1000                },
 		{ maxTotal = 100000              },
@@ -88,6 +90,73 @@ GameConfigSpecific.Fuse = {
 		{ folder = "18", weight = 18 },
 		{ folder = "2",  weight = 2  },
 	},
+}
+
+-- === SHOP MONETISATION ===
+GameConfigSpecific.Shop = {
+
+    PackDemarrage = {
+        Prix            = 99,
+        Cash            = 1000000,
+        BrainrotsFolder = "ReplicatedStorage.Pack",
+    },
+
+    PackVIP = {
+        Prix                = 799,
+        Cash                = 10000000,
+        LuckDureeSecondes   = 900,   -- 15 minutes de luck x2 au join
+    },
+
+    Cash = {
+        { label = "Petit Sac", multiplicateur = 1800,  duree = "30 min", prix = 99,  minCash = 1000000  },
+        { label = "Gros Sac",  multiplicateur = 7200,  duree = "2 h",    prix = 299, minCash = 4003200  },
+        { label = "Coffre",    multiplicateur = 36000, duree = "10 h",   prix = 799, minCash = 20016000 },
+    },
+
+    LuckyBlocks = {
+        {
+            nom    = "Mythic",
+            prix   = 49,
+            folder = "ReplicatedStorage.LuckyBlocks.Tier_1",
+            weights = {
+                { chance = 49.5, label = "50"  },
+                { chance = 30,   label = "30"  },
+                { chance = 18,   label = "18"  },
+                { chance = 2,    label = "2"   },
+                { chance = 0.5,  label = "0.5" },
+            },
+        },
+        {
+            nom    = "Brainrot God",
+            prix   = 149,
+            folder = "ReplicatedStorage.LuckyBlocks.Tier_3",
+            weights = {
+                { chance = 49.5, label = "50"  },
+                { chance = 30,   label = "30"  },
+                { chance = 18,   label = "18"  },
+                { chance = 2,    label = "2"   },
+                { chance = 0.5,  label = "0.5" },
+            },
+        },
+        {
+            nom    = "Secret",
+            prix   = 399,
+            folder = "ReplicatedStorage.LuckyBlocks.Tier_2",
+            weights = {
+                { chance = 49.5, label = "50"  },
+                { chance = 30,   label = "30"  },
+                { chance = 18,   label = "18"  },
+                { chance = 2,    label = "2"   },
+                { chance = 0.5,  label = "0.5" },
+            },
+        },
+    },
+
+    Luck = {
+        Paliers = { 2, 4, 8, 10, 15, 20, 25, 30 },
+        Duree   = 900,
+        Prix    = { 49, 99, 149, 199, 299, 399, 499, 799 },
+    },
 }
 
 return GameConfigSpecific

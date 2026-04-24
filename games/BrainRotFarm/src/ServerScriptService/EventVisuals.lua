@@ -150,7 +150,6 @@ function EventVisuals.TerminerActif()
     end
 
     fireEventEnded()
-    Logger.info("Event", "■ Event terminé : %s", nomEvent)
 end
 
 function EventVisuals.Lancer(nomEvent)
@@ -199,15 +198,17 @@ function EventVisuals.Lancer(nomEvent)
         end
     end)
 
-    Logger.info("Event", "▶ Event lancé : %s (%ss)", nomEvent, tostring(duree))
 end
 
 function EventVisuals.Init()
     -- Créer les RemoteEvents nécessaires aux effets client
     creerRemoteEvent("NightModeStart")
+    creerRemoteEvent("NightModeSkyEnd")
     creerRemoteEvent("MeteorImpact")
     creerRemoteEvent("GoldenStart")
-    Logger.info("Event", "✓ Coordinateur initialisé")
+    creerRemoteEvent("RainEventStart")
+    creerRemoteEvent("RainEventEnd")
+    creerRemoteEvent("RainLightning")
 end
 
 return EventVisuals

@@ -27,6 +27,7 @@ IncomeSystem.AutoVerifierDeblocages = false   -- LavaTower : étages via Board u
 local BoardSystem               = require(ServerScriptService.SharedLib.Server.BoardSystem)
 local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
 local ShopSystem = require(ServerScriptService.ShopSystem)
+local ShopMonetizationSystem = require(ServerScriptService.ShopMonetizationSystem)
 local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
     Logger.error("Main", "[FuseSystem] ERREUR require : %s", tostring(FuseSystem))
@@ -67,6 +68,9 @@ DataStoreManager.Setup("LavaTowerV1", function()
         gravityCoilEquipped     = false,
         -- BRs portés non déposés (sauvegardés à la déconnexion, restaurés au login)
         carryPortes             = {},
+        -- Shop monetisation
+        packAchete              = false,
+        luckyBlocks             = {},
     }
 end)
 
@@ -153,6 +157,13 @@ CarrySystem.OnBeforeClean = function(player, portes)
                     break
                 end
             end
+            -- Mutation : depuis rarete (nouveau code) ou depuis le Tool (fallback)
+            local mutation = entree.rarete.mutation
+                or (entree.toolRef and entree.toolRef:GetAttribute("Mutation"))
+            local isToxic = entree.rarete.isToxic
+                or (entree.toolRef and entree.toolRef:GetAttribute("IsToxic") == true) or nil
+            local isNebula = entree.rarete.isNebula
+                or (entree.toolRef and entree.toolRef:GetAttribute("IsNebula") == true) or nil
             table.insert(carrySerial, {
                 nom         = entree.rarete.nom,
                 dossier     = entree.rarete.dossier or entree.rarete.nom,
@@ -160,6 +171,9 @@ CarrySystem.OnBeforeClean = function(player, portes)
                 valeur      = entree.rarete.valeur,
                 elementType = entree.rarete.elementType,
                 brNom       = brNom,
+                mutation    = mutation,
+                isToxic     = isToxic,
+                isNebula    = isNebula,
             })
         end
     end
@@ -196,10 +210,18 @@ local function OnPlayerAdded(player)
     local data = DataStoreManager.Load(player)
     SetData(player, data)
 
+    -- Attribut VIP lisible par tous les scripts serveur (ex : VIPTowerSystem)
+    player:SetAttribute("HasVIP", data.hasVIP == true)
+
     MonetizationHandler.CheckGamePasses(player, data)
 
     task.wait(0.3)
     EnvoyerHUD(player, data)
+
+    -- Luck VIP au join : active le palier x2 du système Luck existant
+    if data.hasVIP then
+        task.defer(ShopMonetizationSystem.AppliquerLuckVIP)
+    end
 
     local baseIndex = AssignationSystem.AssignerJoueur(player)
     if baseIndex then
@@ -226,6 +248,12 @@ local function OnPlayerAdded(player)
                 CarrySystem.SetCapacite(player, carryLevel)
             end
             local BrainrotsFolder = ReplicatedStorage:FindFirstChild("Brainrots")
+            local mutationRoot    = ReplicatedStorage:FindFirstChild("Mutation")
+            local DOSSIERS_MUT = {
+                GOLD    = "BrainrotsGold",
+                DIAMANT = "BrainrotsDiamant",
+                RAINBOW = "BrainrotsRainbow",
+            }
             for _, porteeData in ipairs(data.carryPortes) do
                 local rareteObj = {
                     nom         = porteeData.nom,
@@ -233,13 +261,51 @@ local function OnPlayerAdded(player)
                     isMutant    = porteeData.isMutant,
                     valeur      = porteeData.valeur,
                     elementType = porteeData.elementType,
+                    mutation    = porteeData.mutation,
+                    isToxic     = porteeData.isToxic,
+                    isNebula    = porteeData.isNebula,
                 }
                 local clone = nil
-                if porteeData.brNom and BrainrotsFolder then
-                    local dossier = BrainrotsFolder:FindFirstChild(porteeData.dossier or porteeData.nom)
-                    local modele = dossier and dossier:FindFirstChild(porteeData.brNom)
+                if porteeData.brNom then
+                    -- Chercher dans le dossier mutation si applicable
+                    local sourceFolder = nil
+                    if porteeData.mutation and mutationRoot then
+                        local nomDossierMut = DOSSIERS_MUT[porteeData.mutation]
+                        if nomDossierMut then
+                            local mutDossier = mutationRoot:FindFirstChild(nomDossierMut)
+                            sourceFolder = mutDossier
+                                and mutDossier:FindFirstChild(porteeData.dossier or porteeData.nom)
+                        end
+                    elseif porteeData.isToxic and mutationRoot then
+                        local toxicDossier = mutationRoot:FindFirstChild("BrainrotsToxic")
+                        sourceFolder = toxicDossier
+                            and toxicDossier:FindFirstChild(porteeData.dossier or porteeData.nom)
+                    elseif porteeData.isNebula and mutationRoot then
+                        local nebulaDossier = mutationRoot:FindFirstChild("BrainrotsNebula")
+                        sourceFolder = nebulaDossier
+                            and nebulaDossier:FindFirstChild(porteeData.dossier or porteeData.nom)
+                    end
+                    -- Fallback : dossier normal Brainrots
+                    if not sourceFolder and BrainrotsFolder then
+                        sourceFolder = BrainrotsFolder:FindFirstChild(porteeData.dossier or porteeData.nom)
+                    end
+                    local modele = sourceFolder and sourceFolder:FindFirstChild(porteeData.brNom)
                     if modele then
                         clone = modele:Clone()
+                        -- Attributs mutation pour le watcher DescendantAdded
+                        if porteeData.mutation then clone:SetAttribute("Mutation", porteeData.mutation) end
+                        if porteeData.isToxic  then clone:SetAttribute("IsToxic",  true)               end
+                        if porteeData.isNebula then clone:SetAttribute("IsNebula", true)               end
+                        -- Pré-multiplier le CPS (template = valeur de base)
+                        local mutCPS = Config.Fuse and Config.Fuse.MutationCPS
+                        local baseCPS = modele:GetAttribute("CashParSeconde") or 0
+                        local mult = (mutCPS and porteeData.mutation and mutCPS[porteeData.mutation])
+                                  or (porteeData.isToxic  and (mutCPS and mutCPS["TOXIC"]  or 5))
+                                  or (porteeData.isNebula and (mutCPS and mutCPS["NEBULA"] or 5))
+                                  or 1
+                        if mult > 1 and baseCPS > 0 then
+                            clone:SetAttribute("CashParSeconde", math.floor(baseCPS * mult))
+                        end
                         clone.Parent = ReplicatedStorage
                     end
                 end
@@ -400,6 +466,7 @@ if FuseSystem then
                           or (Config.ValeurParRarete and Config.ValeurParRarete[rarete])
                           or 1,
             elementType = brainrotClone:GetAttribute("ElementType"),
+            mutation    = brainrotClone:GetAttribute("Mutation"),
         }
         brainrotClone.Parent = game:GetService("ServerStorage")
         local ok, err = pcall(CarrySystem.AjouterAuCarry, player, brainrotClone, rareteObj)
@@ -433,6 +500,50 @@ end
 local _shopOk, shopErr = pcall(ShopSystem.Init)
 if not _shopOk then
     Logger.error("Main", "[ShopSystem] ERREUR Init() : %s", tostring(shopErr))
+end
+
+-- ═══════════════════════════════════════════════
+-- 11. SHOP MONETISATION (Cash, Lucky Blocks, Pack, Luck)
+-- ═══════════════════════════════════════════════
+
+ShopMonetizationSystem.GetData       = GetData
+ShopMonetizationSystem.SetData       = SetData
+ShopMonetizationSystem.NotifEvent    = NotifEvent
+ShopMonetizationSystem.UpdateHUD     = function(player)
+    local data = GetData(player)
+    if data then EnvoyerHUD(player, data) end
+end
+ShopMonetizationSystem.GetBaseJoueur = function(player)
+    return AssignationSystem.GetBaseIndex(player)
+end
+ShopMonetizationSystem.GetSpotsActifs = function(player)
+    return BaseProgressionSystem.GetSpotsActifs(player)
+end
+ShopMonetizationSystem.AjouterAuCarry = function(player, clone, rareteObj)
+    return CarrySystem.AjouterAuCarry(player, clone, rareteObj)
+end
+ShopMonetizationSystem.GetSpotsLibres = function(player)
+    return DropSystem.GetSpotsLibres(player)
+end
+ShopMonetizationSystem.DeposerBRDirect = function(player, tp, rarete, cps)
+    return DropSystem.DeposerBRDirect(player, tp, rarete, cps)
+end
+ShopMonetizationSystem.GetSpotsOccupesSerialisables = function(player)
+    return DropSystem.GetSpotsOccupesSerialisables(player)
+end
+ShopMonetizationSystem.GetCarryLibres = function(player)
+    local max    = CarrySystem.GetCapaciteMax(player)
+    local portes = CarrySystem.GetPortes(player) or {}
+    return math.max(0, max - #portes)
+end
+ShopMonetizationSystem.OnVIPAchete = function(player)
+    player:SetAttribute("HasVIP", true)
+    ShopMonetizationSystem.AppliquerLuckVIP()
+end
+
+local _shopMonetOk, shopMonetErr = pcall(ShopMonetizationSystem.Init)
+if not _shopMonetOk then
+    Logger.error("Main", "[ShopMonetizationSystem] ERREUR Init() : %s", tostring(shopMonetErr))
 end
 
 -- ═══════════════════════════════════════════════

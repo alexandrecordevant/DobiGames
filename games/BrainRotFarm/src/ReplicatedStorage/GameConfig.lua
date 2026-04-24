@@ -80,9 +80,7 @@ GameConfig.AdminAbuseHebdo = {
 }
 -- Types d'events aléatoires déclenchés par EventManager.
 -- Modifier cette liste pour ajouter/retirer des events selon le jeu.
-GameConfig.EventTypes = {
-    "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour",
-}
+GameConfig.EventTypes = {"NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
 
 -- === RARETÉS ===
 GameConfig.Raretes = {
@@ -281,20 +279,30 @@ GameConfig.BadgePremierPrestige = 0
 GameConfig.EventsVisuels = {
 
     NightMode = {
-        duree          = 90,
-        brightnessMin  = 0,
-        ambientNuit    = Color3.fromRGB(0, 0, 20),
-        ambientJour    = Color3.fromRGB(70, 70, 70),
-        brightnessJour = 2,
-        fogEndNuit     = 200,
-        message        = "🌙 NIGHT MODE! Brain Rots glow in the dark!",
-        messageFin     = "☀️ Day breaks... until the next event!",
+        duree                = 90,
+        -- Lighting nuit
+        brightnessMin        = 0.3,
+        clockTimeNuit        = 0,    -- 0 = minuit, 14 = 14h00
+        ambientNuit          = Color3.fromRGB(40, 40, 80),
+        outdoorAmbientNuit   = Color3.fromRGB(20, 20, 60),
+        fogEndNuit           = 500,
+        fogColorNuit         = Color3.fromRGB(20, 20, 50),
+        envDiffuseNuit       = 0.2,
+        envSpecNuit          = 0.2,
+        -- Ciel étoilé (0–3000)
+        starCount            = 3000,
+        -- Son ambiant nuit : remplir après import dans Studio
+        -- Exemples gratuits Roblox : 507846804 (vent), 1843643716 (nuit)
+        soundIdNuit          = 1843643716,
+        -- Messages
+        message              = "🌙 NIGHT MODE! Brain Rots glow in the dark!",
+        messageFin           = "☀️ Day breaks... until the next event!",
     },
 
     MeteorDrop = {
         duree           = 60,
         nbMeteores      = 5,
-        hauteurSpawn    = 200,
+        hauteurSpawn    = 400,
         vitesseTombee   = 80,
         rayonImpact     = 15,
         intervalleSpawn = 12,
@@ -306,12 +314,30 @@ GameConfig.EventsVisuels = {
 
     Rain = {
         duree           = 90,
-        hauteurNuages   = 35,
+        nbNuages        = 6,   -- nuages répartis aléatoirement dans la ChampCommunZone
+        hauteurNuages   = 18,
         tailleNuage     = Vector3.new(20, 5, 20),
         spawnMultiplier = 3,
         particleRate    = 50,
         message         = "🌧️ RAIN EVENT! Rain boosts the Common Field ×3!",
         messageFin      = "☀️ The rain stops... the field stays fertilized!",
+        -- Système météo (RainWeatherSystem)
+        brightnessRain       = 0.65,
+        fogEndRain           = 1400,
+        fogColorRain         = Color3.fromRGB(160, 170, 185),
+        ambientRain          = Color3.fromRGB(110, 115, 130),
+        atmosphereDensity    = 0.25,
+        atmosphereOffset     = 0.1,
+        atmosphereColor      = Color3.fromRGB(160, 170, 185),
+        atmosphereDecay      = Color3.fromRGB(130, 140, 155),
+        atmosphereHaze       = 1.0,
+        cloudsDensity        = 0.8,
+        cloudsCover          = 0.95,
+        cloudsColor          = Color3.fromRGB(120, 130, 140),
+        lightningInterval    = { min = 15, max = 45 },
+        soundIdRain          = 0,   -- remplir après import son pluie dans Studio
+        wetGroundReflectance = 0.4,
+        wetGroundColor       = Color3.fromRGB(90, 95, 105),
     },
 
     Golden = {
@@ -333,11 +359,21 @@ GameConfig.EventsVisuels = {
     },
 }
 
--- Positions spawn points ChampCommun (utilisées par Rain + MeteorDrop)
+-- Positions spawn points ChampCommun (utilisées par Rain)
 GameConfig.ChampCommunPoints = {
     { x = 190.92, y = 16.189, z =   66.30 },
     { x = 250.93, y = 16.189, z =  -80.20 },
     { x = 189.51, y = 16.189, z = -241.28 },
+}
+
+-- Zone couverte par le ChampCommun entre les 4 leaderboards (utilisée par MeteorDrop)
+-- Ajuster xMin/xMax/zMin/zMax pour correspondre aux coins exacts des leaderboards en studio
+GameConfig.ChampCommunZone = {
+    xMin = 150,
+    xMax = 300,
+    zMin = -270,
+    zMax =  100,
+    y    =   16.189,
 }
 
 -- === PROGRESSION BASE ===
@@ -824,5 +860,8 @@ GameConfig.Fuse = {
 		{ folder = "2",  weight = 2  },
 	},
 }
+
+-- Injecter la zone dans la config Rain (définie plus haut dans ce fichier)
+GameConfig.EventsVisuels.Rain.champCommunZone = GameConfig.ChampCommunZone
 
 return GameConfig

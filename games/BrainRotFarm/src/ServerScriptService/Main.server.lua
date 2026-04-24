@@ -1165,6 +1165,39 @@ end
 -- Brainrots dans ReplicatedStorage (pas ServerStorage)
 DropSystem.SetBrainrotsFolder(ReplicatedStorage:WaitForChild("Brainrots"))
 
+-- Visuels spot Mutant (doré + particules) — spécifique BRF, absent de LavaTower
+DropSystem.OnMutantDepose = function(touchPart, modeleSlot, _elementType)
+    local spotColor = (Config.FlowerPotConfig and Config.FlowerPotConfig.spotMutantCouleur)
+                   or Color3.fromRGB(255, 215, 0)
+    touchPart.Color = spotColor
+    local light = touchPart:FindFirstChild("MutantLight")
+               or Instance.new("PointLight", touchPart)
+    light.Name       = "MutantLight"
+    light.Brightness = 2
+    light.Range      = 10
+    light.Color      = Color3.fromRGB(255, 215, 0)
+    if modeleSlot then
+        local root = modeleSlot.PrimaryPart
+                  or modeleSlot:FindFirstChildWhichIsA("BasePart")
+        if root then
+            local p = Instance.new("ParticleEmitter", root)
+            p.Rate     = 8
+            p.Lifetime = NumberRange.new(0.5, 1.2)
+            p.Speed    = NumberRange.new(2, 4)
+            p.Color    = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+            p.Size     = NumberSequence.new(0.2)
+            p.LightEmission = 0.8
+        end
+    end
+end
+
+DropSystem.OnMutantRetire = function(touchPart)
+    touchPart.Color = (Config.FlowerPotConfig and Config.FlowerPotConfig.spotDefaultCouleur)
+                   or Color3.fromRGB(106, 127, 63)
+    local light = touchPart:FindFirstChild("MutantLight")
+    if light then light:Destroy() end
+end
+
 -- Spawn des collectibles sur la map
 SpawnManager.Init()
 

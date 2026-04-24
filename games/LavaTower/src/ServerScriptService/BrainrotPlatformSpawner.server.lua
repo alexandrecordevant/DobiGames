@@ -65,9 +65,51 @@ local CONFIG = {
 	DUREE_VIE_MIN    = 30,  -- durée de vie minimale d'un Brainrot (secondes)
 	DUREE_VIE_MAX    = 90,  -- durée de vie maximale d'un Brainrot (secondes)
 	INTERVALLE_CYCLE = 15,  -- secondes entre chaque passe de spawn
-	CHANCE_SPAWN     = 5,   -- 1 chance sur N de faire spawn sur une plateforme libre
+	CHANCE_SPAWN     = 3,   -- 1 chance sur N de faire spawn sur une plateforme libre
 	HAUTEUR_OFFSET   = 0,   -- studs au-dessus de la surface de la plateforme
 }
+
+-- ════════════════════════════════════════════════════════════════
+-- 🎰  MUTATIONS — chances appliquées à chaque spawn
+--  Vérifiées du plus rare au plus commun (exclusivité mutuelle)
+--   RAINBOW  : 1 / CHANCE_RAINBOW
+--   DIAMANT  : 1 / CHANCE_DIAMANT  (si pas rainbow)
+--   GOLD     : 1 / CHANCE_GOLD     (si pas diamond ni rainbow)
+--   NORMAL   : sinon
+-- ════════════════════════════════════════════════════════════════
+local MUTATION_CONFIG = {
+	CHANCE_RAINBOW  = 50,
+	CHANCE_DIAMANT  = 20,
+	CHANCE_GOLD     = 10,
+}
+
+-- Multiplicateurs de CashParSeconde par mutation (source de vérité côté spawner)
+-- Ces valeurs doivent rester cohérentes avec Config.Fuse.MutationCPS dans GameConfigSpecific.
+local MUTATION_MULT = {
+	RAINBOW = 10,
+	DIAMANT  = 3,
+	GOLD     = 2,
+}
+local TOXIC_MULT = 5
+
+-- Noms des sous-dossiers dans ReplicatedStorage.Mutation
+local DOSSIER_MUTATION_NOM = "Mutation"
+local NOMS_DOSSIERS_MUTATION = {
+	GOLD    = "BrainrotsGold",
+	DIAMANT = "BrainrotsDiamant",
+	RAINBOW = "BrainrotsRainbow",
+}
+
+local NOM_DOSSIER_TOXIC      = "BrainrotsToxic"   -- dans ReplicatedStorage.Mutation
+local CHANCE_TOXIC           = 10                  -- 1 chance sur N de spawn toxic
+local INTERVALLE_TOXIC_SWAP  = 15                  -- secondes entre chaque passe de remplacement
+local CHANCE_TOXIC_SWAP      = 10                  -- 1 chance sur N d'être remplacé à chaque passe
+
+local NOM_DOSSIER_NEBULA     = "BrainrotsNebula"  -- dans ReplicatedStorage.Mutation
+local NEBULA_MULT            = 5
+local CHANCE_NEBULA          = 10
+local INTERVALLE_NEBULA_SWAP = 15
+local CHANCE_NEBULA_SWAP     = 10
 
 -- ════════════════════════════════════════════════════════════════
 -- 🎲  TABLE DE RÉPARTITION DES RARETÉS PAR HAUTEUR
@@ -130,8 +172,20 @@ local RARITY_ZONES = {
 
 local ReplicatedStorage    = game:GetService("ReplicatedStorage")
 local CollectionService    = game:GetService("CollectionService")
+local ServerStorage        = game:GetService("ServerStorage")
 local Logger               = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local BrainrotPositioner   = require(game:GetService("ServerScriptService").SharedLib.Server.BrainrotPositioner)
+local RainbowEffect        = require(ReplicatedStorage.Modules.RainbowEffect)
+
+local function isToxicActif()
+	local flag = ServerStorage:FindFirstChild("ToxicEventActif")
+	return flag ~= nil and flag.Value == true
+end
+
+local function isNebulaActif()
+	local flag = ServerStorage:FindFirstChild("NebulaEventActif")
+	return flag ~= nil and flag.Value == true
+end
 
 -- Cache des centres de tours (évite GetBoundingBox répété à chaque spawn)
 local tourCentresCache = {}
@@ -155,24 +209,79 @@ if not brainrotsRoot then
 	Logger.warn("Spawn", "❌ Dossier '%s' introuvable dans ReplicatedStorage !", DOSSIER_BRAINROTS_NOM)
 end
 
--- Construit la table { COMMON = Folder, RARE = Folder, ... }
-local DOSSIERS_RARETE = {}
-if brainrotsRoot then
+-- Construit la table { COMMON = Folder, RARE = Folder, ... } pour un dossier racine donné
+local function construireDossiersRarete(racine)
+	local dossiers = {}
+	if not racine then return dossiers end
 	for cle, nomDossier in pairs(NOMS_DOSSIERS_RARETE) do
-		local folder = brainrotsRoot:FindFirstChild(nomDossier)
+		local folder = racine:FindFirstChild(nomDossier)
 		if folder then
-			DOSSIERS_RARETE[cle] = folder
+			dossiers[cle] = folder
 		else
-			Logger.warn("Spawn", "⚠️ Sous-dossier manquant : %s (rareté %s)", nomDossier, cle)
+			Logger.warn("Spawn", "⚠️ Sous-dossier manquant : %s/%s (rareté %s)", racine.Name, nomDossier, cle)
+		end
+	end
+	return dossiers
+end
+
+-- Dossiers de rareté pour les brainrots normaux
+local DOSSIERS_RARETE = construireDossiersRarete(brainrotsRoot)
+
+-- Dossiers de rareté pour les mutations
+local mutationRoot = ReplicatedStorage:FindFirstChild(DOSSIER_MUTATION_NOM)
+if not mutationRoot then
+	Logger.warn("Spawn", "⚠️ Dossier '%s' introuvable dans ReplicatedStorage — mutations désactivées.", DOSSIER_MUTATION_NOM)
+end
+
+-- DOSSIERS_MUTATION[type] = { COMMON = Folder, RARE = Folder, ... }
+local DOSSIERS_MUTATION = {}
+if mutationRoot then
+	for typeMutation, nomDossier in pairs(NOMS_DOSSIERS_MUTATION) do
+		local racine = mutationRoot:FindFirstChild(nomDossier)
+		if racine then
+			DOSSIERS_MUTATION[typeMutation] = construireDossiersRarete(racine)
+		else
+			Logger.warn("Spawn", "⚠️ Dossier mutation manquant : Mutation/%s", nomDossier)
 		end
 	end
 end
 
--- Dossier workspace.Brainrots — destination des clones
-local workspaceBrainrots = workspace:FindFirstChild("Brainrots")
-if not workspaceBrainrots then
-	Logger.warn("Spawn", "⚠️ workspace.Brainrots introuvable — les clones seront parentés à workspace")
+-- Dossiers rareté pour les brainrots toxiques
+local DOSSIERS_TOXIC = {}
+if mutationRoot then
+	local toxicRoot = mutationRoot:FindFirstChild(NOM_DOSSIER_TOXIC)
+	if toxicRoot then
+		DOSSIERS_TOXIC = construireDossiersRarete(toxicRoot)
+		Logger.info("Spawn", "ToxicBrainrots chargé ✓ (%d raretés)", (function()
+			local n = 0; for _ in pairs(DOSSIERS_TOXIC) do n += 1 end; return n
+		end)())
+	else
+		Logger.warn("Spawn", "⚠️ Mutation/%s introuvable — spawn toxic désactivé.", NOM_DOSSIER_TOXIC)
+	end
 end
+
+-- Dossiers rareté pour les brainrots nebula
+local DOSSIERS_NEBULA = {}
+if mutationRoot then
+	local nebulaRoot = mutationRoot:FindFirstChild(NOM_DOSSIER_NEBULA)
+	if nebulaRoot then
+		DOSSIERS_NEBULA = construireDossiersRarete(nebulaRoot)
+		Logger.info("Spawn", "NebulaBrainrots chargé ✓ (%d raretés)", (function()
+			local n = 0; for _ in pairs(DOSSIERS_NEBULA) do n += 1 end; return n
+		end)())
+	else
+		Logger.warn("Spawn", "⚠️ Mutation/%s introuvable — spawn nebula désactivé.", NOM_DOSSIER_NEBULA)
+	end
+end
+
+-- Tire le type de mutation à appliquer ("RAINBOW", "DIAMANT", "GOLD", ou nil = normal)
+local function tirerMutation()
+	if math.random(MUTATION_CONFIG.CHANCE_RAINBOW) == 1 then return "RAINBOW" end
+	if math.random(MUTATION_CONFIG.CHANCE_DIAMANT) == 1 then return "DIAMANT" end
+	if math.random(MUTATION_CONFIG.CHANCE_GOLD)    == 1 then return "GOLD"    end
+	return nil
+end
+
 
 -- ════════════════════════════════════════════════════════════════
 -- ÉTAT
@@ -208,13 +317,14 @@ local function tirerRarete(poids)
 	return next(poids)
 end
 
--- Choisit une rareté ET un modèle en ne considérant que les dossiers non vides.
--- Évite le cas où tirerRarete() sélectionne une rareté sans modèles disponibles.
-local function choisirRareteEtModele(zone)
+-- Choisit une rareté ET un modèle dans le set de dossiers fourni, en ne considérant
+-- que les dossiers non vides. Évite le cas où tirerRarete() sélectionne une rareté
+-- sans modèles disponibles.
+local function choisirRareteEtModele(zone, dossiersRarete)
 	-- Construire un sous-tableau de poids limité aux raretés avec des modèles
 	local poisdsValides = {}
 	for rarete, poids in pairs(zone.poids) do
-		local dossier = DOSSIERS_RARETE[rarete]
+		local dossier = dossiersRarete[rarete]
 		if dossier and #dossier:GetChildren() > 0 then
 			poisdsValides[rarete] = poids
 		end
@@ -226,7 +336,7 @@ local function choisirRareteEtModele(zone)
 	end
 
 	local rarete  = tirerRarete(poisdsValides)
-	local modeles = DOSSIERS_RARETE[rarete]:GetChildren()
+	local modeles = dossiersRarete[rarete]:GetChildren()
 	return modeles[math.random(1, #modeles)], rarete
 end
 
@@ -246,50 +356,91 @@ local TAG_COLLECTIBLE = "BrainrotCollectible"
 --     qui en est responsable.
 -- ════════════════════════════════════════════════════════════════
 
-local function spawnBrainrot(plateforme)
-	-- 1. Déterminer la rareté selon la hauteur et choisir un modèle disponible
-	local hauteur        = plateforme.Position.Y
-	local zone           = getZone(hauteur)
-	local modele, rarete = choisirRareteEtModele(zone)
+local function spawnBrainrot(plateforme, forceLifetime, forceToxic)
+	-- 1. Hauteur et zone de rareté
+	local hauteur = plateforme.Position.Y
+	local zone    = getZone(hauteur)
+
+	-- 2. Sélectionner la source : toxic/nebula (1/10 pendant l'event) ou normal+mutations
+	local dossiersActifs = DOSSIERS_RARETE
+	local mutation = nil
+	local isToxic  = forceToxic or false
+	local isNebula = false
+
+	if not isToxic and isToxicActif() and next(DOSSIERS_TOXIC) ~= nil
+		and math.random(CHANCE_TOXIC) == 1 then
+		dossiersActifs = DOSSIERS_TOXIC
+		isToxic        = true
+	end
+
+	if not isToxic and not isNebula and isNebulaActif() and next(DOSSIERS_NEBULA) ~= nil
+		and math.random(CHANCE_NEBULA) == 1 then
+		dossiersActifs = DOSSIERS_NEBULA
+		isNebula       = true
+	end
+
+	if not isToxic and not isNebula then
+		mutation = tirerMutation()
+		if mutation and DOSSIERS_MUTATION[mutation] and next(DOSSIERS_MUTATION[mutation]) then
+			dossiersActifs = DOSSIERS_MUTATION[mutation]
+		elseif mutation then
+			Logger.warn("Spawn", "Mutation %s sans dossiers valides — spawn normal.", mutation)
+			mutation = nil
+		end
+	end
+
+	-- 3. Modèle et rareté
+	local modele, rarete = choisirRareteEtModele(zone, dossiersActifs)
 	if not modele then return nil end
 
-	-- 3. Cloner depuis le template (jamais depuis un clone actif)
+	-- 4. Clone
 	local clone = modele:Clone()
 
-	-- 4. Positionner le clone sur la surface de la plateforme,
-	--    droit et orienté vers le centre de la tour.
-	local surfaceY   = plateforme.Position.Y + plateforme.Size.Y / 2
-	-- Remonter : plateforme → dossier Plateformes → modèle de la tour
+	-- 5. Position sur la plateforme
+	local surfaceY    = plateforme.Position.Y + plateforme.Size.Y / 2
 	local platDossier = plateforme.Parent
 	local tourModel   = platDossier and platDossier.Parent
 	local towerCentre = (tourModel and tourModel:IsA("Model")) and getTourCentre(tourModel) or nil
 
-	-- Parenter avant PivotTo (requis pour GetBoundingBox sur le clone)
-	clone.Parent = workspaceBrainrots or workspace
-
-	BrainrotPositioner.positionnerSurSurface(
-		clone,
-		surfaceY,
-		plateforme.Position.X, plateforme.Position.Z,
-		towerCentre,
-		CONFIG.HAUTEUR_OFFSET
-	)
-
-	-- 5. Attributs requis par BrainrotService (billboard + Tool)
-	-- Durée de vie aléatoire : lisse les disparitions dans le temps
-	local lifetime = math.random(CONFIG.DUREE_VIE_MIN, CONFIG.DUREE_VIE_MAX)
+	-- 6. Attributs — définis AVANT clone.Parent = workspace pour que le watcher
+	-- DescendantAdded voie la bonne valeur Mutation dès le premier frame.
+	-- Sans ça, le watcher lit l'attribut template du modèle (souvent "RAINBOW")
+	-- et applique l'effet rainbow à des mutations GOLD/DIAMANT/TOXIC par erreur.
+	local lifetime = forceLifetime or math.random(CONFIG.DUREE_VIE_MIN, CONFIG.DUREE_VIE_MAX)
 	clone:SetAttribute("Rarete",          rarete)
 	clone:SetAttribute("LifeTime",        lifetime)
 	clone:SetAttribute("OriginalName",    modele.Name)
+	clone:SetAttribute("SpawnTimestamp",  os.time())
+	if isToxic   then clone:SetAttribute("IsToxic",  true)    end
+	if isNebula  then clone:SetAttribute("IsNebula", true)    end
+	if mutation  then clone:SetAttribute("Mutation", mutation) end
 	local prixSrc = modele:GetAttribute("Prix")
 	local cpsSrc  = modele:GetAttribute("CashParSeconde")
 	if prixSrc then clone:SetAttribute("Prix",           prixSrc) end
 	if cpsSrc  then clone:SetAttribute("CashParSeconde", cpsSrc)  end
 
-	-- 6. Parent déjà défini ci-dessus (avant BrainrotPositioner.positionnerSurSurface)
+	clone.Parent = workspace
+	BrainrotPositioner.positionnerSurSurface(
+		clone, surfaceY,
+		plateforme.Position.X, plateforme.Position.Z,
+		towerCentre, CONFIG.HAUTEUR_OFFSET
+	)
 
-	-- 7. Tagguer → déclenche BrainrotService (billboard + pickup + countdown)
+	-- 7. Multiplicateur CPS — appliqué sur l'attribut AVANT le tag CollectionService
+	-- → BrainrotBillboard.SetupField lit directement la valeur multipliée
+	local cpsBase = clone:GetAttribute("CashParSeconde") or 0
+	local mult = (mutation and MUTATION_MULT[mutation]) or (isToxic and TOXIC_MULT) or (isNebula and NEBULA_MULT) or 1
+	if mult > 1 and cpsBase > 0 then
+		clone:SetAttribute("CashParSeconde", math.floor(cpsBase * mult))
+	end
+
+	-- 8. Tag → BrainrotService
 	CollectionService:AddTag(clone, TAG_COLLECTIBLE)
+
+	-- 9. Effet arc-en-ciel (mutation RAINBOW uniquement)
+	if mutation == "RAINBOW" then
+		RainbowEffect.Apply(clone)
+	end
 
 	return clone
 end
@@ -440,5 +591,160 @@ task.spawn(function()
 		end
 
 		task.wait(CONFIG.INTERVALLE_CYCLE)
+	end
+end)
+
+-- ════════════════════════════════════════════════════════════════
+-- REMPLACEMENT TOXIC — toutes les INTERVALLE_TOXIC_SWAP secondes
+-- Pendant l'event : les brainrots normaux ont une chance d'être
+-- remplacés par leur version toxique en conservant le timer restant.
+-- ════════════════════════════════════════════════════════════════
+task.spawn(function()
+	task.wait(5)  -- laisser le spawner principal démarrer
+
+	while true do
+		task.wait(INTERVALLE_TOXIC_SWAP)
+
+		if not isToxicActif() then continue end
+		if not next(DOSSIERS_TOXIC) then continue end
+
+		for plateforme, clone in pairs(platformState) do
+			if not clone or not clone:IsDescendantOf(workspace) then continue end
+			-- Ne pas remplacer les brainrots déjà spéciaux
+			if clone:GetAttribute("IsToxic") or clone:GetAttribute("IsNebula") then continue end
+			if math.random(CHANCE_TOXIC_SWAP) ~= 1 then continue end
+
+			local rarete      = clone:GetAttribute("Rarete")
+			local nomOriginal = clone:GetAttribute("OriginalName")
+			if not rarete or not nomOriginal then continue end
+
+			local dossierToxic = DOSSIERS_TOXIC[rarete]
+			if not dossierToxic then continue end
+			local modele = dossierToxic:FindFirstChild(nomOriginal)
+			if not modele then continue end
+
+			local spawnTime = clone:GetAttribute("SpawnTimestamp") or os.time()
+			local lifeTime  = clone:GetAttribute("LifeTime") or CONFIG.DUREE_VIE_MIN
+			local remaining = lifeTime - (os.time() - spawnTime)
+			if remaining <= 3 then continue end
+
+			clone:Destroy()
+
+			local newClone    = modele:Clone()
+			local surfaceY    = plateforme.Position.Y + plateforme.Size.Y / 2
+			local platDossier = plateforme.Parent
+			local tourModel   = platDossier and platDossier.Parent
+			local towerCentre = (tourModel and tourModel:IsA("Model")) and getTourCentre(tourModel) or nil
+
+			newClone.Parent = workspace
+			BrainrotPositioner.positionnerSurSurface(
+				newClone, surfaceY,
+				plateforme.Position.X, plateforme.Position.Z,
+				towerCentre, CONFIG.HAUTEUR_OFFSET
+			)
+
+			newClone:SetAttribute("Rarete",         rarete)
+			newClone:SetAttribute("LifeTime",        math.max(1, math.floor(remaining)))
+			newClone:SetAttribute("OriginalName",    nomOriginal)
+			newClone:SetAttribute("IsToxic",         true)
+			newClone:SetAttribute("SpawnTimestamp",  os.time())
+			local prixSrc = modele:GetAttribute("Prix")
+			local cpsSrc  = modele:GetAttribute("CashParSeconde")
+			if prixSrc then newClone:SetAttribute("Prix",           prixSrc) end
+			if cpsSrc  then newClone:SetAttribute("CashParSeconde", cpsSrc)  end
+
+			platformState[plateforme] = newClone
+			newClone.AncestryChanged:Connect(function()
+				if not newClone:IsDescendantOf(workspace) then
+					if platformState[plateforme] == newClone then
+						platformState[plateforme] = nil
+					end
+				end
+			end)
+			local toxCpsBase = newClone:GetAttribute("CashParSeconde") or 0
+			if toxCpsBase > 0 then
+				newClone:SetAttribute("CashParSeconde", math.floor(toxCpsBase * TOXIC_MULT))
+			end
+			CollectionService:AddTag(newClone, TAG_COLLECTIBLE)
+
+			Logger.debug("Spawn", "Brainrot '%s' (%s) → version toxic (%.0fs restantes)",
+				nomOriginal, rarete, remaining)
+		end
+	end
+end)
+
+-- ════════════════════════════════════════════════════════════════
+-- REMPLACEMENT NEBULA — toutes les INTERVALLE_NEBULA_SWAP secondes
+-- ════════════════════════════════════════════════════════════════
+task.spawn(function()
+	task.wait(6)
+
+	while true do
+		task.wait(INTERVALLE_NEBULA_SWAP)
+
+		if not isNebulaActif() then continue end
+		if not next(DOSSIERS_NEBULA) then continue end
+
+		for plateforme, clone in pairs(platformState) do
+			if not clone or not clone:IsDescendantOf(workspace) then continue end
+			if clone:GetAttribute("IsNebula") or clone:GetAttribute("IsToxic") then continue end
+			if math.random(CHANCE_NEBULA_SWAP) ~= 1 then continue end
+
+			local rarete      = clone:GetAttribute("Rarete")
+			local nomOriginal = clone:GetAttribute("OriginalName")
+			if not rarete or not nomOriginal then continue end
+
+			local dossierNebula = DOSSIERS_NEBULA[rarete]
+			if not dossierNebula then continue end
+			local modele = dossierNebula:FindFirstChild(nomOriginal)
+			if not modele then continue end
+
+			local spawnTime = clone:GetAttribute("SpawnTimestamp") or os.time()
+			local lifeTime  = clone:GetAttribute("LifeTime") or CONFIG.DUREE_VIE_MIN
+			local remaining = lifeTime - (os.time() - spawnTime)
+			if remaining <= 3 then continue end
+
+			clone:Destroy()
+
+			local newClone    = modele:Clone()
+			local surfaceY    = plateforme.Position.Y + plateforme.Size.Y / 2
+			local platDossier = plateforme.Parent
+			local tourModel   = platDossier and platDossier.Parent
+			local towerCentre = (tourModel and tourModel:IsA("Model")) and getTourCentre(tourModel) or nil
+
+			newClone.Parent = workspace
+			BrainrotPositioner.positionnerSurSurface(
+				newClone, surfaceY,
+				plateforme.Position.X, plateforme.Position.Z,
+				towerCentre, CONFIG.HAUTEUR_OFFSET
+			)
+
+			newClone:SetAttribute("Rarete",        rarete)
+			newClone:SetAttribute("LifeTime",       math.max(1, math.floor(remaining)))
+			newClone:SetAttribute("OriginalName",   nomOriginal)
+			newClone:SetAttribute("IsNebula",       true)
+			newClone:SetAttribute("SpawnTimestamp", os.time())
+			local prixSrc = modele:GetAttribute("Prix")
+			local cpsSrc  = modele:GetAttribute("CashParSeconde")
+			if prixSrc then newClone:SetAttribute("Prix",           prixSrc) end
+			if cpsSrc  then newClone:SetAttribute("CashParSeconde", cpsSrc)  end
+
+			platformState[plateforme] = newClone
+			newClone.AncestryChanged:Connect(function()
+				if not newClone:IsDescendantOf(workspace) then
+					if platformState[plateforme] == newClone then
+						platformState[plateforme] = nil
+					end
+				end
+			end)
+			local nebCpsBase = newClone:GetAttribute("CashParSeconde") or 0
+			if nebCpsBase > 0 then
+				newClone:SetAttribute("CashParSeconde", math.floor(nebCpsBase * NEBULA_MULT))
+			end
+			CollectionService:AddTag(newClone, TAG_COLLECTIBLE)
+
+			Logger.debug("Spawn", "Brainrot '%s' (%s) → version nebula (%.0fs restantes)",
+				nomOriginal, rarete, remaining)
+		end
 	end
 end)

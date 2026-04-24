@@ -61,24 +61,34 @@ local C_BTN_OFF      = Color3.fromRGB(40,  40,  40)
 local C_FERMER       = Color3.fromRGB(50,  50,  50)
 local C_ORANGE_STROKE = Color3.fromRGB(180, 90, 20)
 
+-- Couleurs mutation
+local C_GOLD    = Color3.fromRGB(255, 215,   0)
+local C_DIAMANT = Color3.fromRGB(130, 220, 255)
+local C_RAINBOW = Color3.fromRGB(200, 100, 255)
+local C_TOXIC   = Color3.fromRGB( 80, 220,  80)
+
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- Etat client
 -- ═══════════════════════════════════════════════════════════════════════════════
 local machineActuelle   = nil
 local slotsSelectionnes = {}
 local estEnFermeture    = false
+local toxicEventActif   = false
 
 -- References UI
 local screenGui, cadre
 local slotsFrames = {}
 local carryFrame
 local btnLancer
+local mutLignesContainer  -- Frame du panneau mutation (contient les lignes dynamiques)
+local mutEventBanner      -- Label bannière event toxique
 
 -- Declarations forward
 local fermerUI
 local viderSlot
 local rafraichirCarry
 local mettreAJourBouton
+local mettreAJourMutation
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- Helpers UI
@@ -186,11 +196,19 @@ local function rafraichirSlot(i)
 	local st     = slot:FindFirstChild("Stroke")
 
 	if tool and tool.Parent then
-		local nom = tool:GetAttribute("BrainrotName") or tool.Name
-		local cps = tool:GetAttribute("CashParSeconde") or 0
+		local nom      = tool:GetAttribute("BrainrotName") or tool.Name
+		local cps      = tool:GetAttribute("CashParSeconde") or 0
+		local mutation = tool:GetAttribute("Mutation")
+		local isToxic  = tool:GetAttribute("IsToxic")
+
+		local coulMut = (isToxic and C_TOXIC)
+		              or (mutation == "GOLD"    and C_GOLD)
+		              or (mutation == "DIAMANT" and C_DIAMANT)
+		              or (mutation == "RAINBOW" and C_RAINBOW)
+		              or C_ACCENT_LIGHT
 
 		slot.BackgroundColor3 = C_SLOT_FILL
-		if st then st.Color = C_ACCENT_LIGHT ; st.Thickness = 2 end
+		if st then st.Color = coulMut ; st.Thickness = 2 end
 
 		if iconeL then iconeL.Visible = false end
 		if lNom   then lNom.Text = nom ; lNom.Visible = true end
@@ -209,7 +227,7 @@ end
 viderSlot = function(i)
 	slotsSelectionnes[i] = nil
 	rafraichirSlot(i)
-	mettreAJourBouton()
+	mettreAJourBouton()  -- appelle mettreAJourMutation en interne
 	rafraichirCarry()
 end
 
@@ -233,6 +251,89 @@ mettreAJourBouton = function()
 		btnLancer.TextSize         = complet and 16 or 14
 		btnLancer.Active           = complet
 	end
+	mettreAJourMutation()
+end
+
+-- ─── Calcul et affichage des chances de mutation ──────────────────────────────
+local function calculerChancesMutation()
+	local nbGold, nbDiamant, nbRainbow, nbToxic = 0, 0, 0, 0
+	for i = 1, 4 do
+		local t = slotsSelectionnes[i]
+		if t and t.Parent then
+			local mutation = t:GetAttribute("Mutation")
+			if t:GetAttribute("IsToxic") then
+				nbToxic   += 1
+			elseif mutation == "GOLD" then
+				nbGold    += 1
+			elseif mutation == "DIAMANT" then
+				nbDiamant += 1
+			elseif mutation == "RAINBOW" then
+				nbRainbow += 1
+			end
+			-- brainrots normaux : aucun bonus
+		end
+	end
+	local toxicBonus    = toxicEventActif and 10 or 0
+	local goldChance    = nbGold    * 10
+	local diamantChance = nbDiamant * 10
+	local rainbowChance = nbRainbow * 10
+	local toxicChance   = nbToxic   * 10 + toxicBonus
+	return goldChance, diamantChance, rainbowChance, toxicChance, toxicBonus
+end
+
+local function creerLigneMutation(texte, couleur)
+	local lbl = Instance.new("TextLabel")
+	lbl.Size                   = UDim2.new(1, 0, 0, 28)
+	lbl.BackgroundTransparency = 1
+	lbl.Text                   = texte
+	lbl.TextColor3             = couleur
+	lbl.TextSize               = 14
+	lbl.TextScaled             = false
+	lbl.Font                   = Enum.Font.GothamBold
+	lbl.TextXAlignment         = Enum.TextXAlignment.Center
+	lbl.RichText               = true
+	lbl.Parent                 = mutLignesContainer
+	return lbl
+end
+
+mettreAJourMutation = function()
+	if not mutLignesContainer then return end
+
+	for _, child in ipairs(mutLignesContainer:GetChildren()) do
+		if child:IsA("TextLabel") then child:Destroy() end
+	end
+
+	-- Bannière event
+	if mutEventBanner then
+		mutEventBanner.Visible = toxicEventActif
+	end
+
+	local goldChance, diamantChance, rainbowChance, toxicChance, toxicBonus = calculerChancesMutation()
+	local aucune = goldChance == 0 and diamantChance == 0 and rainbowChance == 0 and toxicChance == 0
+
+	if aucune then
+		local lbl = creerLigneMutation("Aucune mutation\npossible", C_TEXTE2)
+		lbl.TextSize = 11
+		lbl.Font = Enum.Font.Gotham
+		return
+	end
+
+	if rainbowChance > 0 then
+		creerLigneMutation(string.format("<b>%d%%</b> Rainbow", rainbowChance), C_RAINBOW)
+	end
+	if diamantChance > 0 then
+		creerLigneMutation(string.format("<b>%d%%</b> Diamant", diamantChance), C_DIAMANT)
+	end
+	if goldChance > 0 then
+		creerLigneMutation(string.format("<b>%d%%</b> Gold",    goldChance),    C_GOLD)
+	end
+	if toxicChance > 0 then
+		local txt = string.format("<b>%d%%</b> Toxic", toxicChance)
+		if toxicBonus > 0 then
+			txt = txt .. string.format(" <font size='10'>(+%d event)</font>", toxicBonus)
+		end
+		creerLigneMutation(txt, C_TOXIC)
+	end
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -247,81 +348,99 @@ rafraichirCarry = function()
 		end
 	end
 
-	local backpack = player:FindFirstChildOfClass("Backpack")
-	if not backpack then return end
-
 	local dejaSelec = {}
 	for i = 1, 4 do
 		if slotsSelectionnes[i] then dejaSelec[slotsSelectionnes[i]] = true end
 	end
 
-	local count = 0
-	for _, tool in ipairs(backpack:GetChildren()) do
-		if tool:IsA("Tool") then
-			local cps = tool:GetAttribute("CashParSeconde")
-			if cps then
-				count = count + 1
-				local selectionne = dejaSelec[tool] == true
-				local nom         = tool:GetAttribute("BrainrotName") or tool.Name
-
-				local btn = Instance.new("TextButton")
-				btn.Name                   = "BT_" .. count
-				btn.Size                   = UDim2.new(0, 84, 0, 96)
-				btn.BackgroundColor3       = selectionne and C_SLOT_FILL or C_SLOT
-				btn.BackgroundTransparency = 0
-				btn.BorderSizePixel        = 0
-				btn.Text                   = ""
-				btn.AutoButtonColor        = false
-				btn.Parent                 = carryFrame
-				coin(btn, 0)
-
-				local st = stroke(btn, selectionne and C_ACCENT_LIGHT or C_BORDURE, 1)
-				if selectionne then st.Transparency = 0.5 end
-
-				-- Barre d'accent en haut (orange si selectionne, accent si libre)
-				local topBar = Instance.new("Frame")
-				topBar.Size             = UDim2.new(1, 0, 0, 5)
-				topBar.BackgroundColor3 = selectionne and C_BORDURE or C_ACCENT
-				topBar.BorderSizePixel  = 0
-				topBar.Parent           = btn
-
-				local lNom = Instance.new("TextLabel")
-				lNom.Size                   = UDim2.new(1, -4, 0, 44)
-				lNom.Position               = UDim2.new(0, 2, 0, 8)
-				lNom.BackgroundTransparency = 1
-				lNom.Text                   = nom
-				lNom.TextColor3             = selectionne and C_TEXTE2 or C_TEXTE
-				lNom.TextSize               = 11
-				lNom.TextScaled             = false
-				lNom.Font                   = Enum.Font.GothamBold
-				lNom.TextWrapped            = true
-				lNom.TextXAlignment         = Enum.TextXAlignment.Center
-				lNom.Parent                 = btn
-
-				local lCPS = Instance.new("TextLabel")
-				lCPS.Size                   = UDim2.new(1, -4, 0, 24)
-				lCPS.Position               = UDim2.new(0, 2, 1, -28)
-				lCPS.BackgroundTransparency = 1
-				lCPS.Text                   = formaterCPS(cps) .. "/s"
-				lCPS.TextColor3             = selectionne and C_TEXTE2 or C_ACCENT_LIGHT
-				lCPS.TextSize               = 12
-				lCPS.TextScaled             = false
-				lCPS.Font                   = Enum.Font.GothamBold
-				lCPS.TextXAlignment         = Enum.TextXAlignment.Center
-				lCPS.Parent                 = btn
-
-				if not selectionne then
-					local toolRef = tool
-					btn.MouseButton1Click:Connect(function()
-						local slot = premierSlotVide()
-						if not slot then return end
-						slotsSelectionnes[slot] = toolRef
-						rafraichirSlot(slot)
-						mettreAJourBouton()
-						rafraichirCarry()
-					end)
-				end
+	-- Collecte les tools du backpack ET de l'outil équipé (dans Character)
+	local allTools = {}
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if backpack then
+		for _, tool in ipairs(backpack:GetChildren()) do
+			if tool:IsA("Tool") and tool:GetAttribute("CashParSeconde") then
+				allTools[#allTools + 1] = tool
 			end
+		end
+	end
+	local character = player.Character
+	if character then
+		for _, tool in ipairs(character:GetChildren()) do
+			if tool:IsA("Tool") and tool:GetAttribute("CashParSeconde") then
+				allTools[#allTools + 1] = tool
+			end
+		end
+	end
+
+	local count = #allTools
+	for idx, tool in ipairs(allTools) do
+		local cps         = tool:GetAttribute("CashParSeconde")
+		local selectionne = dejaSelec[tool] == true
+		local nom         = tool:GetAttribute("BrainrotName") or tool.Name
+		local mutation    = tool:GetAttribute("Mutation")
+		local isToxic     = tool:GetAttribute("IsToxic")
+
+		local coulMut = (isToxic and C_TOXIC)
+		              or (mutation == "GOLD"    and C_GOLD)
+		              or (mutation == "DIAMANT" and C_DIAMANT)
+		              or (mutation == "RAINBOW" and C_RAINBOW)
+		              or C_ACCENT
+
+		local btn = Instance.new("TextButton")
+		btn.Name                   = "BT_" .. idx
+		btn.Size                   = UDim2.new(0, 84, 0, 96)
+		btn.BackgroundColor3       = selectionne and C_SLOT_FILL or C_SLOT
+		btn.BackgroundTransparency = 0
+		btn.BorderSizePixel        = 0
+		btn.Text                   = ""
+		btn.AutoButtonColor        = false
+		btn.Parent                 = carryFrame
+		coin(btn, 0)
+
+		local st = stroke(btn, selectionne and (coulMut) or C_BORDURE, 1)
+		if selectionne then st.Transparency = 0.5 end
+
+		local topBar = Instance.new("Frame")
+		topBar.Size             = UDim2.new(1, 0, 0, 5)
+		topBar.BackgroundColor3 = selectionne and C_BORDURE or coulMut
+		topBar.BorderSizePixel  = 0
+		topBar.Parent           = btn
+
+		local lNom = Instance.new("TextLabel")
+		lNom.Size                   = UDim2.new(1, -4, 0, 44)
+		lNom.Position               = UDim2.new(0, 2, 0, 8)
+		lNom.BackgroundTransparency = 1
+		lNom.Text                   = nom
+		lNom.TextColor3             = selectionne and C_TEXTE2 or C_TEXTE
+		lNom.TextSize               = 11
+		lNom.TextScaled             = false
+		lNom.Font                   = Enum.Font.GothamBold
+		lNom.TextWrapped            = true
+		lNom.TextXAlignment         = Enum.TextXAlignment.Center
+		lNom.Parent                 = btn
+
+		local lCPS = Instance.new("TextLabel")
+		lCPS.Size                   = UDim2.new(1, -4, 0, 24)
+		lCPS.Position               = UDim2.new(0, 2, 1, -28)
+		lCPS.BackgroundTransparency = 1
+		lCPS.Text                   = formaterCPS(cps) .. "/s"
+		lCPS.TextColor3             = selectionne and C_TEXTE2 or C_ACCENT_LIGHT
+		lCPS.TextSize               = 12
+		lCPS.TextScaled             = false
+		lCPS.Font                   = Enum.Font.GothamBold
+		lCPS.TextXAlignment         = Enum.TextXAlignment.Center
+		lCPS.Parent                 = btn
+
+		if not selectionne then
+			local toolRef = tool
+			btn.MouseButton1Click:Connect(function()
+				local slot = premierSlotVide()
+				if not slot then return end
+				slotsSelectionnes[slot] = toolRef
+				rafraichirSlot(slot)
+				mettreAJourBouton()  -- appelle mettreAJourMutation en interne
+				rafraichirCarry()
+			end)
 		end
 	end
 
@@ -348,7 +467,7 @@ local function ouvrirUI(machine)
 	estEnFermeture    = false
 
 	for i = 1, 4 do rafraichirSlot(i) end
-	mettreAJourBouton()
+	mettreAJourBouton()   -- appelle mettreAJourMutation en interne
 	rafraichirCarry()
 
 	screenGui.Enabled  = true
@@ -421,10 +540,10 @@ local function creerUI()
 	screenGui.Enabled        = false
 	screenGui.Parent         = playerGui
 
-	-- Cadre principal 480x380, ancre centre
+	-- Cadre principal 668x380, ancre centre (côté gauche : 456 contenu, côté droit : 180 mutation)
 	cadre = Instance.new("Frame")
 	cadre.Name                   = "Cadre"
-	cadre.Size                   = UDim2.new(0, 480, 0, 380)
+	cadre.Size                   = UDim2.new(0, 668, 0, 380)
 	cadre.AnchorPoint            = Vector2.new(0.5, 0.5)
 	cadre.Position               = UDim2.new(0.5, 0, 1.5, 0)
 	cadre.BackgroundColor3       = C_BG
@@ -439,8 +558,8 @@ local function creerUI()
 	uiScale.Parent = cadre
 	local function ajusterScale()
 		local vp = workspace.CurrentCamera.ViewportSize
-		local s  = math.min(vp.X / 540, vp.Y / 500, 1)
-		uiScale.Scale = math.max(0.55, s)
+		local s  = math.min(vp.X / 730, vp.Y / 500, 1)
+		uiScale.Scale = math.max(0.5, s)
 	end
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
 	ajusterScale()
@@ -506,10 +625,10 @@ local function creerUI()
 	addHover(btnX)
 	btnX.MouseButton1Click:Connect(function() fermerUI() end)
 
-	-- ─── Contenu ─────────────────────────────────────────────────────────────
+	-- ─── Contenu (gauche, largeur fixe 444px) ────────────────────────────────
 	local contenu = Instance.new("Frame")
 	contenu.Name                   = "Contenu"
-	contenu.Size                   = UDim2.new(1, -24, 1, -62)
+	contenu.Size                   = UDim2.new(0, 444, 1, -62)
 	contenu.Position               = UDim2.new(0, 12, 0, 58)
 	contenu.BackgroundTransparency = 1
 	contenu.Parent                 = cadre
@@ -652,6 +771,78 @@ local function creerUI()
 		if not btnLancer.Active then return end
 		onLancer()
 	end)
+
+	-- ─── Panneau MUTATION (droite, x=468, largeur=188) ────────────────────────
+	local mutPanel = Instance.new("Frame")
+	mutPanel.Name                   = "MutationPanel"
+	mutPanel.Size                   = UDim2.new(0, 188, 1, -70)
+	mutPanel.Position               = UDim2.new(0, 468, 0, 62)
+	mutPanel.BackgroundColor3       = C_BG2
+	mutPanel.BackgroundTransparency = 0
+	mutPanel.BorderSizePixel        = 0
+	mutPanel.Parent                 = cadre
+	coin(mutPanel, 0)
+	stroke(mutPanel, C_BORDURE, 1)
+
+	-- Barre accent gauche
+	local mutAccent = Instance.new("Frame")
+	mutAccent.Size             = UDim2.new(0, 3, 1, 0)
+	mutAccent.BackgroundColor3 = C_ACCENT
+	mutAccent.BorderSizePixel  = 0
+	mutAccent.Parent           = mutPanel
+
+	-- Titre centré
+	local mutTitre = Instance.new("TextLabel")
+	mutTitre.Size                   = UDim2.new(1, -6, 0, 30)
+	mutTitre.Position               = UDim2.new(0, 3, 0, 8)
+	mutTitre.BackgroundTransparency = 1
+	mutTitre.Text                   = "MUTATION"
+	mutTitre.TextColor3             = C_TEXTE
+	mutTitre.TextSize               = 13
+	mutTitre.TextScaled             = false
+	mutTitre.Font                   = Enum.Font.GothamBold
+	mutTitre.TextXAlignment         = Enum.TextXAlignment.Center
+	mutTitre.Parent                 = mutPanel
+
+	local mutSep = Instance.new("Frame")
+	mutSep.Size             = UDim2.new(1, -8, 0, 1)
+	mutSep.Position         = UDim2.new(0, 4, 0, 42)
+	mutSep.BackgroundColor3 = C_BORDURE
+	mutSep.BorderSizePixel  = 0
+	mutSep.Parent           = mutPanel
+
+	-- Bannière event toxique (cachée par défaut)
+	mutEventBanner = Instance.new("TextLabel")
+	mutEventBanner.Name                   = "EventBanner"
+	mutEventBanner.Size                   = UDim2.new(1, -8, 0, 22)
+	mutEventBanner.Position               = UDim2.new(0, 4, 1, -30)
+	mutEventBanner.BackgroundColor3       = Color3.fromRGB(20, 60, 20)
+	mutEventBanner.BackgroundTransparency = 0
+	mutEventBanner.BorderSizePixel        = 0
+	mutEventBanner.Text                   = "+10% Toxic (Event)"
+	mutEventBanner.TextColor3             = C_TOXIC
+	mutEventBanner.TextSize               = 10
+	mutEventBanner.TextScaled             = false
+	mutEventBanner.Font                   = Enum.Font.GothamBold
+	mutEventBanner.TextXAlignment         = Enum.TextXAlignment.Center
+	mutEventBanner.Visible                = false
+	mutEventBanner.Parent                 = mutPanel
+	coin(mutEventBanner, 2)
+
+	-- Conteneur lignes mutation (liste verticale)
+	mutLignesContainer = Instance.new("Frame")
+	mutLignesContainer.Name                   = "MutLignes"
+	mutLignesContainer.Size                   = UDim2.new(1, -8, 1, -90)
+	mutLignesContainer.Position               = UDim2.new(0, 4, 0, 50)
+	mutLignesContainer.BackgroundTransparency = 1
+	mutLignesContainer.BorderSizePixel        = 0
+	mutLignesContainer.Parent                 = mutPanel
+
+	local mutLayout = Instance.new("UIListLayout")
+	mutLayout.FillDirection       = Enum.FillDirection.Vertical
+	mutLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	mutLayout.Padding             = UDim.new(0, 8)
+	mutLayout.Parent              = mutLignesContainer
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -665,6 +856,18 @@ end)
 FermerUI.OnClientEvent:Connect(function()
 	Logger.debug("Fuse", "FermerUI recu")
 	if screenGui and screenGui.Enabled then fermerUI() end
+end)
+
+-- Etat de l'événement Toxic (ToxicEventSystem.server.lua)
+task.spawn(function()
+	local re = ReplicatedStorage:WaitForChild("ToxicEventState", 30)
+	if not re then return end
+	re.OnClientEvent:Connect(function(active)
+		toxicEventActif = active == true
+		if screenGui and screenGui.Enabled then
+			mettreAJourMutation()
+		end
+	end)
 end)
 
 UserInputService.InputBegan:Connect(function(input, processed)

@@ -80,7 +80,11 @@ end
 -- Appelé après chaque dépôt / récupération / vente
 -- Exemple : DropSystem.OnSpotChange = function(player) RebirthSystem.MettreAJourBouton(player) end
 -- ============================================================
-DropSystem.OnSpotChange = nil
+DropSystem.OnSpotChange  = nil
+-- Appelé quand un Mutant est déposé sur un spot (touchPart, modeleSlot, elementType)
+DropSystem.OnMutantDepose = nil
+-- Appelé quand un Mutant est retiré d'un spot (touchPart)
+DropSystem.OnMutantRetire = nil
 
 -- ============================================================
 -- Centre de base par joueur (calculé à l'Init, utilisé pour orienter les BRs)
@@ -220,6 +224,35 @@ local function viderGui(touchPart)
     local offline = gui:FindFirstChild("$offline")
     if amount  then pcall(function() amount.Text  = "" end) end
     if offline then pcall(function() offline.Text = "" end) end
+end
+
+-- ============================================================
+-- Utilitaires — dossiers mutation
+-- ============================================================
+
+local NOMS_DOSSIERS_MUTATION = {
+    GOLD    = "BrainrotsGold",
+    DIAMANT = "BrainrotsDiamant",
+    RAINBOW = "BrainrotsRainbow",
+}
+
+-- Retourne le dossier rareté dans Mutation/[type]/[rarity], ou nil si inexistant.
+-- mutation = "GOLD"|"DIAMANT"|"RAINBOW"|nil, isToxic = bool, rarity = "COMMON"|"RARE"|…
+local function getDossierMutation(mutation, isToxic, rarity)
+    local mutRoot = ReplicatedStorage:FindFirstChild("Mutation")
+    if not mutRoot then return nil end
+    local nomDossier
+    if mutation then
+        nomDossier = NOMS_DOSSIERS_MUTATION[mutation]
+    elseif isToxic then
+        nomDossier = "BrainrotsToxic"
+    end
+    if not nomDossier then return nil end
+    local mutDossier = mutRoot:FindFirstChild(nomDossier)
+    if not mutDossier then return nil end
+    return mutDossier:FindFirstChild(rarity)
+        or mutDossier:FindFirstChild(string.upper(rarity))
+        or mutDossier:FindFirstChild(string.lower(rarity):gsub("^%l", string.upper))
 end
 
 -- ============================================================
@@ -620,76 +653,76 @@ local function restaurerDepots(player, playerData)
 
             -- Tenter de restaurer le modèle exact via brNom (mutants inclus)
             local modeleSource = nil
-            if info.brNom then
+            -- Trouver le bon dossier : mutation d'abord, normal en fallback
+            local function trouverDossier()
+                local d = getDossierMutation(info.mutation, info.isToxic, info.rarete)
+                if d then return d end
                 local brainrots = getBrainrotsFolder()
-                local dossier   = brainrots and (
+                return brainrots and (
                     brainrots:FindFirstChild(info.rarete)
                     or brainrots:FindFirstChild(string.upper(info.rarete))
                     or brainrots:FindFirstChild(string.lower(info.rarete):gsub("^%l", string.upper))
                 )
-                local brSource  = dossier and dossier:FindFirstChild(info.brNom)
+            end
+            if info.brNom then
+                local dossier  = trouverDossier()
+                local brSource = dossier and dossier:FindFirstChild(info.brNom)
                 if brSource then
                     pcall(function()
                         modeleSource = brSource:Clone()
-                        -- CRITIQUE : Parent doit être non-nil sinon placerMiniModele
-                        -- interprète le modèle comme invalide et clone un BR aléatoire
+                        -- Garantir les attributs mutation pour le watcher DescendantAdded
+                        if info.mutation then modeleSource:SetAttribute("Mutation", info.mutation) end
+                        if info.isToxic  then modeleSource:SetAttribute("IsToxic",  true)         end
                         modeleSource.Parent = Workspace
                     end)
                 else
-                    -- brNom sauvegardé mais modèle introuvable dans ServerStorage
-                    -- (renommage Studio ou modèle supprimé) → fallback déterministe
-                    Logger.warn("Drop", "Restauration : modèle '%s' introuvable dans ServerStorage/%s → fallback premier modèle du dossier", tostring(info.brNom), tostring(info.rarete))
+                    Logger.warn("Drop", "Restauration : modèle '%s' introuvable → fallback premier modèle du dossier", tostring(info.brNom))
                 end
             else
                 -- brNom nil : donnée ancienne OU mutant sans brNom sauvegardé
-                -- Fallback déterministe sur modeles[1] pour éviter le changement
-                -- de BR à chaque reconnexion (math.random dans clonerModeleSlot)
-                local brainrots = getBrainrotsFolder()
-                local dossier   = brainrots and (
-                    brainrots:FindFirstChild(info.rarete)
-                    or brainrots:FindFirstChild(string.upper(info.rarete))
-                    or brainrots:FindFirstChild(string.lower(info.rarete):gsub("^%l", string.upper))
-                )
+                local dossier = trouverDossier()
                 if dossier then
                     local modeles = dossier:GetChildren()
                     if #modeles > 0 then
                         pcall(function()
                             modeleSource = modeles[1]:Clone()
+                            if info.mutation then modeleSource:SetAttribute("Mutation", info.mutation) end
+                            if info.isToxic  then modeleSource:SetAttribute("IsToxic",  true)         end
                             modeleSource.Parent = Workspace
                         end)
-                        Logger.debug("Drop", "Restauration : brNom nil pour %s → modèle fixe '%s' (donnée ancienne)", tostring(info.rarete), modeles[1].Name)
+                        Logger.debug("Drop", "Restauration : brNom nil pour %s → modèle fixe '%s'", tostring(info.rarete), modeles[1].Name)
                     end
                 end
             end
 
             -- Fallback : lire CashParSeconde depuis le modèle cloné si valeur inconnue
             -- (anciens saves sans valeurSec, ou BR dont l'attribut n'était pas encore posé)
+            local function appliquerMultiplicateurs(base)
+                local v = base
+                if isMutant and info.elementType then
+                    local multElem = (Config.MutantConfig
+                        and Config.MutantConfig.ElementMultipliers
+                        and Config.MutantConfig.ElementMultipliers[info.elementType]) or 1
+                    v = v * multElem
+                end
+                local mutCPS2  = Config.Fuse and Config.Fuse.MutationCPS
+                local mutMult2 = (mutCPS2 and info.mutation and mutCPS2[info.mutation]) or 1
+                if mutMult2 > 1 then v = math.floor(v * mutMult2) end
+                return v
+            end
             if not valeur and modeleSource then
                 local cpsAttr = modeleSource:GetAttribute("CashParSeconde")
                 if cpsAttr and cpsAttr > 0 then
-                    valeur = cpsAttr
-                    if isMutant and info.elementType then
-                        local multElem = (Config.MutantConfig
-                            and Config.MutantConfig.ElementMultipliers
-                            and Config.MutantConfig.ElementMultipliers[info.elementType]) or 1
-                        valeur = valeur * multElem
-                    end
+                    valeur = appliquerMultiplicateurs(cpsAttr)
                 end
             end
             local modeleSlot = placerModeleSlot(touchPart, info.rarete, modeleSource, baseCentres[uid])
 
             -- Fallback définitif : lire CashParSeconde depuis le modèle restauré sur le slot.
-            -- Le clone conserve tous les attributs du modèle source même sans brNom sauvegardé.
             if (not valeur or valeur == 0) and modeleSlot then
                 local cpsSlot = modeleSlot:GetAttribute("CashParSeconde")
                 if cpsSlot and cpsSlot > 0 then
-                    valeur = cpsSlot
-                    if isMutant and info.elementType then
-                        local multElem = (Config.MutantConfig
-                            and Config.MutantConfig.ElementMultipliers
-                            and Config.MutantConfig.ElementMultipliers[info.elementType]) or 1
-                        valeur = valeur * multElem
-                    end
+                    valeur = appliquerMultiplicateurs(cpsSlot)
                 end
             end
             valeur = valeur or 0
@@ -698,45 +731,22 @@ local function restaurerDepots(player, playerData)
             if modeleSlot then
                 pcall(function()
                     modeleSlot:SetAttribute("CashParSeconde", valeur)
-                    if isMutant and info.elementType then
-                        modeleSlot:SetAttribute("IsMutant",   true)
-                        modeleSlot:SetAttribute("MutantType", info.elementType)
+                    if isMutant then
+                        modeleSlot:SetAttribute("IsMutant", true)
+                        if info.elementType then modeleSlot:SetAttribute("MutantType", info.elementType) end
+                        if info.mutation    then modeleSlot:SetAttribute("Mutation",   info.mutation)    end
                     end
+                    if info.isToxic then modeleSlot:SetAttribute("IsToxic", true) end
                 end)
                 pcall(BrainrotBillboard.SetupBase, modeleSlot)
             end
 
-            -- Restaurer le visuel Mutant (spot doré + particules)
             if isMutant then
-                local spotColor = (Config.FlowerPotConfig
-                    and Config.FlowerPotConfig.spotMutantCouleur)
-                    or Color3.fromRGB(255, 215, 0)
-                pcall(function()
-                    touchPart.Color = spotColor
-                    local light = touchPart:FindFirstChild("MutantLight")
-                               or Instance.new("PointLight", touchPart)
-                    light.Name       = "MutantLight"
-                    light.Brightness = 2
-                    light.Range      = 10
-                    light.Color      = Color3.fromRGB(255, 215, 0)
-                end)
-                if modeleSlot then
-                    pcall(function()
-                        local root = modeleSlot.PrimaryPart
-                                  or modeleSlot:FindFirstChildWhichIsA("BasePart")
-                        if root then
-                            local p = Instance.new("ParticleEmitter", root)
-                            p.Rate     = 8
-                            p.Lifetime = NumberRange.new(0.5, 1.2)
-                            p.Speed    = NumberRange.new(2, 4)
-                            p.Color    = ColorSequence.new(Color3.fromRGB(255, 215, 0))
-                            p.Size     = NumberSequence.new(0.2)
-                            p.LightEmission = 0.8
-                        end
-                    end)
-                end
                 -- Réappliquer les effets visuels élémentaires (particles + highlight + emoji)
                 appliquerEffetsMutant(modeleSlot, info.elementType)
+                if DropSystem.OnMutantDepose then
+                    pcall(DropSystem.OnMutantDepose, touchPart, modeleSlot, info.elementType)
+                end
             end
 
             spotsData[uid][touchPart] = {
@@ -745,9 +755,10 @@ local function restaurerDepots(player, playerData)
                 brNom             = info.brNom,
                 isMutant          = isMutant,
                 elementType       = info.elementType,
+                mutation          = info.mutation,
+                isToxic           = info.isToxic,
                 valeurSec         = valeur,
                 modeleSlot        = modeleSlot,
-                originalSpotColor = nil,  -- inconnue après reconnexion → fallback spotDefaultCouleur
             }
 
             mettreAJourGui(touchPart, valeur)
@@ -883,7 +894,9 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     local entree = portes[indexADeposer]
     if not entree or not entree.rarete then return end
 
-    local rarete = entree.rarete.nom or "COMMON"
+    local rarete    = entree.rarete.nom or "COMMON"
+    local mutation  = entree.rarete.mutation
+    local isToxic   = entree.rarete.isToxic == true
 
     -- Lire le nom et les attributs du BR depuis le Tool AVANT ViderCarry (le Tool est détruit après)
     local brNomFallback  = nil
@@ -912,10 +925,13 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         valeurSec = modeleDepose:GetAttribute("CashParSeconde")
     end
     valeurSec = valeurSec or 0
-    -- Conserver le multiplicateur Mutant sur la valeur de base
+    -- Multiplicateur Mutant partagé (système elementType — BrainRotFarm uniquement)
     if isMutant and entree.rarete.valeur and valeurSec > 0 then
         valeurSec = valeurSec * entree.rarete.valeur
     end
+    -- NOTE : le multiplicateur LavaTower (GOLD/DIAMANT/RAINBOW/TOXIC) est appliqué
+    -- directement sur CashParSeconde à la naissance du brainrot (BrainrotPlatformSpawner).
+    -- On NE re-multiplie PAS ici pour éviter le double-calcul.
 
     -- Mémoriser le nom original du BR (Attribute posé par SpawnManager/CommunSpawner)
     -- Le modèle est renommé "BR_1_42" / "CC_MYTHIC_7" au spawn → utiliser OriginalName
@@ -928,23 +944,27 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         brNom = brNomFallback
     end
 
-    -- Si modeleDepose nil mais brNom connu → cloner le bon modèle depuis ServerStorage
-    -- (évite le fallback aléatoire de clonerModeleSlot)
+    -- Si modeleDepose nil mais brNom connu → cloner depuis le bon dossier (mutation ou normal)
     local modeleSource = modeleDepose
     if not modeleSource and brNom then
-        local brainrots = getBrainrotsFolder()
-        local dossier = brainrots and (
-            brainrots:FindFirstChild(rarete)
-            or brainrots:FindFirstChild(string.upper(rarete))
-        )
+        local dossier = getDossierMutation(mutation, isToxic, rarete)
+        if not dossier then
+            local brainrots = getBrainrotsFolder()
+            dossier = brainrots and (
+                brainrots:FindFirstChild(rarete)
+                or brainrots:FindFirstChild(string.upper(rarete))
+            )
+        end
         local brSource = dossier and dossier:FindFirstChild(brNom)
         if brSource then
             pcall(function()
                 modeleSource = brSource:Clone()
+                if mutation then modeleSource:SetAttribute("Mutation", mutation) end
+                if isToxic  then modeleSource:SetAttribute("IsToxic",  true)    end
                 modeleSource.Parent = Workspace
             end)
         else
-            Logger.warn("Drop", "DeposerBrainRots : modèle '%s' introuvable dans ServerStorage/%s — fallback aléatoire", brNom, rarete)
+            Logger.warn("Drop", "DeposerBrainRots : modèle '%s' introuvable — fallback aléatoire", brNom)
         end
     end
 
@@ -956,13 +976,11 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     end
 
     -- Fallback définitif : lire CashParSeconde depuis le modèle posé sur le slot.
-    -- Le clone conserve tous les attributs du modèle source (ServerStorage).
-    -- Couvre les cas : Tool sans attribut (spawn avant fix), modeleDepose nil, etc.
+    -- À ce stade, le modèle vient du carry (CPS déjà multiplié par le spawner).
     if valeurSec == 0 and modeleSlot then
         local cpsSlot = modeleSlot:GetAttribute("CashParSeconde")
         if cpsSlot and cpsSlot > 0 then
             valeurSec = cpsSlot
-            -- Ré-appliquer le multiplicateur Mutant si applicable
             if isMutant and entree.rarete.valeur then
                 valeurSec = valeurSec * entree.rarete.valeur
             end
@@ -972,38 +990,12 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Récupérer le type d'élément du Mutant (nil si BR normal)
     local elementType = isMutant and entree.rarete.elementType or nil
 
-    -- Spot doré si BR Mutant
     if isMutant then
-        local spotColor = (Config.FlowerPotConfig and Config.FlowerPotConfig.spotMutantCouleur)
-                       or Color3.fromRGB(255, 215, 0)
-        local originalSpotColor = touchPart.Color
-        pcall(function()
-            touchPart.Color = spotColor
-            local light = touchPart:FindFirstChild("MutantLight")
-                       or Instance.new("PointLight", touchPart)
-            light.Name       = "MutantLight"
-            light.Brightness = 2
-            light.Range      = 10
-            light.Color      = Color3.fromRGB(255, 215, 0)
-        end)
-        -- Ajouter particules dorées sur le mini modèle
-        if modeleSlot then
-            pcall(function()
-                local root = modeleSlot.PrimaryPart
-                          or modeleSlot:FindFirstChildWhichIsA("BasePart")
-                if root then
-                    local p = Instance.new("ParticleEmitter", root)
-                    p.Rate     = 8
-                    p.Lifetime = NumberRange.new(0.5, 1.2)
-                    p.Speed    = NumberRange.new(2, 4)
-                    p.Color    = ColorSequence.new(Color3.fromRGB(255, 215, 0))
-                    p.Size     = NumberSequence.new(0.2)
-                    p.LightEmission = 0.8
-                end
-            end)
-        end
         -- Réappliquer les effets visuels élémentaires (particles + highlight + emoji)
         appliquerEffetsMutant(modeleSlot, elementType)
+        if DropSystem.OnMutantDepose then
+            pcall(DropSystem.OnMutantDepose, touchPart, modeleSlot, elementType)
+        end
     end
 
     -- Enregistrer en mémoire locale
@@ -1013,9 +1005,10 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         brNom             = brNom,        -- nom exact du modèle BR (ex: "Tralalero_Tralala")
         isMutant          = isMutant,     -- pour restauration fidèle après reconnexion
         elementType       = elementType,  -- type élément Mutant ("water"/"fire"/"earth"/"wind")
+        mutation          = mutation,     -- "GOLD"|"DIAMANT"|"RAINBOW"|nil
+        isToxic           = isToxic or nil,
         valeurSec         = valeurSec,
         modeleSlot        = modeleSlot,
-        originalSpotColor = isMutant and originalSpotColor or nil,
     }
 
     -- Persister dans playerData pour le DataStore
@@ -1028,10 +1021,12 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     if modeleSlot then
         pcall(function()
             modeleSlot:SetAttribute("CashParSeconde", valeurSec)
-            if isMutant and elementType then
-                modeleSlot:SetAttribute("IsMutant",   true)
-                modeleSlot:SetAttribute("MutantType", elementType)
+            if isMutant then
+                modeleSlot:SetAttribute("IsMutant", true)
+                if elementType then modeleSlot:SetAttribute("MutantType", elementType) end
+                if mutation    then modeleSlot:SetAttribute("Mutation",   mutation)    end
             end
+            if isToxic then modeleSlot:SetAttribute("IsToxic", true) end
         end)
         pcall(BrainrotBillboard.SetupBase, modeleSlot)
     end
@@ -1099,57 +1094,68 @@ function DropSystem.RecupererBrainRot(player, touchPart)
     -- Supprimer le mini modèle
     supprimerModeleSlot(modeleSlot)
 
-    -- Réinitialiser la couleur du spot si c'était un Mutant
-    if entree.isMutant then
-        local defaultColor = entree.originalSpotColor
-            or (Config.FlowerPotConfig and Config.FlowerPotConfig.spotDefaultCouleur)
-            or Color3.fromRGB(106, 127, 63)
-        pcall(function()
-            touchPart.Color = defaultColor
-            local light = touchPart:FindFirstChild("MutantLight")
-            if light then light:Destroy() end
-        end)
+    if entree.isMutant and DropSystem.OnMutantRetire then
+        pcall(DropSystem.OnMutantRetire, touchPart)
     end
 
     -- Supprimer le prompt de récupération et recalculer les prompts selon le carry réel
     supprimerPromptRecuperer(player, touchPart)
 
-    -- Cloner le modèle exact depuis ServerStorage via brNom (évite un BR aléatoire au retrieve)
+    -- Cloner le modèle exact via brNom — dossier mutation d'abord, fallback normal
     local modeleRestitue = nil
     local brNom = entree.brNom
     if brNom then
-        local brainrots = getBrainrotsFolder()
-        local dossierRarete = brainrots and (
-            brainrots:FindFirstChild(rarete)
-            or brainrots:FindFirstChild(string.upper(rarete))
-            or brainrots:FindFirstChild(string.lower(rarete):gsub("^%l", string.upper))
-        )
+        local dossierRarete = getDossierMutation(entree.mutation, entree.isToxic, rarete)
+        if not dossierRarete then
+            local brainrots = getBrainrotsFolder()
+            dossierRarete = brainrots and (
+                brainrots:FindFirstChild(rarete)
+                or brainrots:FindFirstChild(string.upper(rarete))
+                or brainrots:FindFirstChild(string.lower(rarete):gsub("^%l", string.upper))
+            )
+        end
         if dossierRarete then
+            local function appliquerMutSurClone(c, source)
+                if entree.mutation then c:SetAttribute("Mutation", entree.mutation) end
+                if entree.isToxic  then c:SetAttribute("IsToxic",  true)            end
+                -- Pré-multiplier le CPS (le clone vient du template → CPS de base)
+                local mutCPS3 = Config.Fuse and Config.Fuse.MutationCPS
+                local baseCPS = source:GetAttribute("CashParSeconde") or 0
+                local mult3   = (mutCPS3 and entree.mutation and mutCPS3[entree.mutation])
+                             or (entree.isToxic and mutCPS3 and mutCPS3["TOXIC"])
+                             or 1
+                if mult3 > 1 and baseCPS > 0 then
+                    c:SetAttribute("CashParSeconde", math.floor(baseCPS * mult3))
+                end
+                c.Parent = Workspace
+            end
             local brSource = dossierRarete:FindFirstChild(brNom)
             if brSource then
                 pcall(function()
                     modeleRestitue = brSource:Clone()
-                    -- CRITIQUE : Parent doit être non-nil sinon InsererEnTeteCarry
-                    -- interprète le modèle comme invalide et clone un BR aléatoire
-                    modeleRestitue.Parent = Workspace
+                    appliquerMutSurClone(modeleRestitue, brSource)
                 end)
             end
-            -- Fallback : premier BR de la rareté si le modèle exact est introuvable
             if not modeleRestitue then
                 local premiers = dossierRarete:GetChildren()
                 if #premiers > 0 then
                     pcall(function()
                         modeleRestitue = premiers[1]:Clone()
-                        modeleRestitue.Parent = Workspace
+                        appliquerMutSurClone(modeleRestitue, premiers[1])
                     end)
                 end
             end
         end
     end
 
-    -- Remettre le BR en TÊTE du carry (position 1) pour qu'il soit déposé en premier
-    -- isMutant préservé pour que le re-dépôt calcule le bon income
-    local rareteObj = { nom = rarete, dossier = rarete, isMutant = entree.isMutant }
+    -- Remettre le BR en TÊTE du carry avec tous les champs mutation préservés
+    local rareteObj = {
+        nom      = rarete,
+        dossier  = rarete,
+        isMutant = entree.isMutant,
+        mutation = entree.mutation,
+        isToxic  = entree.isToxic,
+    }
     pcall(CarrySystem.InsererEnTeteCarry, player, modeleRestitue, rareteObj)
 
     -- Remettre le SurfaceGui à vide
@@ -1241,6 +1247,8 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
             brNom       = entry.brNom,
             isMutant    = entry.isMutant,
             elementType = entry.elementType,
+            mutation    = entry.mutation,
+            isToxic     = entry.isToxic,
         }
     end
     return result
@@ -1327,16 +1335,8 @@ function DropSystem.EjecterBR(player, touchPart)
     supprimerPromptRecuperer(player, touchPart)
     viderGui(touchPart)
 
-    -- Réinitialiser la couleur du spot si c'était un Mutant
-    if entree.isMutant then
-        local defaultColor = entree.originalSpotColor
-            or (Config.FlowerPotConfig and Config.FlowerPotConfig.spotDefaultCouleur)
-            or Color3.fromRGB(106, 127, 63)
-        pcall(function()
-            touchPart.Color = defaultColor
-            local light = touchPart:FindFirstChild("MutantLight")
-            if light then light:Destroy() end
-        end)
+    if entree.isMutant and DropSystem.OnMutantRetire then
+        pcall(DropSystem.OnMutantRetire, touchPart)
     end
 
     -- Cloner un modèle taille réelle dans le terrain près du spot
@@ -1444,16 +1444,8 @@ function DropSystem.VendreBR(player, touchPart)
     supprimerPromptRecuperer(player, touchPart)
     viderGui(touchPart)
 
-    -- Réinitialiser la couleur du spot si c'était un Mutant
-    if entree.isMutant then
-        local defaultColor = entree.originalSpotColor
-            or (Config.FlowerPotConfig and Config.FlowerPotConfig.spotDefaultCouleur)
-            or Color3.fromRGB(106, 127, 63)
-        pcall(function()
-            touchPart.Color = defaultColor
-            local light = touchPart:FindFirstChild("MutantLight")
-            if light then light:Destroy() end
-        end)
+    if entree.isMutant and DropSystem.OnMutantRetire then
+        pcall(DropSystem.OnMutantRetire, touchPart)
     end
 
     -- Recalculer l'income

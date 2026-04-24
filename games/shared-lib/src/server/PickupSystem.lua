@@ -153,7 +153,15 @@ local function SetupPickup(brainrot)
 			return
 		end
 
-		local rareteObj = { nom = rarete, dossier = rarete }
+		local mutation = brainrot:GetAttribute("Mutation")
+		local isToxic  = brainrot:GetAttribute("IsToxic") == true
+		local rareteObj = {
+			nom      = rarete,
+			dossier  = rarete,
+			isMutant = mutation ~= nil or isToxic,
+			mutation = mutation,
+			isToxic  = isToxic or nil,
+		}
 		-- AjouterAuCarry utilise brainrot comme visuel → le déplace dans le Tool
 		local success = CS.AjouterAuCarry(player, brainrot, rareteObj)
 		if not success then

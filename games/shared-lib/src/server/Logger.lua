@@ -41,8 +41,10 @@ local PREFIXES = {
     Cosmet   = "[COSMET]",
     Inventory = "[INVENTORY]",
     Safe     = "[SAFE]",
+    Sky      = "[SKY]",
     Bat      = "[BAT]",
     Place    = "[PLACE]",
+    Weather  = "[WEATHER]",
 }
 
 -- Appeler une seule fois au boot du jeu

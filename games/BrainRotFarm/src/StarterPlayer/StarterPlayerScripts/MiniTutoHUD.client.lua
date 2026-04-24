@@ -229,9 +229,16 @@ makeCard(
 )
 
 makeCard(
+    "⚡", "EVENTS",
+    "Events trigger automatically every few minutes in the <b>Common Field</b>. Watch the top bar for the timer!\n\n<b>🌧️ Rain</b> — Rain clouds flood the field. Common Field spawn rate <b>×3</b>. Puddles &amp; thunder.\n\n<b>🌙 Night Mode</b> — Sudden darkness. EPIC+ brainrots <b>glow in the dark</b>. Stars appear in the sky.\n\n<b>☄️ Meteor Drop</b> — Meteors crash into the field. Each impact spawns a <b>LEGENDARY / MYTHIC / SECRET</b> brainrot.\n\n<b>✨ Golden</b> — All earnings multiplied <b>×5</b> for 60 seconds. Rush your deposits!\n\n<b>⭐ Lucky Hour</b> — Rare brainrots (RARE / EPIC / LEGENDARY) spawn directly on <b>your base</b>.\n\n<b>🔴 Secret Spawn</b> — A secret window where <b>SECRET</b> brainrots can appear in the Common Field.",
+    6,
+    Color3.fromRGB(80, 200, 255)
+)
+
+makeCard(
     "🔥", "ROBUX UPGRADES",
     "Some Shop upgrades show an <b>orange 🔥 button</b> — those require <b>Robux</b> and are permanent (GamePass).\n\n<b>Shop upgrades:</b>\n• <b>Tracteur</b> (299 R$) — bonus MYTHIC &amp; SECRET spawns in your field\n• <b>LuckyCharm</b> (99 R$) — +25% rarity chance on every spawn\n• <b>Arroseur MAX / Speed MAX / Carry+ MAX</b> — unlock the final level of each upgrade\n\n<b>Flower Pot:</b>\n• <b>Pot 4</b> (149 R$) — 4th pot slot\n• <b>SeedDoubler</b> — claim 2 Daily Seeds per day instead of 1\n• <b>Instant Grow</b> (35 R$) — skip the grow timer on any pot\n\nAll Robux purchases are <b>one-time</b> and stay forever on your account.",
-    6,
+    7,
     Color3.fromRGB(255, 140, 30)
 )
 

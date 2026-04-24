@@ -28,6 +28,14 @@ local STUDS_Y_BASE      = 6   -- hauteur par défaut — base (slot dépôt)
 -- Couleurs par rareté
 -- ─────────────────────────────────────────────────────────────
 
+-- Couleurs/textes des mutations LavaTower (GOLD/DIAMANT/RAINBOW)
+-- Le multiplicateur est affiché dans le label pour que le joueur comprenne la source du bonus.
+local MUTATION_INFOS = {
+	GOLD    = { texte = "Gold",    couleur = Color3.fromRGB(255, 215,   0) },
+	DIAMANT = { texte = "Diamant", couleur = Color3.fromRGB(130, 220, 255) },
+	RAINBOW = { texte = "Rainbow", couleur = Color3.fromRGB(255, 100, 255) },
+}
+
 local RARETE_COULEURS = {
 	COMMON       = Color3.fromRGB(200, 200, 200),
 	OG           = Color3.fromRGB(100, 220, 255),
@@ -103,6 +111,26 @@ local function AppliquerAnimationRarete(lRarete, rarete)
 	end
 end
 
+local TOXIC_COLOR_A  = Color3.fromRGB(0,   255,  80)
+local TOXIC_COLOR_B  = Color3.fromRGB(120, 255,  60)
+local NEBULA_COLOR_A = Color3.fromRGB(255, 100, 255)
+local NEBULA_COLOR_B = Color3.fromRGB(180,   0, 255)
+
+local function AppliquerAnimationToxic(label)
+	TweenService:Create(label,
+		TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ TextColor3 = TOXIC_COLOR_B }
+	):Play()
+end
+
+local function AppliquerAnimationNebula(label)
+	label.TextColor3 = NEBULA_COLOR_A
+	TweenService:Create(label,
+		TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ TextColor3 = NEBULA_COLOR_B }
+	):Play()
+end
+
 local function CreerBillboardGui(root, studsY, nbLignes)
 	local existing = root:FindFirstChild(BILLBOARD_NAME)
 	if existing then pcall(function() existing:Destroy() end) end
@@ -139,26 +167,50 @@ function BrainrotBillboard.SetupField(brainrot, duration, studsY)
 	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
 	local isMutant   = brainrot:GetAttribute("IsMutant")
 	local mutantType = brainrot:GetAttribute("MutantType")
+	local isToxic    = brainrot:GetAttribute("IsToxic")
+	local isNebula   = brainrot:GetAttribute("IsNebula")
 	local couleur    = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
 
+	local function ajouterLabelSpecial(bb, s)
+		local off = 0
+		if isToxic then
+			local lTox = MakeLabel(bb, "LToxic",  "TOXIC",  0, TOXIC_COLOR_A,  Color3.new(0, 0, 0))
+			AppliquerAnimationToxic(lTox)
+			off = s
+		elseif isNebula then
+			local lNeb = MakeLabel(bb, "LNebula", "NEBULA", 0, NEBULA_COLOR_A, Color3.new(0, 0, 0))
+			AppliquerAnimationNebula(lNeb)
+			off = s
+		end
+		return off
+	end
+
+	local hasSpecial = isToxic or isNebula
+
 	if isMutant and mutantType then
-		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, 6)
-		MakeLabel(bb, "LNom",    nomAff,                            0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
-		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        0.17, Color3.fromRGB(255, 215, 0))
+		local n  = hasSpecial and 7 or 6
+		local s  = 1 / n
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, n)
+		local off = ajouterLabelSpecial(bb, s)
+		MakeLabel(bb, "LNom",    nomAff,                            off,       Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        off + s,   Color3.fromRGB(255, 215, 0))
 		local lRarete =
-		MakeLabel(bb, "LRarete", rarete,                            0.33, couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.50, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.67, Color3.fromRGB(255, 215, 0))
-		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         0.83, Color3.fromRGB(220, 60, 60))
+		MakeLabel(bb, "LRarete", rarete,                            off + s*2, couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*3, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*4, Color3.fromRGB(255, 215, 0))
+		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         off + s*5, Color3.fromRGB(220, 60, 60))
 		AppliquerAnimationRarete(lRarete, rarete)
 	else
-		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, 5)
-		MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		local n  = hasSpecial and 6 or 5
+		local s  = 1 / n
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, n)
+		local off = ajouterLabelSpecial(bb, s)
+		MakeLabel(bb, "LNom",   nomAff,                             off,       Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
 		local lRarete =
-		MakeLabel(bb, "LRarete", rarete,                            0.20, couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.40, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.60, Color3.fromRGB(255, 215, 0))
-		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         0.80, Color3.fromRGB(220, 60, 60))
+		MakeLabel(bb, "LRarete", rarete,                            off + s,   couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*2, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*3, Color3.fromRGB(255, 215, 0))
+		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         off + s*4, Color3.fromRGB(220, 60, 60))
 		AppliquerAnimationRarete(lRarete, rarete)
 	end
 end
@@ -180,24 +232,76 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
 	local isMutant   = brainrot:GetAttribute("IsMutant")
 	local mutantType = brainrot:GetAttribute("MutantType")
+	local mutation   = brainrot:GetAttribute("Mutation")   -- LavaTower: "GOLD"|"DIAMANT"|"RAINBOW"
+	local isToxic    = brainrot:GetAttribute("IsToxic")
+	local isNebula   = brainrot:GetAttribute("IsNebula")
 	local couleur    = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
 
+	local hasSpecial = isToxic or isNebula
+
+	local function ajouterLabelSpecialBase(bb, s)
+		local off = 0
+		if isToxic then
+			local lTox = MakeLabel(bb, "LToxic",  "TOXIC",  0, TOXIC_COLOR_A,  Color3.new(0, 0, 0))
+			AppliquerAnimationToxic(lTox)
+			off = s
+		elseif isNebula then
+			local lNeb = MakeLabel(bb, "LNebula", "NEBULA", 0, NEBULA_COLOR_A, Color3.new(0, 0, 0))
+			AppliquerAnimationNebula(lNeb)
+			off = s
+		end
+		return off
+	end
+
 	if isMutant and mutantType then
-		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, 5)
-		MakeLabel(bb, "LNom",    nomAff,                            0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
-		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        0.20, Color3.fromRGB(255, 215, 0))
+		local n  = hasSpecial and 6 or 5
+		local s  = 1 / n
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, n)
+		local off = ajouterLabelSpecialBase(bb, s)
+		MakeLabel(bb, "LNom",    nomAff,                            off,       Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        off + s,   Color3.fromRGB(255, 215, 0))
 		local lRarete =
-		MakeLabel(bb, "LRarete", rarete,                            0.40, couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.60, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.80, Color3.fromRGB(255, 215, 0))
+		MakeLabel(bb, "LRarete", rarete,                            off + s*2, couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*3, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*4, Color3.fromRGB(255, 215, 0))
 		AppliquerAnimationRarete(lRarete, rarete)
+	elseif mutation and MUTATION_INFOS[mutation] then
+		local mutInfo    = MUTATION_INFOS[mutation]
+		local showRarete = rarete:upper() ~= mutation
+		local baseLines  = showRarete and 5 or 4
+		local n          = hasSpecial and (baseLines + 1) or baseLines
+		local s          = 1 / n
+		local bb         = CreerBillboardGui(root, studsY or STUDS_Y_BASE, n)
+		local off = ajouterLabelSpecialBase(bb, s)
+		MakeLabel(bb, "LNom",      nomAff,        off,     Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		local lMut =
+		MakeLabel(bb, "LMutation", mutInfo.texte, off + s, mutInfo.couleur)
+		local nextOff = off + s * 2
+		if showRarete then
+			local lRarete = MakeLabel(bb, "LRarete", rarete, nextOff, couleur)
+			AppliquerAnimationRarete(lRarete, rarete)
+			nextOff = nextOff + s
+		end
+		MakeLabel(bb, "LPrix", "$" .. FormatNombre(prix),         nextOff,     Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",  "$" .. FormatNombre(cps) .. "/s", nextOff + s, Color3.fromRGB(255, 215, 0))
+		if mutation == "RAINBOW" then
+			local hue, conn = 0, nil
+			conn = RunService.Heartbeat:Connect(function(dt)
+				if not lMut or not lMut.Parent then conn:Disconnect() return end
+				hue = (hue + dt * 0.8) % 1
+				lMut.TextColor3 = Color3.fromHSV(hue, 1, 1)
+			end)
+		end
 	else
-		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, 4)
-		MakeLabel(bb, "LNom",   nomAff,                             0,    Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
+		local n  = hasSpecial and 5 or 4
+		local s  = 1 / n
+		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, n)
+		local off = ajouterLabelSpecialBase(bb, s)
+		MakeLabel(bb, "LNom",   nomAff,                             off,       Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
 		local lRarete =
-		MakeLabel(bb, "LRarete", rarete,                            0.25, couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          0.50, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  0.75, Color3.fromRGB(255, 215, 0))
+		MakeLabel(bb, "LRarete", rarete,                            off + s,   couleur)
+		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*2, Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*3, Color3.fromRGB(255, 215, 0))
 		AppliquerAnimationRarete(lRarete, rarete)
 	end
 end
