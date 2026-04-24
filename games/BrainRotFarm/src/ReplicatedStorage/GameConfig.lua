@@ -336,8 +336,12 @@ GameConfig.EventsVisuels = {
         cloudsColor          = Color3.fromRGB(120, 130, 140),
         lightningInterval    = { min = 15, max = 45 },
         soundIdRain          = 0,   -- remplir après import son pluie dans Studio
-        wetGroundReflectance = 0.4,
-        wetGroundColor       = Color3.fromRGB(90, 95, 105),
+        wetGroundReflectance = 0.75,
+        wetGroundColor       = Color3.fromRGB(85, 90, 100),
+        hauteurRain          = 15,  -- studs au-dessus du sol
+        pluieTouteMap        = true, -- true = couvre toute la Baseplate, false = ChampCommunZone uniquement
+        rainGridCols         = 8,   -- colonnes (axe X)
+        rainGridRows         = 6,   -- rangées  (axe Z) → 8×6 = 48 tuiles
     },
 
     Golden = {
@@ -359,21 +363,20 @@ GameConfig.EventsVisuels = {
     },
 }
 
--- Positions spawn points ChampCommun (utilisées par Rain)
+-- Positions spawn points ChampCommun
 GameConfig.ChampCommunPoints = {
-    { x = 190.92, y = 16.189, z =   66.30 },
-    { x = 250.93, y = 16.189, z =  -80.20 },
-    { x = 189.51, y = 16.189, z = -241.28 },
+    { x = 190.92, y = 2, z =   66.30 },
+    { x = 250.93, y = 2, z =  -80.20 },
+    { x = 189.51, y = 2, z = -241.28 },
 }
 
--- Zone couverte par le ChampCommun entre les 4 leaderboards (utilisée par MeteorDrop)
--- Ajuster xMin/xMax/zMin/zMax pour correspondre aux coins exacts des leaderboards en studio
+-- Zone couverte par le ChampCommun entre les 4 leaderboards
 GameConfig.ChampCommunZone = {
     xMin = 150,
     xMax = 300,
-    zMin = -270,
-    zMax =  100,
-    y    =   16.189,
+    zMin = -350.5,
+    zMax =  177.13,
+    y    = 2,
 }
 
 -- === PROGRESSION BASE ===

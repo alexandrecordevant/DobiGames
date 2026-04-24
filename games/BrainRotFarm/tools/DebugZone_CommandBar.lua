@@ -56,9 +56,49 @@ makePart("Sud",   Vector3.new(w, H, T),    Vector3.new(cx,         Y + H/2, zone
 makePart("Est",   Vector3.new(T, H, d),    Vector3.new(zone.xMax,  Y + H/2, cz))
 makePart("Ouest", Vector3.new(T, H, d),    Vector3.new(zone.xMin,  Y + H/2, cz))
 
--- Marqueur hauteur Rain (Y + 18 = hauteur des nuages)
+-- Plan hauteur nuages Cloud (Y + 18 = hauteurNuages)
 local cloudY = zone.y + 18
-makePart("CloudHeight", Vector3.new(w, 0.2, d), Vector3.new(cx, cloudY, cz)).Transparency = 0.6
+local pCloud = makePart("CloudHeight", Vector3.new(w, 0.2, d), Vector3.new(cx, cloudY, cz))
+pCloud.Color = Color3.fromRGB(0, 150, 255)
+pCloud.Transparency = 0.5
+
+-- Plan hauteur modèle Rain (Y + 50)
+local rainY = zone.y + 50
+local pRain = makePart("RainModelHeight", Vector3.new(w, 0.2, d), Vector3.new(cx, rainY, cz))
+pRain.Color = Color3.fromRGB(0, 255, 100)
+pRain.Transparency = 0.5
+
+-- Labels verticaux sur un poteau central
+local poteauH = rainY - zone.y + 4
+local poteau = Instance.new("Part")
+poteau.Name = "PoteauCentre"
+poteau.Size = Vector3.new(0.3, poteauH, 0.3)
+poteau.Position = Vector3.new(cx, zone.y + poteauH/2, cz)
+poteau.Anchored = true ; poteau.CanCollide = false
+poteau.Material = Enum.Material.Neon
+poteau.Color = Color3.fromRGB(255,255,255)
+poteau.Transparency = 0.2
+poteau.Parent = folder
+
+local function makeLabel(parent, text, offsetY, color)
+    local bg = Instance.new("BillboardGui", parent)
+    bg.Size = UDim2.new(0, 160, 0, 26)
+    bg.StudsOffset = Vector3.new(2, offsetY, 0)
+    bg.AlwaysOnTop = true
+    local lbl = Instance.new("TextLabel", bg)
+    lbl.Size = UDim2.new(1,0,1,0)
+    lbl.BackgroundTransparency = 0.3
+    lbl.BackgroundColor3 = color
+    lbl.Text = text
+    lbl.TextColor3 = Color3.new(1,1,1)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 13
+    Instance.new("UICorner", lbl).CornerRadius = UDim.new(0,4)
+end
+
+makeLabel(poteau, "🟢 Rain model  Y=" .. math.floor(rainY),  rainY  - zone.y - poteauH/2, Color3.fromRGB(0,150,60))
+makeLabel(poteau, "🔵 Clouds       Y=" .. math.floor(cloudY), cloudY - zone.y - poteauH/2, Color3.fromRGB(0,80,200))
+makeLabel(poteau, "🔴 Sol           Y=" .. math.floor(zone.y), 0 - poteauH/2 + 1,           Color3.fromRGB(160,0,0))
 
 -- Labels coins
 local corners = {
@@ -92,6 +132,8 @@ for i, c in ipairs(corners) do
     lbl.TextStrokeColor3 = Color3.new(0,0,0)
 end
 
-print(string.format("[DEBUG] ChampCommunZone affichée — %.0fx%.0f studs, centre (%.0f, %.0f)", w, d, cx, cz))
-print(string.format("[DEBUG] Ligne bleue = hauteur nuages Rain (Y=%.1f)", cloudY))
-print("[DEBUG] Relancer ce script pour masquer")
+print(string.format("[DEBUG] ChampCommunZone — %.0fx%.0f studs, centre (%.0f, %.0f)", w, d, cx, cz))
+print(string.format("[DEBUG] 🔴 Sol           Y=%.1f", zone.y))
+print(string.format("[DEBUG] 🔵 Nuages Cloud  Y=%.1f  (hauteurNuages=18)", cloudY))
+print(string.format("[DEBUG] 🟢 Modèle Rain   Y=%.1f  (hauteur=50)", rainY))
+print("[DEBUG] Relancer pour masquer")

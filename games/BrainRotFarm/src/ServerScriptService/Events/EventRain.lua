@@ -1,6 +1,6 @@
 -- ServerScriptService/Common/Events/EventRain.lua
 -- BrainRotFarm — Rain Event
--- Nuages depuis ServerStorage.Events (Cloud + MovingClouds), pluie + boost spawn
+-- MovingClouds + Rain (zone entière) + FloodLevel + boost spawn
 
 local EventRain = {}
 EventRain.NOM          = "Rain"
@@ -41,17 +41,6 @@ local function getEventsFolder()
     return ServerStorage:FindFirstChild("Events")
 end
 
-local function getCloudTemplate()
-    local events = getEventsFolder()
-    if not events then return nil end
-    local cloudsFolder = events:FindFirstChild("clouds")
-    if cloudsFolder then
-        local t = cloudsFolder:FindFirstChild("Cloud")
-        if t then return t end
-    end
-    return events:FindFirstChild("Cloud")
-end
-
 local function getMovingCloudsTemplate()
     local events = getEventsFolder()
     return events and events:FindFirstChild("MovingClouds")
@@ -70,10 +59,9 @@ end
 -- ============================================================
 -- État interne
 -- ============================================================
-local nuages       = {}   -- modèles Cloud clonés dans Workspace
-local movingClouds = nil  -- modèle MovingClouds cloné dans Workspace
-local rainEffect   = nil  -- modèle Rain cloné (couvre toute la zone)
-local floodLevel   = nil  -- modèle FloodLevel cloné dans Workspace
+local movingClouds = nil
+local rainEffects  = {}   -- grille de tuiles Rain
+local floodLevel   = nil
 
 -- ============================================================
 -- Utilitaires
@@ -84,12 +72,12 @@ local function notifierTous(message)
 end
 
 -- ============================================================
--- MovingClouds (nuages de fond animés)
+-- MovingClouds
 -- ============================================================
 local function activerMovingClouds()
     local template = getMovingCloudsTemplate()
     if not template then return end
-    movingClouds = template:Clone()
+    movingClouds        = template:Clone()
     movingClouds.Parent = Workspace
 end
 
@@ -101,55 +89,102 @@ local function retirerMovingClouds()
 end
 
 -- ============================================================
--- Rain (effet pluie couvrant toute la ChampCommunZone)
+-- Rain : grille de tuiles couvrant uniformément la ChampCommunZone
 -- ============================================================
 local function activerRainEffect()
     local template = getRainTemplate()
     if not template then return end
 
-    local zone = Config.ChampCommunZone
-    if not zone then return end
+    local rainCfg = Config.EventsVisuels.Rain
+    local colonnes = rainCfg.rainGridCols or 4
+    local rangees  = rainCfg.rainGridRows or 8
+    local hauteurY
 
-    local largeur  = zone.xMax - zone.xMin           -- 150
-    local profond  = zone.zMax - zone.zMin            -- 370
-    local centreX  = (zone.xMin + zone.xMax) / 2     -- 225
-    local centreZ  = (zone.zMin + zone.zMax) / 2     -- -85
-    local hauteurY = (zone.y or 16) + 50             -- 50 studs au-dessus du sol
+    local xMin, xMax, zMin, zMax
 
-    rainEffect      = template:Clone()
-    rainEffect.Name = "RainEffect"
-
-    -- Identifier la part principale (BasePart direct ou PrimaryPart du Model)
-    local mainPart = nil
-    if rainEffect:IsA("BasePart") then
-        mainPart = rainEffect
-    elseif rainEffect:IsA("Model") then
-        mainPart = rainEffect.PrimaryPart or rainEffect:FindFirstChildWhichIsA("BasePart")
+    if rainCfg.pluieTouteMap then
+        -- Utiliser les bounds de la Baseplate
+        local bp = nil
+        local map = Workspace:FindFirstChild("Map")
+        if map then bp = map:FindFirstChild("Baseplate") end
+        if not bp then bp = Workspace:FindFirstChild("Baseplate") end
+        if not bp then return end
+        local bpSurfaceY = bp.Position.Y + bp.Size.Y / 2
+        hauteurY = bpSurfaceY + (rainCfg.hauteurRain or 15)
+        xMin = bp.Position.X - bp.Size.X / 2
+        xMax = bp.Position.X + bp.Size.X / 2
+        zMin = bp.Position.Z - bp.Size.Z / 2
+        zMax = bp.Position.Z + bp.Size.Z / 2
+    else
+        local zone = Config.ChampCommunZone
+        if not zone then return end
+        hauteurY = (zone.y or 2) + (rainCfg.hauteurRain or 15)
+        xMin = zone.xMin ; xMax = zone.xMax
+        zMin = zone.zMin ; zMax = zone.zMax
     end
 
-    if mainPart then
-        -- Redimensionner pour couvrir toute la zone d'un coup
-        pcall(function()
-            mainPart.Size     = Vector3.new(largeur, 1, profond)
-            mainPart.Position = Vector3.new(centreX, hauteurY, centreZ)
-        end)
+    local largeur = xMax - xMin
+    local profond = zMax - zMin
+    local tileW   = largeur / colonnes
+    local tileD   = profond / rangees
+
+    rainEffects = {}
+
+    for col = 0, colonnes - 1 do
+        for row = 0, rangees - 1 do
+            local tileX = xMin + (col + 0.5) * tileW
+            local tileZ = zMin + (row + 0.5) * tileD
+
+            local clone    = template:Clone()
+            clone.Name     = "RainEffect"
+            clone.Parent   = Workspace
+
+            local mainPart = nil
+            if clone:IsA("BasePart") then
+                mainPart = clone
+            elseif clone:IsA("Model") then
+                mainPart = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart")
+            end
+
+            if mainPart then
+                local origX = mainPart.Size.X
+                local origZ = mainPart.Size.Z
+                local ratio = (tileW * tileD) / math.max(origX * origZ, 1)
+
+                pcall(function()
+                    mainPart.Size = Vector3.new(tileW, mainPart.Size.Y, tileD)
+                end)
+
+                for _, pe in ipairs(clone:GetDescendants()) do
+                    if pe:IsA("ParticleEmitter") then
+                        pcall(function()
+                            pe.Rate = math.max(math.min(pe.Rate * ratio, 5000), 80)
+                        end)
+                    end
+                end
+
+                pcall(function()
+                    mainPart.Position = Vector3.new(tileX, hauteurY, tileZ)
+                end)
+            end
+
+            if clone:IsA("Model") then
+                pcall(function() clone:PivotTo(CFrame.new(tileX, hauteurY, tileZ)) end)
+            end
+
+            table.insert(rainEffects, clone)
+        end
     end
 
-    -- Repositionner le modèle entier si nécessaire
-    if rainEffect:IsA("Model") then
-        pcall(function()
-            rainEffect:PivotTo(CFrame.new(centreX, hauteurY, centreZ))
-        end)
-    end
-
-    rainEffect.Parent = Workspace
+    Logger.info("Event", "RainEffect activé (%dx%d tuiles, %.0fx%.0f studs)",
+        colonnes, rangees, largeur, profond)
 end
 
 local function retirerRainEffect()
-    if rainEffect and rainEffect.Parent then
-        pcall(function() rainEffect:Destroy() end)
+    for _, r in ipairs(rainEffects) do
+        if r and r.Parent then pcall(function() r:Destroy() end) end
     end
-    rainEffect = nil
+    rainEffects = {}
 end
 
 -- ============================================================
@@ -171,112 +206,18 @@ local function retirerFloodLevel()
 end
 
 -- ============================================================
--- Création d'un nuage Cloud avec effet de pluie
--- ============================================================
-local function creerNuageModele(position, config)
-    local template = getCloudTemplate()
-    if not template then return nil end
-
-    local nuage  = template:Clone()
-    nuage.Name   = "RainCloud"
-    nuage.Parent = Workspace
-
-    -- Position de départ : 60 studs plus haut (animation d'entrée)
-    local cfFin    = CFrame.new(position)
-    local cfDepart = CFrame.new(position + Vector3.new(0, 60, 0))
-    pcall(function() nuage:PivotTo(cfDepart) end)
-
-    -- Animation de descente (3s, ease-out)
-    task.spawn(function()
-        local duree = 3
-        local t     = 0
-        while t < duree do
-            t = math.min(t + task.wait(0.05), duree)
-            local alpha = 1 - (1 - t / duree) ^ 2  -- ease out quad
-            pcall(function() nuage:PivotTo(cfDepart:Lerp(cfFin, alpha)) end)
-        end
-    end)
-
-    -- Trouver la part principale pour attacher les effets
-    local anchor = nil
-    if nuage:IsA("BasePart") then
-        anchor = nuage
-    elseif nuage:IsA("Model") then
-        anchor = nuage.PrimaryPart or nuage:FindFirstChildWhichIsA("BasePart")
-    end
-
-    if anchor then
-        -- ParticleEmitter pluie dense, émission vers le bas
-        local rain = Instance.new("ParticleEmitter")
-        rain.Name              = "RainEmitter"
-        rain.Rate              = config.particleRate or 80
-        rain.Lifetime          = NumberRange.new(1.2, 2.0)
-        rain.Speed             = NumberRange.new(45, 65)
-        rain.SpreadAngle       = Vector2.new(10, 10)
-        rain.EmissionDirection = Enum.NormalId.Bottom
-        rain.Color             = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 215, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 180, 245)),
-        })
-        rain.Size = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.09),
-            NumberSequenceKeypoint.new(0.5, 0.06),
-            NumberSequenceKeypoint.new(1, 0.02),
-        })
-        rain.LightEmission  = 0
-        rain.LightInfluence = 1
-        rain.Texture        = "rbxasset://textures/particles/sparkles_main.dds"
-        rain.Parent         = anchor
-
-        -- Lumière bleutée douce sous le nuage
-        local light = Instance.new("PointLight")
-        light.Brightness = 0.7
-        light.Range      = 45
-        light.Color      = Color3.fromRGB(130, 170, 255)
-        light.Parent     = anchor
-    end
-
-    return nuage
-end
-
--- ============================================================
 -- API
 -- ============================================================
 
 function EventRain.Demarrer(config)
-    nuages = {}
-
     -- Notifier + EventStarted
     notifierTous(config.message)
     local es = ReplicatedStorage:FindFirstChild("EventStarted")
     if es then pcall(function() es:FireAllClients("Rain", config.duree) end) end
 
-    -- Nuages de fond + pluie zone complète + inondation
     activerMovingClouds()
     activerRainEffect()
     activerFloodLevel()
-
-    -- Nuages Cloud avec pluie dans la ChampCommunZone
-    local nb      = config.nbNuages   or 6
-    local hauteur = config.hauteurNuages or 35
-    local zone    = Config.ChampCommunZone
-    local baseY   = (zone and zone.y or 16)
-
-    for _ = 1, nb do
-        local x, z
-        if zone then
-            x = zone.xMin + math.random() * (zone.xMax - zone.xMin)
-            z = zone.zMin + math.random() * (zone.zMax - zone.zMin)
-        else
-            local pts = Config.ChampCommunPoints or {}
-            local pt  = pts[math.random(1, math.max(1, #pts))] or { x=190, y=16, z=66 }
-            x     = pt.x + math.random(-20, 20)
-            z     = pt.z + math.random(-20, 20)
-            baseY = pt.y
-        end
-        local nuage = creerNuageModele(Vector3.new(x, baseY + hauteur, z), config)
-        if nuage then table.insert(nuages, nuage) end
-    end
 
     -- Booster le spawn du ChampCommun
     local CCS = getCCS()
@@ -284,48 +225,28 @@ function EventRain.Demarrer(config)
         pcall(CCS.SetMultiplier, config.spawnMultiplier or 3)
     end
 
-    -- Système météo (Atmosphere légère, sol mouillé, éclairs, sync clients)
+    -- Système météo (Atmosphere, sol mouillé, éclairs, sync clients)
     local weatherConfig = {}
     for k, v in pairs(config) do weatherConfig[k] = v end
     weatherConfig.champCommunZone = Config.ChampCommunZone
     RainWeatherSystem.Demarrer(weatherConfig, config.duree or EventRain.DUREE_DEFAUT)
 
+    Logger.info("Event", "▶ Rain Event démarré (%ds)", config.duree or 90)
 end
 
 function EventRain.Terminer()
-    -- Remonter les nuages puis les détruire
-    for _, nuage in ipairs(nuages) do
-        if nuage and nuage.Parent then
-            local ref     = nuage
-            local cfStart = ref:GetPivot()
-            local cfHaut  = CFrame.new(cfStart.Position + Vector3.new(0, 80, 0))
-            task.spawn(function()
-                local duree = 3
-                local t     = 0
-                while t < duree and ref and ref.Parent do
-                    t = math.min(t + task.wait(0.05), duree)
-                    local alpha = (t / duree) ^ 2  -- ease in quad
-                    pcall(function() ref:PivotTo(cfStart:Lerp(cfHaut, alpha)) end)
-                end
-                if ref and ref.Parent then pcall(function() ref:Destroy() end) end
-            end)
-        end
-    end
-    nuages = {}
-
     retirerMovingClouds()
     retirerRainEffect()
     retirerFloodLevel()
 
-    -- Remettre le multiplicateur de spawn à 1
     local CCS = getCCS()
     if CCS and CCS.SetMultiplier then
         pcall(CCS.SetMultiplier, 1)
     end
 
-    -- Terminer le système météo
     RainWeatherSystem.Terminer()
 
+    Logger.info("Event", "■ Rain Event terminé")
 end
 
 return EventRain
