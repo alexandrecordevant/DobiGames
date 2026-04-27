@@ -381,14 +381,18 @@ end
 -- Message sac plein
 -- ============================================================
 
-local function messageSacPlein(player, pData)
+local function messageSacPlein(player, _pData)
 	-- Utiliser GetCapaciteMax pour inclure le bonus (SetCapacite) dans le max réel
-	local max       = CarrySystem.GetCapaciteMax(player)
-	local niveau    = pData and pData.niveauCarry or 0
-	-- Déterminer s'il existe un palier supérieur encore disponible
-	local prochainNiveau = niveau + 1
+	local max = CarrySystem.GetCapaciteMax(player)
+	-- Retrouver le palier courant depuis la capacité réelle (SetCapacite ignore niveauCarry)
+	local niveauCourant = 0
+	for n = 0, 10 do
+		local cap = CARRY_CONFIG.niveaux[n]
+		if cap == nil then break end
+		if cap <= max then niveauCourant = n end
+	end
+	local prochainNiveau = niveauCourant + 1
 	local prochainBase   = CARRY_CONFIG.niveaux[prochainNiveau]
-	-- Vrai max si aucun palier coins supérieur ET pas de palier R$ restant
 	local niveauMax = prochainBase == nil
 
 	-- Envoyer via BrainrotCarryError si disponible (BrainrotCarryUI)

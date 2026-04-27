@@ -657,11 +657,43 @@ local function OnPlayerAdded(player)
                 carriedSeeds.Name   = "CarriedSeeds"
                 carriedSeeds.Parent = player
             end
+            local couleurGraines = {
+                MYTHIC = Color3.fromRGB(180, 0,  255),
+                SECRET = Color3.fromRGB(255, 50, 50),
+            }
+            local backpack = player:FindFirstChildOfClass("Backpack")
             for rarete, count in pairs(graines) do
                 for _ = 1, count do
-                    local sv       = Instance.new("StringValue")
-                    sv.Value       = rarete
-                    sv.Parent      = carriedSeeds
+                    local sv   = Instance.new("StringValue")
+                    sv.Value   = rarete
+                    sv.Parent  = carriedSeeds
+                    -- Restaurer le Tool visuel dans le backpack (absent après reconnexion)
+                    if backpack then
+                        local couleur = couleurGraines[rarete] or Color3.fromRGB(180, 0, 255)
+                        local tool = Instance.new("Tool")
+                        tool.Name           = "🌱 " .. rarete .. " Seed"
+                        tool.ToolTip        = rarete .. " Seed — Plante dans un FlowerPot!"
+                        tool.CanBeDropped   = false
+                        tool.RequiresHandle = true
+                        tool:SetAttribute("IsSeed",     true)
+                        tool:SetAttribute("SeedRarity", rarete)
+                        local handle = Instance.new("Part")
+                        handle.Name         = "Handle"
+                        handle.Shape        = Enum.PartType.Ball
+                        handle.Size         = Vector3.new(0.7, 0.7, 0.7)
+                        handle.Color        = couleur
+                        handle.Material     = Enum.Material.Neon
+                        handle.Transparency = 0
+                        handle.Anchored     = false
+                        handle.CanCollide   = false
+                        handle.CastShadow   = false
+                        handle.Parent       = tool
+                        local light = Instance.new("PointLight", handle)
+                        light.Color      = couleur
+                        light.Brightness = 3
+                        light.Range      = 6
+                        tool.Parent = backpack
+                    end
                 end
             end
             UpdateGraines:FireClient(player, graines)

@@ -692,6 +692,7 @@ local NOMS_EVENTS = {
     Golden      = "✨ Golden Event",
     LuckyHour   = "⭐ Lucky Hour",
     SecretSpawn = "🔴 Secret Spawn",
+    AdminAbuse  = "⚡ Admin Abuse",
 }
 
 -- ============================================================
