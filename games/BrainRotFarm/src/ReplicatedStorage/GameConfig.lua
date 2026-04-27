@@ -160,8 +160,8 @@ GameConfig.ShopUpgrades = {
         description = "Speeds up Brain Rot spawns in your field",
         ordre       = 1,
         niveaux = {
-            [1] = { type="coins", prix=1500,  label="Lv.1",    effet={ spawnRateMultiplier=1.6 } },
-            [2] = { type="coins", prix=6000,  label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
+            [1] = { type="coins", prix=8000,  label="Lv.1",    effet={ spawnRateMultiplier=1.6 }, condition={ minUpgrade={ upgradeCarry=2 } } },
+            [2] = { type="coins", prix=30000, label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
             [3] = { type="robux", prix=149,   gamePassId=0,    label="MAX 🔥", effet={ spawnRateMultiplier=5.0 }, isMax=true },
         },
         maxNiveau        = 3,
@@ -175,12 +175,12 @@ GameConfig.ShopUpgrades = {
         description = "Increases your movement speed",
         ordre       = 2,
         niveaux = {
-            [1]  = { type="coins", prix=500,        label="Lv.1",  effet={ walkSpeed=18 } },
-            [2]  = { type="coins", prix=1500,        label="Lv.2",  effet={ walkSpeed=19 } },
-            [3]  = { type="coins", prix=4000,        label="Lv.3",  effet={ walkSpeed=20 } },
-            [4]  = { type="coins", prix=10000,       label="Lv.4",  effet={ walkSpeed=21 } },
-            [5]  = { type="coins", prix=25000,       label="Lv.5",  effet={ walkSpeed=22 } },
-            [6]  = { type="coins", prix=60000,       label="Lv.6",  effet={ walkSpeed=23 } },
+            [1]  = { type="coins", prix=2000,        label="Lv.1",  effet={ walkSpeed=18 } },
+            [2]  = { type="coins", prix=6000,        label="Lv.2",  effet={ walkSpeed=19 } },
+            [3]  = { type="coins", prix=15000,       label="Lv.3",  effet={ walkSpeed=20 } },
+            [4]  = { type="coins", prix=40000,       label="Lv.4",  effet={ walkSpeed=21 } },
+            [5]  = { type="coins", prix=100000,      label="Lv.5",  effet={ walkSpeed=22 } },
+            [6]  = { type="coins", prix=250000,      label="Lv.6",  effet={ walkSpeed=23 } },
             [7]  = { type="coins", prix=150000,      label="Lv.7",  effet={ walkSpeed=24 } },
             [8]  = { type="coins", prix=400000,      label="Lv.8",  effet={ walkSpeed=26 } },
             [9]  = { type="coins", prix=1000000,     label="Lv.9",  effet={ walkSpeed=28 } },
@@ -202,11 +202,13 @@ GameConfig.ShopUpgrades = {
         description = "Increases your Brain Rot carry capacity",
         ordre       = 3,
         niveaux = {
-            [1] = { type="coins", prix=1000,  label="Lv.1",   effet={ carryCapacite=3 } },
-            [2] = { type="coins", prix=5000,  label="Lv.2",   effet={ carryCapacite=5 } },
-            [3] = { type="robux", prix=149,   gamePassId=0,   label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
+            [1] = { type="coins", prix=1000,   label="Lv.1", effet={ carryCapacite=2 } },
+            [2] = { type="coins", prix=10000,  label="Lv.2", effet={ carryCapacite=3 } },
+            [3] = { type="coins", prix=50000,  label="Lv.3", effet={ carryCapacite=4 } },
+            [4] = { type="coins", prix=200000, label="Lv.4", effet={ carryCapacite=5 } },
+            [5] = { type="robux", prix=149,    gamePassId=0, label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
         },
-        maxNiveau        = 3,
+        maxNiveau        = 5,
         dataField        = "upgradeCarry",
         iconeLeaderboard = true,
     },
@@ -217,8 +219,8 @@ GameConfig.ShopUpgrades = {
         description = "Increases Brain Rot collection radius",
         ordre       = 4,
         niveaux = {
-            [1] = { type="coins", prix=2000,  label="Lv.1",   effet={ rayonCollecte=8  } },
-            [2] = { type="coins", prix=8000,  label="Lv.2",   effet={ rayonCollecte=14 }, isMax=true },
+            [1] = { type="coins", prix=10000, label="Lv.1",   effet={ rayonCollecte=8  }, condition={ minUpgrade={ upgradeCarry=2 } } },
+            [2] = { type="coins", prix=50000, label="Lv.2",   effet={ rayonCollecte=14 }, isMax=true },
         },
         maxNiveau        = 2,
         dataField        = "upgradeAimant",
@@ -570,12 +572,10 @@ GameConfig.FlowerPotConfig = {
 
     -- Config des drops de graines sur les arbres
     arbresDropConfig = {
-        intervalleSecondes = 60,  -- 30 min entre chaque graine
-        --intervalleSecondes = 1800,  -- 30 min entre chaque graine
+        intervalleSecondes = 1800,  -- 30 min entre chaque graine
         chanceMYTHIC       = 70,    -- 70% MYTHIC
         chanceSECRET       = 30,    -- 30% SECRET
-        timeoutSecondes    = 30,   -- 5 min avant reset si non collectée
-        --timeoutSecondes    = 300,   -- 5 min avant reset si non collectée
+        timeoutSecondes    = 300,   -- 5 min avant reset si non collectée
     },
 
     -- Couleur dorée appliquée au spot quand un Mutant y est déposé
@@ -650,6 +650,7 @@ GameConfig.FlowerPotConfig = {
 GameConfig.MutantTypes = {
     {
         Name           = "GALAXY",
+        MinRebirth     = 0,
         Multiplier     = 2,
         Color          = Color3.fromRGB(88,  24,  169),
         SecondaryColor = Color3.fromRGB(20,   0,   60),
@@ -664,6 +665,7 @@ GameConfig.MutantTypes = {
     },
     {
         Name           = "TOXIC",
+        MinRebirth     = 0,
         Multiplier     = 4,
         Color          = Color3.fromRGB(57,  255,  20),
         SecondaryColor = Color3.fromRGB(0,    80,   0),
@@ -678,6 +680,7 @@ GameConfig.MutantTypes = {
     },
     {
         Name           = "RAINBOW",
+        MinRebirth     = 3,
         Multiplier     = 6,
         Color          = Color3.fromRGB(255,   0,   0),  -- hue-shift via TweenService en jeu
         SecondaryColor = Color3.fromRGB(255, 255,   0),
@@ -694,6 +697,7 @@ GameConfig.MutantTypes = {
     },
     {
         Name           = "VOID",
+        MinRebirth     = 5,
         Multiplier     = 8,
         Color          = Color3.fromRGB(10,    0,  20),
         SecondaryColor = Color3.fromRGB(200,   0,   0),
@@ -740,16 +744,20 @@ GameConfig.CaptureConfig = {
 
 -- === CARRY ===
 GameConfig.CarryNiveaux = {
-    [0] = 2,  -- défaut (bat de baseball)
-    [1] = 3,  -- Lv.1 coins
-    [2] = 5,  -- Lv.2 coins
-    [3] = 8,  -- MAX Game Pass (149 R$)
+    [0] = 1,  -- défaut
+    [1] = 2,  -- Lv.1 coins
+    [2] = 3,  -- Lv.2 coins
+    [3] = 4,  -- Lv.3 coins
+    [4] = 5,  -- Lv.4 coins
+    [5] = 8,  -- MAX Game Pass (149 R$)
 }
 
 GameConfig.CarryPrices = {
-    [1] = 500,
-    [2] = 2000,
-    [3] = 0,  -- Game Pass
+    [1] = 1000,
+    [2] = 10000,
+    [3] = 50000,
+    [4] = 200000,
+    [5] = 0,  -- Game Pass
 }
 
 -- === VALEUR PAR RARETÉ ===

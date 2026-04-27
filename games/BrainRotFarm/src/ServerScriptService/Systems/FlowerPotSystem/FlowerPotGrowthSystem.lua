@@ -88,12 +88,14 @@ local ELEMENTS = {}
 local ELEMENT_MULTIPLIERS = {}
 local ELEMENT_TO_FILTRE   = {}
 local ELEMENT_EMOJIS      = {}
+local ELEMENT_MIN_REBIRTH = {}
 
 for _, mt in ipairs(Config.MutantTypes) do
     table.insert(ELEMENTS, mt.Name)
     ELEMENT_MULTIPLIERS[mt.Name] = mt.Multiplier
     ELEMENT_TO_FILTRE[mt.Name]   = mt.Filtre
     ELEMENT_EMOJIS[mt.Name]      = mt.Emoji
+    ELEMENT_MIN_REBIRTH[mt.Name] = mt.MinRebirth or 0
 end
 
 -- ============================================================
@@ -421,9 +423,24 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
     -- Mémoriser rareté et stage courant (exposé via GetStatut)
     _plantages[potId] = { rarity = seedRarity, stage = -1 }
 
-    -- Choisir élément (réutiliser si reprise, sinon aléatoire)
+    -- Choisir élément (réutiliser si reprise, sinon aléatoire parmi ceux débloqués par le rebirth)
+    local function getElementsDisponibles()
+        local rebirthLevel = 0
+        if FlowerPotGrowthSystem.GetPlayerData and player then
+            local pd = FlowerPotGrowthSystem.GetPlayerData(player)
+            rebirthLevel = (pd and pd.rebirthLevel) or 0
+        end
+        local dispo = {}
+        for _, nom in ipairs(ELEMENTS) do
+            if (ELEMENT_MIN_REBIRTH[nom] or 0) <= rebirthLevel then
+                table.insert(dispo, nom)
+            end
+        end
+        return #dispo > 0 and dispo or ELEMENTS
+    end
+
     local elementType = (resumeOptions and resumeOptions.elementType)
-        or ELEMENTS[math.random(1, #ELEMENTS)]
+        or (function() local d = getElementsDisponibles() return d[math.random(1, #d)] end)()
     local multiplier  = ELEMENT_MULTIPLIERS[elementType] or 2
     local emoji       = ELEMENT_EMOJIS[elementType] or "✨"
 
@@ -763,5 +780,9 @@ function FlowerPotGrowthSystem.GetStatut(potModel)
     end
     return nil
 end
+
+-- Callback injecté par Main.server.lua pour accéder à playerData sans dépendance circulaire
+-- signature: function(player) → playerData ou nil
+FlowerPotGrowthSystem.GetPlayerData = nil
 
 return FlowerPotGrowthSystem

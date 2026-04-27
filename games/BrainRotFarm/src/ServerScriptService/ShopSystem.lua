@@ -379,6 +379,20 @@ local function traiterAchatCoins(player, nomUpgrade, niveauDemande)
         return false, "Purchase the previous level first"
     end
 
+    -- 4.5 Vérifier conditions prérequises (ex: Sprinkler/Magnet requièrent Carry Lv.2)
+    if niveauConfig.condition then
+        local cond = niveauConfig.condition
+        if cond.minUpgrade then
+            for champRequis, niveauRequis in pairs(cond.minUpgrade) do
+                local niveauActuelRequis = playerData.upgrades[champRequis] or 0
+                if niveauActuelRequis < niveauRequis then
+                    local nomAffiche = champRequis:gsub("^upgrade", "")
+                    return false, "Requires " .. nomAffiche .. " Lv." .. niveauRequis .. " first"
+                end
+            end
+        end
+    end
+
     -- 5. Vérification des coins
     local prix = niveauConfig.prix
     if (playerData.coins or 0) < prix then

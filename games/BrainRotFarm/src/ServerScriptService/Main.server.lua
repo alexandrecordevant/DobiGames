@@ -1515,6 +1515,9 @@ ShopSystem.GetPlayerData = GetData
 ShopSystem.FireUpdateHUD = function(player, data) EnvoyerHUD(player, data) end
 ShopSystem.Init()
 
+-- FlowerPotGrowthSystem : injecter la source de données (filtrage mutants par rebirthLevel)
+FlowerPotGrowthSystem.GetPlayerData = GetData
+
 -- SprinklerSystem : désactiver tous les sprinklers par défaut
 SprinklerSystem.Init()
 
