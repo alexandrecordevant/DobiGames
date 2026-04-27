@@ -39,6 +39,9 @@ local BoardSystem               = require(ServerScriptService.SharedLib.Server.B
 local ArbreSystem               = require(ServerScriptService.ArbreSystem)
 local BaleSystem                = require(ServerScriptService.BaleSystem)
 local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
+local _abOk, EventAdminAbuse = pcall(require, ServerScriptService.Events.EventAdminAbuse)
+if not _abOk then EventAdminAbuse = nil end  -- DEBUG TEMP
+
 local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
     Logger.error("Main", "[FuseSystem] ERREUR require : %s", tostring(FuseSystem))
@@ -93,6 +96,7 @@ local InstantGrowPot        = CreerRemoteEvent("InstantGrowPot")
 local DemandeOuvrirRebirth  = CreerRemoteEvent("DemandeOuvrirRebirth")
 local ClaimDailySeed        = CreerRemoteEvent("ClaimDailySeed")
 local CollectAllEvent        = CreerRemoteEvent("CollectAllEvent")
+local AdminAbuseManuel       = CreerRemoteEvent("AdminAbuseManuel")  -- DEBUG TEMP
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -217,7 +221,9 @@ InitialiserPots = function(player, baseIndex, playerData)
                     desc.Transparency = visible and 0 or 1
                     desc.CanCollide   = visible
                 elseif desc:IsA("BillboardGui") or desc:IsA("SurfaceGui") then
-                    desc.Enabled = visible
+                    -- Le prix est affiché par creerBillboardPot ; désactiver celui du Cadenas
+                    -- pour éviter d'afficher deux tarifs simultanément.
+                    desc.Enabled = false
                 end
             end
             if cadenas:IsA("BasePart") then
@@ -896,6 +902,7 @@ DemandeCollecte.OnServerEvent:Connect(function(player, collectibleId, rarete)
     data.coins = data.coins + coinsGagnes
     data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coinsGagnes
     data.totalCollecte = (data.totalCollecte or 0) + 1
+    if EventAdminAbuse and EventAdminAbuse.EstActif() then EventAdminAbuse.OnCollect(player) end
 
     -- Mettre à jour coinsParMinute (moyenne mobile)
     data.coinsParMinute = math.max(data.coinsParMinute or 1, coinsGagnes)
@@ -1200,6 +1207,26 @@ end
 
 -- Spawn des collectibles sur la map
 SpawnManager.Init()
+SpawnManager.SetGetData(GetData)
+
+-- Activer l'animation tracteur quand l'upgrade est acheté mid-game
+ShopSystem._onTracteurActiver = function(player)
+    local baseIndex = AssignationSystem.GetBaseIndex(player)
+    if not baseIndex then return end
+    local d = GetData(player)
+    if not d then return end
+    local function onTracteurCollect(rareteNom, valeurBase)
+        local data = GetData(player)
+        if not data then return end
+        local mult = AmelioSystem.GetMultiplicateur(player) or 1
+        local coins = math.floor(valeurBase * mult)
+        data.coins            = data.coins + coins
+        data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coins
+        data.totalCollecte    = (data.totalCollecte    or 0) + 1
+        EnvoyerHUD(player, data)
+    end
+    pcall(TracteurSystem.Activer, player, baseIndex, onTracteurCollect)
+end
 
 -- Hook CarrySystem → ProximityPrompt pour tous les BRs (onCapture forwarded pour RARE+)
 SpawnManager.OnBRSpawned = function(brModel, baseIndex, rarete, onCapture)
@@ -1326,6 +1353,99 @@ if EventManager.OnEventEnd then
     end
 end
 EventManager.Init()
+
+-- DEBUG TEMP — déclenchement manuel Admin Abuse
+do
+    -- Injecter les dépendances dans EventAdminAbuse (même pattern que LeaderboardSystem)
+    if EventAdminAbuse then
+        EventAdminAbuse.GetPlayerData = GetData
+        EventAdminAbuse.FireUpdateHUD = function(p, d) UpdateHUD:FireClient(p, d) end
+    end
+
+    -- Chargement différé d'EventVisuals (évite dépendance circulaire au boot)
+    local _EV = nil
+    local function getEV()
+        if not _EV then
+            local ok, m = pcall(require, ServerScriptService.EventVisuals)
+            if ok then _EV = m end
+        end
+        return _EV
+    end
+
+    -- Donner une graine MYTHIC à un joueur (early bird)
+    local function donnerGraineEarlyBird(player)
+        local data = GetData(player)
+        if not data then return end
+        local rarity  = (Config.EventsVisuels.AdminAbuse and Config.EventsVisuels.AdminAbuse.earlyBirdRarity) or "MYTHIC"
+        local couleur = rarity == "SECRET" and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(180, 0, 255)
+
+        SeedInventory.Add(data, rarity, 1)
+
+        local carriedSeeds = player:FindFirstChild("CarriedSeeds")
+        if not carriedSeeds then
+            carriedSeeds        = Instance.new("Folder")
+            carriedSeeds.Name   = "CarriedSeeds"
+            carriedSeeds.Parent = player
+        end
+        local sv       = Instance.new("StringValue")
+        sv.Value       = rarity
+        sv.Parent      = carriedSeeds
+
+        local tool              = Instance.new("Tool")
+        tool.Name               = "🌱 " .. rarity .. " Seed"
+        tool.RequiresHandle     = true
+        tool:SetAttribute("IsSeed",     true)
+        tool:SetAttribute("SeedRarity", rarity)
+        local handle            = Instance.new("Part")
+        handle.Name             = "Handle"
+        handle.Shape            = Enum.PartType.Ball
+        handle.Size             = Vector3.new(0.7, 0.7, 0.7)
+        handle.Color            = couleur
+        handle.Material         = Enum.Material.Neon
+        handle.Transparency     = 0
+        handle.Anchored         = false
+        handle.CanCollide       = false
+        handle.CastShadow       = false
+        handle.Parent           = tool
+        local light             = Instance.new("PointLight", handle)
+        light.Color             = couleur
+        light.Brightness        = 3
+        light.Range             = 6
+        local backpack = player:FindFirstChildOfClass("Backpack")
+        if backpack then tool.Parent = backpack end
+
+        SeedInventory.NotifyClient(player, data)
+        CarrySystem.EnvoyerCarryUpdate(player)
+        NotifEvent:FireClient(player, "SUCCESS", "🌈 Early Bird! Free " .. rarity .. " Seed!")
+        Logger.info("Event", "AdminAbuse early bird : graine %s → %s", rarity, player.Name)
+    end
+
+    AdminAbuseManuel.OnServerEvent:Connect(function(player)
+        local EV = getEV()
+        if EV and EV.GetEventActif() == "AdminAbuse" then
+            Logger.warn("Event", "Admin Abuse déjà actif, ignoré")
+            return
+        end
+        Logger.info("Event", "Admin Abuse MANUEL déclenché par %s", player.Name)
+
+        -- Early birds : tous les joueurs déjà connectés reçoivent une graine
+        for _, p in ipairs(Players:GetPlayers()) do
+            pcall(donnerGraineEarlyBird, p)
+        end
+
+        -- Webhook Discord
+        pcall(DiscordWebhook.AdminAbuseHebdo)
+
+        -- Lancer via EventVisuals → countdown leaderboard + terminaison auto
+        if EV then
+            EV.Lancer("AdminAbuse")
+        elseif EventAdminAbuse then
+            -- Fallback sans EventVisuals
+            local cfg = Config.EventsVisuels and Config.EventsVisuels.AdminAbuse or {}
+            pcall(EventAdminAbuse.Demarrer, cfg)
+        end
+    end)
+end
 
 -- Masquer floors > 1 sur toutes les bases avant que les joueurs rejoignent
 BaseProgressionSystem.InitBasesInactives()

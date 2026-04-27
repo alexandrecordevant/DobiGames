@@ -236,9 +236,16 @@ makeCard(
 )
 
 makeCard(
-    "🔥", "ROBUX UPGRADES",
-    "Some Shop upgrades show an <b>orange 🔥 button</b> — those require <b>Robux</b> and are permanent (GamePass).\n\n<b>Shop upgrades:</b>\n• <b>Tracteur</b> (299 R$) — bonus MYTHIC &amp; SECRET spawns in your field\n• <b>LuckyCharm</b> (99 R$) — +25% rarity chance on every spawn\n• <b>Arroseur MAX / Speed MAX / Carry+ MAX</b> — unlock the final level of each upgrade\n\n<b>Flower Pot:</b>\n• <b>Pot 4</b> (149 R$) — 4th pot slot\n• <b>SeedDoubler</b> — claim 2 Daily Seeds per day instead of 1\n• <b>Instant Grow</b> (35 R$) — skip the grow timer on any pot\n\nAll Robux purchases are <b>one-time</b> and stay forever on your account.",
+    "⚡", "WEEKLY ADMIN ABUSE",
+    "Every <b>Saturday at 8pm UTC</b>, the admins go wild for <b>45 minutes</b>!\n\n• Spawn rate <b>×50</b> — brainrots everywhere\n• All earnings <b>×5</b>\n• <b>Auto-collect</b> fires every 20 seconds for everyone\n• Rainbow ground + Rainbow Clouds appear\n\n<b>🌈 Early Bird bonus:</b> Be online when it starts → you instantly receive a <b>free MYTHIC Seed</b>. Join after and you miss it!\n\n<b>Flash Quests</b> during the event:\n• 10 BRs collected → +1 000 coins\n• 25 BRs → +3 000 coins\n• 50 BRs → +7 500 coins\n• 100 BRs → +20 000 coins\n\nJoin our <b>Discord</b> to get the @everyone ping before it starts!",
     7,
+    Color3.fromRGB(255, 80, 80)
+)
+
+makeCard(
+    "🔥", "ROBUX UPGRADES",
+    "Some Shop upgrades show an <b>orange 🔥 button</b> — those require <b>Robux</b> and are permanent (GamePass).\n\n<b>Shop upgrades:</b>\n• <b>Tracteur</b> (299 R$) — each time you collect a <b>RARE or higher</b>, chance to spawn a bonus MYTHIC or SECRET in your field (4% / 1% / 1% jackpot)\n• <b>Lucky Charm</b> (99 R$) — <b>COMMON never spawns</b> on your base + OG brainrots are worth <b>2× coins</b>\n• <b>Arroseur MAX / Speed MAX / Carry+ MAX</b> — unlock the final level of each upgrade\n\n<b>Flower Pot:</b>\n• <b>Pot 4</b> (149 R$) — 4th pot slot\n• <b>SeedDoubler</b> — claim 2 Daily Seeds per day instead of 1\n• <b>Instant Grow</b> (35 R$) — skip the grow timer on any pot\n\nAll Robux purchases are <b>one-time</b> and stay forever on your account.",
+    8,
     Color3.fromRGB(255, 140, 30)
 )
 

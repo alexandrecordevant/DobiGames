@@ -73,7 +73,7 @@ GameConfig.EventDureeMinutes      = 5
 GameConfig.EventSpawnMultiplier   = 10
 GameConfig.EarlyBirdBonusMinutes  = 60
 GameConfig.AdminAbuseHebdo = {
-    jourSemaine     = 6,
+    jourSemaine     = 7,
     heureUTC        = 20,
     dureeMinutes    = 45,
     spawnMultiplier = 50,
@@ -360,6 +360,38 @@ GameConfig.EventsVisuels = {
         couleurAmbiance = Color3.fromRGB(255, 180, 220),
         message         = "⭐ LUCKY HOUR! Rare BRs are spawning on your base!",
         messageFin      = "⭐ Lucky Hour is over.",
+    },
+
+    AdminAbuse = {
+        duree               = 45 * 60,  -- 2700 secondes
+        spawnMultiplier     = 50,
+        incomeMultiplier    = 5,
+        autoCollectInterval = 20,
+        questSeuils = {
+            { seuil = 10,  reward = 1000  },
+            { seuil = 25,  reward = 3000  },
+            { seuil = 50,  reward = 7500  },
+            { seuil = 100, reward = 20000 },
+        },
+        earlyBirdRarity = "MYTHIC",
+        message    = "⚡ ADMIN ABUSE! Spawn ×50 · Gains ×5 · 45 min!",
+        messageFin = "⚡ Admin Abuse ended. See you next Saturday!",
+
+        -- Pool de spawn dédiée (remplace le champ perso normal)
+        spawnPool = {
+            { nom="RARE",      poids=35, dossier="RARE"      },
+            { nom="EPIC",      poids=30, dossier="EPIC"      },
+            { nom="LEGENDARY", poids=20, dossier="LEGENDARY" },
+            { nom="MYTHIC",    poids=10, dossier="MYTHIC"    },
+            { nom="SECRET",    poids=5,  dossier="SECRET"    },
+            { nom="OG",        poids=0.15, dossier="OG"      },  -- ~1 apparition sur 45 min d'event
+            -- BRAINROT_GOD retiré : dossier Brainrots/BRAINROT_GOD absent
+        },
+        -- Mutations champ désactivées — on utilise uniquement les mutations élément (style FlowerPot)
+        mutationChance = 0,
+        -- Mutations élément (GALAXY/TOXIC/RAINBOW/VOID) sur TOUTES les raretés
+        elementMutationChance  = 0.50,
+        elementMutationRaretes = nil,  -- nil = toutes les raretés éligibles
     },
 }
 
@@ -751,12 +783,12 @@ GameConfig.MaxBases = 6
 GameConfig.SpawnableItems = {
     dossier = "Brainrots",
     rarites = {
-        { nom="COMMON",       poids=55,  valeur=1    },
-        { nom="OG",           poids=22,  valeur=3    },
-        { nom="RARE",         poids=13,  valeur=8    },
-        { nom="EPIC",         poids=7,   valeur=20   },
-        { nom="LEGENDARY",    poids=2.8, valeur=60   },
-        { nom="BRAINROT_GOD", poids=0.2, valeur=2000 },
+        { nom="COMMON",    poids=55,  valeur=1  },
+        { nom="OG",        poids=22,  valeur=3  },
+        { nom="RARE",      poids=13,  valeur=8  },
+        { nom="EPIC",      poids=7,   valeur=20 },
+        { nom="LEGENDARY", poids=2.8, valeur=60 },
+        -- BRAINROT_GOD retiré du spawn normal — admin abuse uniquement (rareteForce)
     },
     raretesCommunOnly = { "MYTHIC", "SECRET" },
 }

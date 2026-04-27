@@ -194,15 +194,12 @@ local function appliquerEffet(player, playerData, niveauConfig)
         end
     end
 
-    -- Tracteur : comportement passif géré dans SpawnManager (Lucky Spawn) — aucun effet à appliquer ici
-
-    -- Lucky Charm (délégué à CollectSystem)
-    if effet.luckyBonus then
-        local ColSys = getCollectSystem()
-        if ColSys and ColSys.SetLuckyBonus then
-            pcall(ColSys.SetLuckyBonus, player, effet.luckyBonus)
-        end
+    -- Tracteur : animation activée via callback injecté par Main.server.lua
+    if effet.tracteurActif and ShopSystem._onTracteurActiver then
+        pcall(ShopSystem._onTracteurActiver, player)
     end
+
+    -- Lucky Charm : effet passif — SpawnManager lit playerData.hasLuckyCharm à chaque spawn
 end
 
 -- ============================================================
@@ -277,6 +274,69 @@ function ShopSystem.ConfirmerAchatGamePass(player, gamePassId)
             end
         end
     end
+end
+
+-- ============================================================
+-- TEST STUDIO ONLY — forcer un upgrade Robux sans passer par MarketplaceService
+-- Usage depuis la console serveur :
+--   require(game.ServerScriptService.ShopSystem).TEST_ForceUpgrade(game.Players:GetPlayers()[1], "Speed")
+--   require(game.ServerScriptService.ShopSystem).TEST_ForceUpgrade(game.Players:GetPlayers()[1], "Tracteur")
+-- ============================================================
+if game:GetService("RunService"):IsStudio() then
+    local function forceUpgrade(player, nomUpgrade)
+        local upgradeConfig = Config.ShopUpgrades[nomUpgrade]
+        if not upgradeConfig then
+            warn("[TEST] Upgrade inconnu : " .. tostring(nomUpgrade))
+            return
+        end
+        local playerData = getData(player)
+        if not playerData then return end
+
+        local niveauCible, niveauConfig
+        for n, cfg in pairs(upgradeConfig.niveaux) do
+            if cfg.type == "robux" then
+                if not niveauCible or n > niveauCible then
+                    niveauCible = n
+                    niveauConfig = cfg
+                end
+            end
+        end
+        if not niveauConfig then
+            warn("[TEST] Pas de niveau robux pour : " .. nomUpgrade)
+            return
+        end
+
+        if upgradeConfig.isGamePass then
+            playerData[upgradeConfig.dataField] = true
+        else
+            assurerUpgrades(playerData)
+            playerData.upgrades[upgradeConfig.dataField] = niveauCible
+        end
+        pcall(appliquerEffet, player, playerData, niveauConfig)
+
+        local notif = ReplicatedStorage:FindFirstChild("NotifEvent")
+        if notif then
+            pcall(function()
+                notif:FireClient(player, "SUCCESS",
+                    "[TEST] " .. upgradeConfig.icone .. " " .. upgradeConfig.nom .. " forcé!")
+            end)
+        end
+        if ShopUpdate then
+            pcall(function()
+                ShopUpdate:FireClient(player, construireDonneesShop(player, playerData))
+            end)
+        end
+        if ShopSystem.FireUpdateHUD then
+            pcall(ShopSystem.FireUpdateHUD, player, playerData)
+        end
+        Logger.info("Shop", "[TEST] ForceUpgrade " .. nomUpgrade .. " → " .. player.Name)
+    end
+
+    -- RemoteEvent accessible depuis le client (command bar Play Solo)
+    local testEvent = Instance.new("RemoteEvent")
+    testEvent.Name = "TEST_ForceUpgrade"
+    testEvent.Parent = ReplicatedStorage
+    testEvent.OnServerEvent:Connect(forceUpgrade)
 end
 
 -- ============================================================

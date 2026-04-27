@@ -124,6 +124,13 @@ local arroseurMults    = {}  -- { [baseIndex] = multiplicateur upgrade Arroseur 
 local assignations     = {}  -- { [userId] = baseIndex }
 local idCounter        = 0   -- compteur global pour nommer les clones
 
+-- Admin Abuse — pool et chances de mutation overridées pendant l'event
+local _adminAbusePool          = nil  -- { { nom, poids, dossier }, ... }
+local _adminAbusePoidsTot      = 0
+local _adminAbuseMutChance     = nil  -- remplace pfMutCfg.chance
+local _adminAbuseElemChance    = nil  -- chance mutation GALAXY/VOID sur MYTHIC/SECRET/BRAINROT_GOD
+local _adminAbuseElemRaretes   = nil  -- { MYTHIC=true, SECRET=true, BRAINROT_GOD=true }
+
 -- Lazy loader FlowerPotSystem (évite dépendance circulaire)
 local _FlowerPotSystem = nil
 local function getFlowerPotSystem()
@@ -142,22 +149,38 @@ local brainrotsFolder = ReplicatedStorage:WaitForChild(_dosierBrainrots)
 -- ============================================================
 
 -- Tire une rareté selon les poids (réessaie si la rareté est exclue)
-local function tirerRarete()
-    local tentatives = 0
-    local rarete
-    repeat
-        local r     = math.random() * POIDS_TOTAL
-        local cumul = 0
-        rarete      = RARITES[1]  -- fallback COMMON
-        for _, candidat in ipairs(RARITES) do
-            cumul = cumul + candidat.poids
-            if r <= cumul then
-                rarete = candidat
-                break
+-- hasLucky : si true, 25% de chance de reroll et garde la meilleure des deux
+local function tirerRarete(hasLucky)
+    local pool       = _adminAbusePool or RARITES
+    local total      = _adminAbusePool and _adminAbusePoidsTot or POIDS_TOTAL
+    local skipExclus = _adminAbusePool ~= nil  -- pool Admin Abuse = déjà curatée, pas besoin d'EstExclue
+
+    local function unTirage()
+        local tentatives = 0
+        local rarete
+        repeat
+            local r     = math.random() * total
+            local cumul = 0
+            rarete      = pool[1]
+            for _, candidat in ipairs(pool) do
+                cumul = cumul + candidat.poids
+                if r <= cumul then
+                    rarete = candidat
+                    break
+                end
             end
+            tentatives = tentatives + 1
+        until (skipExclus or not EstExclue(rarete)) and (not hasLucky or rarete.nom ~= "COMMON") or tentatives > 20
+        return rarete
+    end
+
+    local rarete = unTirage()
+    if hasLucky and math.random() < 0.25 then
+        local reroll = unTirage()
+        if (RARETE_ORDRE[reroll.nom] or 0) > (RARETE_ORDRE[rarete.nom] or 0) then
+            rarete = reroll
         end
-        tentatives = tentatives + 1
-    until not EstExclue(rarete) or tentatives > 20
+    end
     return rarete
 end
 
@@ -205,6 +228,7 @@ end
 
 -- Couleurs par type de mutation (pour PointLight + tag billboard)
 local MUTATION_COLORS = {
+    -- Mutations champ (dossiers ServerStorage/Mutation/)
     BrainrotsToxic   = Color3.fromRGB(0,   220,   0),
     BrainrotsLava    = Color3.fromRGB(255,  80,   0),
     BrainrotsGold    = Color3.fromRGB(255, 200,   0),
@@ -212,6 +236,11 @@ local MUTATION_COLORS = {
     BrainrotsRainbow = Color3.fromRGB(255, 255, 255),
     BrainrotsNebula  = Color3.fromRGB(160,   0, 255),
     CrazyBrainrots   = Color3.fromRGB(255,   0, 200),
+    -- Mutations élément Admin Abuse / FlowerPot (MutantTypes)
+    GALAXY  = Color3.fromRGB(88,   24, 169),
+    TOXIC   = Color3.fromRGB(57,  255,  20),
+    RAINBOW = Color3.fromRGB(255, 255, 255),
+    VOID    = Color3.fromRGB(200,   0,   0),
 }
 
 -- Appliquer un Tween de transparence à tous les BaseParts
@@ -332,7 +361,15 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 	if not rareteForce and compteurs[baseIndex] >= CONFIG.MAX_PAR_BASE then return end
 
 	-- Tirage de rareté (ou rareté imposée)
-	local rarete = rareteForce or tirerRarete()
+	local hasLucky = false
+	if not rareteForce and _getPlayerData then
+		local joueur = trouverJoueurBase(baseIndex)
+		if joueur then
+			local d = _getPlayerData(joueur)
+			hasLucky = d and d.hasLuckyCharm == true
+		end
+	end
+	local rarete = rareteForce or tirerRarete(hasLucky)
 
 	-- ── Tentative mutation champ perso (0.2%, jamais COMMON) — ignorée si spawn forcé ──
 	local mutSourcePerso  = nil
@@ -341,17 +378,21 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 	local pfMutCfg        = _GameConfig.PersonalFieldMutationConfig
 
 	if not rareteForce and pfMutCfg and pfMutCfg.enabled and mutationFolder then
-		-- Vérifier rareté non exclue
+		-- Vérifier rareté non exclue (+ exclure MYTHIC/SECRET/BRAINROT_GOD des mutations champ en Admin Abuse)
 		local exclu = false
 		for _, r in ipairs(pfMutCfg.raretesExclues or {}) do
 			if r == rarete.nom then exclu = true ; break end
 		end
+		if _adminAbuseElemRaretes and _adminAbuseElemRaretes[rarete.nom] then
+			exclu = true  -- réservés aux mutations élément (GALAXY/VOID etc.)
+		end
 
-		if not exclu and math.random() < (pfMutCfg.chance or 0.002) then
+		local mutChance = _adminAbuseMutChance or pfMutCfg.chance or 0.002
+		if not exclu and math.random() < mutChance then
 			-- Tirage pondéré du type
-			local total = 0
-			for _, t in ipairs(pfMutCfg.types) do total = total + t.weight end
-			local roll, cumul = math.random() * total, 0
+			local totalMut = 0
+			for _, t in ipairs(pfMutCfg.types) do totalMut = totalMut + t.weight end
+			local roll, cumul = math.random() * totalMut, 0
 			local typeTire = nil
 			for _, t in ipairs(pfMutCfg.types) do
 				cumul = cumul + t.weight
@@ -359,9 +400,8 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 			end
 
 			if typeTire then
-				local typeFolder = mutationFolder:FindFirstChild(typeTire.name)
+				local typeFolder = mutationFolder and mutationFolder:FindFirstChild(typeTire.name)
 				if typeFolder then
-					-- Mapper la rareté (BRAINROT_GOD → GOD)
 					local rareteMappe = (pfMutCfg.rareteMapping and pfMutCfg.rareteMapping[rarete.nom]) or rarete.nom
 					local rareteFolder = typeFolder:FindFirstChild(rareteMappe)
 					if rareteFolder then
@@ -377,10 +417,43 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 							mutSourcePerso = candidats[math.random(1, #candidats)]
 							mutTypePerso   = typeTire.name
 							mutMultPerso   = typeTire.multiplier
+						else
+							Logger.warn("Spawn", "[AdminAbuse] Mutation '%s/%s' vide ou introuvable", typeTire.name, rareteMappe)
 						end
+					else
+						Logger.warn("Spawn", "[AdminAbuse] Dossier rareté '%s' absent dans Mutation/%s", rareteMappe, typeTire.name)
 					end
+				else
+					Logger.warn("Spawn", "[AdminAbuse] Dossier mutation '%s' absent dans ServerStorage/Mutation", typeTire.name)
 				end
 			end
+		end
+	end
+
+	-- Mutation élément Admin Abuse (GALAXY/TOXIC/RAINBOW/VOID)
+	local _adminAbuseElemType = nil
+	local elemEligible = _adminAbuseElemRaretes == nil or (_adminAbuseElemRaretes and _adminAbuseElemRaretes[rarete.nom])
+	if not rareteForce and not mutSourcePerso
+		and _adminAbuseElemChance and elemEligible
+		and math.random() < _adminAbuseElemChance then
+
+		local mutTypes = _GameConfig.MutantTypes
+		if mutTypes and #mutTypes > 0 then
+			local mt = mutTypes[math.random(1, #mutTypes)]
+			_adminAbuseElemType = mt
+			mutTypePerso  = mt.Name
+			mutMultPerso  = mt.Multiplier
+			-- Enrichir rarete pour que DropSystem réapplique le bon filtre au dépôt
+			rarete = {
+				nom         = rarete.nom,
+				poids       = rarete.poids,
+				dossier     = rarete.dossier,
+				isMutant    = true,
+				elementType = mt.Name,
+			}
+			Logger.warn("Spawn", "[AdminAbuse] Mutation élément %s %s ×%d", mt.Name, rarete.nom, mt.Multiplier)
+		else
+			Logger.warn("Spawn", "[AdminAbuse] MutantTypes vide ou absent dans GameConfig")
 		end
 	end
 
@@ -414,12 +487,17 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 	if mutTypePerso then
 		cpsVal = math.floor(cpsVal * mutMultPerso)
 	end
+	-- Lucky Charm Pattern C : OG vaut 2× coins (COMMON ne spawn plus avec Lucky Charm)
+	if hasLucky and rarete.nom == "OG" then
+		cpsVal = cpsVal * 2
+	end
 	pcall(function() clone:SetAttribute("CashParSeconde", cpsVal) end)
 
 	-- Attributs mutation champ perso
 	if mutTypePerso then
 		pcall(function() clone:SetAttribute("IsMutated",    true)        end)
 		pcall(function() clone:SetAttribute("MutationType", mutTypePerso) end)
+		pcall(function() clone:SetAttribute("Mutation", mutTypePerso) end)  -- lu par CarrySystem.creerTool
 		Logger.info("Mutation", "Champ perso : %s %s x%.0f sur Base_%d",
 			mutTypePerso, rarete.nom, mutMultPerso, baseIndex)
 	end
@@ -431,6 +509,14 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 	-- Placer dans le Workspace avant de manipuler le CFrame
 	clone.Parent = Workspace
 
+	-- Appliquer filtre visuel Admin Abuse APRÈS parenting (FilterManager nécessite Parent ≠ nil)
+	if _adminAbuseElemType then
+		local FM = getFilterManager()
+		if FM and FM.Apply and _adminAbuseElemType.Filtre then
+			pcall(FM.Apply, clone, { { Name = _adminAbuseElemType.Filtre } })
+		end
+	end
+
 	local racine = obtenirRacine(clone)
 	if not racine then
 		clone:Destroy()
@@ -441,8 +527,10 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 	-- Récupérer tous les BaseParts
 	local parts = obtenirBaseParts(clone)
 
-	-- CanCollide = false permanent (tous les BR)
+	-- Ancrer + désactiver collision immédiatement pour que la physique
+	-- ne disperse pas les parts non-weldées pendant l'animation de pousse
 	for _, part in ipairs(parts) do
+		part.Anchored   = true
 		part.CanCollide = false
 	end
 
@@ -511,23 +599,22 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 			end
 		end
 
-		-- Ancrer les parts pour qu'elles ne tombent pas
 		if clone and clone.Parent then
-			for _, part in ipairs(parts) do
-				part.Anchored = true
-			end
-
 			-- ProximityPrompt pour tous les BR (via OnBRSpawned)
 			if SpawnManager.OnBRSpawned then
 				local onCapture = nil
-				if (RARETE_ORDRE[rarete.nom] or 0) >= 4 then  -- EPIC = 4, LEGENDARY = 5, etc.
+				local ordreRarete = RARETE_ORDRE[rarete.nom] or 0
+				if ordreRarete >= 3 then  -- RARE+ → Tracteur roll au collect
 					onCapture = function(player)
-						if SpawnManager.OnRareCollecte then
-							pcall(SpawnManager.OnRareCollecte, player, rarete.nom)
-						end
-						local FPS = getFlowerPotSystem()
-						if FPS then
-							pcall(FPS.TenterDropGraine, player, rarete.nom)
+						task.spawn(rollBonusTracteur, baseIndex)
+						if ordreRarete >= 4 then  -- EPIC+ → leaderboard + seed drop
+							if SpawnManager.OnRareCollecte then
+								pcall(SpawnManager.OnRareCollecte, player, rarete.nom)
+							end
+							local FPS = getFlowerPotSystem()
+							if FPS then
+								pcall(FPS.TenterDropGraine, player, rarete.nom)
+							end
 						end
 					end
 				end
@@ -684,6 +771,7 @@ local function spawnerBRBonus(baseIndex, rareteNom)
 
     local parts = obtenirBaseParts(clone)
     for _, part in ipairs(parts) do
+        part.Anchored   = true
         part.CanCollide = false
     end
 
@@ -735,11 +823,6 @@ local function spawnerBRBonus(baseIndex, rareteNom)
         end)
 
         if clone and clone.Parent then
-            -- Ancrer les parts
-            for _, part in ipairs(parts) do
-                part.Anchored = true
-            end
-
             -- Billboard et countdown (durée réduite de l'animation)
             local dureeRestante = math.floor(CONFIG.DUREE_DESPAWN - CONFIG.DUREE_POUSSE)
             BrainrotBillboard.SetupField(clone, dureeRestante)
@@ -778,6 +861,35 @@ local function spawnerBRBonus(baseIndex, rareteNom)
     end)
 end
 
+-- Injecté par Main.server.lua pour lire playerData sans dépendance circulaire
+local _getPlayerData = nil
+function SpawnManager.SetGetData(fn) _getPlayerData = fn end
+
+-- Active/désactive la pool Admin Abuse (appelé par EventAdminAbuse)
+function SpawnManager.SetAdminAbuseMode(enabled, cfg)
+    if enabled and cfg and cfg.spawnPool then
+        _adminAbusePool = cfg.spawnPool
+        _adminAbusePoidsTot = 0
+        for _, r in ipairs(_adminAbusePool) do
+            _adminAbusePoidsTot = _adminAbusePoidsTot + r.poids
+        end
+        _adminAbuseMutChance   = cfg.mutationChance
+        _adminAbuseElemChance  = cfg.elementMutationChance
+        _adminAbuseElemRaretes = cfg.elementMutationRaretes
+        Logger.warn("Spawn", "[AdminAbuse] Pool activée — %d raretés, mut=%.0f%%, elem=%.0f%%",
+            #_adminAbusePool,
+            (_adminAbuseMutChance or 0) * 100,
+            (_adminAbuseElemChance or 0) * 100)
+    else
+        _adminAbusePool        = nil
+        _adminAbusePoidsTot    = 0
+        _adminAbuseMutChance   = nil
+        _adminAbuseElemChance  = nil
+        _adminAbuseElemRaretes = nil
+        Logger.warn("Spawn", "[AdminAbuse] Pool désactivée — retour pool normale")
+    end
+end
+
 -- Roll bonus Tracteur — appelé après chaque spawn normal dans le champ d'une base
 -- Vérifie le Game Pass côté serveur (pas de cache statique) puis tire le bonus
 local function rollBonusTracteur(baseIndex)
@@ -785,20 +897,28 @@ local function rollBonusTracteur(baseIndex)
     local player = trouverJoueurBase(baseIndex)
     if not player then return end
 
-    -- ID Game Pass Tracteur depuis GameConfig (0 = pas configuré → skip silencieux)
+    -- ID Game Pass Tracteur depuis GameConfig
     local tracteurId = _GameConfig.GamePassIds and _GameConfig.GamePassIds.Tracteur
-    if not tracteurId or tracteurId == 0 then return end
 
-    -- Vérification côté serveur (jamais en cache pour éviter les exploits)
     local possede = false
-    local ok, err = pcall(function()
-        possede = MarketplaceService:UserOwnsGamePassAsync(player.UserId, tracteurId)
-    end)
-    if not ok then
-        Logger.warn("Spawn", "Tracteur: erreur vérif GamePass pour %s : %s", player.Name, tostring(err))
-        return
+    if not tracteurId or tracteurId == 0 then
+        -- Pas d'ID configuré : fallback sur playerData.hasTracteur (Studio / force-test)
+        if _getPlayerData then
+            local d = _getPlayerData(player)
+            possede = d and d.hasTracteur == true
+        end
+        if not possede then return end
+    else
+        -- Vérification côté serveur (jamais en cache pour éviter les exploits)
+        local ok, err = pcall(function()
+            possede = MarketplaceService:UserOwnsGamePassAsync(player.UserId, tracteurId)
+        end)
+        if not ok then
+            Logger.warn("Spawn", "Tracteur: erreur vérif GamePass pour %s : %s", player.Name, tostring(err))
+            return
+        end
+        if not possede then return end
     end
-    if not possede then return end
 
     -- Tirage bonus sur 100
     -- 1%  → jackpot (MYTHIC + SECRET simultanés)
@@ -857,8 +977,6 @@ local function lancerBoucleSpawn(baseIndex)
 			-- Spawn si la zone existe encore
 			if zones[baseIndex] then
 				pcall(spawnerUnBrainRot, baseIndex)
-				-- Roll bonus Tracteur passif (indépendant — non bloquant)
-				task.spawn(rollBonusTracteur, baseIndex)
 			else
 				break -- zone supprimée, arrêter la boucle
 			end
