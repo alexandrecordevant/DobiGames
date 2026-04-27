@@ -96,7 +96,6 @@ local InstantGrowPot        = CreerRemoteEvent("InstantGrowPot")
 local DemandeOuvrirRebirth  = CreerRemoteEvent("DemandeOuvrirRebirth")
 local ClaimDailySeed        = CreerRemoteEvent("ClaimDailySeed")
 local CollectAllEvent        = CreerRemoteEvent("CollectAllEvent")
-local AdminAbuseManuel       = CreerRemoteEvent("AdminAbuseManuel")  -- DEBUG TEMP
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -1420,31 +1419,6 @@ do
         Logger.info("Event", "AdminAbuse early bird : graine %s → %s", rarity, player.Name)
     end
 
-    AdminAbuseManuel.OnServerEvent:Connect(function(player)
-        local EV = getEV()
-        if EV and EV.GetEventActif() == "AdminAbuse" then
-            Logger.warn("Event", "Admin Abuse déjà actif, ignoré")
-            return
-        end
-        Logger.info("Event", "Admin Abuse MANUEL déclenché par %s", player.Name)
-
-        -- Early birds : tous les joueurs déjà connectés reçoivent une graine
-        for _, p in ipairs(Players:GetPlayers()) do
-            pcall(donnerGraineEarlyBird, p)
-        end
-
-        -- Webhook Discord
-        pcall(DiscordWebhook.AdminAbuseHebdo)
-
-        -- Lancer via EventVisuals → countdown leaderboard + terminaison auto
-        if EV then
-            EV.Lancer("AdminAbuse")
-        elseif EventAdminAbuse then
-            -- Fallback sans EventVisuals
-            local cfg = Config.EventsVisuels and Config.EventsVisuels.AdminAbuse or {}
-            pcall(EventAdminAbuse.Demarrer, cfg)
-        end
-    end)
 end
 
 -- Masquer floors > 1 sur toutes les bases avant que les joueurs rejoignent
