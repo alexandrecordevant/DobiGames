@@ -105,7 +105,7 @@ OIN.OnClientEvent:Connect(function(montant)
     notif.TextColor3             = T.texte
     notif.TextScaled             = true
     notif.Font                   = Enum.Font.GothamBold
-    notif.Text                   = "💤 Offline : +" .. montant .. " coins !"
+    notif.Text                   = "Offline : +" .. montant .. " coins"
     TweenService:Create(notif, TweenInfo.new(3),
         { Position = UDim2.new(0.5,-160,0.3,0) }):Play()
     task.delay(4, function() notif:Destroy() end)
@@ -195,7 +195,7 @@ task.spawn(function()
         texte.TextStrokeColor3       = Color3.fromRGB(100, 60, 0)
         texte.TextScaled             = true
         texte.Font                   = Enum.Font.GothamBold
-        texte.Text                   = "✨ ×5 GOLDEN !"
+        texte.Text                   = "x5 GOLDEN"
         texte.ZIndex                 = 11
         TweenService:Create(texte, TweenInfo.new(2),
             { Position = UDim2.new(0.5, -150, 0.35, -35), TextTransparency = 1 }
@@ -240,7 +240,7 @@ local NOTIF_COULEURS = {
 local notifLabel = Instance.new("TextLabel", gui)
 notifLabel.Name                   = "NotifLabel"
 notifLabel.Size                   = UDim2.new(0, 500, 0, 50)
-notifLabel.Position               = UDim2.new(0.5, -250, 0, 20)
+notifLabel.Position               = UDim2.new(0.5, -250, 0, 75)
 notifLabel.BackgroundTransparency = 1
 notifLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
 notifLabel.Font                   = Enum.Font.GothamBold
@@ -446,7 +446,6 @@ local function creerShopRobuxPanel()
             for niveauIdx, niveau in pairs(upgrade.niveaux or {}) do
                 if niveau.type == "robux" and (niveau.prix or 0) > 0 then
                     table.insert(items, {
-                        icone      = upgrade.icone or "⭐",
                         nom        = (upgrade.nom or nomUpgrade) .. " " .. (niveau.label or ""),
                         prix       = niveau.prix,
                         gamePassId = niveau.gamePassId or 0,
@@ -482,7 +481,7 @@ local function creerShopRobuxPanel()
         lblNom.TextXAlignment         = Enum.TextXAlignment.Left
         lblNom.TextWrapped            = true
         lblNom.ZIndex                 = 13
-        lblNom.Text                   = item.icone .. " " .. item.nom
+        lblNom.Text                   = item.nom
 
         local btnAcheter = Instance.new("TextButton", ligne)
         btnAcheter.Size             = UDim2.new(0, 95, 0, 36)
@@ -491,7 +490,7 @@ local function creerShopRobuxPanel()
         btnAcheter.TextColor3       = T.fondPrincipal
         btnAcheter.Font             = Enum.Font.GothamBold
         btnAcheter.TextSize         = 12
-        btnAcheter.Text             = item.prix .. " R$ 🔥"
+        btnAcheter.Text             = item.prix .. " R$"
         btnAcheter.BorderSizePixel  = 0
         btnAcheter.ZIndex           = 13
         Instance.new("UICorner", btnAcheter).CornerRadius = UDim.new(0, 6)

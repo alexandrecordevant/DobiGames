@@ -360,7 +360,7 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
             local progressText = niveauActuel >= maxNiveau
                 and "MAX"
                 or ("Lv." .. niveauActuel .. "/" .. maxNiveau)
-            nomLbl.Text = upgradeConfig.icone .. "  " .. string.upper(upgradeConfig.nom) .. "   [" .. progressText .. "]"
+            nomLbl.Text = string.upper(upgradeConfig.nom) .. "  [" .. progressText .. "]"
         end
     end
 
@@ -390,37 +390,37 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
         local cliquable = false
 
         if etat == "owned" then
-            texte    = "✅ " .. niveauConfig.label
+            texte    = niveauConfig.label
             bgCol    = C_GREEN_BG
             txtCol   = C_GREEN_TXT
             cliquable = false
 
         elseif etat == "max" then
-            texte    = "MAX ✅"
+            texte    = "MAX"
             bgCol    = C_MAX_BG
             txtCol   = C_MAX_TXT
             cliquable = false
 
         elseif etat == "affordable" then
-            texte    = "→ " .. niveauConfig.label .. "  " .. FormatCoins(niveauConfig.prix) .. "💰"
+            texte    = niveauConfig.label .. "  " .. FormatCoins(niveauConfig.prix)
             bgCol    = C_GREEN_BG
             txtCol   = C_GREEN_TXT
             cliquable = true
 
         elseif etat == "locked" then
-            texte    = "🔒 " .. niveauConfig.label .. "  " .. FormatCoins(niveauConfig.prix) .. "💰"
+            texte    = niveauConfig.label .. "  " .. FormatCoins(niveauConfig.prix)
             bgCol    = C_GREY_BG
             txtCol   = C_GREY_TXT
             cliquable = false
 
         elseif etat == "robux" then
             if niveauActuel >= niveauNum - 1 or niveauActuel == maxNiveau - 1 then
-                texte     = tostring(niveauConfig.prix) .. " R$ 🔥"
+                texte     = tostring(niveauConfig.prix) .. " R$"
                 bgCol     = C_GOLD_BG
                 txtCol    = C_GOLD_TXT
                 cliquable = true
             else
-                texte    = "🔒 " .. niveauConfig.label
+                texte    = niveauConfig.label
                 bgCol    = C_GREY_BG
                 txtCol   = C_GREY_TXT
                 cliquable = false
@@ -488,10 +488,11 @@ local function construireSeuilTracteur(donnes, yPos)
     titre.Size                = UDim2.new(1, -12, 0, 26)
     titre.Position            = UDim2.new(0, 10, 0, 6)
     titre.BackgroundTransparency = 1
-    titre.Text                = "🚜  SEUIL TRACTEUR"
+    titre.Text                = "SEUIL TRACTEUR"
     titre.TextColor3          = C_GOLD_TXT
     titre.Font                = Enum.Font.GothamBold
-    titre.TextScaled          = true
+    titre.TextScaled          = false
+    titre.TextSize            = 13
     titre.TextXAlignment      = Enum.TextXAlignment.Left
     titre.Parent              = frame
 
@@ -516,9 +517,7 @@ local function construireSeuilTracteur(donnes, yPos)
 
         local texte = s.label
         if s.prix and s.prix > 0 and not estSelectionne then
-            texte = s.label .. " · " .. FormatCoins(s.prix) .. "💰"
-        elseif estSelectionne then
-            texte = "✅ " .. s.label
+            texte = s.label .. " · " .. FormatCoins(s.prix)
         end
 
         local btn = Instance.new("TextButton")
@@ -598,7 +597,7 @@ local function mettreAJourShop(donnes)
     end
 
     -- Sinon, juste mettre à jour les boutons, coins, et seuil tracteur
-    coinsLbl.Text = "💰 " .. FormatCoins(donnes.playerCoins) .. " coins"
+    coinsLbl.Text = FormatCoins(donnes.playerCoins) .. " coins"
     for _, entry in ipairs(upgradeOrdre) do
         mettreAJourBoutons(entry.nom, entry.cfg, donnes)
     end

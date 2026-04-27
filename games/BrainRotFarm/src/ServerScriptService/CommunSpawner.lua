@@ -532,11 +532,13 @@ local function lancerScheduler(typeNom)
 			-- ── Phase 2 : alerte + compteur ───────────────────────
 			passerEnModeAlerte(pointIdx, cfg.couleur)
 
-			-- Notification joueurs
-			notifierTous("ALERT", string.format(
-				"%s %s spawns in %s in the Common Field!",
-				cfg.emoji, typeNom, formatTemps(cfg.compteurVisibleAvant)
-			))
+			-- Notification joueurs (inutile si compteur = 0 car RARE arrive immédiatement après)
+			if cfg.compteurVisibleAvant > 0 then
+				notifierTous("ALERT", string.format(
+					"%s %s spawns in %s in the Common Field!",
+					cfg.emoji, typeNom, formatTemps(cfg.compteurVisibleAvant)
+				))
+			end
 
 			-- Pas de notification Discord au compteur (trop fréquent)
 

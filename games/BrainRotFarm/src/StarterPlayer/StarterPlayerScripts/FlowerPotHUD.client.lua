@@ -57,7 +57,7 @@ overlay.Parent                 = screenGui
 local mainFrame = Instance.new("Frame")
 mainFrame.Name                   = "MainFrame"
 mainFrame.AnchorPoint            = Vector2.new(0.5, 0.5)
-mainFrame.Size                   = UDim2.new(0, 340, 0, 320)
+mainFrame.Size                   = UDim2.new(0, 340, 0, 420)
 mainFrame.Position               = UDim2.new(0.5, 0, 0.5, 0)
 mainFrame.BackgroundColor3       = T.fondPrincipal
 mainFrame.BackgroundTransparency = 0.05
@@ -70,7 +70,7 @@ Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 0)
 local _mainScale = Instance.new("UIScale", mainFrame)
 local function _ajusterMainFrame()
     local vp = workspace.CurrentCamera.ViewportSize
-    local s = math.min(vp.X / 380, vp.Y / 360, 1)
+    local s = math.min(vp.X / 380, vp.Y / 460, 1)
     _mainScale.Scale = math.max(0.5, s)
 end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterMainFrame)
@@ -195,6 +195,30 @@ local function creerLigne(texte, couleur, taille, ordre, zIndex)
     return lbl
 end
 
+-- gradient + stroke premium pour labels MYTHIC / SECRET
+local function applyRariteStyle(label, rarity, strokeThick)
+    local isSec = (rarity == "SECRET" or rarity == "SEC")
+    label.TextColor3 = Color3.new(1, 1, 1)
+    local g = label:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient", label)
+    g.Rotation = 90
+    if isSec then
+        g.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 20, 20)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 90, 90))
+        })
+    else
+        g.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 32, 240)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147))
+        })
+    end
+    if (strokeThick or 0) > 0 then
+        local s = label:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke", label)
+        s.Thickness = strokeThick
+        s.Color = Color3.fromRGB(0, 0, 0)
+    end
+end
+
 -- Fermeture des autres menus (1 seul ouvert a la fois)
 local function fermerAutresMenus()
     local shopGui = playerGui:FindFirstChild("ShopGui")
@@ -223,7 +247,7 @@ local function ouvrirPanel()
     mainFrame.Visible = true
     mainFrame.Size    = UDim2.new(0, 0, 0, 0)
     TweenService:Create(mainFrame, TweenInfo.new(0.22, Enum.EasingStyle.Back),
-        { Size = UDim2.new(0, 340, 0, 320) }):Play()
+        { Size = UDim2.new(0, 340, 0, 420) }):Play()
 end
 
 local function fermer()
@@ -289,7 +313,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     sepLbl.Parent           = scrollFrame
 
     -- Titre Daily Seed
-    creerLigne("🎁 DAILY SEED",
+    creerLigne("DAILY SEED",
         Color3.fromRGB(255, 215, 0), 28, 3)
 
     -- État daily seed
@@ -304,7 +328,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
 
     if ds.graineDispo then
         -- Disponible
-        creerLigne("✅ Ready to claim!",
+        creerLigne("Ready to claim!",
             Color3.fromRGB(100, 255, 120), 24, 5)
 
         local claimBtn = creerBouton(scrollFrame,
@@ -325,13 +349,13 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
         local seuil    = dsCfg and dsCfg.intervalleHeures * 3600 or 86400
         local remaining = math.max(0, seuil - (os.time() - derniere))
 
-        creerLigne("⏱ Next in: " .. formatTemps(remaining),
+        creerLigne("Next in: " .. formatTemps(remaining),
             Color3.fromRGB(200, 180, 100), 24, 5)
 
         -- Skip R$
         if dsCfg and dsCfg.skipPrixRobux and dsCfg.skipPrixRobux > 0 then
             local skipBtn = creerBouton(scrollFrame,
-                "⚡ Skip — " .. dsCfg.skipPrixRobux .. " R$",
+                "Skip — " .. dsCfg.skipPrixRobux .. " R$",
                 T.fondBoutonRobux,
                 nil,
                 UDim2.new(1, 0, 0, 36),
@@ -355,7 +379,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     -- Pack ×3 MYTHIC
     if dsCfg and dsCfg.packPrixRobux and dsCfg.packPrixRobux > 0 then
         local packBtn = creerBouton(scrollFrame,
-            "🎁 Seed Pack ×3 MYTHIC — " .. dsCfg.packPrixRobux .. " R$",
+            "Seed Pack x3 MYTHIC — " .. dsCfg.packPrixRobux .. " R$",
             T.fondBoutonRobux,
             nil,
             UDim2.new(1, 0, 0, 36),
@@ -369,7 +393,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     -- 1 SECRET garanti
     if dsCfg and dsCfg.premiumPrixRobux and dsCfg.premiumPrixRobux > 0 then
         local premBtn = creerBouton(scrollFrame,
-            "👑 1 SECRET Seed — " .. dsCfg.premiumPrixRobux .. " R$",
+            "1 SECRET Seed — " .. dsCfg.premiumPrixRobux .. " R$",
             T.fondBoutonDanger,
             nil,
             UDim2.new(1, 0, 0, 36),
@@ -440,7 +464,7 @@ local function afficherMenuInfos(potIndex, potData)
 
     -- Temps restant / prêt (countdown local)
     if stage < 4 then
-        local timerLbl = creerLigne("⏱ Ready in: " .. formatTemps(tRestant),
+        local timerLbl = creerLigne("Ready in: " .. formatTemps(tRestant),
             Color3.fromRGB(180, 230, 255), 26, 3)
         local countdown = tRestant
         task.spawn(function()
@@ -448,18 +472,18 @@ local function afficherMenuInfos(potIndex, potData)
                 task.wait(1)
                 countdown = countdown - 1
                 if timerLbl.Parent then
-                    timerLbl.Text = "⏱ Ready in: " .. formatTemps(countdown)
+                    timerLbl.Text = "Ready in: " .. formatTemps(countdown)
                 end
             end
         end)
 
         -- Multiplicateur
         if graineCfg then
-            creerLigne("💰 ×" .. graineCfg.multiplicateur .. " income when deposited",
+            creerLigne("x" .. graineCfg.multiplicateur .. " income when deposited",
                 Color3.fromRGB(255, 215, 0), 24, 4)
         end
     else
-        creerLigne("✅ Ready to harvest! Approach the pot.",
+        creerLigne("Ready to harvest! Approach the pot.",
             Color3.fromRGB(100, 255, 120), 26, 3)
     end
 
@@ -467,7 +491,7 @@ local function afficherMenuInfos(potIndex, potData)
     if stage < 4 then
         local igCfg = FPConfig and FPConfig.instantGrow
         creerBouton(actionFrame,
-            (igCfg and igCfg.label or "⚡ Instant Grow")
+            (igCfg and igCfg.label or "Instant Grow")
             .. "  " .. (igCfg and igCfg.prixRobux or 35) .. " R$",
             T.fondBoutonRobux,
             UDim2.new(0, 0, 0, 0),
@@ -499,7 +523,7 @@ local function afficherMenuDebloque(potIndex)
     local prixTexte = "Locked"
     if potCfg then
         if potCfg.prixCoins and potCfg.prixCoins > 0 then
-            prixTexte = "Unlock for " .. potCfg.prixCoins .. " 💰"
+            prixTexte = "Unlock for " .. potCfg.prixCoins .. " coins"
         elseif potCfg.prixRobux and potCfg.prixRobux > 0 then
             prixTexte = "Unlock for " .. potCfg.prixRobux .. " R$"
         end
@@ -791,7 +815,7 @@ local function OuvrirDailySeedPanel()
         tempsRestant = _dailySeedData.tempsRestant or 0
     end
 
-    local icones = { MYTHIC = "☄️", SECRET = "🔴" }
+    local icones = { MYTHIC = "M", SECRET = "S" }
 
     for i = 1, 7 do
         local rarete = cycle[i] or "MYTHIC"
@@ -833,15 +857,17 @@ local function OuvrirDailySeedPanel()
         end
 
         lbl("Day " .. i, 8, 44, Color3.fromRGB(150, 150, 150), false, 12)
-        lbl(icones[rarete] or "🌱", 52, 24, nil, false, 18)
-        lbl(rarete, 78, 80,
+        local iconeLbl = lbl(icones[rarete] or "M", 52, 24, nil, false, 18)
+        applyRariteStyle(iconeLbl, rarete, 0)
+        local rareLbl = lbl(rarete, 78, 80,
             rarete == "SECRET" and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(180, 100, 255),
             true, 13)
+        applyRariteStyle(rareLbl, rarete, 1.5)
 
         if statut == "claimed" then
-            lbl("✅ Claimed", 160, 100, Color3.fromRGB(100, 200, 100), false, 12)
+            lbl("Claimed", 160, 100, Color3.fromRGB(100, 200, 100), false, 12)
         elseif statut == "dispo" then
-            lbl("🔓 Ready!", 160, 80, Color3.fromRGB(255, 255, 100), true, 12)
+            lbl("Ready!", 160, 80, Color3.fromRGB(255, 255, 100), true, 12)
             local btnClaim = Instance.new("TextButton", ligne)
             btnClaim.Size                   = UDim2.new(0, 55, 0, 26)
             btnClaim.Position               = UDim2.new(1, -62, 0.5, -13)
@@ -859,7 +885,7 @@ local function OuvrirDailySeedPanel()
                 panel:Destroy()
             end)
         elseif statut == "timer" then
-            lbl("⏱ " .. FormatTempsLocal(tempsRestant), 160, 130,
+            lbl(FormatTempsLocal(tempsRestant), 160, 130,
                 Color3.fromRGB(150, 150, 150), false, 12)
         else
             lbl("Locked", 160, 100, Color3.fromRGB(100, 100, 100), false, 12)
@@ -882,7 +908,7 @@ local function OuvrirDailySeedPanel()
     btnSkip.TextColor3             = T.fondPrincipal
     btnSkip.Font                   = Enum.Font.GothamBold
     btnSkip.TextSize               = 12
-    btnSkip.Text                   = "⚡ Skip — 25 R$"
+    btnSkip.Text                   = "Skip — 25 R$"
     btnSkip.BorderSizePixel        = 0
     btnSkip.ZIndex                 = 21
     Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, 6)
@@ -894,7 +920,7 @@ local function OuvrirDailySeedPanel()
     btnPack.TextColor3             = T.fondPrincipal
     btnPack.Font                   = Enum.Font.GothamBold
     btnPack.TextSize               = 12
-    btnPack.Text                   = "🎁 Pack x3 — 99 R$"
+    btnPack.Text                   = "Pack x3 — 99 R$"
     btnPack.BorderSizePixel        = 0
     btnPack.ZIndex                 = 21
     Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, 6)
@@ -972,18 +998,20 @@ fpInv.BackgroundColor3 = T.fondSecondaire ; fpInv.BorderSizePixel = 0 ; fpInv.ZI
 Instance.new("UICorner", fpInv).CornerRadius = UDim.new(0, 6)
 local fpMythicLbl = Instance.new("TextLabel", fpInv)
 fpMythicLbl.Size = UDim2.new(0.5,0,1,0) ; fpMythicLbl.BackgroundTransparency = 1
-fpMythicLbl.Text = "⚡ MYTHIC: 0" ; fpMythicLbl.TextColor3 = Color3.fromRGB(180,0,255)
+fpMythicLbl.Text = "MYTHIC: 0" ; fpMythicLbl.TextColor3 = Color3.fromRGB(180,0,255)
 fpMythicLbl.Font = Enum.Font.GothamBold ; fpMythicLbl.TextSize = 11
 fpMythicLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpMythicLbl.ZIndex = 22
 local fpSecretLbl = Instance.new("TextLabel", fpInv)
 fpSecretLbl.Size = UDim2.new(0.5,0,1,0) ; fpSecretLbl.Position = UDim2.new(0.5,0,0,0)
 fpSecretLbl.BackgroundTransparency = 1
-fpSecretLbl.Text = "🔴 SECRET: 0" ; fpSecretLbl.TextColor3 = Color3.fromRGB(255,80,80)
+fpSecretLbl.Text = "SECRET: 0" ; fpSecretLbl.TextColor3 = Color3.fromRGB(255,80,80)
 fpSecretLbl.Font = Enum.Font.GothamBold ; fpSecretLbl.TextSize = 11
 fpSecretLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpSecretLbl.ZIndex = 22
+applyRariteStyle(fpMythicLbl, "MYTHIC", 1.5)
+applyRariteStyle(fpSecretLbl, "SECRET", 1.5)
 
 -- 4 cellules pots
-local FP_ELEM = { water="💧", fire="🔥", earth="🌍", wind="💨" }
+local FP_ELEM = { water="Eau", fire="Feu", earth="Terre", wind="Vent" }
 local FP_RARCOL = { MYTHIC=Color3.fromRGB(180,0,255), SECRET=Color3.fromRGB(255,80,80) }
 local fpCells = {}
 for i = 1, 4 do
@@ -1003,7 +1031,7 @@ for i = 1, 4 do
         l.TextSize=ts ; l.ZIndex=22 ; return l
     end
     cl("Pot "..i, UDim2.new(1,0,0,14), UDim2.new(0,0,0,2),  8,  false)
-    local ic = cl("🔒",  UDim2.new(1,0,0,28), UDim2.new(0,0,0,16), 20, true)
+    local ic = cl("",    UDim2.new(1,0,0,28), UDim2.new(0,0,0,16), 20, true)
     local ra = cl("",    UDim2.new(1,-4,0,14),UDim2.new(0,2,0,44),  8,  true)
     local el = cl("",    UDim2.new(1,0,0,14), UDim2.new(0,0,0,60), 10,  false)
     table.insert(fpCells, {cell=cell, ic=ic, ra=ra, el=el})
@@ -1015,30 +1043,30 @@ local function fpMajAffichage(pots, graines)
         local p = pots and pots[i]
         if not p then f.ic.Text="?"; f.ra.Text=""; f.el.Text=""
         elseif not p.debloque then
-            f.ic.Text="🔒"; f.ic.TextColor3=T.texte; f.ra.Text="Verr."; f.el.Text=""
+            f.ic.Text="X"; f.ic.TextColor3=T.texte; f.ra.Text="Verr."; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut == nil then
-            f.ic.Text="🌱"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
+            f.ic.Text="-"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut.statut == "growing" then
             local s=p.statut
-            f.ic.Text="🌱"; f.ic.TextColor3=Color3.fromRGB(100,180,255)
+            f.ic.Text=tostring(math.max(0,s.stage or 0)); f.ic.TextColor3=Color3.fromRGB(100,180,255)
             f.ra.Text=(s.rarity=="SECRET" and "SEC" or "MYT").." S"..math.max(0,s.stage or 0)
             f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
             f.el.Text=s.elementType and FP_ELEM[s.elementType] or ""
             f.cell.BackgroundColor3=Color3.fromRGB(15, 22, 30); nbGrow=nbGrow+1
         elseif p.statut.statut == "ready" then
             local s=p.statut
-            f.ic.Text="🎯"; f.ic.TextColor3=Color3.fromRGB(220,110,15)
+            f.ic.Text="!"; f.ic.TextColor3=Color3.fromRGB(220,110,15)
             f.ra.Text=s.rarity=="SECRET" and "SECRET" or "MYTHIC"
             f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
-            f.el.Text=s.elementType and FP_ELEM[s.elementType] or "✨"
+            f.el.Text=s.elementType and FP_ELEM[s.elementType] or ""
             f.cell.BackgroundColor3=Color3.fromRGB(28, 20, 10); nbReady=nbReady+1
         end
     end
     if graines then
-        fpMythicLbl.Text = "⚡ MYTHIC: "..(graines.MYTHIC or 0)
-        fpSecretLbl.Text = "🔴 SECRET: "..(graines.SECRET or 0)
+        fpMythicLbl.Text = "MYTHIC: "..(graines.MYTHIC or 0)
+        fpSecretLbl.Text = "SECRET: "..(graines.SECRET or 0)
     end
     -- Texte bouton
     local btnFlowerPot = screenGui:FindFirstChild("FlowerPotButton")
@@ -1256,7 +1284,7 @@ local function creerBillboard(potModel, plantedAt, dureeStage)
                 task.wait(2)
             else
                 stageLbl.Text = "Stage " .. stageAffiche .. " / 4"
-                timerLbl.Text = "⏱ " .. formatTemps(remaining)
+                timerLbl.Text = formatTemps(remaining)
                 task.wait(1)
             end
         end
@@ -1275,4 +1303,4 @@ if PotBillboardUpdate then
     end)
 end
 
-Logger.info("HUD", "✓ FlowerPotHUD Initialized")
+Logger.info("HUD", "FlowerPotHUD Initialized")

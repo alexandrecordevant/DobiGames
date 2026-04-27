@@ -16,7 +16,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local C = {
     fond       = Color3.fromRGB(10,  10,  10),   -- noir panel
     fondCarte  = Color3.fromRGB(20,  20,  20),   -- carte sombre
-    bordure    = Color3.fromRGB(220, 110, 15),   -- orange accent
+    bordure    = Color3.fromRGB(60, 60, 60),   -- gris bordure
     texte      = Color3.fromRGB(220, 220, 220),  -- gris clair
     texteDim   = Color3.fromRGB(130, 130, 130),  -- gris moyen
     mythic     = Color3.fromRGB(180, 100, 255),  -- violet rareté
@@ -31,7 +31,31 @@ local C = {
 }
 
 local JOUR_NOMS    = { "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim" }
-local ELEMENT_EMOJI = { water="💧", fire="🔥", earth="🌍", wind="💨" }
+local ELEMENT_ABBR = { water="Eau", fire="Feu", earth="Terre", wind="Vent" }
+
+-- gradient + stroke premium pour labels MYTHIC / SECRET
+local function applyRariteStyle(label, rarity, strokeThick)
+    local isSec = (rarity == "SECRET" or rarity == "SEC")
+    label.TextColor3 = Color3.new(1, 1, 1)
+    local g = label:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient", label)
+    g.Rotation = 90
+    if isSec then
+        g.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 20, 20)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 90, 90))
+        })
+    else
+        g.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 32, 240)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147))
+        })
+    end
+    if (strokeThick or 0) > 0 then
+        local s = label:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke", label)
+        s.Thickness = strokeThick
+        s.Color = Color3.fromRGB(0, 0, 0)
+    end
+end
 
 -- ============================================================
 -- ScreenGui — IgnoreGuiInset = false pour matcher HUDController
@@ -95,7 +119,7 @@ local titre = Instance.new("TextLabel", panel)
 titre.Size                   = UDim2.new(1, -44, 0, 40)
 titre.Position               = UDim2.new(0, 12, 0, 6)
 titre.BackgroundTransparency = 1
-titre.Text                   = "🪴 FlowerPots"
+titre.Text                   = "FLOWER POTS"
 titre.TextColor3             = C.texte
 titre.Font                   = Enum.Font.GothamBold
 titre.TextSize               = 15
@@ -155,15 +179,18 @@ local function makeLabel(parent, name, size, pos, text, color, fontSize, bold)
 end
 
 makeLabel(stockSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,3),
-    "📦 Inventaire graines", C.texteDim, 10, false)
+    "Inventaire", C.texteDim, 10, false)
 
 local lblMythic = makeLabel(stockSection, "LblMythic",
     UDim2.new(0.5,-8,0,26), UDim2.new(0,8,0,22),
-    "⚡ MYTHIC: 0", C.mythic, 12, true)
+    "MYTHIC: 0", C.mythic, 12, true)
 
 local lblSecret = makeLabel(stockSection, "LblSecret",
     UDim2.new(0.5,-8,0,26), UDim2.new(0.5,0,0,22),
-    "🔴 SECRET: 0", C.secret, 12, true)
+    "SECRET: 0", C.secret, 12, true)
+
+applyRariteStyle(lblMythic, "MYTHIC", 2)
+applyRariteStyle(lblSecret, "SECRET", 2)
 
 makeSep(panel, 112)
 
@@ -172,7 +199,7 @@ makeSep(panel, 112)
 -- ============================================================
 makeLabel(panel, "PotsTitre",
     UDim2.new(1,-24,0,18), UDim2.new(0,12,0,118),
-    "🪴 État des pots", C.texteDim, 10, false)
+    "Pots", C.texteDim, 10, false)
 
 local POT_W = 62
 local POT_H = 72
@@ -203,7 +230,7 @@ for i = 1, 4 do
     end
 
     potLabel("Num", UDim2.new(1,0,0,14), UDim2.new(0,0,0,3), "Pot "..i, 9, false)
-    local lblIcon   = potLabel("Icon",   UDim2.new(1,0,0,24), UDim2.new(0,0,0,17), "🔒", 18, true)
+    local lblIcon   = potLabel("Icon",   UDim2.new(1,0,0,24), UDim2.new(0,0,0,17), "", 18, true)
     local lblRarity = potLabel("Rarity", UDim2.new(1,-4,0,14), UDim2.new(0,2,0,40), "", 8, true)
     local lblElem   = potLabel("Elem",   UDim2.new(1,0,0,14), UDim2.new(0,0,0,54), "", 10, false)
 
@@ -224,11 +251,11 @@ arbreSection.ZIndex           = 21
 Instance.new("UICorner", arbreSection).CornerRadius = UDim.new(0, 8)
 
 makeLabel(arbreSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,3),
-    "🌳 Prochaine graine arbre", C.texteDim, 10, false)
+    "Prochaine graine", C.texteDim, 10, false)
 
 local lblArbreTimer = makeLabel(arbreSection, "LblArbreTimer",
     UDim2.new(1,-8,0,22), UDim2.new(0,8,0,22),
-    "⏳ --:--", C.arbre, 13, true)
+    "--:--", C.arbre, 13, true)
 
 makeSep(panel, 276)
 
@@ -244,7 +271,7 @@ calSection.ZIndex           = 21
 Instance.new("UICorner", calSection).CornerRadius = UDim.new(0, 8)
 
 makeLabel(calSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,4),
-    "📅 Daily Seed — cycle 7 jours", C.texteDim, 10, false)
+    "Daily Seed — cycle 7 jours", C.texteDim, 10, false)
 
 local joursFrames = {}
 local cellW = 35
@@ -275,7 +302,7 @@ end
 
 local lblDailyTimer = makeLabel(calSection, "LblDailyTimer",
     UDim2.new(1,-8,0,18), UDim2.new(0,8,0,83),
-    "⏰ --:--:--", C.or_, 11, true)
+    "--:--:--", C.or_, 11, true)
 
 local lblDailyStatus = makeLabel(calSection, "LblDailyStatus",
     UDim2.new(1,-8,0,16), UDim2.new(0,8,0,102),
@@ -303,8 +330,8 @@ end
 -- ============================================================
 local function majStock(graines)
     if not graines then return end
-    lblMythic.Text = "⚡ MYTHIC: " .. (graines.MYTHIC or 0)
-    lblSecret.Text = "🔴 SECRET: " .. (graines.SECRET or 0)
+    lblMythic.Text = "MYTHIC: " .. (graines.MYTHIC or 0)
+    lblSecret.Text = "SECRET: " .. (graines.SECRET or 0)
 end
 
 local function majPots(pots)
@@ -317,27 +344,27 @@ local function majPots(pots)
             continue
         end
         if not p.debloque then
-            f.icon.Text = "🔒"; f.icon.TextColor3 = C.verrouille
+            f.icon.Text = "X"; f.icon.TextColor3 = C.verrouille
             f.rarity.Text = "Verr."; f.rarity.TextColor3 = C.verrouille
             f.elem.Text = ""; f.cell.BackgroundColor3 = Color3.fromRGB(18,14,25)
         elseif p.statut == nil then
-            f.icon.Text = "🪴"; f.icon.TextColor3 = C.vide
+            f.icon.Text = "-"; f.icon.TextColor3 = C.vide
             f.rarity.Text = "Vide"; f.rarity.TextColor3 = C.vide
             f.elem.Text = ""; f.cell.BackgroundColor3 = C.fondCarte
         elseif p.statut.statut == "growing" then
             local s = p.statut
-            f.icon.Text = "🌱"; f.icon.TextColor3 = C.growing
+            f.icon.Text = "S" .. math.max(0, s.stage or 0); f.icon.TextColor3 = C.growing
             f.rarity.Text = (s.rarity=="SECRET" and "SEC" or "MYT") .. " S" .. math.max(0, s.stage or 0)
             f.rarity.TextColor3 = s.rarity=="SECRET" and C.secret or C.mythic
-            f.elem.Text = s.elementType and ELEMENT_EMOJI[s.elementType] or ""
+            f.elem.Text = s.elementType and ELEMENT_ABBR[s.elementType] or ""
             f.cell.BackgroundColor3 = Color3.fromRGB(15, 22, 30)
             nbGrowing = nbGrowing + 1
         elseif p.statut.statut == "ready" then
             local s = p.statut
-            f.icon.Text = "🎯"; f.icon.TextColor3 = C.ready
+            f.icon.Text = "!"; f.icon.TextColor3 = C.ready
             f.rarity.Text = s.rarity=="SECRET" and "SECRET" or "MYTHIC"
             f.rarity.TextColor3 = s.rarity=="SECRET" and C.secret or C.mythic
-            f.elem.Text = s.elementType and ELEMENT_EMOJI[s.elementType] or "✨"
+            f.elem.Text = s.elementType and ELEMENT_ABBR[s.elementType] or ""
             f.cell.BackgroundColor3 = Color3.fromRGB(28, 20, 10)
             nbReady = nbReady + 1
         end
@@ -362,8 +389,8 @@ local function majCalendrier(info)
     for i, f in ipairs(joursFrames) do
         local rarity  = info.dailyCycle[i] or "MYTHIC"
         local couleur = rarity == "SECRET" and C.secret or C.mythic
-        f.emoji.Text = rarity=="SECRET" and "🔴" or "⚡"
-        f.emoji.TextColor3 = couleur
+        f.emoji.Text = rarity=="SECRET" and "S" or "M"
+        applyRariteStyle(f.emoji, rarity, 1)
         f.label.Text = rarity=="SECRET" and "SEC" or "MYT"
         f.label.TextColor3 = couleur
         local stroke = f.cell:FindFirstChildOfClass("UIStroke")
@@ -383,23 +410,23 @@ local function majCalendrier(info)
             f.jour.TextColor3 = C.texteDim
         end
     end
-    lblDailyStatus.Text = graineDispo and "✅ Daily seed available!" or ""
+    lblDailyStatus.Text = graineDispo and "Daily seed available!" or ""
 end
 
 local function majArbreTimer()
     if arbreGraineDispo then
-        lblArbreTimer.Text = "🌱 Seed available on trees!"; lblArbreTimer.TextColor3 = C.vert
+        lblArbreTimer.Text = "Seed available on trees!"; lblArbreTimer.TextColor3 = C.vert
     elseif arbreTimerLocal > 0 then
-        lblArbreTimer.Text = "⏳ " .. formatTimer(arbreTimerLocal); lblArbreTimer.TextColor3 = C.arbre
+        lblArbreTimer.Text = formatTimer(arbreTimerLocal); lblArbreTimer.TextColor3 = C.arbre
     else
-        lblArbreTimer.Text = "⏳ --:--"; lblArbreTimer.TextColor3 = C.arbre
+        lblArbreTimer.Text = "--:--"; lblArbreTimer.TextColor3 = C.arbre
     end
 end
 
 local function majDailyTimer()
-    if dailyClaimable then lblDailyTimer.Text = "✅ Daily seed ready!"
-    elseif dailyTimerLocal > 0 then lblDailyTimer.Text = "⏰ " .. formatTimer(dailyTimerLocal)
-    else lblDailyTimer.Text = "⏰ --:--:--" end
+    if dailyClaimable then lblDailyTimer.Text = "Daily seed ready!"
+    elseif dailyTimerLocal > 0 then lblDailyTimer.Text = formatTimer(dailyTimerLocal)
+    else lblDailyTimer.Text = "--:--:--" end
 end
 
 -- ============================================================
