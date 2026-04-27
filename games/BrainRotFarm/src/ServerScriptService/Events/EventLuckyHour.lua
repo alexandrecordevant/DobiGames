@@ -84,7 +84,7 @@ local function appliquerSol()
         if obj:IsA("BasePart") then
             savedMap[obj] = { Material = obj.Material, Color = obj.Color }
             obj.Material  = Enum.Material.CrackedLava
-            obj.Color     = Color3.fromRGB(255, 150, 180)
+            obj.Color     = Color3.fromRGB(255, 20, 147)
         end
     end
 end

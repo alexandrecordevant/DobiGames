@@ -203,6 +203,17 @@ local function obtenirBaseParts(modele)
 	return parts
 end
 
+-- Couleurs par type de mutation (pour PointLight + tag billboard)
+local MUTATION_COLORS = {
+    BrainrotsToxic   = Color3.fromRGB(0,   220,   0),
+    BrainrotsLava    = Color3.fromRGB(255,  80,   0),
+    BrainrotsGold    = Color3.fromRGB(255, 200,   0),
+    BrainrotsDiamant = Color3.fromRGB(0,   220, 255),
+    BrainrotsRainbow = Color3.fromRGB(255, 255, 255),
+    BrainrotsNebula  = Color3.fromRGB(160,   0, 255),
+    CrazyBrainrots   = Color3.fromRGB(255,   0, 200),
+}
+
 -- Appliquer un Tween de transparence à tous les BaseParts
 local function tweenTransparence(parts, cible, duree, extraProps)
 	local info = TweenInfo.new(duree, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -488,6 +499,16 @@ local function spawnerUnBrainRot(baseIndex, rareteForce, modeleForce, mutTypeFor
 			local dureeRestante = math.floor(CONFIG.DUREE_DESPAWN - CONFIG.DUREE_POUSSE)
 			BrainrotBillboard.SetupField(clone, dureeRestante)
 			pcall(lancerCountdownBillboard, clone, dureeRestante)
+
+			-- PointLight coloré pour BR mutés (billboard géré par BrainrotBillboard)
+			if mutTypePerso and racine then
+				local couleur      = MUTATION_COLORS[mutTypePerso] or Color3.fromRGB(255, 255, 255)
+				local light        = Instance.new("PointLight")
+				light.Color        = couleur
+				light.Brightness   = 3
+				light.Range        = 22
+				light.Parent       = racine
+			end
 		end
 
 		-- Ancrer les parts pour qu'elles ne tombent pas

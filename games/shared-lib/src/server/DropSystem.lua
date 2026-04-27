@@ -653,8 +653,23 @@ local function restaurerDepots(player, playerData)
 
             -- Tenter de restaurer le modèle exact via brNom (mutants inclus)
             local modeleSource = nil
-            -- Trouver le bon dossier : mutation d'abord, normal en fallback
+            -- Trouver le bon dossier : mutation LuckyHour d'abord, puis LavaTower, puis normal
             local function trouverDossier()
+                -- Mutations LuckyHour / champ perso (ServerStorage/Mutation/)
+                if info.isMutatedLucky and info.mutationTypeLucky then
+                    local SS = game:GetService("ServerStorage")
+                    local mutRoot = SS:FindFirstChild("Mutation")
+                    if mutRoot then
+                        local typeFolder = mutRoot:FindFirstChild(info.mutationTypeLucky)
+                        if typeFolder then
+                            local rareteMappe = info.rarete
+                            if rareteMappe == "BRAINROT_GOD" then rareteMappe = "GOD" end
+                            local d = typeFolder:FindFirstChild(rareteMappe)
+                                   or typeFolder:FindFirstChild(string.upper(rareteMappe))
+                            if d then return d end
+                        end
+                    end
+                end
                 local d = getDossierMutation(info.mutation, info.isToxic, info.rarete)
                 if d then return d end
                 local brainrots = getBrainrotsFolder()
@@ -673,6 +688,10 @@ local function restaurerDepots(player, playerData)
                         -- Garantir les attributs mutation pour le watcher DescendantAdded
                         if info.mutation then modeleSource:SetAttribute("Mutation", info.mutation) end
                         if info.isToxic  then modeleSource:SetAttribute("IsToxic",  true)         end
+                        if info.isMutatedLucky then
+                            modeleSource:SetAttribute("IsMutated", true)
+                            if info.mutationTypeLucky then modeleSource:SetAttribute("MutationType", info.mutationTypeLucky) end
+                        end
                         modeleSource.Parent = Workspace
                     end)
                 else
@@ -688,6 +707,10 @@ local function restaurerDepots(player, playerData)
                             modeleSource = modeles[1]:Clone()
                             if info.mutation then modeleSource:SetAttribute("Mutation", info.mutation) end
                             if info.isToxic  then modeleSource:SetAttribute("IsToxic",  true)         end
+                            if info.isMutatedLucky then
+                                modeleSource:SetAttribute("IsMutated", true)
+                                if info.mutationTypeLucky then modeleSource:SetAttribute("MutationType", info.mutationTypeLucky) end
+                            end
                             modeleSource.Parent = Workspace
                         end)
                         Logger.debug("Drop", "Restauration : brNom nil pour %s → modèle fixe '%s'", tostring(info.rarete), modeles[1].Name)
@@ -737,6 +760,10 @@ local function restaurerDepots(player, playerData)
                         if info.mutation    then modeleSlot:SetAttribute("Mutation",   info.mutation)    end
                     end
                     if info.isToxic then modeleSlot:SetAttribute("IsToxic", true) end
+                    if info.isMutatedLucky then
+                        modeleSlot:SetAttribute("IsMutated", true)
+                        if info.mutationTypeLucky then modeleSlot:SetAttribute("MutationType", info.mutationTypeLucky) end
+                    end
                 end)
                 pcall(BrainrotBillboard.SetupBase, modeleSlot)
             end
@@ -757,6 +784,8 @@ local function restaurerDepots(player, playerData)
                 elementType       = info.elementType,
                 mutation          = info.mutation,
                 isToxic           = info.isToxic,
+                isMutatedLucky    = info.isMutatedLucky or nil,
+                mutationTypeLucky = info.mutationTypeLucky or nil,
                 valeurSec         = valeur,
                 modeleSlot        = modeleSlot,
             }
@@ -899,11 +928,15 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     local isToxic   = entree.rarete.isToxic == true
 
     -- Lire le nom et les attributs du BR depuis le Tool AVANT ViderCarry (le Tool est détruit après)
-    local brNomFallback  = nil
-    local cashParSeconde = nil
+    local brNomFallback     = nil
+    local cashParSeconde    = nil
+    local isMutatedLucky    = false
+    local mutationTypeLucky = nil
     if entree.toolRef and entree.toolRef.Parent then
-        brNomFallback  = entree.toolRef:GetAttribute("BrainrotName")
-        cashParSeconde = entree.toolRef:GetAttribute("CashParSeconde")
+        brNomFallback       = entree.toolRef:GetAttribute("BrainrotName")
+        cashParSeconde      = entree.toolRef:GetAttribute("CashParSeconde")
+        isMutatedLucky      = entree.toolRef:GetAttribute("IsMutated") == true
+        mutationTypeLucky   = entree.toolRef:GetAttribute("MutationType")
     end
 
     -- Retirer ce BR du carry (on utilise ViderCarry puis re-add les autres)
@@ -915,6 +948,12 @@ function DropSystem.DeposerBrainRots(player, touchPart)
             -- Remettre les BR restants dans le carry
             pcall(CarrySystem.AjouterAuCarry, player, restant.modele, restant.rarete)
         end
+    end
+
+    -- Fallback IsMutated/MutationType depuis le modèle visuel si absent du Tool
+    if not isMutatedLucky and modeleDepose then
+        isMutatedLucky    = modeleDepose:GetAttribute("IsMutated") == true
+        mutationTypeLucky = modeleDepose:GetAttribute("MutationType")
     end
 
     -- Valeur par seconde : lue depuis l'attribut CashParSeconde (Tool ou modèle déposé)
@@ -1003,10 +1042,12 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         spotKey           = spotKey,
         rarete            = rarete,
         brNom             = brNom,        -- nom exact du modèle BR (ex: "Tralalero_Tralala")
-        isMutant          = isMutant,     -- pour restauration fidèle après reconnexion
-        elementType       = elementType,  -- type élément Mutant ("water"/"fire"/"earth"/"wind")
-        mutation          = mutation,     -- "GOLD"|"DIAMANT"|"RAINBOW"|nil
+        isMutant          = isMutant,
+        elementType       = elementType,
+        mutation          = mutation,
         isToxic           = isToxic or nil,
+        isMutatedLucky    = isMutatedLucky or nil,
+        mutationTypeLucky = mutationTypeLucky or nil,
         valeurSec         = valeurSec,
         modeleSlot        = modeleSlot,
     }
@@ -1027,6 +1068,11 @@ function DropSystem.DeposerBrainRots(player, touchPart)
                 if mutation    then modeleSlot:SetAttribute("Mutation",   mutation)    end
             end
             if isToxic then modeleSlot:SetAttribute("IsToxic", true) end
+            -- Mutations LuckyHour / champ perso
+            if isMutatedLucky then
+                modeleSlot:SetAttribute("IsMutated",    true)
+                if mutationTypeLucky then modeleSlot:SetAttribute("MutationType", mutationTypeLucky) end
+            end
         end)
         pcall(BrainrotBillboard.SetupBase, modeleSlot)
     end
@@ -1242,13 +1288,15 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
     if not spotsData[uid] then return result end
     for _, entry in pairs(spotsData[uid]) do
         result[entry.spotKey] = {
-            rarete      = entry.rarete,
-            valeurSec   = entry.valeurSec,
-            brNom       = entry.brNom,
-            isMutant    = entry.isMutant,
-            elementType = entry.elementType,
-            mutation    = entry.mutation,
-            isToxic     = entry.isToxic,
+            rarete            = entry.rarete,
+            valeurSec         = entry.valeurSec,
+            brNom             = entry.brNom,
+            isMutant          = entry.isMutant,
+            elementType       = entry.elementType,
+            mutation          = entry.mutation,
+            isToxic           = entry.isToxic,
+            isMutatedLucky    = entry.isMutatedLucky or nil,
+            mutationTypeLucky = entry.mutationTypeLucky or nil,
         }
     end
     return result

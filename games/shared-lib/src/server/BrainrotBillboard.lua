@@ -116,6 +116,17 @@ local TOXIC_COLOR_B  = Color3.fromRGB(120, 255,  60)
 local NEBULA_COLOR_A = Color3.fromRGB(255, 100, 255)
 local NEBULA_COLOR_B = Color3.fromRGB(180,   0, 255)
 
+-- Couleurs des mutations LuckyHour / champ perso (IsMutated + MutationType)
+local LUCKY_MUTATION_COLORS = {
+    BrainrotsToxic   = Color3.fromRGB(0,   220,   0),
+    BrainrotsLava    = Color3.fromRGB(255,  80,   0),
+    BrainrotsGold    = Color3.fromRGB(255, 200,   0),
+    BrainrotsDiamant = Color3.fromRGB(0,   200, 255),
+    BrainrotsRainbow = Color3.fromRGB(255, 255, 255),
+    BrainrotsNebula  = Color3.fromRGB(160,   0, 255),
+    CrazyBrainrots   = Color3.fromRGB(255,   0, 200),
+}
+
 local function AppliquerAnimationToxic(label)
 	TweenService:Create(label,
 		TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
@@ -165,11 +176,14 @@ function BrainrotBillboard.SetupField(brainrot, duration, studsY)
 	local nomAff     = brainrot:GetAttribute("OriginalName")   or brainrot.Name
 	local prix       = brainrot:GetAttribute("Prix")           or 0
 	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
-	local isMutant   = brainrot:GetAttribute("IsMutant")
-	local mutantType = brainrot:GetAttribute("MutantType")
-	local isToxic    = brainrot:GetAttribute("IsToxic")
-	local isNebula   = brainrot:GetAttribute("IsNebula")
-	local couleur    = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
+	local isMutant    = brainrot:GetAttribute("IsMutant")
+	local mutantType  = brainrot:GetAttribute("MutantType")
+	local isToxic     = brainrot:GetAttribute("IsToxic")
+	local isNebula    = brainrot:GetAttribute("IsNebula")
+	-- Mutations LuckyHour / champ perso
+	local isMutated   = brainrot:GetAttribute("IsMutated")
+	local mutationType = brainrot:GetAttribute("MutationType")
+	local couleur     = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
 
 	local function ajouterLabelSpecial(bb, s)
 		local off = 0
@@ -181,11 +195,25 @@ function BrainrotBillboard.SetupField(brainrot, duration, studsY)
 			local lNeb = MakeLabel(bb, "LNebula", "NEBULA", 0, NEBULA_COLOR_A, Color3.new(0, 0, 0))
 			AppliquerAnimationNebula(lNeb)
 			off = s
+		elseif isMutated and mutationType then
+			local mutCol  = LUCKY_MUTATION_COLORS[mutationType] or Color3.fromRGB(255, 255, 255)
+			local mutTag  = mutationType:gsub("Brainrots", ""):upper()
+			local lMut    = MakeLabel(bb, "LMutated", mutTag, 0, mutCol, Color3.new(0, 0, 0))
+			-- Animation Rainbow
+			if mutationType == "BrainrotsRainbow" then
+				local hue, conn = 0, nil
+				conn = RunService.Heartbeat:Connect(function(dt)
+					if not lMut or not lMut.Parent then conn:Disconnect() return end
+					hue = (hue + dt * 0.8) % 1
+					lMut.TextColor3 = Color3.fromHSV(hue, 1, 1)
+				end)
+			end
+			off = s
 		end
 		return off
 	end
 
-	local hasSpecial = isToxic or isNebula
+	local hasSpecial = isToxic or isNebula or (isMutated and mutationType ~= nil)
 
 	if isMutant and mutantType then
 		local n  = hasSpecial and 7 or 6
@@ -230,14 +258,17 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 	local nomAff     = brainrot:GetAttribute("OriginalName")   or brainrot.Name
 	local prix       = brainrot:GetAttribute("Prix")           or 0
 	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
-	local isMutant   = brainrot:GetAttribute("IsMutant")
-	local mutantType = brainrot:GetAttribute("MutantType")
-	local mutation   = brainrot:GetAttribute("Mutation")   -- LavaTower: "GOLD"|"DIAMANT"|"RAINBOW"
-	local isToxic    = brainrot:GetAttribute("IsToxic")
-	local isNebula   = brainrot:GetAttribute("IsNebula")
-	local couleur    = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
+	local isMutant     = brainrot:GetAttribute("IsMutant")
+	local mutantType   = brainrot:GetAttribute("MutantType")
+	local mutation     = brainrot:GetAttribute("Mutation")   -- LavaTower: "GOLD"|"DIAMANT"|"RAINBOW"
+	local isToxic      = brainrot:GetAttribute("IsToxic")
+	local isNebula     = brainrot:GetAttribute("IsNebula")
+	-- Mutations LuckyHour / champ perso
+	local isMutated    = brainrot:GetAttribute("IsMutated")
+	local mutationType = brainrot:GetAttribute("MutationType")
+	local couleur      = RARETE_COULEURS[rarete] or Color3.new(1, 1, 1)
 
-	local hasSpecial = isToxic or isNebula
+	local hasSpecial = isToxic or isNebula or (isMutated and mutationType ~= nil)
 
 	local function ajouterLabelSpecialBase(bb, s)
 		local off = 0
@@ -248,6 +279,19 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 		elseif isNebula then
 			local lNeb = MakeLabel(bb, "LNebula", "NEBULA", 0, NEBULA_COLOR_A, Color3.new(0, 0, 0))
 			AppliquerAnimationNebula(lNeb)
+			off = s
+		elseif isMutated and mutationType then
+			local mutCol = LUCKY_MUTATION_COLORS[mutationType] or Color3.fromRGB(255, 255, 255)
+			local mutTag = mutationType:gsub("Brainrots", ""):upper()
+			local lMut   = MakeLabel(bb, "LMutated", mutTag, 0, mutCol, Color3.new(0, 0, 0))
+			if mutationType == "BrainrotsRainbow" then
+				local hue, conn = 0, nil
+				conn = RunService.Heartbeat:Connect(function(dt)
+					if not lMut or not lMut.Parent then conn:Disconnect() return end
+					hue = (hue + dt * 0.8) % 1
+					lMut.TextColor3 = Color3.fromHSV(hue, 1, 1)
+				end)
+			end
 			off = s
 		end
 		return off

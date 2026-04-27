@@ -68,7 +68,7 @@ GameConfig.CoutUpgradeMultiplier  = 2.5
 GameConfig.PrestigeMultiplier     = 2.0
 
 -- === EVENTS AUTOMATIQUES ===
-GameConfig.EventIntervalleMinutes = 0.1 --120
+GameConfig.EventIntervalleMinutes = 120
 GameConfig.EventDureeMinutes      = 5
 GameConfig.EventSpawnMultiplier   = 10
 GameConfig.EarlyBirdBonusMinutes  = 60
@@ -870,7 +870,7 @@ GameConfig.EventsVisuels.Rain.champCommunZone = GameConfig.ChampCommunZone
 -- === LUCKY HOUR — MUTATION CONFIG ===
 GameConfig.LuckyHourMutationConfig = {
     enabled = true,
-    chance  = 0.15,  -- 15% de chance qu'un spawn LuckyHour soit muté
+    chance  = 0.25,  -- 25% de chance qu'un spawn LuckyHour soit muté
 
     -- Poids et multiplicateur d'income par type de mutation
     types = {
