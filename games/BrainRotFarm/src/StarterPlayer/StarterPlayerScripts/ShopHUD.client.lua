@@ -726,6 +726,8 @@ task.spawn(function()
     MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, purchased)
         if purchased then
             ConfirmerGP:FireServer(gamePassId)
+            local s = SoundService:FindFirstChild("SonUpgrade")
+            if s then s:Play() end
         end
     end)
 end)

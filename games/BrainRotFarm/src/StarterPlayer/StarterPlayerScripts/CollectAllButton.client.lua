@@ -5,6 +5,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
+local SoundService      = game:GetService("SoundService")
 local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local localPlayer = Players.LocalPlayer
@@ -122,6 +123,8 @@ task.spawn(function()
         enCooldown = true
 
         CollectAllEvent:FireServer()
+        local s = SoundService:FindFirstChild("SonUpgrade")
+        if s then s:Play() end
         task.spawn(animerClic)
 
         task.wait(COOLDOWN)

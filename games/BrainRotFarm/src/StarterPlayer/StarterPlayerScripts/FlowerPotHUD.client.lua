@@ -4,7 +4,13 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
+local SoundService      = game:GetService("SoundService")
 local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
+
+local function jouerSonGraine()
+    local s = SoundService:FindFirstChild("SonGraine")
+    if s then s:Play() end
+end
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -339,6 +345,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
             12,
             function()
                 ClaimDailySeed:FireServer()
+                jouerSonGraine()
                 fermer()
             end)
         claimBtn.LayoutOrder = 6
@@ -584,6 +591,7 @@ local function afficherMenuChoisirPot(extraData)
                 function()
                     local re = ReplicatedStorage:FindFirstChild("ClaimDailySeed")
                     if re then re:FireServer(i) end
+                    jouerSonGraine()
                     fermer()
                 end)
             btn.LayoutOrder = i + 1
@@ -882,6 +890,7 @@ local function OuvrirDailySeedPanel()
             btnClaim.MouseButton1Click:Connect(function()
                 local re = ReplicatedStorage:FindFirstChild("ClaimDailySeed")
                 if re then re:FireServer() end
+                jouerSonGraine()
                 panel:Destroy()
             end)
         elseif statut == "timer" then

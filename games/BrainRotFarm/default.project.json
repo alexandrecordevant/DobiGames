@@ -48,7 +48,8 @@
                 "MiniTutoHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/MiniTutoHUD.client.lua" },
                 "NightSkyClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/NightSkyClient.client.lua" },
                 "SeedsHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SeedsHUD.client.lua" },
-                "RainWeatherClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/RainWeatherClient.client.lua" }
+                "RainWeatherClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/RainWeatherClient.client.lua" },
+                "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" }
             }
         }
     }

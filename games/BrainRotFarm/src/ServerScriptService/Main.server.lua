@@ -81,6 +81,7 @@ local EventEnded         = CreerRemoteEvent("EventEnded")
 local OfflineIncomeNotif = CreerRemoteEvent("OfflineIncomeNotif")
 local SecretRevealNotif  = CreerRemoteEvent("SecretRevealNotif")
 local CollectVFX         = CreerRemoteEvent("CollectVFX")
+local SoundEvent         = CreerRemoteEvent("SoundEvent")
 local OuvrirRebirth      = CreerRemoteEvent("OuvrirRebirth")
 local UpdateGraines      = CreerRemoteEvent("UpdateGraines")
 local OuvrirPot          = CreerRemoteEvent("OuvrirPot")
@@ -638,6 +639,7 @@ local function OnPlayerAdded(player)
                 d.totalCoinsGagnes = (d.totalCoinsGagnes or 0) + coins
                 d.totalCollecte   = (d.totalCollecte   or 0) + 1
                 EnvoyerHUD(player, d)
+                pcall(function() SoundEvent:FireClient(player, "SonCollecte") end)
             end
             pcall(TracteurSystem.Activer, player, baseIndex, onTracteurCollect)
         end
@@ -1255,6 +1257,7 @@ ShopSystem._onTracteurActiver = function(player)
         data.totalCoinsGagnes = (data.totalCoinsGagnes or 0) + coins
         data.totalCollecte    = (data.totalCollecte    or 0) + 1
         EnvoyerHUD(player, data)
+        pcall(function() SoundEvent:FireClient(player, "SonCollecte") end)
     end
     pcall(TracteurSystem.Activer, player, baseIndex, onTracteurCollect)
 end
@@ -1628,6 +1631,13 @@ end
 -- ═══════════════════════════════════════════════
 
 if FuseSystem then
+    -- Notifications Fuse → client (même canal que le reste du jeu)
+    FuseSystem.OnNotif = function(player, type, message)
+        if player and player.Parent then
+            pcall(function() NotifEvent:FireClient(player, type, message) end)
+        end
+    end
+
     -- Résultat : cloner dans le carry via CarrySystem
     FuseSystem.OnResultatPret = function(player, brainrotClone)
         local rarete    = brainrotClone:GetAttribute("Rarete") or "COMMON"

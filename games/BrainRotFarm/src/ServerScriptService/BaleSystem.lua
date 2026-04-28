@@ -4,9 +4,12 @@
 -- Mort au contact
 
 local BaleSystem = {}
-local TweenService = game:GetService("TweenService")
-local Players      = game:GetService("Players")
-local Logger       = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+local TweenService      = game:GetService("TweenService")
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+
+local _GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 -- ═══════════════════════════════════════
 -- CONFIG
@@ -80,6 +83,18 @@ local function DemarrerBale(bale, delai)
                 desc.Anchored   = true
                 desc.CanCollide = false
             end
+        end
+
+        -- Son de roulement (looped, spatial 3D)
+        local sonId = _GameConfig.SonBale
+        if sonId and sonId ~= 0 then
+            local son = Instance.new("Sound")
+            son.SoundId            = "rbxassetid://" .. tostring(sonId)
+            son.Volume             = 0.4
+            son.Looped             = true
+            son.RollOffMaxDistance = 80
+            son.Parent             = part
+            son:Play()
         end
 
         -- Rayon du cylindre (déclaré ici pour être accessible dans le Touched)

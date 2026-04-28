@@ -22,16 +22,17 @@ GameConfig.ProduitSkipTier        = { Id = 0, Prix = 50  }
 
 -- === GAME PASS IDs (table structurée — remplir après création sur Roblox) ===
 GameConfig.GamePassIds = {
-    VIP          = 0,   -- Accès VIP (features premium)
-    Tracteur     = 0,   -- Tracteur auto-collect
-    AutoCollect  = 0,   -- Auto-collecte dans le champ
-    Protection   = 0,   -- Protection offline (pas de perte)
-    OfflineVault = 0,   -- Revenus offline x1 (vault)
-    ArroseurMAX  = 0,   -- Arroseur niveau MAX (×5 spawn rate)
-    SpeedMAX     = 0,   -- Speed niveau MAX (walkspeed 40)
-    CarryMAX     = 0,   -- Carry niveau MAX (5 BR)
-    FlowerPot4   = 0,   -- Débloquer FlowerPot 4 (149 R$)
-    SeedDoubler  = 0,   -- Seed Doubler : 2 graines quotidiennes au lieu de 1 (à remplir après création Roblox)
+    VIP          = 0,           -- Accès VIP (features premium)
+    Tracteur     = 1817529557,  -- Tracteur auto-collect
+    AutoCollect  = 0,           -- Auto-collecte dans le champ
+    Protection   = 1819604298,  -- Protection offline (pas de perte)
+    OfflineVault = 0,           -- Revenus offline x1 (vault)
+    ArroseurMAX  = 1814153843,  -- Arroseur niveau MAX (×5 spawn rate)
+    SpeedMAX     = 1818373456,  -- Speed niveau MAX (walkspeed 40)
+    CarryMAX     = 1816561688,  -- Carry niveau MAX (5 BR)
+    FlowerPot4   = 1816555612,  -- Débloquer FlowerPot 4 (149 R$)
+    SeedDoubler  = 1817181575,  -- Seed Doubler : 2 graines quotidiennes au lieu de 1
+    LuckyCharm   = 1819652284,  -- Lucky Charm : +25% chance rareté supérieure
 }
 
 -- Alias direct lu par ClaimDailySeed (synchronisé avec GamePassIds.SeedDoubler)
@@ -39,10 +40,10 @@ GameConfig.SeedDoublerPassId = GameConfig.GamePassIds.SeedDoubler
 
 -- === DEV PRODUCT IDs (table structurée — remplir après création sur Roblox) ===
 GameConfig.DevProductIds = {
-    LuckyHour     = 0,  -- 30 min × 5 income  (35 R$)
-    SkipSeedTimer = 0,  -- Skip timer daily seed (25 R$)
-    SeedPackx3    = 0,  -- +3 graines MYTHIC   (99 R$)
-    SecretSeed    = 0,  -- +1 graine SECRET    (149 R$)
+    LuckyHour     = 3583048107,  -- 30 min × 5 income  (35 R$)
+    SkipSeedTimer = 3583048518,  -- Skip timer daily seed (25 R$)
+    SeedPackx3    = 3583048753,  -- +3 graines MYTHIC   (99 R$)
+    SecretSeed    = 3583048915,  -- +1 graine SECRET    (149 R$)
 }
 
 -- === DISCORD WEBHOOK ===
@@ -162,7 +163,7 @@ GameConfig.ShopUpgrades = {
         niveaux = {
             [1] = { type="coins", prix=8000,  label="Lv.1",    effet={ spawnRateMultiplier=1.6 }, condition={ minUpgrade={ upgradeCarry=2 } } },
             [2] = { type="coins", prix=30000, label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
-            [3] = { type="robux", prix=149,   gamePassId=0,    label="MAX 🔥", effet={ spawnRateMultiplier=5.0 }, isMax=true },
+            [3] = { type="robux", prix=149,   gamePassId=1814153843, label="MAX 🔥", effet={ spawnRateMultiplier=5.0 }, isMax=true },
         },
         maxNiveau        = 3,
         dataField        = "upgradeArroseur",
@@ -189,7 +190,7 @@ GameConfig.ShopUpgrades = {
             [12] = { type="coins", prix=15000000,    label="Lv.12", effet={ walkSpeed=33 } },
             [13] = { type="coins", prix=40000000,    label="Lv.13", effet={ walkSpeed=34 } },
             [14] = { type="coins", prix=100000000,   label="Lv.14", effet={ walkSpeed=35 } },
-            [15] = { type="robux", prix=99, gamePassId=0, label="MAX 🔥", effet={ walkSpeed=40 }, isMax=true },
+            [15] = { type="robux", prix=99, gamePassId=1818373456, label="MAX 🔥", effet={ walkSpeed=40 }, isMax=true },
         },
         maxNiveau        = 15,
         dataField        = "upgradeSpeed",
@@ -206,7 +207,7 @@ GameConfig.ShopUpgrades = {
             [2] = { type="coins", prix=10000,  label="Lv.2", effet={ carryCapacite=3 } },
             [3] = { type="coins", prix=50000,  label="Lv.3", effet={ carryCapacite=4 } },
             [4] = { type="coins", prix=200000, label="Lv.4", effet={ carryCapacite=5 } },
-            [5] = { type="robux", prix=149,    gamePassId=0, label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
+            [5] = { type="robux", prix=149,    gamePassId=1816561688, label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
         },
         maxNiveau        = 5,
         dataField        = "upgradeCarry",
@@ -235,7 +236,7 @@ GameConfig.ShopUpgrades = {
         description = "Each spawn in your field: 4% MYTHIC bonus, 1% SECRET bonus, 1% jackpot (both)!",
         ordre       = 5,
         niveaux = {
-            [1] = { type="robux", prix=299, gamePassId=0, label="Activate", effet={ tracteurActif=true }, isMax=true },
+            [1] = { type="robux", prix=299, gamePassId=1817529557, label="Activate", effet={ tracteurActif=true }, isMax=true },
         },
         maxNiveau        = 1,
         isGamePass       = true,
@@ -249,7 +250,7 @@ GameConfig.ShopUpgrades = {
         description = "+25% chance to get a higher rarity",
         ordre       = 6,
         niveaux = {
-            [1] = { type="robux", prix=99, gamePassId=0, label="Activate", effet={ luckyBonus=1.25 }, isMax=true },
+            [1] = { type="robux", prix=99, gamePassId=1819652284, label="Activate", effet={ luckyBonus=1.25 }, isMax=true },
         },
         maxNiveau        = 1,
         isGamePass       = true,
@@ -275,11 +276,15 @@ GameConfig.CouleurAccent     = Color3.fromRGB(255, 220, 50)
 --   SonRare     → "fanfare" / "sparkle" / "level up" (1-2s)
 --   SonEvent    → "notification" / "alert"           (1-3s)
 --   SonUpgrade  → "purchase" / "coin" / "chime"     (< 1s)
-GameConfig.SonCollecte = 0
-GameConfig.SonDepot    = 0
-GameConfig.SonRare     = 0
-GameConfig.SonEvent    = 0
-GameConfig.SonUpgrade  = 0
+--   SonGraine   → "plant" / "dirt" / "nature"       (< 1s)
+--   SonBale     → "rumble" / "rolling" / "whoosh"   (looped, 1-3s)
+GameConfig.SonCollecte = 90855521491933
+GameConfig.SonDepot    = 127183292018512
+GameConfig.SonRare     = 112485797063762
+GameConfig.SonEvent    = 666152447
+GameConfig.SonUpgrade  = 10066947742
+GameConfig.SonGraine   = 133067975681895
+GameConfig.SonBale     = 84022491118443
 
 -- === BADGE ===
 GameConfig.BadgePremierPrestige = 0
@@ -499,7 +504,7 @@ GameConfig.FlowerPotConfig = {
         [3] = { nom = "FlowerPot_3", prixCoins = 25000, prixRobux = 0,
                 debloque = false },
         [4] = { nom = "FlowerPot_4", prixCoins = 0,     prixRobux = 149,
-                debloque = false, gamePassId = 0 },
+                debloque = false, gamePassId = 1816555612 },
     },
 
     -- BR plantables (uniquement MYTHIC et SECRET)
@@ -879,8 +884,7 @@ GameConfig.Combat = {
 	RespawnInvincibilityDuration = 3, -- Secondes d'invincibilité après spawn
 
 	-- Game Pass Protection (bloque le drop des BRs)
-	-- Remplir avec le vrai ID après création sur Roblox
-	ProtectionGamePassId = 0,
+	ProtectionGamePassId = 1819604298,
 }
 
 -- === FUSE MACHINE ===
