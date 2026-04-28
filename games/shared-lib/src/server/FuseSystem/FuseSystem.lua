@@ -29,6 +29,9 @@ local machineEtats = {}
 -- Etat actif par joueur (userId → { actif, machine })
 local joueurEtats = {}
 
+-- Timers actifs par machine (Instance → true) pour éviter doublons sur reconnexion
+local timersActifs = {}
+
 -- Guard anti double-init (Main.server.lua + FuseSystemLoader peuvent tous deux appeler Init)
 local initialise = false
 
@@ -36,6 +39,11 @@ local initialise = false
 -- function(player, brainrotClone) → nil
 -- Si absent : clone parent directement dans le Backpack
 FuseSystem.OnResultatPret = nil
+
+-- Callback optionnel pour envoyer une notification au joueur
+-- function(player, type, message) → nil
+-- type : "SUCCESS" | "INFO" | "WARN"
+FuseSystem.OnNotif = nil
 
 -- ═══════════════════════════════════════════════
 -- Constantes mutation (surchargées par FuseConfig.MutationConfig si présent)
@@ -354,6 +362,7 @@ local function reinitialiserMachine(machine)
 	etat.endTime        = nil
 	etat.tier           = nil
 	etat.promptCollecte = nil
+	timersActifs[machine] = nil
 
 	if etat.promptOuvrir and etat.promptOuvrir.Parent then
 		etat.promptOuvrir.Enabled = true
@@ -473,9 +482,14 @@ local function demarrerFusion(machine, player, tier, endTime, goldChance, diaman
 	local delai    = math.max(0, endTime - os.time())
 	local joueurId = player.UserId
 
-	task.delay(delai, function()
-		fusionTerminee(machine, joueurId)
-	end)
+	-- Guard : ne pas créer un second timer si un est déjà actif pour cette machine
+	if not timersActifs[machine] then
+		timersActifs[machine] = true
+		task.delay(delai, function()
+			timersActifs[machine] = nil
+			fusionTerminee(machine, joueurId)
+		end)
+	end
 end
 
 local function setupMachine(machine)
@@ -602,39 +616,75 @@ local function onJoueurConnecte(player)
 			end
 		end
 
+		-- Bug fix : ne plus effacer les données si la machine est introuvable.
+		-- Les données restent intactes pour la prochaine reconnexion
+		-- (changement de serveur, serveur qui redémarre, tag manquant temporaire).
 		if not machine then
-			effacerDonnees(player)
+			Logger.warn("Fuse", "%s | Machine '%s' introuvable — fusion conservée pour reconnexion ultérieure",
+				player.Name, tostring(data.fuseMachineName))
 			return
 		end
 
 		local etat = machineEtats[machine]
 		if not etat then return end
 
+		-- Machine déjà occupée par un autre joueur
 		if etat.actif and etat.joueurId ~= player.UserId then return end
 
 		joueurEtats[player.UserId] = { actif = true, machine = machine }
 
-		if data.fuseEndTime <= os.time() then
-			etat.actif         = true
-			etat.pret          = false
-			etat.joueurId      = player.UserId
-			etat.endTime       = data.fuseEndTime
-			etat.tier          = data.fuseTier
-			etat.goldChance    = data.goldChance    or 0
-			etat.diamantChance = data.diamantChance or 0
-			etat.rainbowChance = data.rainbowChance or 0
-			etat.toxicChance   = data.toxicChance   or 0
+		local fusionDejaDansEtat = etat.actif and etat.joueurId == player.UserId
 
-			if etat.promptOuvrir and etat.promptOuvrir.Parent then
-				etat.promptOuvrir.Enabled = false
+		if data.fuseEndTime <= os.time() then
+			-- Fusion terminée pendant l'absence du joueur
+			if not fusionDejaDansEtat then
+				etat.actif         = true
+				etat.pret          = false
+				etat.joueurId      = player.UserId
+				etat.endTime       = data.fuseEndTime
+				etat.tier          = data.fuseTier
+				etat.goldChance    = data.goldChance    or 0
+				etat.diamantChance = data.diamantChance or 0
+				etat.rainbowChance = data.rainbowChance or 0
+				etat.toxicChance   = data.toxicChance   or 0
+
+				if etat.promptOuvrir and etat.promptOuvrir.Parent then
+					etat.promptOuvrir.Enabled = false
+				end
+
+				creerBillboard(machine)
 			end
 
-			creerBillboard(machine)
-			fusionTerminee(machine, player.UserId)
+			-- Créer le prompt de collecte seulement s'il n'existe pas encore
+			if not etat.pret then
+				fusionTerminee(machine, player.UserId)
+			end
+
+			if FuseSystem.OnNotif then
+				pcall(FuseSystem.OnNotif, player, "SUCCESS",
+					"🔥 Ta fusion est terminée ! Va récupérer ton Brainrot à la Fuse Machine !")
+			end
 		else
-			demarrerFusion(machine, player, data.fuseTier, data.fuseEndTime,
-				data.goldChance or 0, data.diamantChance or 0,
-				data.rainbowChance or 0, data.toxicChance or 0)
+			-- Fusion encore en cours
+			local restantMin = math.ceil((data.fuseEndTime - os.time()) / 60)
+
+			if fusionDejaDansEtat then
+				-- Même serveur : timer déjà actif, juste notifier
+				if FuseSystem.OnNotif then
+					pcall(FuseSystem.OnNotif, player, "INFO",
+						"⏳ Fusion en cours — " .. restantMin .. " min restantes.")
+				end
+			else
+				-- Nouveau serveur ou machine libre : démarrer le timer
+				demarrerFusion(machine, player, data.fuseTier, data.fuseEndTime,
+					data.goldChance or 0, data.diamantChance or 0,
+					data.rainbowChance or 0, data.toxicChance or 0)
+
+				if FuseSystem.OnNotif then
+					pcall(FuseSystem.OnNotif, player, "INFO",
+						"⏳ Fusion en cours — " .. restantMin .. " min restantes.")
+				end
+			end
 		end
 	end)
 end
