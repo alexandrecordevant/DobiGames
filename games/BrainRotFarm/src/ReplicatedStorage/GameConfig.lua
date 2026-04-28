@@ -269,7 +269,14 @@ GameConfig.CouleurSecondaire = Color3.fromRGB(100, 100, 100)
 GameConfig.CouleurAccent     = Color3.fromRGB(255, 220, 50)
 
 -- === AUDIO ===
+-- IDs à remplir : chercher dans Toolbox Studio (onglet Audio, filtre Free)
+--   SonCollecte → "pop" / "pickup" / "ding"         (< 1s)
+--   SonDepot    → "coin drop" / "cash" / "whoosh"   (< 1.5s)
+--   SonRare     → "fanfare" / "sparkle" / "level up" (1-2s)
+--   SonEvent    → "notification" / "alert"           (1-3s)
+--   SonUpgrade  → "purchase" / "coin" / "chime"     (< 1s)
 GameConfig.SonCollecte = 0
+GameConfig.SonDepot    = 0
 GameConfig.SonRare     = 0
 GameConfig.SonEvent    = 0
 GameConfig.SonUpgrade  = 0

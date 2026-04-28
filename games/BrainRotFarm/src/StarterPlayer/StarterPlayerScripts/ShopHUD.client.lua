@@ -7,6 +7,7 @@ local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local TweenService        = game:GetService("TweenService")
 local MarketplaceService  = game:GetService("MarketplaceService")
 local UserInputService    = game:GetService("UserInputService")
+local SoundService        = game:GetService("SoundService")
 
 local localPlayer = Players.LocalPlayer
 local playerGui   = localPlayer:WaitForChild("PlayerGui")
@@ -441,6 +442,8 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
                 btn.MouseButton1Click:Connect(function()
                     if AchatUpgrade then
                         AchatUpgrade:FireServer(nomUpgrade, niveauNum)
+                        local s = SoundService:FindFirstChild("SonUpgrade")
+                        if s then s:Play() end
                     end
                 end)
             elseif etat == "robux" then
