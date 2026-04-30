@@ -30,8 +30,8 @@ local C = {
     verrouille = Color3.fromRGB(70,  70,  70),   -- gris verrouillé
 }
 
-local JOUR_NOMS    = { "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim" }
-local ELEMENT_ABBR = { water="Eau", fire="Feu", earth="Terre", wind="Vent" }
+local JOUR_NOMS    = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" }
+local ELEMENT_ABBR = { water="Water", fire="Fire", earth="Earth", wind="Wind" }
 
 -- gradient + stroke premium pour labels MYTHIC / SECRET
 local function applyRariteStyle(label, rarity, strokeThick)
@@ -179,7 +179,7 @@ local function makeLabel(parent, name, size, pos, text, color, fontSize, bold)
 end
 
 makeLabel(stockSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,3),
-    "Inventaire", C.texteDim, 10, false)
+    "Inventory", C.texteDim, 10, false)
 
 local lblMythic = makeLabel(stockSection, "LblMythic",
     UDim2.new(0.5,-8,0,26), UDim2.new(0,8,0,22),
@@ -251,7 +251,7 @@ arbreSection.ZIndex           = 21
 Instance.new("UICorner", arbreSection).CornerRadius = UDim.new(0, 8)
 
 makeLabel(arbreSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,3),
-    "Prochaine graine", C.texteDim, 10, false)
+    "Next seed", C.texteDim, 10, false)
 
 local lblArbreTimer = makeLabel(arbreSection, "LblArbreTimer",
     UDim2.new(1,-8,0,22), UDim2.new(0,8,0,22),
@@ -271,7 +271,7 @@ calSection.ZIndex           = 21
 Instance.new("UICorner", calSection).CornerRadius = UDim.new(0, 8)
 
 makeLabel(calSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,4),
-    "Daily Seed — cycle 7 jours", C.texteDim, 10, false)
+    "Daily Seed — 7-day cycle", C.texteDim, 10, false)
 
 local joursFrames = {}
 local cellW = 35

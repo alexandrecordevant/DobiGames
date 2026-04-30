@@ -238,7 +238,7 @@ local function creerPromptCollecte(machine)
         end
 
         if player.UserId ~= e.joueurId then
-            notifier(player, "ERREUR", "Ce n'est pas votre fusion !")
+            notifier(player, "ERREUR", "This fusion doesn't belong to you!")
             return
         end
 

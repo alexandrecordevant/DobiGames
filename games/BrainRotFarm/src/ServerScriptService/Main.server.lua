@@ -392,12 +392,14 @@ InitialiserPots = function(player, baseIndex, playerData)
             cnx = prompt.Triggered:Connect(function(p)
                 if p ~= player then return end
 
-                -- Si le joueur a des graines → planter directement
-                local carriedSeeds = p:FindFirstChild("CarriedSeeds")
-                if carriedSeeds and #carriedSeeds:GetChildren() > 0 then
+                -- Source de vérité : data.graines (résiste aux désyncs CarriedSeeds)
+                local freshData = GetData(player)
+                if not freshData then return end
 
-                    -- Prendre la meilleure graine portée (SECRET prioritaire sur MYTHIC)
-                    local seedToUse = nil
+                -- Chercher la meilleure StringValue dans CarriedSeeds (SECRET > MYTHIC)
+                local carriedSeeds = p:FindFirstChild("CarriedSeeds")
+                local seedToUse = nil
+                if carriedSeeds then
                     for _, sv in ipairs(carriedSeeds:GetChildren()) do
                         if sv.Value == "SECRET" then seedToUse = sv; break end
                     end
@@ -407,91 +409,94 @@ InitialiserPots = function(player, baseIndex, playerData)
                         end
                     end
                     if not seedToUse then seedToUse = carriedSeeds:GetChildren()[1] end
-                    if not seedToUse then return end
+                end
 
-                    local bestRarity = seedToUse.Value
+                -- Déterminer la rareté (CarriedSeeds en priorité, sinon data.graines)
+                local bestRarity
+                if seedToUse then
+                    bestRarity = seedToUse.Value
+                else
+                    local hasAny, bestFromInventory = SeedInventory.HasAny(freshData)
+                    if not hasAny then
+                        -- Vraiment aucune graine → ouvrir le modal daily seed
+                        OuvrirPot:FireClient(p, potIndex, "empty", freshData.dailySeed or {})
+                        return
+                    end
+                    bestRarity = bestFromInventory
+                    Logger.warn("Seed", "Désync CarriedSeeds pour %s — plantation via data.graines (%s)", p.Name, bestRarity)
+                end
 
-                    -- Retirer la graine du CarriedSeeds (logique plantation)
-                    seedToUse:Destroy()
+                -- Retirer la StringValue de CarriedSeeds si elle existe
+                if seedToUse then seedToUse:Destroy() end
 
-                    -- Retirer le Tool visuel du backpack (ou du character si équipé)
-                    local function retirerToolGraine(target)
-                        if not target then return false end
-                        for _, t in ipairs(target:GetChildren()) do
-                            if t:IsA("Tool") and t:GetAttribute("IsSeed")
-                                and t:GetAttribute("SeedRarity") == bestRarity then
-                                t:Destroy()
-                                return true
-                            end
+                -- Retirer le Tool visuel du backpack (ou du character si équipé)
+                local function retirerToolGraine(target)
+                    if not target then return false end
+                    for _, t in ipairs(target:GetChildren()) do
+                        if t:IsA("Tool") and t:GetAttribute("IsSeed")
+                            and t:GetAttribute("SeedRarity") == bestRarity then
+                            t:Destroy()
+                            return true
                         end
-                        return false
                     end
-                    if not retirerToolGraine(p:FindFirstChildOfClass("Backpack")) then
-                        retirerToolGraine(p.Character)
-                    end
+                    return false
+                end
+                if not retirerToolGraine(p:FindFirstChildOfClass("Backpack")) then
+                    retirerToolGraine(p.Character)
+                end
 
-                    local freshData = GetData(player)
-                    if not freshData then return end
+                -- Décrémenter l'inventaire de graines + notifier HUDs
+                SeedInventory.Use(freshData, bestRarity)
+                UpdateGraines:FireClient(player, freshData.graines)
+                CarrySystem.EnvoyerCarryUpdate(player)
 
-                    -- Décrémenter l'inventaire de graines + notifier HUDs
-                    SeedInventory.Use(freshData, bestRarity)
-                    UpdateGraines:FireClient(player, freshData.graines)
-                    CarrySystem.EnvoyerCarryUpdate(player)
+                -- Mémoriser dans les données (persistance DataStore)
+                local now = os.time()
+                if freshData.pots and freshData.pots[potIndex] then
+                    freshData.pots[potIndex].rarete    = bestRarity
+                    freshData.pots[potIndex].stage     = 0
+                    freshData.pots[potIndex].plantedAt = now
+                end
 
-                    -- Mémoriser dans les données (persistance DataStore)
-                    local now = os.time()
-                    if freshData.pots and freshData.pots[potIndex] then
-                        freshData.pots[potIndex].rarete    = bestRarity
-                        freshData.pots[potIndex].stage     = 0
-                        freshData.pots[potIndex].plantedAt = now
-                    end
+                -- Billboard 3D immédiatement
+                local dureeStage = (FPCfg and FPCfg.GrowthDuration) or 120
+                PotBillboardUpdate:FireClient(player, potModel, {
+                    plantedAt  = now,
+                    dureeStage = dureeStage,
+                    rarete     = bestRarity,
+                })
 
-                    -- Billboard 3D immédiatement
-                    local dureeStage = (FPCfg and FPCfg.GrowthDuration) or 120
-                    PotBillboardUpdate:FireClient(player, potModel, {
-                        plantedAt  = now,
-                        dureeStage = dureeStage,
-                        rarete     = bestRarity,
-                    })
+                -- Détruire le prompt "Plant" avant de lancer la croissance
+                if cnx then cnx:Disconnect() cnx = nil end
+                if prompt.Parent then prompt:Destroy() end
 
-                    -- Détruire le prompt "Plant" avant de lancer la croissance
-                    if cnx then cnx:Disconnect() cnx = nil end
-                    if prompt.Parent then prompt:Destroy() end
-
-                    -- Lancer la séquence de croissance
-                    FlowerPotGrowthSystem.PlantSeed(potModel, bestRarity, player,
-                        function(tp, elem, mult)
-                            -- Nettoyer l'état interne du GrowthSystem (_mutants, _plantages)
-                            FlowerPotGrowthSystem.Annuler(potModel)
-                            local d = GetData(player)
-                            if d and d.pots and d.pots[potIndex] then
-                                d.pots[potIndex].rarete      = nil
-                                d.pots[potIndex].stage       = 0
-                                d.pots[potIndex].plantedAt   = nil
-                                d.pots[potIndex].elementType = nil
-                                d.pots[potIndex].brNom       = nil
-                            end
-                            local latest = GetData(player)
-                            if latest then InitialiserPots(player, baseIndex, latest) end
-                        end,
-                        {
-                            onElementChosen = makeOnElementChosen(player, potIndex),
-                            onBRNomChosen   = makeOnBRNomChosen(player, potIndex),
-                        })
-
-                    -- Recréer les prompts immédiatement (pot passe en mode "growing")
-                    -- task.defer laisse le thread PlantSeed démarrer avant
-                    task.defer(function()
+                -- Lancer la séquence de croissance
+                FlowerPotGrowthSystem.PlantSeed(potModel, bestRarity, player,
+                    function(tp, elem, mult)
+                        -- Nettoyer l'état interne du GrowthSystem (_mutants, _plantages)
+                        FlowerPotGrowthSystem.Annuler(potModel)
+                        local d = GetData(player)
+                        if d and d.pots and d.pots[potIndex] then
+                            d.pots[potIndex].rarete      = nil
+                            d.pots[potIndex].stage       = 0
+                            d.pots[potIndex].plantedAt   = nil
+                            d.pots[potIndex].elementType = nil
+                            d.pots[potIndex].brNom       = nil
+                        end
                         local latest = GetData(player)
                         if latest then InitialiserPots(player, baseIndex, latest) end
-                    end)
+                    end,
+                    {
+                        onElementChosen = makeOnElementChosen(player, potIndex),
+                        onBRNomChosen   = makeOnBRNomChosen(player, potIndex),
+                    })
 
-                else
-                    -- Pas de graines → ouvrir la modal (daily seed, etc.)
-                    local d = GetData(p)
-                    local dailySeedData = d and d.dailySeed or {}
-                    OuvrirPot:FireClient(p, potIndex, "empty", dailySeedData)
-                end
+                -- Recréer les prompts immédiatement (pot passe en mode "growing")
+                -- task.defer laisse le thread PlantSeed démarrer avant
+                task.defer(function()
+                    local latest = GetData(player)
+                    if latest then InitialiserPots(player, baseIndex, latest) end
+                end)
             end)
         end
     end

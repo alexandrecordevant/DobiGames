@@ -255,26 +255,31 @@ notifStroke.Color           = Color3.new(0, 0, 0)
 notifStroke.Thickness       = 2
 notifStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 
-local notifMasque = false  -- empêche les chevauchements
+local notifGen = 0
 
 NotifEvent.OnClientEvent:Connect(function(typeNotif, message)
     if not message then return end
     -- REBIRTH_GLOBAL et RARE sont gérés par NotificationHandler → ignorer ici
     if typeNotif == "REBIRTH_GLOBAL" or typeNotif == "RARE" then return end
 
-    -- Couleur selon le type
-    notifLabel.TextColor3 = NOTIF_COULEURS[typeNotif] or Color3.fromRGB(255, 255, 255)
-    notifLabel.Text       = message
-    notifLabel.Visible    = true
+    notifGen = notifGen + 1
+    local gen = notifGen
 
-    -- Annuler le masquage précédent puis masquer après 3s
-    notifMasque = false
+    notifLabel.TextColor3       = NOTIF_COULEURS[typeNotif] or Color3.fromRGB(255, 255, 255)
+    notifLabel.Text             = message
+    notifLabel.TextTransparency = 0
+    notifLabel.Visible          = true
+
     task.delay(3, function()
-        if not notifMasque then
-            notifLabel.Visible = false
-        end
+        if notifGen ~= gen then return end
+        TweenService:Create(notifLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad),
+            { TextTransparency = 1 }):Play()
+        task.delay(0.6, function()
+            if notifGen ~= gen then return end
+            notifLabel.Visible          = false
+            notifLabel.TextTransparency = 0
+        end)
     end)
-    notifMasque = true
 end)
 
 Logger.info("HUD", "NotifEvent connecté ✓")

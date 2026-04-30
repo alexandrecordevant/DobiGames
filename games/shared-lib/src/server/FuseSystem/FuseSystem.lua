@@ -662,7 +662,7 @@ local function onJoueurConnecte(player)
 
 			if FuseSystem.OnNotif then
 				pcall(FuseSystem.OnNotif, player, "SUCCESS",
-					"🔥 Ta fusion est terminée ! Va récupérer ton Brainrot à la Fuse Machine !")
+					"🔥 Fusion complete! Pick up your Brainrot at the Fuse Machine!")
 			end
 		else
 			-- Fusion encore en cours
@@ -672,7 +672,7 @@ local function onJoueurConnecte(player)
 				-- Même serveur : timer déjà actif, juste notifier
 				if FuseSystem.OnNotif then
 					pcall(FuseSystem.OnNotif, player, "INFO",
-						"⏳ Fusion en cours — " .. restantMin .. " min restantes.")
+						"⏳ Fusion in progress — " .. restantMin .. " min remaining.")
 				end
 			else
 				-- Nouveau serveur ou machine libre : démarrer le timer
@@ -682,7 +682,7 @@ local function onJoueurConnecte(player)
 
 				if FuseSystem.OnNotif then
 					pcall(FuseSystem.OnNotif, player, "INFO",
-						"⏳ Fusion en cours — " .. restantMin .. " min restantes.")
+						"⏳ Fusion in progress — " .. restantMin .. " min remaining.")
 				end
 			end
 		end

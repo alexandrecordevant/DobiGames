@@ -1052,10 +1052,10 @@ local function fpMajAffichage(pots, graines)
         local p = pots and pots[i]
         if not p then f.ic.Text="?"; f.ra.Text=""; f.el.Text=""
         elseif not p.debloque then
-            f.ic.Text="X"; f.ic.TextColor3=T.texte; f.ra.Text="Verr."; f.el.Text=""
+            f.ic.Text="X"; f.ic.TextColor3=T.texte; f.ra.Text="Lock."; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut == nil then
-            f.ic.Text="-"; f.ic.TextColor3=T.texte; f.ra.Text="Vide"; f.el.Text=""
+            f.ic.Text="-"; f.ic.TextColor3=T.texte; f.ra.Text="Empty"; f.el.Text=""
             f.cell.BackgroundColor3=T.fondSecondaire
         elseif p.statut.statut == "growing" then
             local s=p.statut

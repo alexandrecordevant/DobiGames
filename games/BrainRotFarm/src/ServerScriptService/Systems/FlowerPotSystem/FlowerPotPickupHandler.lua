@@ -133,7 +133,7 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
 
     -- ─── Créer ProximityPrompt de récolte ───
     local prompt = Instance.new("ProximityPrompt")
-    prompt.ActionText            = "Récolter"
+    prompt.ActionText            = "Harvest"
     prompt.ObjectText            = string.format("%s BR Mutant %s (×%d)",
         emoji, elementType, multiplier)
     prompt.HoldDuration          = 0.3   -- Mobile-compatible (court hold)
