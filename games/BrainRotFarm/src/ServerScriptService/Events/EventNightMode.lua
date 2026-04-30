@@ -1,6 +1,13 @@
 -- ServerScriptService/Common/Events/EventNightMode.lua
 -- BrainRotFarm — Event Night Mode
 -- Obscurité soudaine, ciel étoilé, son ambiant, BR EPIC+ brillent dans le noir
+--
+-- Changelog :
+--   Added: savedAtmosphere snapshot (Density, Color, Decay, Glare, Haze)
+--   Added: ColorShift_Top/Bottom dans la sauvegarde et la restauration
+--   Added: restauration Atmosphere avec fallback Brainrot (rose/violet)
+--   Added: transition Atmosphere vers ambiance nuit au demarrage de l'event
+--   Modified: fallbacks restaurerLighting maintenant Brainrot (rose/violet) et ClockTime 17
 
 local EventNightMode = {}
 EventNightMode.NOM          = "NightMode"
@@ -33,13 +40,14 @@ local SEUIL_BOOST_NIGHT = 4  -- EPIC et au-dessus
 -- ============================================================
 -- État interne (réinitialisé à chaque Demarrer)
 -- ============================================================
-local savedLighting  = {}    -- snapshot complet du Lighting
-local savedStarCount = nil
-local skyCreated     = false
-local pulseTasks     = {}
-local savedLights    = {}
-local createdLights  = {}
-local materiauOriginel = {}  -- { [BasePart] = Enum.Material } pour restauration Map
+local savedLighting    = {}   -- snapshot complet du Lighting
+local savedAtmosphere  = nil  -- snapshot des proprietes Atmosphere
+local savedStarCount   = nil
+local skyCreated       = false
+local pulseTasks       = {}
+local savedLights      = {}
+local createdLights    = {}
+local materiauOriginel = {}   -- { [BasePart] = Enum.Material } pour restauration Map
 
 -- ============================================================
 -- Utilitaires
@@ -54,16 +62,33 @@ end
 -- ============================================================
 local function sauvegarderLighting()
     savedLighting = {
-        Brightness              = Lighting.Brightness,
-        Ambient                 = Lighting.Ambient,
-        OutdoorAmbient          = Lighting.OutdoorAmbient,
-        FogEnd                  = Lighting.FogEnd,
-        FogStart                = Lighting.FogStart,
-        FogColor                = Lighting.FogColor,
-        ClockTime               = Lighting.ClockTime,
-        EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
-        EnvironmentSpecularScale= Lighting.EnvironmentSpecularScale,
+        Brightness               = Lighting.Brightness,
+        Ambient                  = Lighting.Ambient,
+        OutdoorAmbient           = Lighting.OutdoorAmbient,
+        FogEnd                   = Lighting.FogEnd,
+        FogStart                 = Lighting.FogStart,
+        FogColor                 = Lighting.FogColor,
+        ClockTime                = Lighting.ClockTime,
+        EnvironmentDiffuseScale  = Lighting.EnvironmentDiffuseScale,
+        EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+        ColorShift_Top           = Lighting.ColorShift_Top,
+        ColorShift_Bottom        = Lighting.ColorShift_Bottom,
     }
+
+    -- Sauvegarder l'Atmosphere
+    local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atmo then
+        savedAtmosphere = {
+            Density = atmo.Density,
+            Color   = atmo.Color,
+            Decay   = atmo.Decay,
+            Glare   = atmo.Glare,
+            Haze    = atmo.Haze,
+        }
+    else
+        savedAtmosphere = nil
+    end
+
     local sky = Lighting:FindFirstChildOfClass("Sky")
     if sky then
         savedStarCount = sky.StarCount
@@ -76,23 +101,48 @@ end
 
 local function restaurerLighting()
     local ok, err = pcall(function()
-        -- ClockTime ne se tween pas → set direct puis tween le reste
-        Lighting.ClockTime = savedLighting.ClockTime or 14
+        -- ClockTime ne se tween pas : set direct avec fallback Brainrot (coucher soleil)
+        Lighting.ClockTime = savedLighting.ClockTime or 17
 
         local info = TweenInfo.new(5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         TweenService:Create(Lighting, info, {
             Brightness               = savedLighting.Brightness               or 2,
-            Ambient                  = savedLighting.Ambient                  or Color3.fromRGB(70, 70, 70),
-            OutdoorAmbient           = savedLighting.OutdoorAmbient           or Color3.fromRGB(70, 70, 70),
+            Ambient                  = savedLighting.Ambient                  or Color3.fromRGB(180, 100, 255),
+            OutdoorAmbient           = savedLighting.OutdoorAmbient           or Color3.fromRGB(255, 150, 200),
             FogEnd                   = savedLighting.FogEnd                   or 100000,
             FogStart                 = savedLighting.FogStart                 or 0,
             FogColor                 = savedLighting.FogColor                 or Color3.fromRGB(191, 191, 191),
             EnvironmentDiffuseScale  = savedLighting.EnvironmentDiffuseScale  or 1,
             EnvironmentSpecularScale = savedLighting.EnvironmentSpecularScale or 1,
+            ColorShift_Top           = savedLighting.ColorShift_Top           or Color3.fromRGB(255, 100, 200),
+            ColorShift_Bottom        = savedLighting.ColorShift_Bottom        or Color3.fromRGB(150, 50, 255),
         }):Play()
+
+        -- Restaurer l'Atmosphere
+        local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
+        if atmo and savedAtmosphere then
+            local infoAtmo = TweenInfo.new(5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            TweenService:Create(atmo, infoAtmo, {
+                Density = savedAtmosphere.Density,
+                Color   = savedAtmosphere.Color,
+                Decay   = savedAtmosphere.Decay,
+                Glare   = savedAtmosphere.Glare,
+                Haze    = savedAtmosphere.Haze,
+            }):Play()
+        elseif atmo then
+            -- Pas de snapshot : forcer valeurs Brainrot (rose/violet)
+            local infoAtmo = TweenInfo.new(5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            TweenService:Create(atmo, infoAtmo, {
+                Density = 0.45,
+                Color   = Color3.fromRGB(255, 150, 200),
+                Decay   = Color3.fromRGB(180, 100, 255),
+                Glare   = 0.8,
+                Haze    = 2,
+            }):Play()
+        end
     end)
     if not ok then
-        Logger.warn("Sky", "restaurerLighting : erreur — %s", tostring(err))
+        Logger.warn("Sky", "restaurerLighting : erreur %s", tostring(err))
     end
 end
 
@@ -248,7 +298,7 @@ function EventNightMode.Demarrer(config)
     -- Transition Lighting vers la nuit (3s)
     local infoNuit = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     pcall(function()
-        Lighting.ClockTime = config.clockTimeNuit or 0  -- minuit immédiat
+        Lighting.ClockTime = config.clockTimeNuit or 0  -- minuit immediat
         TweenService:Create(Lighting, infoNuit, {
             Brightness               = config.brightnessMin  or 0.3,
             Ambient                  = config.ambientNuit    or Color3.fromRGB(40, 40, 80),
@@ -259,6 +309,21 @@ function EventNightMode.Demarrer(config)
             EnvironmentSpecularScale = config.envSpecNuit    or 0.2,
         }):Play()
     end)
+
+    -- Atmosphere : transition vers ambiance nuit (sombre, brume bleue)
+    local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atmo then
+        local infoAtmoNuit = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        pcall(function()
+            TweenService:Create(atmo, infoAtmoNuit, {
+                Density = config.atmoDensiteNuit or 0.6,
+                Color   = config.atmoColorNuit   or Color3.fromRGB(20, 20, 50),
+                Decay   = config.atmoDecayNuit   or Color3.fromRGB(0, 0, 30),
+                Glare   = config.atmoGlareNuit   or 0,
+                Haze    = config.atmoHazeNuit    or 3,
+            }):Play()
+        end)
+    end
 
     -- Notifier joueurs + EventStarted
     notifierTous(config.message)
