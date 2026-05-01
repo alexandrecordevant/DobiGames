@@ -50,7 +50,7 @@ ShopConfig.Jump = {
     MaxLevel        = 100,
     JumpPerLevel    = 2.4,   -- +2.4 JP par niveau ; 50 + 100×2.4 = 290 (inchangé au max)
     BaseJump        = 50,    -- valeur Roblox par défaut
-    MaxAntiGravity  = 0.50,  -- 50 % de réduction gravitationnelle au niveau max
+    MaxAntiGravity  = 0.08,  -- 8 % de reduction gravitationnelle au niveau max (cosmetique)
     CoutDepart      = 500,   -- coût du niveau 1 (identique à l'ancienne config)
     CoutMax         = 1e15,  -- 1Q — coût exact du dernier niveau
     Label           = "Saut",
@@ -59,19 +59,19 @@ ShopConfig.Jump = {
 
 -- ── OBJETS (achat unique) ──────────────────────────────────────────────────
 -- Rangés dans ReplicatedStorage/Tools/
-ShopConfig.Bat = {
-    Price = 500,
-    Label = "Bat",
-}
-
-ShopConfig.GoldSlap = {
-    Price = 10000,
-    Label = "GoldSlap",
-}
-
 ShopConfig.SpeedCoil = {
     Price = 50000,
     Label = "SpeedCoil",
+}
+
+ShopConfig.GravityCoil = {
+    Price = 100000,
+    Label = "GravityCoil",
+}
+
+ShopConfig.Cape = {
+    Price = 1000000,
+    Label = "Cape",
 }
 
 -- ── HELPERS ────────────────────────────────────────────────────────────────

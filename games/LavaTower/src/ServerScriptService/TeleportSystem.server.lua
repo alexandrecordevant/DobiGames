@@ -6,6 +6,7 @@
 local Players             = game:GetService("Players")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local ServerStorage       = game:GetService("ServerStorage")
 local Workspace           = game:GetService("Workspace")
 
 local Logger            = require(ServerScriptService.SharedLib.Server.Logger)
@@ -29,8 +30,16 @@ local TOUR_NOM = { TOUR_VITE = "TP_VIP", TOUR_COMMUNE = "TP_Tour" }
 -- ============================================================
 local function getCFrame(destination, player)
     if destination == "TOUR_VITE" or destination == "TOUR_COMMUNE" then
-        local folder = Workspace:FindFirstChild("TP")
-        local model  = folder and folder:FindFirstChild(TOUR_NOM[destination])
+        local folder    = Workspace:FindFirstChild("TP")
+        local toxicFlag = ServerStorage:FindFirstChild("ToxicEventActif")
+        local nebulaFlag = ServerStorage:FindFirstChild("NebulaEventActif")
+        local eventActif = (toxicFlag and toxicFlag.Value) or (nebulaFlag and nebulaFlag.Value)
+        local searchFolder = folder
+        if eventActif then
+            local eventFolder = folder and folder:FindFirstChild("Event")
+            if eventFolder then searchFolder = eventFolder end
+        end
+        local model = searchFolder and searchFolder:FindFirstChild(TOUR_NOM[destination])
         if not model then
             Logger.warn("Teleport", "%s introuvable dans Workspace.TP", TOUR_NOM[destination])
             return nil

@@ -1,6 +1,6 @@
 # 🚀 EVOLUTIONS — BrainRotFarm
 > DobiGames — Fonctionnalités futures planifiées
-> Dernière mise à jour : Mars 2026
+> Dernière mise à jour : Mai 2026
 
 ---
 
@@ -19,6 +19,7 @@ proportionnellement au % de remplissage de la base du joueur.
 Visible par tous les joueurs depuis toute la map.
 
 **Stages visuels :**
+
 | Stage | % Base | Visuel | Effet |
 |---|---|---|---|
 | 1 | 0-20% | Spore au sol | Quasi invisible |
@@ -33,34 +34,11 @@ Visible par tous les joueurs depuis toute la map.
 **Statut :** 💡 À implémenter
 **Complexité :** 🟢 Faible — scale progressif sur modèle existant
 **Impact waouh :** ⭐⭐⭐⭐⭐
+**Cible :** Update Semaine 1
 
 ---
 
-## 2. EFFET WAOUH — L'Éruption de la Base
-
-**Concept :** Quand un joueur remplit tous les spots de son dernier étage,
-sa base "s'embrase" avec une éruption spectaculaire visible par tous.
-
-**Séquence :**
-```
-Base 100% remplie
-→ Camera shake
-→ Fissure au centre de la base
-→ BR jaillissent du sol comme un geyser (10 secondes)
-→ Effet lumière dorée + lave
-→ Notification tous les joueurs : "🌋 Player3's base is ERUPTING!"
-→ BR éjectés collectables par tout le monde
-→ Retour au calme
-```
-
-**Statut :** 💡 À implémenter
-**Complexité :** 🟡 Moyenne — ParticleEmitters + camera shake + notification
-**Impact waouh :** ⭐⭐⭐⭐⭐
-**Viral TikTok :** ⭐⭐⭐⭐⭐
-
----
-
-## 3. EFFET WAOUH — Le Trône du Roi BR
+## 2. EFFET WAOUH — Le Trône du Roi BR
 
 **Concept :** Le joueur en tête du leaderboard reçoit un trône doré
 dans sa base, visible par tous. Si quelqu'un le dépasse, le trône se
@@ -81,165 +59,142 @@ déplace vers la nouvelle base du leader.
 **Complexité :** 🟢 Faible — modèle + logique leaderboard existante
 **Impact waouh :** ⭐⭐⭐⭐
 **Impact rétention :** ⭐⭐⭐⭐⭐
+**Cible :** Update Semaine 3
 
 ---
 
-## 4. RÉCOMPENSE HEBDOMADAIRE — Tracteur Rouge
+## 3. FLOWERPOT — Plante Carnivore
 
-**Concept :** Chaque semaine, le joueur ayant le plus joué reçoit
-automatiquement le skin exclusif "Tracteur Rouge" pour 7 jours.
-Visible par tous les autres joueurs.
+**Concept :** Suite au système FlowerPot existant, faire évoluer la plante
+qui pousse dans le pot vers une **plante carnivore animée**, plus crédible
+visuellement et thématique avec l'univers Brainrot.
 
-**Fonctionnement :**
+**Stages visuels :**
 ```
-Tracking temps de jeu dans playerData.tempsJeuSemaine
-→ Chaque lundi minuit UTC :
-  → Script vérifie le top joueur de la semaine
-  → Active skin Tracteur Rouge pour 7 jours
-  → Webhook Discord : "🏆 Player3 est le Top Farmer !"
-  → Reset des compteurs hebdomadaires
+Stage 1 (0%-25%) : Bourgeon mauve au sol, légers spasmes
+Stage 2 (25%-50%) : Tige noire qui sort, feuilles dentelées
+Stage 3 (50%-75%) : Bouche carnivore se forme + dents
+Stage 4 (75%-99%) : Plante complète qui claque les mâchoires
+Stage 5 (100%) : La plante CRACHE le BR muté avec animation
 ```
 
-**Récompenses possibles :**
-| Récompense | Pour qui | Durée |
+**Variantes par mutation :**
+
+| Mutation | Couleur plante | Effet spécifique |
 |---|---|---|
-| 🚜 Tracteur Rouge | Top joueur semaine | 7 jours |
-| 👑 Couronne dorée | 1er leaderboard vendredi | 7 jours |
-| 🌟 Aura BR Géant | Plus de BR collectés | 7 jours |
-| 🏆 Badge semaine | Top 3 joueurs | Permanent |
-| ⚡ Boost ×2 income | Top 5 joueurs | 24h |
+| ✨ GALAXY | Violet + sparkles galaxy | Étoiles tournent autour |
+| ☠️ TOXIC | Vert toxique + bave | Gouttes acide qui tombent |
+| 🌈 RAINBOW | Multicolore changeante | Arc-en-ciel qui pulse |
+| 🕳️ VOID | Noir + portail | Aspire les particules autour |
 
-**Contrainte Roblox :** Pas de redistribution de Robux (ToS).
-Uniquement des cosmétiques et avantages in-game.
+**Bonus interactif :** quand le joueur s'approche, la plante claque les
+mâchoires (animation idle) → effet "vivant".
 
 **Statut :** 💡 À implémenter
-**Complexité :** 🟡 Moyenne — tracking + skin + webhook + reset hebdo
-**Impact rétention :** ⭐⭐⭐⭐⭐
+**Complexité :** 🟡 Moyenne — modèles 4 stages + animations + variantes mutation
+**Impact waouh :** ⭐⭐⭐⭐⭐
+**Viral TikTok :** ⭐⭐⭐⭐⭐
+**Cible :** Update Semaine 4-5
 
 ---
 
-## 5. FLOWERPOT SYSTEM — Améliorations futures
+## 4. MUTATION MASTER — Système de badges progressifs
 
-**Concept :** Suite au système FlowerPot existant, plusieurs améliorations
-visuelles et de game design à implémenter.
+**Concept :** 4 badges à débloquer en remplissant la base avec un type de
+mutation unique, plus 1 badge ultime pour les complétionnistes.
 
-### 5.1 Plante + BR synchronisés (en cours)
-```
-La plante pousse en même temps que le BR dans le pot
-→ Plante Studio (4 stages) ou procédurale (fallback)
-→ MYTHIC : couleurs violettes + sparkles
-→ SECRET : couleurs rouges + flammes
-```
+**Les 4 badges Master :**
 
-### 5.2 Daily Seed Panel
-```
-Bouton HUD permanent (bas gauche)
-→ "🌱 Day 3/7" ou "🌱 Seed Ready!" (pulsant)
-→ Clic → popup avec les 7 jours du cycle
-→ Anti-écrasement : jamais écraser un BR en cours automatiquement
-→ Choix du pot si tous occupés
-```
-
-### 5.3 ServerStorage/PlantModels
-```
-Créer dans Studio :
-ServerStorage/PlantModels/
-├── MYTHIC/
-│   ├── Plant_Stage1 → Plant_Stage4
-└── SECRET/
-    ├── Plant_Stage1 → Plant_Stage4
-```
-
-**Statut :** 🔨 En cours
-**Complexité :** 🟡 Moyenne
-
----
-
-## 6. DISCORD — Système de récompenses communautaires
-
-**Concept :** Utiliser le serveur DobiGames Discord comme hub
-de communication avec les joueurs et canal de récompenses.
-
-**Webhooks automatiques :**
-```
-#events   → Lucky Hour, Admin Abuse, Golden Event
-#records  → BRAINROT_GOD capturé, records battus
-#top-week → Annonce Top Farmer hebdomadaire
-#dev-logs → Erreurs critiques (admin only)
-```
-
-**Statut :** 💡 À implémenter (serveur Discord créé ✅)
-**Complexité :** 🟢 Faible — script Python + webhooks
-
----
-
-## 7. BRAINROT KONG — Jeu n°2
-
-**Concept :** Jeu séparé dans la factory DobiGames.
-Tour gardée par Kong + BR Géant collectif + combat sorts.
-
-**Voir :** `games/BrainRotKong/BRAINROT_KONG_DESIGN.md`
-
-**Statut :** 📋 Game design documenté — développement après BrainRotFarm
-**Complexité :** 🔴 Élevée
-
----
-
-## 8. RESKINS — Factory DobiGames
-
-**7 reskins prévus après validation de BrainRotFarm :**
-
-| Jeu | Thème | Priorité |
+| Badge | Trigger | Reward |
 |---|---|---|
-| BrainRotZoo | Zoo / Animaux | 1 |
-| BrainRotOcean | Océan | 2 |
-| BrainRotGalaxy | Espace | 3 |
-| BrainRotArmy | Militaire | 4 |
-| BrainRotMine | Mine | 5 |
-| BrainRotKitchen | Cuisine | 6 |
-| MutantGrow | Mutation / Croissance | 7 |
+| 🎖️ **GALAXY MASTER** | 10 BRs Galaxy mutés simultanément dans la base | ×1.10 income permanent + skin chemin galaxy |
+| 🎖️ **TOXIC MASTER** | 10 BRs Toxic mutés simultanément | ×1.10 income permanent + skin chemin toxic |
+| 🎖️ **RAINBOW MASTER** | 10 BRs Rainbow mutés simultanément | ×1.15 income permanent + skin chemin rainbow |
+| 🎖️ **VOID MASTER** | 10 BRs Void mutés simultanément | ×1.20 income permanent + skin chemin void |
 
-**Principe :** modifier `GameConfig.lua` uniquement.
-Tous les scripts `Common/` restent identiques.
+**Le badge ultime :**
 
-**Statut :** 💡 En attente de la publication de BrainRotFarm
+| Badge | Trigger | Reward |
+|---|---|---|
+| 🏆 **BRAINROT GOD** | Posséder les 4 badges Master | Aura permanente + skin "Mutation God" exclusif + trophée flottant au-dessus de la tête |
 
----
+**Mécanique de tracking :**
+```
+DataStore : playerData.mutationMaster = {
+    galaxy = false,
+    toxic = false,
+    rainbow = false,
+    void = false,
+    god = false
+}
 
-## 9. CONTENU TIKTOK — Pipeline automatique
+Vérification toutes les 30s :
+→ Compter BRs actifs dans la base par type de mutation
+→ Si compteur >= 10 et badge non débloqué :
+   → Octroi badge automatique (BadgeService:AwardBadge)
+   → Notification serveur "🎖️ Player3 a débloqué GALAXY MASTER!"
+   → Webhook Discord
+   → Update DataStore
+   → Si tous les 4 → octroi BRAINROT GOD
+```
 
-**Phase 1 (dès publication) :** Filmer soi-même les moments forts
-**Phase 2 (50+ joueurs) :** Recruter 2-3 créateurs de contenu joueurs
-**Phase 3 (500+ joueurs) :** Pipeline semi-auto OBS + Python + webhooks
+**Anti-grief :** les BRs **dans la base** (slots) sont **immunisés au steal PVP**.
+Seuls les BRs en carry peuvent être volés.
 
-**Voir analyse complète dans les notes de conversation.**
+**Notification serveur :**
+```
+"🎖️ Player3 a débloqué GALAXY MASTER! (+10% income)"
+"🏆 Player3 est devenu un BRAINROT GOD!"
+```
 
-**Statut :** 💡 Phase 1 à démarrer dès publication
+**Statut :** 💡 À implémenter
+**Complexité :** 🟡 Moyenne — DataStore tracking + détection + octroi badge + skins
+**Effort dev :** 12-15h
+**Impact rétention :** ⭐⭐⭐⭐⭐
+**Impact game pass sales :** ⭐⭐⭐⭐ (joueurs voudront boost drops)
+**Viral TikTok :** ⭐⭐⭐⭐ (premier BRAINROT GOD = clip)
+**Cible :** Update Semaine 2 (premier gros update post-launch)
 
 ---
 
 ## Roadmap synthétique
 
 ```
-MAINTENANT
-→ Finir les tests BrainRotFarm
-→ Corriger bug TracteurSystem
-→ Brancher Discord webhooks
-→ Publish BrainRotFarm
+DAY 1 (LANCEMENT)
+→ Publish BrainRotFarm tel quel
+→ Post Discord + premiers TikTok
+→ Suivi Analytics
 
-APRÈS PUBLICATION (Mois 1)
+UPDATE SEMAINE 1 (J+7)
 → Champignon progression visuel (#1)
-→ Trône du Roi BR (#3)
-→ Récompense hebdomadaire Tracteur Rouge (#4)
-→ Filmer TikTok (Phase 1)
 
-MOIS 2-3
-→ Éruption de la base (#2)
-→ FlowerPot améliorations (#5)
-→ Premiers reskins (Zoo, Ocean, Galaxy)
+UPDATE SEMAINE 2 (J+14) ⭐ GROS UPDATE
+→ Mutation Master Badges + BRAINROT GOD (#4)
 
-MOIS 4-6
-→ BrainRot Kong (développement)
-→ Reskins restants
-→ Pipeline TikTok automatisé
+UPDATE SEMAINE 3 (J+21)
+→ Trône du Roi BR (#2)
+
+UPDATE SEMAINE 4-5 (J+28 à J+35)
+→ FlowerPot Plante Carnivore (#3)
 ```
+
+---
+
+## Critères de succès par update
+
+| Update | KPI à atteindre |
+|---|---|
+| **Semaine 1** | Maintenir retention >10 min, like ratio >70% |
+| **Semaine 2** | Boost retention à >15 min, +30% Game Pass sales |
+| **Semaine 3** | Top farmer competitif visible (10+ joueurs en lutte leaderboard) |
+| **Semaine 4-5** | TikTok viral si plante carnivore filmée par 3+ créateurs |
+
+---
+
+## Notes
+
+- Toutes ces évolutions sont **conditionnées au succès du lancement**.
+- Si BrainRotFarm <500 visites/semaine après J+14 → STOP les updates,
+  pivot ou abandon (cf STRATEGY.md règle d'abandon).
+- Si BrainRotFarm >5k visites/mois → ces updates sont prioritaires
+  pour scaler ce qui marche.

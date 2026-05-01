@@ -174,6 +174,7 @@ local function retirerOutil(player, name)
     if t then t:Destroy() end
 end
 
+
 -- ── Payload shop envoyé au client ─────────────────────────────────────────────
 local function makePayload(player)
     local data = ShopSystem.GetData(player)
@@ -181,12 +182,12 @@ local function makePayload(player)
     return {
         upgrades         = data.shopUpgrades or { carry = 0, speed = 0, jump = 0 },
         coins            = (data.coins or 0),
-        hasBat              = data.hasBat              or false,
-        batEquipped         = data.batEquipped         or false,
-        hasGoldSlap         = data.hasGoldSlap         or false,
-        goldSlapEquipped    = data.goldSlapEquipped    or false,
         hasSpeedCoil        = data.hasSpeedCoil        or false,
         speedCoilEquipped   = data.speedCoilEquipped   or false,
+        hasGravityCoil      = data.hasGravityCoil      or false,
+        gravityCoilEquipped = data.gravityCoilEquipped or false,
+        hasCape             = data.hasCape             or false,
+        capeEquipped        = data.capeEquipped        or false,
     }
 end
 
@@ -313,72 +314,6 @@ local function traiterAchat(player, upgradeType, amount)
         if not inTowerNow then msg = msg .. " (entre dans une tour pour l'activer)" end
         return true, msg
 
-    -- ── BAT ACHAT ──
-    elseif upgradeType == "Bat_Buy" then
-        if data.hasBat then
-            return false, "Vous possédez déjà la Bat !"
-        end
-        local prix = ShopConfig.Bat.Price
-        if coins < prix then
-            return false, "Pas assez de pièces (" .. prix .. " requis)"
-        end
-        data.coins       = coins - prix
-        data.hasBat      = true
-        data.batEquipped = true
-        ShopSystem.SetData(player, data)
-        ShopSystem.UpdateHUD(player)
-        donnerOutil(player, "Bat")
-        Logger.info("Shop", "%s a acheté la Bat (équipée)", player.Name)
-        return true, "Bat achetée et équipée !"
-
-    -- ── BAT ÉQUIPER ──
-    elseif upgradeType == "Bat_Equip" then
-        if not data.hasBat then return false, "Vous n'avez pas la Bat !" end
-        if data.batEquipped then return false, "La Bat est déjà équipée." end
-        data.batEquipped = true
-        ShopSystem.SetData(player, data)
-        donnerOutil(player, "Bat")
-        return true, "Bat équipée !"
-
-    -- ── BAT DÉSÉQUIPER ──
-    elseif upgradeType == "Bat_Unequip" then
-        data.batEquipped = false
-        ShopSystem.SetData(player, data)
-        retirerOutil(player, "Bat")
-        return true, "Bat déséquipée."
-
-    -- ── GOLDSLAP ACHAT ──
-    elseif upgradeType == "GoldSlap_Buy" then
-        if data.hasGoldSlap then return false, "Vous possédez déjà le GoldSlap !" end
-        local prix = ShopConfig.GoldSlap.Price
-        if coins < prix then
-            return false, "Pas assez de pièces (" .. ShopConfig.FormatNumber(prix) .. " requis)"
-        end
-        data.coins            = coins - prix
-        data.hasGoldSlap      = true
-        data.goldSlapEquipped = true
-        ShopSystem.SetData(player, data)
-        ShopSystem.UpdateHUD(player)
-        donnerOutil(player, "GoldSlap")
-        Logger.info("Shop", "%s a acheté le GoldSlap (équipé)", player.Name)
-        return true, "GoldSlap acheté et équipé !"
-
-    -- ── GOLDSLAP ÉQUIPER ──
-    elseif upgradeType == "GoldSlap_Equip" then
-        if not data.hasGoldSlap then return false, "Vous n'avez pas le GoldSlap !" end
-        if data.goldSlapEquipped then return false, "Le GoldSlap est déjà équipé." end
-        data.goldSlapEquipped = true
-        ShopSystem.SetData(player, data)
-        donnerOutil(player, "GoldSlap")
-        return true, "GoldSlap équipé !"
-
-    -- ── GOLDSLAP DÉSÉQUIPER ──
-    elseif upgradeType == "GoldSlap_Unequip" then
-        data.goldSlapEquipped = false
-        ShopSystem.SetData(player, data)
-        retirerOutil(player, "GoldSlap")
-        return true, "GoldSlap déséquipé."
-
     -- ── SPEEDCOIL ACHAT ──
     elseif upgradeType == "SpeedCoil_Buy" then
         if data.hasSpeedCoil then return false, "Vous possédez déjà le SpeedCoil !" end
@@ -410,6 +345,70 @@ local function traiterAchat(player, upgradeType, amount)
         ShopSystem.SetData(player, data)
         retirerOutil(player, "SpeedCoil")
         return true, "SpeedCoil déséquipé."
+
+    -- ── GRAVITYCOIL ACHAT ──
+    elseif upgradeType == "GravityCoil_Buy" then
+        if data.hasGravityCoil then return false, "Vous possédez déjà le GravityCoil !" end
+        local prix = ShopConfig.GravityCoil.Price
+        if coins < prix then
+            return false, "Pas assez de pièces (" .. ShopConfig.FormatNumber(prix) .. " requis)"
+        end
+        data.coins              = coins - prix
+        data.hasGravityCoil     = true
+        data.gravityCoilEquipped = true
+        ShopSystem.SetData(player, data)
+        ShopSystem.UpdateHUD(player)
+        donnerOutil(player, "GravityCoil")
+        Logger.info("Shop", "%s a acheté le GravityCoil (équipé)", player.Name)
+        return true, "GravityCoil acheté et équipé !"
+
+    -- ── GRAVITYCOIL ÉQUIPER ──
+    elseif upgradeType == "GravityCoil_Equip" then
+        if not data.hasGravityCoil then return false, "Vous n'avez pas le GravityCoil !" end
+        if data.gravityCoilEquipped then return false, "Le GravityCoil est déjà équipé." end
+        data.gravityCoilEquipped = true
+        ShopSystem.SetData(player, data)
+        donnerOutil(player, "GravityCoil")
+        return true, "GravityCoil équipé !"
+
+    -- ── GRAVITYCOIL DÉSÉQUIPER ──
+    elseif upgradeType == "GravityCoil_Unequip" then
+        data.gravityCoilEquipped = false
+        ShopSystem.SetData(player, data)
+        retirerOutil(player, "GravityCoil")
+        return true, "GravityCoil déséquipé."
+
+    -- ── CAPE ACHAT ──
+    elseif upgradeType == "Cape_Buy" then
+        if data.hasCape then return false, "Vous possedez deja la Cape !" end
+        local prix = ShopConfig.Cape.Price
+        if coins < prix then
+            return false, "Pas assez de pieces (" .. ShopConfig.FormatNumber(prix) .. " requis)"
+        end
+        data.coins        = coins - prix
+        data.hasCape      = true
+        data.capeEquipped = true
+        ShopSystem.SetData(player, data)
+        ShopSystem.UpdateHUD(player)
+        donnerOutil(player, "Cape")
+        Logger.info("Cape", "%s a achete la Cape (equipee)", player.Name)
+        return true, "Cape achetee et equipee !"
+
+    -- ── CAPE EQUIPER ──
+    elseif upgradeType == "Cape_Equip" then
+        if not data.hasCape then return false, "Vous n'avez pas la Cape !" end
+        if data.capeEquipped then return false, "La Cape est deja equipee." end
+        data.capeEquipped = true
+        ShopSystem.SetData(player, data)
+        donnerOutil(player, "Cape")
+        return true, "Cape equipee !"
+
+    -- ── CAPE DESEQUIPER ──
+    elseif upgradeType == "Cape_Unequip" then
+        data.capeEquipped = false
+        ShopSystem.SetData(player, data)
+        retirerOutil(player, "Cape")
+        return true, "Cape desequipee."
 
     else
         return false, "Type d'upgrade inconnu : " .. tostring(upgradeType)
@@ -526,6 +525,35 @@ local function lancerBoucleJump()
     end)
 end
 
+-- ── Effets Cape ───────────────────────────────────────────────────────────────
+local CAPE_SPEED_BONUS = 8
+
+local function appliquerVisibiliteCape(character, invisible)
+    for _, desc in ipairs(character:GetDescendants()) do
+        if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
+            desc.Transparency = invisible and 1 or 0
+        end
+    end
+end
+
+local function connecterCapeEvents(player, character)
+    character.ChildAdded:Connect(function(child)
+        if child.Name ~= "Cape" or not child:IsA("Tool") then return end
+        task.wait()
+        local hum = character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = hum.WalkSpeed + CAPE_SPEED_BONUS end
+        appliquerVisibiliteCape(character, true)
+        Logger.debug("Cape", "%s a equipe la Cape (invisible)", player.Name)
+    end)
+
+    character.ChildRemoved:Connect(function(child)
+        if child.Name ~= "Cape" or not child:IsA("Tool") then return end
+        appliquerVisibiliteCape(character, false)
+        appliquerSpeed(player)
+        Logger.debug("Cape", "%s a desequipe la Cape (visible)", player.Name)
+    end)
+end
+
 -- ── Init ──────────────────────────────────────────────────────────────────────
 function ShopSystem.Init()
     ShopOpen     = creerRemoteEvent("ShopOpen")
@@ -542,10 +570,13 @@ function ShopSystem.Init()
         -- Re-donner les outils équipés au respawn
         local data = ShopSystem.GetData(player)
         if data then
-            if data.batEquipped       then donnerOutil(player, "Bat")       end
-            if data.goldSlapEquipped  then donnerOutil(player, "GoldSlap")  end
-            if data.speedCoilEquipped then donnerOutil(player, "SpeedCoil") end
+            if data.speedCoilEquipped    then donnerOutil(player, "SpeedCoil")    end
+            if data.gravityCoilEquipped  then donnerOutil(player, "GravityCoil")  end
+            if data.capeEquipped      then donnerOutil(player, "Cape") end
         end
+        -- Connecter les effets visuels/vitesse de la cape
+        local char = player.Character
+        if char then connecterCapeEvents(player, char) end
     end
 
     Players.PlayerAdded:Connect(function(player)

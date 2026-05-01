@@ -20,6 +20,16 @@ if not deco         then Logger.warn("ToxicEvent", "Deco introuvable dans Worksp
 if not decoMutation then Logger.warn("ToxicEvent", "DecoMutation introuvable dans Workspace") end
 if not mapFolder    then Logger.warn("ToxicEvent", "Map introuvable dans Workspace")          end
 
+-- Refs plateformes TP
+local tpFolder      = Workspace:FindFirstChild("TP")
+local tpTourNormal  = tpFolder and tpFolder:FindFirstChild("TP_Tour")
+local tpVIPNormal   = tpFolder and tpFolder:FindFirstChild("TP_VIP")
+local tpEventFolder = tpFolder and tpFolder:FindFirstChild("Event")
+
+if not tpTourNormal  then Logger.warn("ToxicEvent", "TP/TP_Tour introuvable")  end
+if not tpVIPNormal   then Logger.warn("ToxicEvent", "TP/TP_VIP introuvable")   end
+if not tpEventFolder then Logger.warn("ToxicEvent", "TP/Event introuvable")    end
+
 -- Sauvegarde matériaux/couleurs originaux de la Map
 local originalMapData = {}
 
@@ -70,10 +80,13 @@ toxicFlag.Name        = "ToxicEventActif"
 toxicFlag.Value       = false
 toxicFlag.Parent      = ServerStorage
 
--- DecoMutation invisible par défaut au démarrage
+-- DecoMutation et TP Event invisibles par défaut au démarrage
 if decoMutation then
     hideFolder(decoMutation)
     Logger.info("ToxicEvent", "DecoMutation masqué au démarrage ✓")
+end
+if tpEventFolder then
+    hideFolder(tpEventFolder)
 end
 
 -- RemoteEvents
@@ -104,6 +117,9 @@ local function stopperToxic()
 
     showFolder(deco)
     hideFolder(decoMutation)
+    showFolder(tpTourNormal)
+    showFolder(tpVIPNormal)
+    hideFolder(tpEventFolder)
 
     if mapFolder then
         for _, desc in ipairs(mapFolder:GetDescendants()) do
@@ -132,6 +148,9 @@ local function activerToxic()
     hideFolder(deco)
     showFolder(decoMutation)
     colorierFolder(decoMutation, VERT_FLUO)
+    hideFolder(tpTourNormal)
+    hideFolder(tpVIPNormal)
+    showFolder(tpEventFolder)
 
     if mapFolder then
         for _, desc in ipairs(mapFolder:GetDescendants()) do

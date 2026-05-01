@@ -20,6 +20,16 @@ if not deco         then Logger.warn("NebulaEvent", "Deco introuvable dans Works
 if not decoMutation then Logger.warn("NebulaEvent", "DecoMutation introuvable dans Workspace") end
 if not mapFolder    then Logger.warn("NebulaEvent", "Map introuvable dans Workspace")          end
 
+-- Refs plateformes TP
+local tpFolder      = Workspace:FindFirstChild("TP")
+local tpTourNormal  = tpFolder and tpFolder:FindFirstChild("TP_Tour")
+local tpVIPNormal   = tpFolder and tpFolder:FindFirstChild("TP_VIP")
+local tpEventFolder = tpFolder and tpFolder:FindFirstChild("Event")
+
+if not tpTourNormal  then Logger.warn("NebulaEvent", "TP/TP_Tour introuvable")  end
+if not tpVIPNormal   then Logger.warn("NebulaEvent", "TP/TP_VIP introuvable")   end
+if not tpEventFolder then Logger.warn("NebulaEvent", "TP/Event introuvable")    end
+
 local originalMapData = {}
 
 local function sauvegarderMap()
@@ -63,6 +73,11 @@ local function colorierFolder(parent, couleur)
 	end
 end
 
+-- TP Event invisible par défaut au démarrage
+if tpEventFolder then
+	hideFolder(tpEventFolder)
+end
+
 -- Flag partagé (lu par BrainrotPlatformSpawner)
 local nebulaFlag       = Instance.new("BoolValue")
 nebulaFlag.Name        = "NebulaEventActif"
@@ -95,6 +110,9 @@ local function stopperNebula()
 
 	showFolder(deco)
 	hideFolder(decoMutation)
+	showFolder(tpTourNormal)
+	showFolder(tpVIPNormal)
+	hideFolder(tpEventFolder)
 
 	if mapFolder then
 		for _, desc in ipairs(mapFolder:GetDescendants()) do
@@ -123,6 +141,9 @@ local function activerNebula()
 	hideFolder(deco)
 	showFolder(decoMutation)
 	colorierFolder(decoMutation, ROSE_NEBULA)
+	hideFolder(tpTourNormal)
+	hideFolder(tpVIPNormal)
+	showFolder(tpEventFolder)
 
 	if mapFolder then
 		for _, desc in ipairs(mapFolder:GetDescendants()) do

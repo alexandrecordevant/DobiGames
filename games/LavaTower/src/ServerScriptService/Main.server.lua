@@ -66,6 +66,8 @@ DataStoreManager.Setup("LavaTowerV1", function()
         speedCoilEquipped       = false,
         hasGravityCoil          = false,
         gravityCoilEquipped     = false,
+        hasCape                 = false,
+        capeEquipped            = false,
         -- BRs portés non déposés (sauvegardés à la déconnexion, restaurés au login)
         carryPortes             = {},
         -- Shop monetisation

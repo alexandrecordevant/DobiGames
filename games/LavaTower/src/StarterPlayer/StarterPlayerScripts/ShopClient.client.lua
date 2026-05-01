@@ -362,64 +362,8 @@ local function creerBoutonRow(parent, texte, couleur, offsetX)
     return btn
 end
 
--- ROW BAT
-local batRow = creerRowObjet(1)
-batRow.Name  = "BatRow"
-creerIconeRow(batRow)
-creerNomRow(batRow, "Bat")
-
-local batPriceBtn   = creerBoutonRow(batRow, ShopConfig.FormatNumber(ShopConfig.Bat.Price), C.Succes,  -94)
-local batEquipBtn   = creerBoutonRow(batRow, "Equiper",    C.Succes,  -192)
-local batUnequipBtn = creerBoutonRow(batRow, "Desequiper", C.Danger,  -94)
-batEquipBtn.Visible   = false
-batUnequipBtn.Visible = false
-
-local function refreshBat(data)
-    local hasBat      = data.hasBat      or false
-    local batEquipped = data.batEquipped or false
-    batPriceBtn.Visible   = not hasBat
-    batEquipBtn.Visible   = hasBat
-    batUnequipBtn.Visible = hasBat
-    if hasBat then
-        batEquipBtn.BackgroundColor3   = batEquipped and C.Bordure or C.Succes
-        batUnequipBtn.BackgroundColor3 = batEquipped and C.Danger  or C.Bordure
-    end
-end
-
-batPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Bat_Buy")     end)
-batEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Bat_Equip")   end)
-batUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("Bat_Unequip") end)
-
--- ROW GOLDSLAP
-local goldSlapRow = creerRowObjet(2)
-goldSlapRow.Name  = "GoldSlapRow"
-creerIconeRow(goldSlapRow)
-creerNomRow(goldSlapRow, "GoldSlap")
-
-local goldSlapPriceBtn   = creerBoutonRow(goldSlapRow, ShopConfig.FormatNumber(ShopConfig.GoldSlap.Price), C.Succes, -94)
-local goldSlapEquipBtn   = creerBoutonRow(goldSlapRow, "Equiper",    C.Succes, -192)
-local goldSlapUnequipBtn = creerBoutonRow(goldSlapRow, "Desequiper", C.Danger, -94)
-goldSlapEquipBtn.Visible   = false
-goldSlapUnequipBtn.Visible = false
-
-local function refreshGoldSlap(data)
-    local has      = data.hasGoldSlap      or false
-    local equipped = data.goldSlapEquipped or false
-    goldSlapPriceBtn.Visible   = not has
-    goldSlapEquipBtn.Visible   = has
-    goldSlapUnequipBtn.Visible = has
-    if has then
-        goldSlapEquipBtn.BackgroundColor3   = equipped and C.Bordure or C.Succes
-        goldSlapUnequipBtn.BackgroundColor3 = equipped and C.Danger  or C.Bordure
-    end
-end
-
-goldSlapPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("GoldSlap_Buy")     end)
-goldSlapEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("GoldSlap_Equip")   end)
-goldSlapUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("GoldSlap_Unequip") end)
-
 -- ROW SPEEDCOIL
-local speedCoilRow = creerRowObjet(3)
+local speedCoilRow = creerRowObjet(1)
 speedCoilRow.Name  = "SpeedCoilRow"
 creerIconeRow(speedCoilRow)
 creerNomRow(speedCoilRow, "SpeedCoil")
@@ -445,6 +389,92 @@ end
 speedCoilPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("SpeedCoil_Buy")     end)
 speedCoilEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("SpeedCoil_Equip")   end)
 speedCoilUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("SpeedCoil_Unequip") end)
+
+-- ROW GRAVITYCOIL
+local gravityCoilRow = creerRowObjet(2)
+gravityCoilRow.Name  = "GravityCoilRow"
+creerIconeRow(gravityCoilRow)
+creerNomRow(gravityCoilRow, "GravityCoil")
+
+local gravityCoilPriceBtn   = creerBoutonRow(gravityCoilRow, ShopConfig.FormatNumber(ShopConfig.GravityCoil.Price), C.Succes, -94)
+local gravityCoilEquipBtn   = creerBoutonRow(gravityCoilRow, "Equiper",    C.Succes, -192)
+local gravityCoilUnequipBtn = creerBoutonRow(gravityCoilRow, "Desequiper", C.Danger, -94)
+gravityCoilEquipBtn.Visible   = false
+gravityCoilUnequipBtn.Visible = false
+
+local function refreshGravityCoil(data)
+    local has      = data.hasGravityCoil      or false
+    local equipped = data.gravityCoilEquipped or false
+    gravityCoilPriceBtn.Visible   = not has
+    gravityCoilEquipBtn.Visible   = has
+    gravityCoilUnequipBtn.Visible = has
+    if has then
+        gravityCoilEquipBtn.BackgroundColor3   = equipped and C.Bordure or C.Succes
+        gravityCoilUnequipBtn.BackgroundColor3 = equipped and C.Danger  or C.Bordure
+    end
+end
+
+gravityCoilPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("GravityCoil_Buy")     end)
+gravityCoilEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("GravityCoil_Equip")   end)
+gravityCoilUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("GravityCoil_Unequip") end)
+
+-- ROW VOID CAPE
+local capeRow = newInst("Frame", {
+    Name                   = "VoidCapeRow",
+    Size                   = UDim2.new(1, 0, 0, 100),
+    BackgroundColor3       = C.CardBg,
+    BackgroundTransparency = 0,
+    BorderSizePixel        = 0,
+    LayoutOrder            = 3,
+    ZIndex                 = 6,
+    Parent                 = objetsScroll,
+})
+addCorner(capeRow, 0)
+addStroke(capeRow)
+addPadding(capeRow, 10)
+
+local capeThumbnail = newInst("ImageLabel", {
+    Size             = UDim2.new(0, 80, 0, 80),
+    Position         = UDim2.new(0, 0, 0.5, -40),
+    BackgroundColor3 = Color3.fromRGB(40, 40, 40),
+    Image            = "",
+    BorderSizePixel  = 0,
+    ZIndex           = 7,
+    Parent           = capeRow,
+})
+addCorner(capeThumbnail, 4)
+
+newInst("TextLabel", {
+    Size                   = UDim2.new(0, 160, 0, 28),
+    Position               = UDim2.new(0, 90, 0.5, -14),
+    BackgroundTransparency = 1,
+    Text                   = "The Void Cape",
+    Font                   = Enum.Font.GothamBold,
+    TextSize               = 15,
+    TextScaled             = false,
+    TextXAlignment         = Enum.TextXAlignment.Left,
+    TextColor3             = C.TextPrim,
+    ZIndex                 = 7,
+    Parent                 = capeRow,
+})
+
+local capePriceBtn   = creerBoutonRow(capeRow, ShopConfig.FormatNumber(ShopConfig.Cape.Price), C.Succes,  -94)
+local capeEquipBtn   = creerBoutonRow(capeRow, "Equiper",    C.Accent,  -94)
+local capeUnequipBtn = creerBoutonRow(capeRow, "Desequiper", C.Bordure, -94)
+capeEquipBtn.Visible   = false
+capeUnequipBtn.Visible = false
+
+local function refreshCape(data)
+    local has      = data.hasCape      or false
+    local equipped = data.capeEquipped or false
+    capePriceBtn.Visible   = not has
+    capeEquipBtn.Visible   = has and not equipped
+    capeUnequipBtn.Visible = has and equipped
+end
+
+capePriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Cape_Buy")     end)
+capeEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Cape_Equip")   end)
+capeUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("Cape_Unequip") end)
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- TAB UPGRADES
@@ -673,9 +703,9 @@ local function refreshUI(data)
     for _, row in pairs(upgradeRows) do
         row.refresh(data)
     end
-    refreshBat(data)
-    refreshGoldSlap(data)
     refreshSpeedCoil(data)
+    refreshGravityCoil(data)
+    refreshCape(data)
 end
 
 -- Gestion des onglets
