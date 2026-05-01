@@ -1,8 +1,8 @@
 -- ServerScriptService/Specialized/MutantGenerator.lua
 -- DobiGames — Génère des BR Mutants depuis une graine MYTHIC/SECRET
 -- Types disponibles : GALAXY (×2) | TOXIC (×4) | RAINBOW (×6) | VOID (×8)
--- Rareté finale TOUJOURS COMMON/OG/RARE (jamais MYTHIC/SECRET)
--- SECRET seed = meilleures chances RARE | MYTHIC seed = plus souvent COMMON/OG
+-- Rareté finale TOUJOURS COMMON/RARE (jamais MYTHIC/SECRET/OG — OG réservé Admin Abuse)
+-- SECRET seed = 50/50 COMMON-RARE | MYTHIC seed = plus souvent COMMON
 -- Effets visuels via FilterManager uniquement — aucune modification directe des BR
 
 local MutantGenerator = {}
@@ -46,10 +46,10 @@ for _, mt in ipairs(_GameConfig.MutantTypes) do
     table.insert(MUTANT_NAMES, mt.Name)
 end
 
--- Poids rareté selon type de graine (jamais MYTHIC/SECRET — seulement COMMON/OG/RARE)
+-- Poids rareté selon type de graine (jamais MYTHIC/SECRET/OG — seulement COMMON/RARE)
 local POIDS_RARETE = {
-    SECRET = { COMMON = 30, OG = 40, RARE = 30 },  -- SECRET seed : meilleures chances RARE
-    MYTHIC = { COMMON = 50, OG = 35, RARE = 15 },  -- MYTHIC seed : plus souvent COMMON/OG
+    SECRET = { COMMON = 50, RARE = 50 },  -- SECRET seed : meilleures chances RARE
+    MYTHIC = { COMMON = 75, RARE = 25 },  -- MYTHIC seed : plus souvent COMMON
 }
 
 -- ============================================================
@@ -93,7 +93,7 @@ function MutantGenerator.Generate(seedRarity, mutantType)
         return nil, nil, nil
     end
 
-    -- Choisir rareté finale (COMMON/OG/RARE uniquement)
+    -- Choisir rareté finale (COMMON/RARE uniquement — OG réservé Admin Abuse)
     local poids       = POIDS_RARETE[seedRarity] or POIDS_RARETE.MYTHIC
     local finalRarity = tirerPondere(poids)
 
