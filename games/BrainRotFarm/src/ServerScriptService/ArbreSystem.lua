@@ -181,7 +181,7 @@ local function ActiverGraine(sommetPart, typeGraine, onCollect)
 
     -- Billboard "SEED READY!" — texte flottant
     local bb, label = CreerBillboard(sommetPart,
-        "🌱 " .. typeGraine .. " SEED\n✨ READY!",
+        typeGraine .. " SEED\nREADY!",
         couleur)
 
     -- Pulse du texte
@@ -261,7 +261,7 @@ local function MettreAJourCompteurs(sommetParts, secondes, texteOverride)
         local bb    = sommetPart:FindFirstChild("SeedBillboard")
         local label = bb and bb:FindFirstChild("Label")
         if label then
-            label.Text = texteOverride or ("⏳ " .. FormatTimer(secondes))
+            label.Text = texteOverride or FormatTimer(secondes)
         end
     end
 end
@@ -412,7 +412,7 @@ function ArbreSystem.Init()
 
             -- Billboard compteur initial
             CreerBillboard(sommetPart,
-                "⏳ " .. FormatTimer(arbreCfg.intervalleSecondes),
+                FormatTimer(arbreCfg.intervalleSecondes),
                 Color3.fromRGB(200, 150, 255))
 
             table.insert(arbresDonnees, {
@@ -511,7 +511,7 @@ function ArbreSystem.Init()
                         TweenInfo.new(0.5), { Brightness = 1 }):Play()
                 end
                 CreerBillboard(d.sommetPart,
-                    "⏳ " .. FormatTimer(intervalle),
+                    FormatTimer(intervalle),
                     Color3.fromRGB(200, 150, 255))
             end
         end

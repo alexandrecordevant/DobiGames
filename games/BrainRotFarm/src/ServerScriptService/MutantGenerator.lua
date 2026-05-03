@@ -158,7 +158,7 @@ function MutantGenerator.Generate(seedRarity, mutantType)
     local valeurMutant = incomeBase * multElement
     -- Stocker CashParSeconde sur le clone (lu par DropSystem et les billboards)
     pcall(function() clone:SetAttribute("CashParSeconde", valeurMutant) end)
-    local valeurTexte  = valeurMutant > 0 and ("  💰 " .. valeurMutant .. "/s") or ""
+    local valeurTexte  = valeurMutant > 0 and ("  " .. valeurMutant .. "/s") or ""
 
     -- Appliquer les effets visuels via FilterManager (seul point d'entrée autorisé)
     local FM = getFilterManager()

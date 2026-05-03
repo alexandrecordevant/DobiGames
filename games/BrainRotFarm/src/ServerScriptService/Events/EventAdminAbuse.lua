@@ -97,7 +97,7 @@ function EventAdminAbuse.OnCollect(player)
             if ev then
                 pcall(function()
                     ev:FireClient(player, "SUCCESS",
-                        string.format("⚡ QUEST %d BRs collectés! +$%d reward!", q.seuil, q.reward))
+                        string.format("QUEST %d BRs collectés! +$%d reward!", q.seuil, q.reward))
                 end)
             end
             Logger.info("Event", "AdminAbuse quête %d accomplie par %s (+%d coins)", q.seuil, player.Name, q.reward)
@@ -228,7 +228,7 @@ function EventAdminAbuse.Demarrer(config)
     questAcomplis = {}
 
     -- Notification + EventStarted (pour le client HUD)
-    notifierTous(config.message or "⚡ ADMIN ABUSE!")
+    notifierTous(config.message or "ADMIN ABUSE!")
     local es = ReplicatedStorage:FindFirstChild("EventStarted")
     if es then pcall(function() es:FireAllClients("AdminAbuse", config.duree or 2700) end) end
 
@@ -283,7 +283,7 @@ function EventAdminAbuse.Terminer()
     compteurs     = {}
     questAcomplis = {}
 
-    notifierTous("⚡ Admin Abuse ended. See you next Saturday!")
+    notifierTous("Admin Abuse ended. See you next Saturday!")
     Logger.info("Event", "■ AdminAbuse terminé")
 end
 

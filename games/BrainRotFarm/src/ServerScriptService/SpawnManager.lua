@@ -681,7 +681,7 @@ local function ajouterFeedbackBonus(racine, rareteNom)
     bb.ResetOnSpawn = false
     bb.Parent       = racine
 
-    local texte        = rareteNom == "MYTHIC" and "🌟 MYTHIC!" or "💀 SECRET!"
+    local texte        = rareteNom == "MYTHIC" and "MYTHIC!" or "SECRET!"
     local couleurNotif = rareteNom == "MYTHIC"
         and Color3.fromRGB(180, 0, 255)
         or  Color3.fromRGB(255, 50,  50)

@@ -416,7 +416,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 	local cpsCommunSrc = modeleSource:GetAttribute("CashParSeconde")
 	local cpsCommunVal = cpsCommunSrc or valeurCoins
 	pcall(function() clone:SetAttribute("CashParSeconde", cpsCommunVal) end)
-	local valeurTexte = cpsCommunVal > 0 and ("  💰 " .. cpsCommunVal .. "/s") or ""
+	local valeurTexte = cpsCommunVal > 0 and ("  " .. cpsCommunVal .. "/s") or ""
 
 	-- ── Filtres rareté + Billboard via FilterManager ────────────────
 	local FM = getFilterManager()
@@ -427,7 +427,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 			-- Billboard flottant au-dessus du BR
 			{ Name = "Billboard", Params = {
 				Text    = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
-				          .. valeurTexte .. "  ⏳ " .. typeConfig.despawnSecondes .. "s",
+				          .. valeurTexte .. "  " .. typeConfig.despawnSecondes .. "s",
 				Color   = typeConfig.couleur,
 				OffsetY = 10,
 				Taille  = UDim2.new(0, 260, 0, 70),
@@ -451,7 +451,7 @@ local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFi
 			if not labelBB then return end
 			-- Mise à jour texte + couleur urgence
 			labelBB.Text = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
-			               .. valeurTexte .. "  ⏳ " .. restant .. "s"
+			               .. valeurTexte .. "  " .. restant .. "s"
 			if restant <= 10 then
 				labelBB.TextColor3 = Color3.new(1, 0.2, 0.2) -- rouge urgent
 			end
@@ -601,7 +601,7 @@ local function lancerScheduler(typeNom)
 			if collecte and playerCollecte then
 				-- Notif victoire
 				notifierTous("RARE", string.format(
-					"🏆 %s grabbed the %s [%s]!",
+					"%s grabbed the %s [%s]!",
 					playerCollecte.Name, nomModele, typeNom
 				))
 

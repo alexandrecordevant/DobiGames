@@ -860,12 +860,12 @@ DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
     if prixCoins > 0 then
         if data.coins < prixCoins then
             NotifEvent:FireClient(player, "ERROR",
-                "❌ Not enough coins! You need " .. prixCoins .. " 💰")
+                "Not enough coins! You need " .. prixCoins)
             return
         end
         data.coins = data.coins - prixCoins
         data.pots[potIndex].debloque = true
-        NotifEvent:FireClient(player, "SUCCESS", "✅ FlowerPot " .. potIndex .. " unlocked!")
+        NotifEvent:FireClient(player, "SUCCESS", "FlowerPot " .. potIndex .. " unlocked!")
         EnvoyerHUD(player, data)
         local baseIndex = AssignationSystem.GetBaseIndex(player)
         if baseIndex then InitialiserPots(player, baseIndex, data) end
@@ -912,7 +912,7 @@ InstantGrowPot.OnServerEvent:Connect(function(player, potIndex)
         end
     else
         -- DevProduct → géré dans MonetizationHandler via ProcessReceipt
-        NotifEvent:FireClient(player, "INFO", "⚡ Instant Grow requires a Robux purchase.")
+        NotifEvent:FireClient(player, "INFO", "Instant Grow requires a Robux purchase.")
     end
 end)
 
@@ -1003,7 +1003,7 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     if not data or not data.dailySeed then return end
 
     if not data.dailySeed.graineDispo then
-        NotifEvent:FireClient(player, "INFO", "⏳ Daily Seed not available yet!")
+        NotifEvent:FireClient(player, "INFO", "Daily Seed not available yet!")
         return
     end
 
@@ -1142,7 +1142,7 @@ CollectAllEvent.OnServerEvent:Connect(function(player)
             else
                 affichage = tostring(math.floor(totalCollecte))
             end
-            NotifEvent:FireClient(player, "SUCCESS", "💰 +" .. affichage .. " coins collected!")
+            NotifEvent:FireClient(player, "SUCCESS", "+" .. affichage .. " coins collected!")
             EnvoyerHUD(player, data)
         end
     end
@@ -1455,7 +1455,7 @@ do
 
         SeedInventory.NotifyClient(player, data)
         CarrySystem.EnvoyerCarryUpdate(player)
-        NotifEvent:FireClient(player, "SUCCESS", "🌈 Early Bird! Free " .. rarity .. " Seed!")
+        NotifEvent:FireClient(player, "SUCCESS", "Early Bird! Free " .. rarity .. " Seed!")
         Logger.info("Event", "AdminAbuse early bird : graine %s → %s", rarity, player.Name)
     end
 
