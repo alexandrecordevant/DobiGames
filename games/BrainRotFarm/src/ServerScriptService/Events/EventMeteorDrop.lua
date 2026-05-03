@@ -41,6 +41,7 @@ local meteorActifsCount = 0
 local meteorsParts      = {}  -- liste des Parts météores en vol (pour nettoyage)
 local materiauOriginel  = {}  -- { [Part] = Enum.Material } pour restauration
 local savedLighting     = {}  -- snapshot Lighting avant l'event
+local savedChampignons  = {}  -- { [BasePart] = { saColor, material } }
 
 -- ============================================================
 -- Utilitaires
@@ -117,13 +118,13 @@ local function assombrirCiel()
     local info = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     pcall(function()
         TweenService:Create(Lighting, info, {
-            Brightness        = 1.2,
-            Ambient           = Color3.fromRGB(120, 10, 0),
-            OutdoorAmbient    = Color3.fromRGB(100, 8, 0),
-            FogEnd            = 1200,
-            FogColor          = Color3.fromRGB(100, 10, 0),
-            ColorShift_Top    = Color3.fromRGB(255, 0, 0),
-            ColorShift_Bottom = Color3.fromRGB(200, 0, 0),
+            Brightness        = 2.0,
+            Ambient           = Color3.fromRGB(180, 60, 30),
+            OutdoorAmbient    = Color3.fromRGB(160, 50, 20),
+            FogEnd            = 1400,
+            FogColor          = Color3.fromRGB(140, 40, 20),
+            ColorShift_Top    = Color3.fromRGB(255, 80, 40),
+            ColorShift_Bottom = Color3.fromRGB(220, 60, 20),
         }):Play()
     end)
 
@@ -132,10 +133,10 @@ local function assombrirCiel()
     if cc then cc:Destroy() end
     local correction = Instance.new("ColorCorrectionEffect")
     correction.Name       = "MeteorColorCorrection"
-    correction.TintColor  = Color3.fromRGB(255, 80, 80)
-    correction.Brightness = 0
-    correction.Contrast   = 0.1
-    correction.Saturation = 0.3
+    correction.TintColor  = Color3.fromRGB(255, 120, 100)
+    correction.Brightness = 0.05
+    correction.Contrast   = 0.05
+    correction.Saturation = 0.1
     correction.Parent     = Lighting
 end
 
@@ -169,19 +170,53 @@ local function appliquerMateriauMap()
     if not map then return end
     for _, obj in ipairs(map:GetDescendants()) do
         if obj:IsA("BasePart") then
-            materiauOriginel[obj] = obj.Material
-            obj.Material = Enum.Material.CrackedLava
+            materiauOriginel[obj] = { Material = obj.Material, Color = obj.Color }
+            obj.Material = Enum.Material.Granite
+            obj.Color    = Color3.fromRGB(180, 55, 15)
         end
     end
 end
 
 local function restaurerMateriauMap()
-    for part, mat in pairs(materiauOriginel) do
+    for part, saved in pairs(materiauOriginel) do
         if part and part.Parent then
-            pcall(function() part.Material = mat end)
+            pcall(function()
+                part.Material = saved.Material
+                part.Color    = saved.Color
+            end)
         end
     end
     materiauOriginel = {}
+end
+
+-- ============================================================
+-- Champignons : neon orange-rouge (météore)
+-- ============================================================
+local function appliquerChampignons()
+    savedChampignons = {}
+    local deco = Workspace:FindFirstChild("Deco")
+    if not deco then return end
+    for _, obj in ipairs(deco:GetChildren()) do
+        if obj.Name == "Meshes/Mushroom" and obj:IsA("BasePart") then
+            local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+            savedChampignons[obj] = { saColor = sa and sa.Color or nil, material = obj.Material }
+            obj.Material = Enum.Material.SmoothPlastic
+            if sa then sa.Color = Color3.fromRGB(10, 10, 10) end
+        end
+    end
+end
+
+local function restaurerChampignons()
+    for obj, saved in pairs(savedChampignons) do
+        if obj and obj.Parent then
+            pcall(function()
+                obj.Material = saved.material
+                local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+                if sa and saved.saColor then sa.Color = saved.saColor end
+            end)
+        end
+    end
+    savedChampignons = {}
 end
 
 -- ============================================================
@@ -346,6 +381,7 @@ function EventMeteorDrop.Demarrer(config)
 
     assombrirCiel()
     appliquerMateriauMap()
+    appliquerChampignons()
 
     -- Notifier + EventStarted
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
@@ -375,6 +411,7 @@ function EventMeteorDrop.Terminer()
     meteorActifsCount = 0
 
     restaurerMateriauMap()
+    restaurerChampignons()
     restaurerCiel()
 
 end

@@ -83,6 +83,7 @@ GameConfig.AdminAbuseHebdo = {
 -- Modifier cette liste pour ajouter/retirer des events selon le jeu.
 GameConfig.EventTypes = {"NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
 
+
 -- === RARETÉS ===
 GameConfig.Raretes = {
     { nom = "Common",    chance = 60,  valeur = 1,   couleur = Color3.fromRGB(200, 200, 200) },
@@ -295,22 +296,22 @@ GameConfig.EventsVisuels = {
     NightMode = {
         duree                = 90,
         -- Lighting nuit
-        brightnessMin        = 0.3,
+        brightnessMin        = 0.7,
         clockTimeNuit        = 0,    -- 0 = minuit, 14 = 14h00
-        ambientNuit          = Color3.fromRGB(40, 40, 80),
-        outdoorAmbientNuit   = Color3.fromRGB(20, 20, 60),
-        fogEndNuit           = 500,
-        fogColorNuit         = Color3.fromRGB(20, 20, 50),
-        envDiffuseNuit       = 0.2,
-        envSpecNuit          = 0.2,
+        ambientNuit          = Color3.fromRGB(65, 65, 110),
+        outdoorAmbientNuit   = Color3.fromRGB(45, 45, 90),
+        fogEndNuit           = 800,
+        fogColorNuit         = Color3.fromRGB(30, 30, 70),
+        envDiffuseNuit       = 0.4,
+        envSpecNuit          = 0.4,
         -- Ciel étoilé (0–3000)
         starCount            = 3000,
         -- Son ambiant nuit : remplir après import dans Studio
         -- Exemples gratuits Roblox : 507846804 (vent), 1843643716 (nuit)
         soundIdNuit          = 1843643716,
         -- Messages
-        message              = "🌙 NIGHT MODE! Brain Rots glow in the dark!",
-        messageFin           = "☀️ Day breaks... until the next event!",
+        message              = "NIGHT MODE! Brain Rots glow in the dark!",
+        messageFin           = "Day breaks... until the next event!",
     },
 
     MeteorDrop = {
@@ -321,9 +322,9 @@ GameConfig.EventsVisuels = {
         rayonImpact     = 15,
         intervalleSpawn = 12,
         raretesMeteore  = { "LEGENDARY", "MYTHIC", "SECRET" },
-        message         = "☄️ METEOR DROP! Meteors are crashing into the Common Field!",
-        messageImpact   = "💥 Impact! A rare Brain Rot has appeared!",
-        messageFin      = "☄️ The meteors have stopped falling.",
+        message         = "METEOR DROP! Meteors are crashing into the Common Field!",
+        messageImpact   = "Impact! A rare Brain Rot has appeared!",
+        messageFin      = "The meteors have stopped falling.",
     },
 
     Rain = {
@@ -333,8 +334,8 @@ GameConfig.EventsVisuels = {
         tailleNuage     = Vector3.new(20, 5, 20),
         spawnMultiplier = 3,
         particleRate    = 50,
-        message         = "🌧️ RAIN EVENT! Rain boosts the Common Field ×3!",
-        messageFin      = "☀️ The rain stops... the field stays fertilized!",
+        message         = "RAIN EVENT! Rain boosts the Common Field x3!",
+        messageFin      = "The rain stops... the field stays fertilized!",
         -- Système météo (RainWeatherSystem)
         brightnessRain       = 0.65,
         fogEndRain           = 1400,
@@ -363,8 +364,8 @@ GameConfig.EventsVisuels = {
         multiplicateur = 5,
         couleurGolden  = Color3.fromRGB(255, 215, 0),
         ambientGolden  = Color3.fromRGB(255, 200, 50),
-        message        = "✨ GOLDEN EVENT! All earnings ×5 for 60s!",
-        messageFin     = "✨ The Golden Event is over. See you soon!",
+        message        = "GOLDEN EVENT! All earnings x5 for 60s!",
+        messageFin     = "The Golden Event is over. See you soon!",
     },
 
     LuckyHour = {
@@ -372,8 +373,8 @@ GameConfig.EventsVisuels = {
         rarityPool      = { RARE = 60, EPIC = 35, LEGENDARY = 5 },
         spawnInterval   = 10,
         couleurAmbiance = Color3.fromRGB(255, 180, 220),
-        message         = "⭐ LUCKY HOUR! Rare BRs are spawning on your base!",
-        messageFin      = "⭐ Lucky Hour is over.",
+        message         = "LUCKY HOUR! Rare BRs are spawning on your base!",
+        messageFin      = "Lucky Hour is over.",
     },
 
     AdminAbuse = {
@@ -388,8 +389,8 @@ GameConfig.EventsVisuels = {
             { seuil = 100, reward = 20000 },
         },
         earlyBirdRarity = "MYTHIC",
-        message    = "⚡ ADMIN ABUSE! Spawn ×50 · Gains ×5 · 45 min!",
-        messageFin = "⚡ Admin Abuse ended. See you next Saturday!",
+        message    = "ADMIN ABUSE! Spawn x50 · Gains x5 · 45 min!",
+        messageFin = "Admin Abuse ended. See you next Saturday!",
 
         -- Pool de spawn dédiée (remplace le champ perso normal)
         spawnPool = {

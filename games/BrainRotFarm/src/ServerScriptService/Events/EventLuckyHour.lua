@@ -42,6 +42,7 @@ local spawnThread     = nil
 local colorCorrection = nil
 local savedLighting   = {}
 local savedMap        = {}   -- { [BasePart] = { Material, Color } }
+local savedDeco       = {}   -- { [BasePart] = { saColor, material, light } }
 
 -- ============================================================
 -- Utilitaires
@@ -132,6 +133,44 @@ local function restaurerCiel()
             ColorShift_Bottom = savedLighting.ColorShift_Bottom or Color3.new(0, 0, 0),
         }):Play()
     end)
+end
+
+-- ============================================================
+-- Champignons roses
+-- ============================================================
+local function appliquerChampignons()
+    savedDeco = {}
+    local deco = Workspace:FindFirstChild("Deco")
+    if not deco then return end
+    for _, obj in ipairs(deco:GetChildren()) do
+        if obj.Name == "Meshes/Mushroom" and obj:IsA("BasePart") then
+            local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+            local light = Instance.new("PointLight")
+            light.Brightness = 4
+            light.Range      = 20
+            light.Color      = Color3.fromRGB(255, 0, 180)
+            light.Parent     = obj
+            savedDeco[obj] = { saColor = sa and sa.Color or nil, material = obj.Material, light = light }
+            obj.Material = Enum.Material.Neon
+            if sa then sa.Color = Color3.fromRGB(255, 0, 200) end
+        end
+    end
+end
+
+local function restaurerChampignons()
+    for obj, saved in pairs(savedDeco) do
+        if obj and obj.Parent then
+            pcall(function()
+                obj.Material = saved.material
+                local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+                if sa and saved.saColor then sa.Color = saved.saColor end
+            end)
+        end
+        if saved.light and saved.light.Parent then
+            pcall(function() saved.light:Destroy() end)
+        end
+    end
+    savedDeco = {}
 end
 
 -- ============================================================
@@ -230,9 +269,10 @@ function EventLuckyHour.Demarrer(config)
     local es = ReplicatedStorage:FindFirstChild("EventStarted")
     if es then pcall(function() es:FireAllClients("LuckyHour", config.duree) end) end
 
-    -- Sol + ciel + ambiance
+    -- Sol + ciel + ambiance + champignons
     appliquerSol()
     appliquerCiel()
+    appliquerChampignons()
     activerAmbiance(config.couleurAmbiance or Color3.fromRGB(180, 0, 255))
 
     -- Lancer la boucle de spawn
@@ -264,9 +304,10 @@ function EventLuckyHour.Terminer()
         spawnThread = nil
     end
 
-    -- Restaurer sol + ciel + ambiance
+    -- Restaurer sol + ciel + ambiance + champignons
     restaurerSol()
     restaurerCiel()
+    restaurerChampignons()
     desactiverAmbiance()
 
     Logger.info("Event", "■ Lucky Hour terminé")

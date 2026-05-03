@@ -59,9 +59,10 @@ end
 -- ============================================================
 -- État interne
 -- ============================================================
-local movingClouds = nil
-local rainEffects  = {}   -- grille de tuiles Rain
-local floodLevel   = nil
+local movingClouds     = nil
+local rainEffects      = {}   -- grille de tuiles Rain
+local floodLevel       = nil
+local savedChampignons = {}   -- { [BasePart] = { saColor, material } }
 
 -- ============================================================
 -- Utilitaires
@@ -206,6 +207,36 @@ local function retirerFloodLevel()
 end
 
 -- ============================================================
+-- Champignons : neon cyan (pluie)
+-- ============================================================
+local function appliquerChampignons()
+    savedChampignons = {}
+    local deco = Workspace:FindFirstChild("Deco")
+    if not deco then return end
+    for _, obj in ipairs(deco:GetChildren()) do
+        if obj.Name == "Meshes/Mushroom" and obj:IsA("BasePart") then
+            local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+            savedChampignons[obj] = { saColor = sa and sa.Color or nil, material = obj.Material }
+            obj.Material = Enum.Material.Neon
+            if sa then sa.Color = Color3.fromRGB(0, 220, 255) end
+        end
+    end
+end
+
+local function restaurerChampignons()
+    for obj, saved in pairs(savedChampignons) do
+        if obj and obj.Parent then
+            pcall(function()
+                obj.Material = saved.material
+                local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+                if sa and saved.saColor then sa.Color = saved.saColor end
+            end)
+        end
+    end
+    savedChampignons = {}
+end
+
+-- ============================================================
 -- API
 -- ============================================================
 
@@ -218,6 +249,7 @@ function EventRain.Demarrer(config)
     activerMovingClouds()
     activerRainEffect()
     activerFloodLevel()
+    appliquerChampignons()
 
     -- Booster le spawn du ChampCommun
     local CCS = getCCS()
@@ -238,6 +270,7 @@ function EventRain.Terminer()
     retirerMovingClouds()
     retirerRainEffect()
     retirerFloodLevel()
+    restaurerChampignons()
 
     local CCS = getCCS()
     if CCS and CCS.SetMultiplier then

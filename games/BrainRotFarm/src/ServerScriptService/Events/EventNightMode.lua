@@ -48,6 +48,7 @@ local pulseTasks       = {}
 local savedLights      = {}
 local createdLights    = {}
 local materiauOriginel = {}   -- { [BasePart] = Enum.Material } pour restauration Map
+local savedChampignons = {}   -- { [BasePart] = { saColor, material, light } }
 
 -- ============================================================
 -- Utilitaires
@@ -199,6 +200,48 @@ local function restaurerMateriauMap()
 end
 
 -- ============================================================
+-- Champignons-lampes
+-- ============================================================
+local function appliquerChampignons()
+    savedChampignons = {}
+    local deco = Workspace:FindFirstChild("Deco")
+    if not deco then return end
+    for _, obj in ipairs(deco:GetChildren()) do
+        if obj.Name == "Meshes/Mushroom" and obj:IsA("BasePart") then
+            local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+            local light = Instance.new("PointLight")
+            light.Brightness = 3
+            light.Range      = 22
+            light.Color      = Color3.fromRGB(255, 200, 120)
+            light.Parent     = obj
+            savedChampignons[obj] = {
+                saColor  = sa and sa.Color or nil,
+                material = obj.Material,
+                light    = light,
+            }
+            obj.Material = Enum.Material.Neon
+            if sa then sa.Color = Color3.fromRGB(255, 230, 160) end
+        end
+    end
+end
+
+local function restaurerChampignons()
+    for obj, saved in pairs(savedChampignons) do
+        if obj and obj.Parent then
+            pcall(function()
+                obj.Material = saved.material
+                local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
+                if sa and saved.saColor then sa.Color = saved.saColor end
+            end)
+        end
+        if saved.light and saved.light.Parent then
+            pcall(function() saved.light:Destroy() end)
+        end
+    end
+    savedChampignons = {}
+end
+
+-- ============================================================
 -- Pulsation des PointLights des BR EPIC+
 -- ============================================================
 local function lancerPulsation(light, brightnessBase)
@@ -316,11 +359,11 @@ function EventNightMode.Demarrer(config)
         local infoAtmoNuit = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         pcall(function()
             TweenService:Create(atmo, infoAtmoNuit, {
-                Density = config.atmoDensiteNuit or 0.6,
+                Density = config.atmoDensiteNuit or 0.15,
                 Color   = config.atmoColorNuit   or Color3.fromRGB(20, 20, 50),
                 Decay   = config.atmoDecayNuit   or Color3.fromRGB(0, 0, 30),
                 Glare   = config.atmoGlareNuit   or 0,
-                Haze    = config.atmoHazeNuit    or 3,
+                Haze    = config.atmoHazeNuit    or 0.3,
             }):Play()
         end)
     end
@@ -346,6 +389,7 @@ function EventNightMode.Demarrer(config)
 
     -- Matériau Map → Limestone
     appliquerMateriauMap()
+    appliquerChampignons()
 
     -- NightSkySystem : tracking état + sync joueurs qui rejoignent
     NightSkySystem.Demarrer(config.duree or EventNightMode.DUREE_DEFAUT, syncNouveauJoueur)
@@ -356,6 +400,7 @@ function EventNightMode.Terminer()
     stopperPulsations()
     restaurerEtoiles()
     restaurerMateriauMap()
+    restaurerChampignons()
     restaurerLighting()
 
     -- Signal fin aux clients (arrêt son + cleanup)
