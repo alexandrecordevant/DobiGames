@@ -235,10 +235,12 @@ local NOMS_DOSSIERS_MUTATION = {
     DIAMANT = "BrainrotsDiamant",
     RAINBOW = "BrainrotsRainbow",
 }
+local NOM_DOSSIER_NEBULA = "BrainrotsNebula"
 
 -- Retourne le dossier rareté dans Mutation/[type]/[rarity], ou nil si inexistant.
 -- mutation = "GOLD"|"DIAMANT"|"RAINBOW"|nil, isToxic = bool, rarity = "COMMON"|"RARE"|…
-local function getDossierMutation(mutation, isToxic, rarity)
+-- isNebula = bool (brainrots du dossier BrainrotsNebula)
+local function getDossierMutation(mutation, isToxic, rarity, isNebula)
     local mutRoot = ReplicatedStorage:FindFirstChild("Mutation")
     if not mutRoot then return nil end
     local nomDossier
@@ -246,6 +248,8 @@ local function getDossierMutation(mutation, isToxic, rarity)
         nomDossier = NOMS_DOSSIERS_MUTATION[mutation]
     elseif isToxic then
         nomDossier = "BrainrotsToxic"
+    elseif isNebula then
+        nomDossier = NOM_DOSSIER_NEBULA
     end
     if not nomDossier then return nil end
     local mutDossier = mutRoot:FindFirstChild(nomDossier)
@@ -650,6 +654,7 @@ local function restaurerDepots(player, playerData)
             -- Sera complété via fallback modèle source si 0/nil (anciens saves ou BR sans attribut)
             local valeur   = (info.valeurSec and info.valeurSec > 0) and info.valeurSec or nil
             local isMutant = info.isMutant == true
+            local isNebula = info.isNebula == true
 
             -- Tenter de restaurer le modèle exact via brNom (mutants inclus)
             local modeleSource = nil
@@ -670,7 +675,7 @@ local function restaurerDepots(player, playerData)
                         end
                     end
                 end
-                local d = getDossierMutation(info.mutation, info.isToxic, info.rarete)
+                local d = getDossierMutation(info.mutation, info.isToxic, info.rarete, isNebula)
                 if d then return d end
                 local brainrots = getBrainrotsFolder()
                 return brainrots and (
@@ -688,6 +693,7 @@ local function restaurerDepots(player, playerData)
                         -- Garantir les attributs mutation pour le watcher DescendantAdded
                         if info.mutation then modeleSource:SetAttribute("Mutation", info.mutation) end
                         if info.isToxic  then modeleSource:SetAttribute("IsToxic",  true)         end
+                        if isNebula      then modeleSource:SetAttribute("IsNebula", true)          end
                         if info.isMutatedLucky then
                             modeleSource:SetAttribute("IsMutated", true)
                             if info.mutationTypeLucky then modeleSource:SetAttribute("MutationType", info.mutationTypeLucky) end
@@ -707,6 +713,7 @@ local function restaurerDepots(player, playerData)
                             modeleSource = modeles[1]:Clone()
                             if info.mutation then modeleSource:SetAttribute("Mutation", info.mutation) end
                             if info.isToxic  then modeleSource:SetAttribute("IsToxic",  true)         end
+                            if isNebula      then modeleSource:SetAttribute("IsNebula", true)          end
                             if info.isMutatedLucky then
                                 modeleSource:SetAttribute("IsMutated", true)
                                 if info.mutationTypeLucky then modeleSource:SetAttribute("MutationType", info.mutationTypeLucky) end
@@ -760,6 +767,7 @@ local function restaurerDepots(player, playerData)
                         if info.mutation    then modeleSlot:SetAttribute("Mutation",   info.mutation)    end
                     end
                     if info.isToxic then modeleSlot:SetAttribute("IsToxic", true) end
+                    if isNebula     then modeleSlot:SetAttribute("IsNebula", true) end
                     if info.isMutatedLucky then
                         modeleSlot:SetAttribute("IsMutated", true)
                         if info.mutationTypeLucky then modeleSlot:SetAttribute("MutationType", info.mutationTypeLucky) end
@@ -784,6 +792,7 @@ local function restaurerDepots(player, playerData)
                 elementType       = info.elementType,
                 mutation          = info.mutation,
                 isToxic           = info.isToxic,
+                isNebula          = isNebula or nil,
                 isMutatedLucky    = info.isMutatedLucky or nil,
                 mutationTypeLucky = info.mutationTypeLucky or nil,
                 valeurSec         = valeur,
@@ -926,6 +935,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     local rarete    = entree.rarete.nom or "COMMON"
     local mutation  = entree.rarete.mutation
     local isToxic   = entree.rarete.isToxic == true
+    local isNebula  = entree.rarete.isNebula == true
 
     -- Lire le nom et les attributs du BR depuis le Tool AVANT ViderCarry (le Tool est détruit après)
     local brNomFallback     = nil
@@ -937,6 +947,10 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         cashParSeconde      = entree.toolRef:GetAttribute("CashParSeconde")
         isMutatedLucky      = entree.toolRef:GetAttribute("IsMutated") == true
         mutationTypeLucky   = entree.toolRef:GetAttribute("MutationType")
+        -- Fallback si PickupSystem n'avait pas encore le support isNebula (ancienne session)
+        if not isNebula then
+            isNebula = entree.toolRef:GetAttribute("IsNebula") == true
+        end
     end
 
     -- Retirer ce BR du carry (on utilise ViderCarry puis re-add les autres)
@@ -958,7 +972,12 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Valeur par seconde : lue depuis l'attribut CashParSeconde (Tool ou modèle déposé)
     -- Fallback sur modeleDepose si l'attribut n'était pas encore sur le Tool (spawn avant fix)
-    local isMutant  = entree.rarete.isMutant == true
+    local isMutant  = entree.rarete.isMutant == true or isNebula
+    -- Fallback isNebula depuis le modèle (ancienne session sans suivi isNebula dans rareteObj)
+    if not isNebula and modeleDepose then
+        isNebula = modeleDepose:GetAttribute("IsNebula") == true
+        if isNebula then isMutant = true end
+    end
     local valeurSec = cashParSeconde
     if (not valeurSec or valeurSec == 0) and modeleDepose then
         valeurSec = modeleDepose:GetAttribute("CashParSeconde")
@@ -986,7 +1005,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
     -- Si modeleDepose nil mais brNom connu → cloner depuis le bon dossier (mutation ou normal)
     local modeleSource = modeleDepose
     if not modeleSource and brNom then
-        local dossier = getDossierMutation(mutation, isToxic, rarete)
+        local dossier = getDossierMutation(mutation, isToxic, rarete, isNebula)
         if not dossier then
             local brainrots = getBrainrotsFolder()
             dossier = brainrots and (
@@ -1000,6 +1019,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
                 modeleSource = brSource:Clone()
                 if mutation then modeleSource:SetAttribute("Mutation", mutation) end
                 if isToxic  then modeleSource:SetAttribute("IsToxic",  true)    end
+                if isNebula then modeleSource:SetAttribute("IsNebula", true)    end
                 modeleSource.Parent = Workspace
             end)
         else
@@ -1046,6 +1066,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         elementType       = elementType,
         mutation          = mutation,
         isToxic           = isToxic or nil,
+        isNebula          = isNebula or nil,
         isMutatedLucky    = isMutatedLucky or nil,
         mutationTypeLucky = mutationTypeLucky or nil,
         valeurSec         = valeurSec,
@@ -1067,7 +1088,8 @@ function DropSystem.DeposerBrainRots(player, touchPart)
                 if elementType then modeleSlot:SetAttribute("MutantType", elementType) end
                 if mutation    then modeleSlot:SetAttribute("Mutation",   mutation)    end
             end
-            if isToxic then modeleSlot:SetAttribute("IsToxic", true) end
+            if isToxic  then modeleSlot:SetAttribute("IsToxic",  true) end
+            if isNebula then modeleSlot:SetAttribute("IsNebula", true) end
             -- Mutations LuckyHour / champ perso
             if isMutatedLucky then
                 modeleSlot:SetAttribute("IsMutated",    true)
@@ -1149,9 +1171,10 @@ function DropSystem.RecupererBrainRot(player, touchPart)
 
     -- Cloner le modèle exact via brNom — dossier mutation d'abord, fallback normal
     local modeleRestitue = nil
+    local isNebula = entree.isNebula == true
     local brNom = entree.brNom
     if brNom then
-        local dossierRarete = getDossierMutation(entree.mutation, entree.isToxic, rarete)
+        local dossierRarete = getDossierMutation(entree.mutation, entree.isToxic, rarete, isNebula)
         if not dossierRarete then
             local brainrots = getBrainrotsFolder()
             dossierRarete = brainrots and (
@@ -1164,6 +1187,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
             local function appliquerMutSurClone(c, source)
                 if entree.mutation then c:SetAttribute("Mutation", entree.mutation) end
                 if entree.isToxic  then c:SetAttribute("IsToxic",  true)            end
+                if isNebula        then c:SetAttribute("IsNebula", true)             end
                 -- Pré-multiplier le CPS (le clone vient du template → CPS de base)
                 local mutCPS3 = Config.Fuse and Config.Fuse.MutationCPS
                 local baseCPS = source:GetAttribute("CashParSeconde") or 0
@@ -1201,6 +1225,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
         isMutant = entree.isMutant,
         mutation = entree.mutation,
         isToxic  = entree.isToxic,
+        isNebula = isNebula or nil,
     }
     pcall(CarrySystem.InsererEnTeteCarry, player, modeleRestitue, rareteObj)
 
@@ -1295,6 +1320,7 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
             elementType       = entry.elementType,
             mutation          = entry.mutation,
             isToxic           = entry.isToxic,
+            isNebula          = entry.isNebula or nil,
             isMutatedLucky    = entry.isMutatedLucky or nil,
             mutationTypeLucky = entry.mutationTypeLucky or nil,
         }

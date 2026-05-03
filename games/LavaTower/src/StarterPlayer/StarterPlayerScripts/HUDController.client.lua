@@ -233,22 +233,8 @@ local function restaurerLighting()
 end
 -- ────────────────────────────────────────────────────────────────────────────
 
--- ── Bouton debug Toxic Event (haut droite) ──────────────────────────────────
+-- ── Timer Toxic Event ────────────────────────────────────────────────────────
 local toxicActif = false
-
-local toxicBtn = Instance.new("TextButton", gui)
-toxicBtn.Size                   = UDim2.new(0, 140, 0, 36)
-toxicBtn.Position               = UDim2.new(1, -150, 0, 56)
-toxicBtn.BackgroundColor3       = Color3.fromRGB(20, 80, 20)
-toxicBtn.BackgroundTransparency = 0.1
-toxicBtn.BorderSizePixel        = 0
-toxicBtn.TextColor3             = Color3.fromRGB(0, 255, 0)
-toxicBtn.TextScaled             = false
-toxicBtn.TextSize               = 13
-toxicBtn.Font                   = Enum.Font.GothamBold
-toxicBtn.Text                   = "☢ Toxic Event"
-local toxicCorner = Instance.new("UICorner", toxicBtn)
-toxicCorner.CornerRadius = UDim.new(0, 4)
 
 -- Timer toxic (bas droite, blanc)
 local toxicTimerLabel = Instance.new("TextLabel", gui)
@@ -278,20 +264,14 @@ local function stopperTimerClient()
         task.cancel(toxicTimerThread)
         toxicTimerThread = nil
     end
-    toxicTimerLabel.Visible   = false
-    toxicTimerLabel.Text      = ""
-    toxicBtn.Text             = "☢ Toxic Event"
-    toxicBtn.BackgroundColor3 = Color3.fromRGB(20, 80, 20)
-    toxicBtn.TextColor3       = Color3.fromRGB(0, 255, 0)
+    toxicTimerLabel.Visible = false
+    toxicTimerLabel.Text    = ""
     restaurerLighting()
 end
 
 local function lancerTimerClient(endTime)
-    toxicActif = true
-    toxicBtn.Text             = "⏹ Stop Toxic"
-    toxicBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-    toxicBtn.TextColor3       = Color3.fromRGB(255, 80, 80)
-    toxicTimerLabel.Visible   = true
+    toxicActif              = true
+    toxicTimerLabel.Visible = true
     activerEffetsLighting()
 
     if toxicTimerThread then task.cancel(toxicTimerThread) end
@@ -320,10 +300,6 @@ if ToxicEventState then
     end)
 end
 
-toxicBtn.Activated:Connect(function()
-    local re = ReplicatedStorage:FindFirstChild("ActivateToxicEvent")
-    if re then re:FireServer() end
-end)
 -- ────────────────────────────────────────────────────────────────────────────
 
 -- ── Effets ambiance Nebula Event ──────────────────────────────────────────────
@@ -426,20 +402,7 @@ player.CharacterAdded:Connect(function()
 end)
 -- ────────────────────────────────────────────────────────────────────────────
 
--- ── Bouton debug Nebula Event (haut droite, au-dessus de Toxic) ──────────────
-local nebulaBtn = Instance.new("TextButton", gui)
-nebulaBtn.Size                   = UDim2.new(0, 140, 0, 36)
-nebulaBtn.Position               = UDim2.new(1, -150, 0, 10)
-nebulaBtn.BackgroundColor3       = Color3.fromRGB(60, 10, 60)
-nebulaBtn.BackgroundTransparency = 0.1
-nebulaBtn.BorderSizePixel        = 0
-nebulaBtn.TextColor3             = Color3.fromRGB(255, 100, 255)
-nebulaBtn.TextScaled             = false
-nebulaBtn.TextSize               = 13
-nebulaBtn.Font                   = Enum.Font.GothamBold
-nebulaBtn.Text                   = "🌌 Nebula Event"
-local nebulaCorner = Instance.new("UICorner", nebulaBtn)
-nebulaCorner.CornerRadius = UDim.new(0, 4)
+-- ── Timer Nebula Event ────────────────────────────────────────────────────────
 
 -- Timer nebula (bas droite, au-dessus du timer toxic)
 local nebulaTimerLabel = Instance.new("TextLabel", gui)
@@ -463,21 +426,15 @@ local function stopperTimerClientNebula()
 		task.cancel(nebulaTimerThread)
 		nebulaTimerThread = nil
 	end
-	nebulaTimerLabel.Visible   = false
-	nebulaTimerLabel.Text      = ""
-	nebulaBtn.Text             = "🌌 Nebula Event"
-	nebulaBtn.BackgroundColor3 = Color3.fromRGB(60, 10, 60)
-	nebulaBtn.TextColor3       = Color3.fromRGB(255, 100, 255)
+	nebulaTimerLabel.Visible = false
+	nebulaTimerLabel.Text    = ""
 	restaurerLightingNebula()
 	retirerPhysiquesNebula()
 end
 
 local function lancerTimerClientNebula(endTime)
-	nebulaActif = true
-	nebulaBtn.Text             = "⏹ Stop Nebula"
-	nebulaBtn.BackgroundColor3 = Color3.fromRGB(80, 0, 80)
-	nebulaBtn.TextColor3       = Color3.fromRGB(255, 80, 255)
-	nebulaTimerLabel.Visible   = true
+	nebulaActif              = true
+	nebulaTimerLabel.Visible = true
 	activerEffetsLightingNebula()
 	if not player:GetAttribute("InTower") then
 		appliquerPhysiquesNebula()
@@ -507,10 +464,6 @@ if NebulaEventState then
 	end)
 end
 
-nebulaBtn.Activated:Connect(function()
-	local re = ReplicatedStorage:FindFirstChild("ActivateNebulaEvent")
-	if re then re:FireServer() end
-end)
 -- ────────────────────────────────────────────────────────────────────────────
 
 -- Notification VIP (bannière rouge haut écran)

@@ -240,6 +240,12 @@ local function creerTool(player, clone, rarete)
 		tool:SetAttribute("IsToxic", true)
 		tool:SetAttribute("IsMutant", true)
 	end
+	local isNebula = (rarete and rarete.isNebula)
+		or (clone and clone:GetAttribute("IsNebula") == true)
+	if isNebula then
+		tool:SetAttribute("IsNebula", true)
+		tool:SetAttribute("IsMutant", true)
+	end
 
 	-- Handle invisible — jamais lâché (CanBeDropped = false)
 	local handle = Instance.new("Part")

@@ -6,6 +6,7 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
+local TweenService      = game:GetService("TweenService")
 local Workspace         = game:GetService("Workspace")
 local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
@@ -164,6 +165,72 @@ local function donnerOutil(player, name)
     end
 end
 
+-- Donne la Rocket en désancrant le Handle pour que ce soit la Rocket
+-- qui vienne dans la main du joueur, et non l'inverse.
+local function donnerRocket(player)
+    local inChar     = player.Character and player.Character:FindFirstChild("Rocket")
+    local inBackpack = player.Backpack:FindFirstChild("Rocket")
+    if inChar or inBackpack then return end
+
+    local template = getTool("Rocket")
+    if not template then return end
+
+    local clone = template:Clone()
+
+    -- Supprimer les scripts du clone (évite qu'un script re-ancre le Handle)
+    for _, s in ipairs(clone:GetDescendants()) do
+        if s:IsA("Script") or s:IsA("LocalScript") or s:IsA("ModuleScript") then
+            s:Destroy()
+        end
+    end
+
+    -- Trouver le Handle
+    local handle = clone:FindFirstChild("Handle")
+    if not handle then
+        for _, v in ipairs(clone:GetDescendants()) do
+            if v:IsA("BasePart") then handle = v; break end
+        end
+    end
+
+    if handle then
+        -- Enregistrer les offsets relatifs de chaque part par rapport au Handle
+        local relCFs = {}
+        for _, v in ipairs(clone:GetDescendants()) do
+            if v:IsA("BasePart") and v ~= handle then
+                relCFs[v] = handle.CFrame:Inverse() * v.CFrame
+            end
+        end
+
+        -- Déplacer toutes les parts près du joueur pour éviter le téléport
+        local char = player.Character
+        local hrpCF = char and char:FindFirstChild("HumanoidRootPart")
+                      and char.HumanoidRootPart.CFrame or CFrame.new(0, 0, 0)
+
+        handle.CFrame       = hrpCF
+        handle.Anchored     = false
+        handle.CanCollide   = false
+        handle.Massless     = true
+
+        for v, relCF in pairs(relCFs) do
+            v.CFrame     = hrpCF * relCF
+            v.Anchored   = false
+            v.CanCollide = false
+            v.Massless   = true
+            local wc    = Instance.new("WeldConstraint")
+            wc.Part0   = handle
+            wc.Part1   = v
+            wc.Parent  = handle
+        end
+    end
+
+    -- Corriger l'orientation en main (+90° autour de Z)
+    clone.GripForward = Vector3.new(0, 0, -1)
+    clone.GripRight   = Vector3.new(0, 1, 0)
+    clone.GripUp      = Vector3.new(-1, 0, 0)
+
+    clone.Parent = player.Backpack
+end
+
 local function retirerOutil(player, name)
     local char = player.Character
     if char then
@@ -188,6 +255,8 @@ local function makePayload(player)
         gravityCoilEquipped = data.gravityCoilEquipped or false,
         hasCape             = data.hasCape             or false,
         capeEquipped        = data.capeEquipped        or false,
+        hasRocket           = data.hasRocket           or false,
+        rocketEquipped      = data.rocketEquipped      or false,
     }
 end
 
@@ -410,6 +479,38 @@ local function traiterAchat(player, upgradeType, amount)
         retirerOutil(player, "Cape")
         return true, "Cape desequipee."
 
+    -- ── ROCKET ACHAT ──
+    elseif upgradeType == "Rocket_Buy" then
+        if data.hasRocket then return false, "Vous possedez deja la Rocket !" end
+        local prix = ShopConfig.Rocket.Price
+        if coins < prix then
+            return false, "Pas assez de pieces (" .. ShopConfig.FormatNumber(prix) .. " requis)"
+        end
+        data.coins         = coins - prix
+        data.hasRocket     = true
+        data.rocketEquipped = true
+        ShopSystem.SetData(player, data)
+        ShopSystem.UpdateHUD(player)
+        donnerRocket(player)
+        Logger.info("Rocket", "%s a achete la Rocket", player.Name)
+        return true, "Rocket achetee ! Clic pour vous propulser."
+
+    -- ── ROCKET EQUIPER ──
+    elseif upgradeType == "Rocket_Equip" then
+        if not data.hasRocket then return false, "Vous n'avez pas la Rocket !" end
+        if data.rocketEquipped then return false, "La Rocket est deja equipee." end
+        data.rocketEquipped = true
+        ShopSystem.SetData(player, data)
+        donnerRocket(player)
+        return true, "Rocket equipee !"
+
+    -- ── ROCKET DESEQUIPER ──
+    elseif upgradeType == "Rocket_Unequip" then
+        data.rocketEquipped = false
+        ShopSystem.SetData(player, data)
+        retirerOutil(player, "Rocket")
+        return true, "Rocket desequipee."
+
     else
         return false, "Type d'upgrade inconnu : " .. tostring(upgradeType)
     end
@@ -526,12 +627,15 @@ local function lancerBoucleJump()
 end
 
 -- ── Effets Cape ───────────────────────────────────────────────────────────────
-local CAPE_SPEED_BONUS = 8
+local CAPE_SPEED_BONUS  = 8
+local CAPE_FADE_DURATION = 1.2
 
 local function appliquerVisibiliteCape(character, invisible)
+    local tweenInfo = TweenInfo.new(CAPE_FADE_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local goal = { Transparency = invisible and 1 or 0 }
     for _, desc in ipairs(character:GetDescendants()) do
         if desc:IsA("BasePart") and desc.Name ~= "HumanoidRootPart" then
-            desc.Transparency = invisible and 1 or 0
+            TweenService:Create(desc, tweenInfo, goal):Play()
         end
     end
 end
@@ -567,14 +671,13 @@ function ShopSystem.Init()
         playerTowerState[player.UserId] = false
         appliquerSpeed(player)
         appliquerCarry(player)
-        -- Re-donner les outils équipés au respawn
         local data = ShopSystem.GetData(player)
         if data then
             if data.speedCoilEquipped    then donnerOutil(player, "SpeedCoil")    end
             if data.gravityCoilEquipped  then donnerOutil(player, "GravityCoil")  end
-            if data.capeEquipped      then donnerOutil(player, "Cape") end
+            if data.capeEquipped         then donnerOutil(player, "Cape")         end
+            if data.rocketEquipped       then donnerRocket(player)       end
         end
-        -- Connecter les effets visuels/vitesse de la cape
         local char = player.Character
         if char then connecterCapeEvents(player, char) end
     end

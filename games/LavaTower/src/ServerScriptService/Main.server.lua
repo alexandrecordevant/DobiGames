@@ -28,6 +28,7 @@ local BoardSystem               = require(ServerScriptService.SharedLib.Server.B
 local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.AmelioCosmeticsSystem)
 local ShopSystem = require(ServerScriptService.ShopSystem)
 local ShopMonetizationSystem = require(ServerScriptService.ShopMonetizationSystem)
+local LeaderboardSystem = require(ServerScriptService.LeaderboardSystem)
 local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
     Logger.error("Main", "[FuseSystem] ERREUR require : %s", tostring(FuseSystem))
@@ -113,6 +114,7 @@ local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
 
 Logger.info("Main", "RemoteEvents créés ✓")
+LeaderboardSystem.Init()
 
 -- ═══════════════════════════════════════════════
 -- 3. DONNÉES JOUEURS

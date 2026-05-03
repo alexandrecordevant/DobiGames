@@ -2,10 +2,23 @@
 -- Gère le cycle complet (attente → ouverture → TP → lave) pour TourCommune et TourVIP.
 -- Chaque tour tourne dans sa propre coroutine indépendante via lancerCycleTour().
 
-local Players           = game:GetService("Players")
-local RunService        = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+local Players             = game:GetService("Players")
+local RunService          = game:GetService("RunService")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+local ServerStorage       = game:GetService("ServerStorage")
+local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
+
+local function isToxicActif()
+	local flag = ServerStorage:FindFirstChild("ToxicEventActif")
+	return flag ~= nil and flag.Value == true
+end
+
+local function isNebulaActif()
+	local flag = ServerStorage:FindFirstChild("NebulaEventActif")
+	return flag ~= nil and flag.Value == true
+end
+
 
 -- RemoteEvent pour notifier les non-VIP qui montent sur la plateforme
 local function getOrCreate(name)
@@ -67,7 +80,9 @@ end
 --   nomTour          : string   — préfixe pour les logs et le billboard
 --   startZone        : BasePart — pad d'entrée de la tour
 --   interiorSpawn    : BasePart — point d'arrivée du TP
---   lava             : BasePart — la part de lave
+--   lava             : BasePart — la part de lave normale
+--   toxicLava        : BasePart? — lave verte (ToxicEvent)
+--   nebulaLava       : BasePart? — lave rose (NebulaEvent)
 --   couleurAttente   : Color3   — couleur du texte pendant l'attente
 --   couleurOuverture : Color3   — couleur du texte pendant la fenêtre d'ouverture
 -- }
@@ -77,12 +92,34 @@ local function lancerCycleTour(cfg)
     local startZone     = cfg.startZone
     local interiorSpawn = cfg.interiorSpawn
     local lava          = cfg.lava
+    local toxicLava     = cfg.toxicLava
+    local nebulaLava    = cfg.nebulaLava
 
     local lavaActive    = false
     local laveConnexion = nil
     local lavaVitesse   = CONFIG.VITESSE_BASE
     local hauteurDepart = lava.Position.Y
     local joueursEnTour = {}  -- userId → true, uniquement ceux téléportés dans CETTE tour
+
+    -- Cacher les lavas d'événement par défaut
+    if toxicLava then
+        toxicLava.Transparency = 1
+        toxicLava.CanCollide   = false
+    else
+        Logger.warn("Tower", "%s ToxicLava INTROUVABLE", tag)
+    end
+    if nebulaLava then
+        nebulaLava.Transparency = 1
+        nebulaLava.CanCollide   = false
+    else
+        Logger.warn("Tower", "%s NebulaLava INTROUVABLE", tag)
+    end
+    Logger.warn("Tower", "%s Setup: toxicLava=%s nebulaLava=%s",
+        tag, tostring(toxicLava ~= nil), tostring(nebulaLava ~= nil))
+
+    -- X/Z de référence : ceux de la lave normale (les lavas d'événement s'alignent dessus)
+    local lavaX = lava.Position.X
+    local lavaZ = lava.Position.Z
 
     -- ── Billboard au-dessus de StartZone ──────────────────────────
     local billboard = Instance.new("BillboardGui")
@@ -120,30 +157,114 @@ local function lancerCycleTour(cfg)
         end)
     end
 
-    -- ── Reset lave ────────────────────────────────────────────────
+    -- ── Reset complet (fin de session lave) ───────────────────────
     local function resetLava()
         lavaActive = false
         if laveConnexion then
             laveConnexion:Disconnect()
             laveConnexion = nil
         end
-        lavaVitesse   = CONFIG.VITESSE_BASE
-        lava.Anchored = true
-        lava.CFrame = CFrame.new(lava.Position.X, hauteurDepart, lava.Position.Z)
+        lavaVitesse = CONFIG.VITESSE_BASE
+        -- Toutes les lavas : cachées EN PLACE, sans repositionnement.
+        -- Le repositionnement se fait dans demarrerLava pendant qu'elles sont
+        -- invisibles, pour éviter l'interpolation de descente visible côté client.
+        local function cacherEnPlace(p)
+            if not p then return end
+            p.Anchored     = true
+            p.Transparency = 1
+            p.CanCollide   = false
+        end
+        cacherEnPlace(lava)
+        cacherEnPlace(toxicLava)
+        cacherEnPlace(nebulaLava)
         for uid in pairs(joueursEnTour) do
             local p = Players:GetPlayerByUserId(uid)
             if p then p:SetAttribute("InTower", false) end
             joueursEnTour[uid] = nil
         end
-        Logger.debug("Tower", "%s Lave reset à Y=%d", tag, hauteurDepart)
+        Logger.debug("Tower", "%s Session lave terminée", tag)
     end
 
+    -- ── Toucher = mort (connecté pour chaque lave possible) ──────
+    local function connecterTouche(lavaPart)
+        if not lavaPart then return end
+        lavaPart.Touched:Connect(function(hit)
+            if not lavaActive then return end
+            local char   = hit.Parent
+            local player = Players:GetPlayerFromCharacter(char)
+            if not player then return end
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if not hum or hum.Health <= 0 then return end
+            Logger.info("Tower", "%s %s éliminé", tag, player.Name)
+            hum.Health = 0
+            task.delay(1, function()
+                local vivants = 0
+                for uid in pairs(joueursEnTour) do
+                    local p = Players:GetPlayerByUserId(uid)
+                    if p and p:GetAttribute("InTower") == true then
+                        local c = p.Character
+                        if c then
+                            local h = c:FindFirstChildOfClass("Humanoid")
+                            if h and h.Health > 0 then
+                                vivants += 1
+                            end
+                        end
+                    end
+                end
+                if vivants == 0 then
+                    Logger.debug("Tower", "%s Tous éliminés → Reset lave", tag)
+                    resetLava()
+                end
+            end)
+        end)
+    end
+
+    connecterTouche(lava)
+    connecterTouche(toxicLava)
+    connecterTouche(nebulaLava)
+
     -- ── Démarrer la lave ──────────────────────────────────────────
+    -- Une seule lave monte (celle de l'event si actif, sinon la normale).
+    -- Les autres sont figées, invisibles, non-collidables.
     local function demarrerLava(nbJoueurs)
         if lavaActive then return end
+
+        local toxicOn  = isToxicActif()
+        local nebulaOn = not toxicOn and isNebulaActif()
+
+        -- Sélection de la lave active
+        local part
+        if toxicOn and toxicLava then
+            part = toxicLava
+        elseif nebulaOn and nebulaLava then
+            part = nebulaLava
+        else
+            part = lava
+        end
+
+        -- Visibilité : seule la part active est visible et collidable
+        local function appliquerEtat(p, actif)
+            if not p then return end
+            p.Anchored   = true
+            p.CanCollide = actif
+            if actif then
+                -- Repositionner pendant qu'elle est encore invisible, puis afficher
+                p.CFrame       = CFrame.new(lavaX, hauteurDepart, lavaZ)
+                p.Transparency = 0
+            else
+                -- Cacher en place, sans repositionner (évite l'interpolation visible)
+                p.Transparency = 1
+            end
+        end
+        appliquerEtat(lava,       part == lava)
+        appliquerEtat(toxicLava,  part == toxicLava)
+        appliquerEtat(nebulaLava, part == nebulaLava)
+
         lavaActive  = true
         lavaVitesse = CONFIG.VITESSE_BASE
-        Logger.info("Tower", "%s Lave démarrée | %d joueur(s)", tag, nbJoueurs)
+        Logger.warn("Tower", "%s demarrerLava: part=%s | toxicOn=%s nebulaOn=%s | toxicLava=%s nebulaLava=%s",
+            tag, part.Name, tostring(toxicOn), tostring(nebulaOn),
+            tostring(toxicLava ~= nil), tostring(nebulaLava ~= nil))
 
         local tempsAccel   = 0
         local dernierTemps = os.clock()
@@ -152,79 +273,58 @@ local function lancerCycleTour(cfg)
 
         laveConnexion = RunService.Heartbeat:Connect(function()
             if not lavaActive then return end
-            local now   = os.clock()
-            local delta = now - dernierTemps
-            dernierTemps = now
+            local ok, err = pcall(function()
+                local now   = os.clock()
+                local delta = now - dernierTemps
+                dernierTemps = now
 
-            if not lavaArretee then
-                lava.Anchored = true
-                lava.CFrame = lava.CFrame + Vector3.new(0, lavaVitesse * delta, 0)
+                if not lavaArretee then
+                    part.Anchored = true
+                    part.CFrame   = part.CFrame + Vector3.new(0, lavaVitesse * delta, 0)
 
-                tempsAccel = tempsAccel + delta
-                if tempsAccel >= CONFIG.INTERVALLE_ACCEL then
-                    tempsAccel  = 0
-                    lavaVitesse = lavaVitesse + CONFIG.ACCELERATION
+                    tempsAccel += delta
+                    if tempsAccel >= CONFIG.INTERVALLE_ACCEL then
+                        tempsAccel  = 0
+                        lavaVitesse += CONFIG.ACCELERATION
+                    end
+
+                    if part.Position.Y >= hauteurDepart + CONFIG.HAUTEUR_ARRET then
+                        lavaArretee = true
+                        part.CFrame = CFrame.new(lavaX, hauteurDepart + CONFIG.HAUTEUR_ARRET, lavaZ)
+                        Logger.info("Tower", "%s Hauteur max atteinte (Y=%.0f)", tag, part.Position.Y)
+                    end
                 end
 
-                if lava.Position.Y >= hauteurDepart + CONFIG.HAUTEUR_ARRET then
-                    lavaArretee = true
-                    lava.CFrame = CFrame.new(lava.Position.X, hauteurDepart + CONFIG.HAUTEUR_ARRET, lava.Position.Z)
-                    Logger.info("Tower", "%s Hauteur max atteinte (Y=%.0f) — lave en attente d'escape", tag, lava.Position.Y)
-                end
-            end
-
-            tempsVerif = tempsVerif + delta
-            if tempsVerif >= 2 then
-                tempsVerif = 0
-                local vivants = 0
-                for uid in pairs(joueursEnTour) do
-                    local p = Players:GetPlayerByUserId(uid)
-                    local c = p and p.Character
-                    if c then
-                        local h   = c:FindFirstChildOfClass("Humanoid")
-                        local hrp = c:FindFirstChild("HumanoidRootPart")
-                        if h and h.Health > 0 and hrp and hrp.Position.Y > hauteurDepart + 5 then
-                            vivants += 1
+                -- Vérification vivants TOUJOURS exécutée (même si lavaArretee)
+                tempsVerif += delta
+                if tempsVerif >= 2 then
+                    tempsVerif = 0
+                    local vivants = 0
+                    for uid in pairs(joueursEnTour) do
+                        local p2 = Players:GetPlayerByUserId(uid)
+                        -- Un joueur compte comme vivant seulement s'il a toujours InTower=true
+                        if p2 and p2:GetAttribute("InTower") == true then
+                            local c = p2.Character
+                            if c then
+                                local h = c:FindFirstChildOfClass("Humanoid")
+                                if h and h.Health > 0 then
+                                    vivants += 1
+                                end
+                            end
                         end
                     end
-                end
-                if vivants == 0 then
-                    Logger.debug("Tower", "%s Plus personne → Reset lave", tag)
-                    resetLava()
-                end
-            end
-        end)
-    end
-
-    -- ── Lave : toucher = mort ──────────────────────────────────────
-    lava.Touched:Connect(function(hit)
-        if not lavaActive then return end
-        local char   = hit.Parent
-        local player = Players:GetPlayerFromCharacter(char)
-        if not player then return end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum or hum.Health <= 0 then return end
-        Logger.info("Tower", "%s %s éliminé", tag, player.Name)
-        hum.Health = 0
-        task.delay(1, function()
-            local vivants = 0
-            for uid in pairs(joueursEnTour) do
-                local p = Players:GetPlayerByUserId(uid)
-                local c = p and p.Character
-                if c then
-                    local h   = c:FindFirstChildOfClass("Humanoid")
-                    local hrp = c:FindFirstChild("HumanoidRootPart")
-                    if h and h.Health > 0 and hrp and hrp.Position.Y > hauteurDepart + 5 then
-                        vivants += 1
+                    if vivants == 0 then
+                        Logger.debug("Tower", "%s Plus personne → Reset lave", tag)
+                        resetLava()
                     end
                 end
-            end
-            if vivants == 0 then
-                Logger.debug("Tower", "%s Tous éliminés → Reset lave", tag)
+            end)
+            if not ok then
+                Logger.warn("Tower", "%s Erreur Heartbeat: %s → reset forcé", tag, tostring(err))
                 resetLava()
             end
         end)
-    end)
+    end
 
     -- ── Cycle principal ────────────────────────────────────────────
     task.spawn(function()
@@ -278,12 +378,11 @@ local function lancerCycleTour(cfg)
                         player:SetAttribute("InTower", true)
                         TowerEntered:FireClient(player)
                         nbTP += 1
-                        -- Reset InTower si le joueur meurt et respawn
+                        -- Nettoyage si le joueur meurt et respawn pendant la session lave
                         local charConn; charConn = player.CharacterAdded:Connect(function()
                             charConn:Disconnect()
-                            if player:GetAttribute("InTower") then
-                                player:SetAttribute("InTower", false)
-                            end
+                            player:SetAttribute("InTower", false)
+                            joueursEnTour[player.UserId] = nil
                         end)
                     end
                 end
@@ -295,14 +394,21 @@ local function lancerCycleTour(cfg)
             if nbTP > 0 then
                 timerLabel.Text = "Lave dans " .. CONFIG.DELAI_LAVA .. "s"
                 task.wait(CONFIG.DELAI_LAVA)
-                resetLava()
                 -- Avertissement : lave visible mais immobile pendant DELAI_AVERTISSEMENT secondes
                 for t = CONFIG.DELAI_AVERTISSEMENT, 1, -1 do
                     timerLabel.Text = "⚠ LAVE dans " .. t .. "s !"
                     task.wait(1)
                 end
-                demarrerLava(nbTP)
-                while lavaActive do task.wait(1) end
+                demarrerLava(nbTP)  -- sélectionne et affiche la bonne lave au démarrage
+                local watchdog = 0
+                while lavaActive do
+                    task.wait(1)
+                    watchdog += 1
+                    if watchdog >= 300 then  -- 5 min max par sécurité
+                        Logger.warn("Tower", "%s Watchdog lave déclenché → reset forcé", tag)
+                        resetLava()
+                    end
+                end
             end
 
             Logger.debug("Tower", "%s Nouveau cycle", tag)
@@ -325,6 +431,8 @@ task.spawn(function()
         startZone        = tour:WaitForChild("Triggers"):WaitForChild("StartZone"),
         interiorSpawn    = tour:WaitForChild("InterriorSpawn"),
         lava             = tour:WaitForChild("Lava"),
+        toxicLava        = tour:FindFirstChild("ToxicLava",  true),
+        nebulaLava       = tour:FindFirstChild("NebulaLava", true) or tour:FindFirstChild("Nebula-Lava", true),
         couleurAttente   = Color3.fromRGB(255,  80,  80),  -- rouge
         couleurOuverture = Color3.fromRGB( 80, 255,  80),  -- vert
     })
@@ -354,6 +462,8 @@ task.spawn(function()
         startZone        = startZone,
         interiorSpawn    = spawn,
         lava             = lava,
+        toxicLava        = tour:FindFirstChild("ToxicLava",  true),
+        nebulaLava       = tour:FindFirstChild("NebulaLava", true) or tour:FindFirstChild("Nebula-Lava", true),
         filtrer          = function(p) return p:GetAttribute("HasVIP") == true end,
         couleurAttente   = Color3.fromRGB(255, 215, 0),  -- orange (attente VIP)
         couleurOuverture = Color3.fromRGB(255, 215, 0),  -- doré  (ouverture VIP)

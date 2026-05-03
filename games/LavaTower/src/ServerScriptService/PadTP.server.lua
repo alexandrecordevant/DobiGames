@@ -14,6 +14,7 @@ local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
 
 local AssignationSystem = require(ServerScriptService.SharedLib.Server.AssignationSystem)
 
+
 -- ============================================================
 -- RemoteEvents pour le bouton "Escape the Tower"
 -- ============================================================
@@ -35,6 +36,11 @@ local EscapeTower  = getOrCreateRemote("EscapeTower")
 -- ============================================================
 local function isToxicActif()
 	local flag = ServerStorage:FindFirstChild("ToxicEventActif")
+	return flag ~= nil and flag.Value == true
+end
+
+local function isNebulaActif()
+	local flag = ServerStorage:FindFirstChild("NebulaEventActif")
 	return flag ~= nil and flag.Value == true
 end
 
@@ -101,12 +107,13 @@ end)
 -- ============================================================
 -- CONFIGURATION TP
 -- ============================================================
-local NOM_TRIGGERS   = "Triggers"
-local NOM_START_ZONE = "StartZone"
-local NOM_SPAWN      = "InterriorSpawn"
-local NOM_LAVA       = "Lava"
-local NOM_TOXIC_LAVA = "ToxicLava"
-local TP_COOLDOWN    = 1
+local NOM_TRIGGERS    = "Triggers"
+local NOM_START_ZONE  = "StartZone"
+local NOM_SPAWN       = "InterriorSpawn"
+local NOM_LAVA        = "Lava"
+local NOM_TOXIC_LAVA  = "ToxicLava"
+local NOM_NEBULA_LAVA = "NebulaLava"
+local TP_COOLDOWN     = 1
 
 -- ============================================================
 -- Utilitaire : est-ce une tour personnelle ?
@@ -143,21 +150,28 @@ local function setupTour(tour, baseIndex)
 		return
 	end
 
-	local lava      = tour:FindFirstChild(NOM_LAVA)
-	local toxicLava = tour:FindFirstChild(NOM_TOXIC_LAVA)
+	local lava       = tour:FindFirstChild(NOM_LAVA)
+	local toxicLava  = tour:FindFirstChild(NOM_TOXIC_LAVA,  true)
+	local nebulaLava = tour:FindFirstChild(NOM_NEBULA_LAVA, true) or tour:FindFirstChild("Nebula-Lava", true)
 
 	if not lava then
 		Logger.warn("Pad", "'Lava' manquant dans %s — lave désactivée pour cette tour", tour.Name)
 	end
 
-	-- ToxicLava cachée par défaut (recherche récursive)
-	toxicLava = toxicLava or tour:FindFirstChild(NOM_TOXIC_LAVA, true)
+	-- Lavas d'événement cachées par défaut
 	if toxicLava then
 		toxicLava.Transparency = 1
 		toxicLava.CanCollide   = false
-		Logger.info("Pad", "ToxicLava trouvée dans %s (parent: %s) ✓", tour.Name, toxicLava.Parent.Name)
+		Logger.info("Pad", "ToxicLava trouvée dans %s ✓", tour.Name)
 	else
 		Logger.warn("Pad", "ToxicLava introuvable dans %s", tour.Name)
+	end
+	if nebulaLava then
+		nebulaLava.Transparency = 1
+		nebulaLava.CanCollide   = false
+		Logger.info("Pad", "NebulaLava trouvée dans %s ✓", tour.Name)
+	else
+		Logger.warn("Pad", "NebulaLava introuvable dans %s", tour.Name)
 	end
 
 	-- Hauteurs d'arrêt : bas des parties taggées "Stop" dans la tour
@@ -179,31 +193,25 @@ local function setupTour(tour, baseIndex)
 	local lavaVitesse   = LAVA_CONFIG.VITESSE_BASE
 	local hauteurDepart = lava and lava.Position.Y or 0
 	local lavaOwner     = nil
-	local useToxicLava  = false  -- true pendant un cycle où ToxicLava est active
 
 	local function resetLava()
 		lavaActive  = false
 		lavaArretee = false
 		lavaOwner   = nil
-		useToxicLava = false
 		if laveConnexion then
 			laveConnexion:Disconnect()
 			laveConnexion = nil
 		end
 		lavaVitesse = LAVA_CONFIG.VITESSE_BASE
-		local toxicEnCours = isToxicActif() and toxicLava ~= nil
-		if lava then
-			lava.Anchored     = true
-			lava.Position     = Vector3.new(lava.Position.X, hauteurDepart, lava.Position.Z)
-			lava.Transparency = toxicEnCours and 1 or 0
-			lava.CanCollide   = not toxicEnCours
+		local function cacherEnPlace(p)
+			if not p then return end
+			p.Anchored     = true
+			p.Transparency = 1
+			p.CanCollide   = false
 		end
-		if toxicLava then
-			toxicLava.Anchored     = true
-			toxicLava.Position     = Vector3.new(toxicLava.Position.X, hauteurDepart, toxicLava.Position.Z)
-			toxicLava.Transparency = 1
-			toxicLava.CanCollide   = false
-		end
+		cacherEnPlace(lava)
+		cacherEnPlace(toxicLava)
+		cacherEnPlace(nebulaLava)
 		Logger.debug("Pad", "%s Lave reset (Base_%d)", tour.Name, baseIndex)
 	end
 
@@ -213,44 +221,43 @@ local function setupTour(tour, baseIndex)
 	local function demarrerLava()
 		if not lava then return end
 		if lavaActive then return end
+
+		-- Une seule lave monte : la lave d'event si actif, sinon la normale.
+		-- Les autres sont figées, invisibles, non-collidables.
+		local toxicOn  = isToxicActif()
+		local nebulaOn = not toxicOn and isNebulaActif()
+
+		local activePart
+		if toxicOn and toxicLava then
+			activePart = toxicLava
+		elseif nebulaOn and nebulaLava then
+			activePart = nebulaLava
+		else
+			activePart = lava
+		end
+
+		local function appliquerEtat(p, actif)
+			if not p then return end
+			p.Anchored   = true
+			p.CanCollide = actif
+			if actif then
+				-- Repositionner pendant qu'elle est encore invisible, puis afficher
+				p.Position     = Vector3.new(lava.Position.X, hauteurDepart, lava.Position.Z)
+				p.Transparency = 0
+			else
+				-- Cacher en place, sans repositionner
+				p.Transparency = 1
+			end
+		end
+		appliquerEtat(lava,       activePart == lava)
+		appliquerEtat(toxicLava,  activePart == toxicLava)
+		appliquerEtat(nebulaLava, activePart == nebulaLava)
+
 		lavaActive  = true
 		lavaVitesse = LAVA_CONFIG.VITESSE_BASE
 
-		-- Lookup fraîche (récursive) pour ToxicLava
-		local tLava   = tour:FindFirstChild(NOM_TOXIC_LAVA, true)
-		local toxicOn = isToxicActif()
-		useToxicLava  = toxicOn and tLava ~= nil
-
-		if toxicOn and not tLava then
-			local enfants = {}
-			for _, c in ipairs(tour:GetChildren()) do table.insert(enfants, c.Name) end
-			Logger.warn("Pad", "%s ToxicLava introuvable (récursif). Enfants directs: [%s]",
-				tour.Name, table.concat(enfants, ", "))
-		else
-			Logger.info("Pad", "%s demarrerLava — toxicOn=%s tLava=%s useToxic=%s (Base_%d)",
-				tour.Name, tostring(toxicOn), tostring(tLava ~= nil), tostring(useToxicLava), baseIndex)
-		end
-
-		if useToxicLava then
-			lava.Transparency  = 1
-			lava.CanCollide    = false
-			tLava.Transparency = 0
-			tLava.CanCollide   = true
-			tLava.Position     = Vector3.new(tLava.Position.X, hauteurDepart, tLava.Position.Z)
-			toxicLava = tLava  -- mettre à jour la ref cached pour le Heartbeat
-		else
-			lava.Transparency = 0
-			lava.CanCollide   = true
-			if tLava then
-				tLava.Transparency = 1
-				tLava.CanCollide   = false
-			end
-			if toxicOn and not tLava then
-				Logger.warn("Pad", "%s ToxicLava introuvable dans la tour ! (Base_%d)", tour.Name, baseIndex)
-			end
-		end
-
-		Logger.info("Pad", "%s Lave démarrée%s (Base_%d)", tour.Name, useToxicLava and " [TOXIC]" or "", baseIndex)
+		Logger.warn("Pad", "%s demarrerLava: part=%s toxicOn=%s nebulaOn=%s (Base_%d)",
+			tour.Name, activePart.Name, tostring(toxicOn), tostring(nebulaOn), baseIndex)
 
 		local tempsAccel   = 0
 		local dernierTemps = os.clock()
@@ -263,10 +270,6 @@ local function setupTour(tour, baseIndex)
 			local delta = now - dernierTemps
 			dernierTemps = now
 
-			-- Seule la part active monte ; l'autre reste à sa position
-			local activePart = useToxicLava and toxicLava or lava
-
-			-- Vérifier arrêt sur tag Stop
 			if not lavaArretee and #stopHeights > 0 then
 				local topY = activePart.Position.Y + activePart.Size.Y / 2
 				for _, stopY in ipairs(stopHeights) do
@@ -278,31 +281,29 @@ local function setupTour(tour, baseIndex)
 					end
 				end
 			end
-			if lavaArretee then return end
+			if not lavaArretee then
+				activePart.Anchored = true
+				activePart.Position = activePart.Position + Vector3.new(0, lavaVitesse * delta, 0)
 
-			-- Monter uniquement la part active
-			activePart.Anchored = true
-			activePart.Position = activePart.Position + Vector3.new(0, lavaVitesse * delta, 0)
-
-			-- Accélération progressive
-			tempsAccel += delta
-			if tempsAccel >= LAVA_CONFIG.INTERVALLE_ACCEL then
-				tempsAccel  = 0
-				lavaVitesse += LAVA_CONFIG.ACCELERATION
+				tempsAccel += delta
+				if tempsAccel >= LAVA_CONFIG.INTERVALLE_ACCEL then
+					tempsAccel  = 0
+					lavaVitesse += LAVA_CONFIG.ACCELERATION
+				end
 			end
 
-			-- Vérifier toutes les 2s si le propriétaire est encore vivant dans la tour.
+			-- Vérification vivants TOUJOURS exécutée (même si lavaArretee=true)
 			tempsVerif += delta
 			if tempsVerif >= 2 then
 				tempsVerif = 0
 				local vivant = false
 				local owner  = lavaOwner
-				if owner and owner.Parent then
+				-- Le propriétaire est "vivant dans la tour" seulement si InTower=true ET en vie
+				if owner and owner.Parent and owner:GetAttribute("InTower") == true then
 					local char = owner.Character
 					if char then
-						local h   = char:FindFirstChildOfClass("Humanoid")
-						local hrp = char:FindFirstChild("HumanoidRootPart")
-						if h and h.Health > 0 and hrp and hrp.Position.Y > hauteurDepart + 5 then
+						local h = char:FindFirstChildOfClass("Humanoid")
+						if h and h.Health > 0 then
 							vivant = true
 						end
 					end
@@ -313,7 +314,6 @@ local function setupTour(tour, baseIndex)
 				end
 			end
 
-			-- Reset si hauteur max atteinte
 			if activePart.Position.Y >= LAVA_CONFIG.HAUTEUR_MAX then
 				Logger.debug("Pad", "%s Hauteur max → Reset lave (Base_%d)", tour.Name, baseIndex)
 				resetLava()
@@ -321,7 +321,7 @@ local function setupTour(tour, baseIndex)
 		end)
 	end
 
-	-- ── Lave : toucher = mort ──────────────────────────────────────
+	-- ── Lave : toucher = mort (lava normale, toujours collidable) ──
 	local function connecterTouche(part)
 		if not part then return end
 		part.Touched:Connect(function(hit)
@@ -338,6 +338,7 @@ local function setupTour(tour, baseIndex)
 
 	connecterTouche(lava)
 	connecterTouche(toxicLava)
+	connecterTouche(nebulaLava)
 
 	-- ── Pad de téléportation ───────────────────────────────────────
 	local derniersTP = {}

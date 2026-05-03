@@ -370,6 +370,13 @@ task.spawn(function()
             BorderSizePixel = 0, LayoutOrder = 1, ZIndex = 7, Parent = carte,
         })
         addCorner(thumb, 2); addStroke(thumb)
+        if cfg.image and cfg.image ~= "" then
+            newInst("ImageLabel", {
+                Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
+                Image = cfg.image, ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 8, Parent = thumb,
+            })
+        end
 
         newInst("TextLabel", {
             Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1,

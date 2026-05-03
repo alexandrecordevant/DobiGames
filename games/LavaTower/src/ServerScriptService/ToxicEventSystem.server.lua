@@ -23,11 +23,9 @@ if not mapFolder    then Logger.warn("ToxicEvent", "Map introuvable dans Workspa
 -- Refs plateformes TP
 local tpFolder      = Workspace:FindFirstChild("TP")
 local tpTourNormal  = tpFolder and tpFolder:FindFirstChild("TP_Tour")
-local tpVIPNormal   = tpFolder and tpFolder:FindFirstChild("TP_VIP")
 local tpEventFolder = tpFolder and tpFolder:FindFirstChild("Event")
 
 if not tpTourNormal  then Logger.warn("ToxicEvent", "TP/TP_Tour introuvable")  end
-if not tpVIPNormal   then Logger.warn("ToxicEvent", "TP/TP_VIP introuvable")   end
 if not tpEventFolder then Logger.warn("ToxicEvent", "TP/Event introuvable")    end
 
 -- Sauvegarde matériaux/couleurs originaux de la Map
@@ -118,7 +116,6 @@ local function stopperToxic()
     showFolder(deco)
     hideFolder(decoMutation)
     showFolder(tpTourNormal)
-    showFolder(tpVIPNormal)
     hideFolder(tpEventFolder)
 
     if mapFolder then
@@ -149,7 +146,6 @@ local function activerToxic()
     showFolder(decoMutation)
     colorierFolder(decoMutation, VERT_FLUO)
     hideFolder(tpTourNormal)
-    hideFolder(tpVIPNormal)
     showFolder(tpEventFolder)
 
     if mapFolder then
@@ -171,14 +167,21 @@ local function activerToxic()
     end)
 end
 
-ActivateToxicEvent.OnServerEvent:Connect(function(player)
-    if toxicActif then
-        Logger.info("ToxicEvent", "Stop demandé par %s", player.Name)
-        stopperToxic()
-    else
-        Logger.info("ToxicEvent", "Start demandé par %s", player.Name)
-        activerToxic()
-    end
+-- Déclenché par EventVoteSystem via BindableEvent
+local ServerStorage = game:GetService("ServerStorage")
+local function waitBE(name)
+	local be = ServerStorage:FindFirstChild(name)
+	if be then return be end
+	return ServerStorage:WaitForChild(name, 60)
+end
+
+task.spawn(function()
+	local be = waitBE("LaunchToxicEventBE")
+	if not be then Logger.warn("ToxicEvent", "LaunchToxicEventBE introuvable") return end
+	be.Event:Connect(function()
+		Logger.info("ToxicEvent", "Lancement via vote")
+		activerToxic()
+	end)
 end)
 
 Logger.info("ToxicEvent", "ToxicEventSystem initialisé ✓")

@@ -108,9 +108,9 @@ GameConfigSpecific.Shop = {
     },
 
     Cash = {
-        { label = "Petit Sac", multiplicateur = 1800,  duree = "30 min", prix = 99,  minCash = 1000000  },
-        { label = "Gros Sac",  multiplicateur = 7200,  duree = "2 h",    prix = 299, minCash = 4003200  },
-        { label = "Coffre",    multiplicateur = 36000, duree = "10 h",   prix = 799, minCash = 20016000 },
+        { label = "Petit Sac", multiplicateur = 1800,  duree = "30 min", prix = 99,  minCash = 1000000,  image = "rbxassetid://113671815348394" },
+        { label = "Gros Sac",  multiplicateur = 7200,  duree = "2 h",    prix = 299, minCash = 4003200,  image = "rbxassetid://122722381530421" },
+        { label = "Coffre",    multiplicateur = 36000, duree = "10 h",   prix = 799, minCash = 20016000, image = "rbxassetid://88226292288257"  },
     },
 
     LuckyBlocks = {

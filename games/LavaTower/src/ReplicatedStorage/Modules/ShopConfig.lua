@@ -74,6 +74,11 @@ ShopConfig.Cape = {
     Label = "Cape",
 }
 
+ShopConfig.Rocket = {
+    Price = 200000,
+    Label = "Rocket",
+}
+
 -- ── HELPERS ────────────────────────────────────────────────────────────────
 
 -- WalkSpeed réelle pour un niveau donné (additif)

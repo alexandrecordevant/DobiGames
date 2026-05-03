@@ -47,8 +47,10 @@ local _LeaderboardSystem = nil
 local function getLeaderboardSystem()
     if not _LeaderboardSystem then
         local mod = ServerScriptService:FindFirstChild("LeaderboardSystem")
-        local ok, m = mod and pcall(require, mod) or false, nil
-        if ok and m then _LeaderboardSystem = m end
+        if mod then
+            local ok, m = pcall(require, mod)
+            if ok and m then _LeaderboardSystem = m end
+        end
     end
     return _LeaderboardSystem
 end

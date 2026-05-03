@@ -46,6 +46,7 @@ local PREFIXES = {
     Place    = "[PLACE]",
     Weather  = "[WEATHER]",
     Mutation = "[MUTATION]",
+    Vote     = "[VOTE]",
 }
 
 -- Appeler une seule fois au boot du jeu

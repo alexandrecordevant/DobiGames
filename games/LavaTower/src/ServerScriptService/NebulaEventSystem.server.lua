@@ -23,11 +23,9 @@ if not mapFolder    then Logger.warn("NebulaEvent", "Map introuvable dans Worksp
 -- Refs plateformes TP
 local tpFolder      = Workspace:FindFirstChild("TP")
 local tpTourNormal  = tpFolder and tpFolder:FindFirstChild("TP_Tour")
-local tpVIPNormal   = tpFolder and tpFolder:FindFirstChild("TP_VIP")
 local tpEventFolder = tpFolder and tpFolder:FindFirstChild("Event")
 
 if not tpTourNormal  then Logger.warn("NebulaEvent", "TP/TP_Tour introuvable")  end
-if not tpVIPNormal   then Logger.warn("NebulaEvent", "TP/TP_VIP introuvable")   end
 if not tpEventFolder then Logger.warn("NebulaEvent", "TP/Event introuvable")    end
 
 local originalMapData = {}
@@ -111,7 +109,6 @@ local function stopperNebula()
 	showFolder(deco)
 	hideFolder(decoMutation)
 	showFolder(tpTourNormal)
-	showFolder(tpVIPNormal)
 	hideFolder(tpEventFolder)
 
 	if mapFolder then
@@ -142,7 +139,6 @@ local function activerNebula()
 	showFolder(decoMutation)
 	colorierFolder(decoMutation, ROSE_NEBULA)
 	hideFolder(tpTourNormal)
-	hideFolder(tpVIPNormal)
 	showFolder(tpEventFolder)
 
 	if mapFolder then
@@ -164,14 +160,21 @@ local function activerNebula()
 	end)
 end
 
-ActivateNebulaEvent.OnServerEvent:Connect(function(player)
-	if nebulaActif then
-		Logger.info("NebulaEvent", "Stop demandé par %s", player.Name)
-		stopperNebula()
-	else
-		Logger.info("NebulaEvent", "Start demandé par %s", player.Name)
+-- Déclenché par EventVoteSystem via BindableEvent
+local ServerStorage = game:GetService("ServerStorage")
+local function waitBE(name)
+	local be = ServerStorage:FindFirstChild(name)
+	if be then return be end
+	return ServerStorage:WaitForChild(name, 60)
+end
+
+task.spawn(function()
+	local be = waitBE("LaunchNebulaEventBE")
+	if not be then Logger.warn("NebulaEvent", "LaunchNebulaEventBE introuvable") return end
+	be.Event:Connect(function()
+		Logger.info("NebulaEvent", "Lancement via vote")
 		activerNebula()
-	end
+	end)
 end)
 
 Logger.info("NebulaEvent", "NebulaEventSystem initialisé ✓")

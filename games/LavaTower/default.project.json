@@ -40,7 +40,9 @@
                 "HUDController": { "$path": "src/StarterPlayer/StarterPlayerScripts/HUDController.client.lua" },
                 "ShopClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopClient.client.lua" },
                 "ShopMonetizationClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopMonetizationClient.client.lua" },
-                "TeleportMenuClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/TeleportMenuClient.client.lua" }
+                "TeleportMenuClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/TeleportMenuClient.client.lua" },
+                "EventVoteClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/EventVoteClient.client.lua" },
+                "LeaderboardScrollClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/LeaderboardScrollClient.client.lua" }
             }
         }
     }

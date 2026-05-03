@@ -298,7 +298,7 @@ newInst("UIListLayout", {
 
 local function creerRowObjet(layoutOrder)
     local row = newInst("Frame", {
-        Size                   = UDim2.new(1, 0, 0, 72),
+        Size                   = UDim2.new(1, 0, 0, 100),
         BackgroundColor3       = C.CardBg,
         BackgroundTransparency = 0,
         BorderSizePixel        = 0,
@@ -314,22 +314,22 @@ end
 
 local function creerIconeRow(parent)
     local img = newInst("ImageLabel", {
-        Size             = UDim2.new(0, 48, 0, 48),
-        Position         = UDim2.new(0, 0, 0.5, -24),
-        BackgroundColor3 = C.Bordure,
+        Size             = UDim2.new(0, 80, 0, 80),
+        Position         = UDim2.new(0, 0, 0.5, -40),
+        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
         Image            = "",
         BorderSizePixel  = 0,
         ZIndex           = 7,
         Parent           = parent,
     })
-    addCorner(img, 2)
+    addCorner(img, 4)
     return img
 end
 
 local function creerNomRow(parent, texte)
     return newInst("TextLabel", {
         Size                   = UDim2.new(0, 160, 0, 28),
-        Position               = UDim2.new(0, 68, 0.5, -14),
+        Position               = UDim2.new(0, 90, 0.5, -14),
         BackgroundTransparency = 1,
         Text                   = texte,
         Font                   = Enum.Font.GothamBold,
@@ -369,8 +369,8 @@ creerIconeRow(speedCoilRow)
 creerNomRow(speedCoilRow, "SpeedCoil")
 
 local speedCoilPriceBtn   = creerBoutonRow(speedCoilRow, ShopConfig.FormatNumber(ShopConfig.SpeedCoil.Price), C.Succes, -94)
-local speedCoilEquipBtn   = creerBoutonRow(speedCoilRow, "Equiper",    C.Succes, -192)
-local speedCoilUnequipBtn = creerBoutonRow(speedCoilRow, "Desequiper", C.Danger, -94)
+local speedCoilEquipBtn   = creerBoutonRow(speedCoilRow, "Equiper",    C.Accent,  -94)
+local speedCoilUnequipBtn = creerBoutonRow(speedCoilRow, "Desequiper", C.Bordure, -94)
 speedCoilEquipBtn.Visible   = false
 speedCoilUnequipBtn.Visible = false
 
@@ -378,12 +378,8 @@ local function refreshSpeedCoil(data)
     local has      = data.hasSpeedCoil      or false
     local equipped = data.speedCoilEquipped or false
     speedCoilPriceBtn.Visible   = not has
-    speedCoilEquipBtn.Visible   = has
-    speedCoilUnequipBtn.Visible = has
-    if has then
-        speedCoilEquipBtn.BackgroundColor3   = equipped and C.Bordure or C.Succes
-        speedCoilUnequipBtn.BackgroundColor3 = equipped and C.Danger  or C.Bordure
-    end
+    speedCoilEquipBtn.Visible   = has and not equipped
+    speedCoilUnequipBtn.Visible = has and equipped
 end
 
 speedCoilPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("SpeedCoil_Buy")     end)
@@ -397,8 +393,8 @@ creerIconeRow(gravityCoilRow)
 creerNomRow(gravityCoilRow, "GravityCoil")
 
 local gravityCoilPriceBtn   = creerBoutonRow(gravityCoilRow, ShopConfig.FormatNumber(ShopConfig.GravityCoil.Price), C.Succes, -94)
-local gravityCoilEquipBtn   = creerBoutonRow(gravityCoilRow, "Equiper",    C.Succes, -192)
-local gravityCoilUnequipBtn = creerBoutonRow(gravityCoilRow, "Desequiper", C.Danger, -94)
+local gravityCoilEquipBtn   = creerBoutonRow(gravityCoilRow, "Equiper",    C.Accent,  -94)
+local gravityCoilUnequipBtn = creerBoutonRow(gravityCoilRow, "Desequiper", C.Bordure, -94)
 gravityCoilEquipBtn.Visible   = false
 gravityCoilUnequipBtn.Visible = false
 
@@ -406,12 +402,8 @@ local function refreshGravityCoil(data)
     local has      = data.hasGravityCoil      or false
     local equipped = data.gravityCoilEquipped or false
     gravityCoilPriceBtn.Visible   = not has
-    gravityCoilEquipBtn.Visible   = has
-    gravityCoilUnequipBtn.Visible = has
-    if has then
-        gravityCoilEquipBtn.BackgroundColor3   = equipped and C.Bordure or C.Succes
-        gravityCoilUnequipBtn.BackgroundColor3 = equipped and C.Danger  or C.Bordure
-    end
+    gravityCoilEquipBtn.Visible   = has and not equipped
+    gravityCoilUnequipBtn.Visible = has and equipped
 end
 
 gravityCoilPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("GravityCoil_Buy")     end)
@@ -475,6 +467,30 @@ end
 capePriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Cape_Buy")     end)
 capeEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Cape_Equip")   end)
 capeUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("Cape_Unequip") end)
+
+-- ROW ROCKET
+local rocketRow = creerRowObjet(4)
+rocketRow.Name  = "RocketRow"
+creerIconeRow(rocketRow)
+creerNomRow(rocketRow, "Rocket")
+
+local rocketPriceBtn   = creerBoutonRow(rocketRow, ShopConfig.FormatNumber(ShopConfig.Rocket.Price), C.Succes,  -94)
+local rocketEquipBtn   = creerBoutonRow(rocketRow, "Equiper",    C.Accent,  -94)
+local rocketUnequipBtn = creerBoutonRow(rocketRow, "Desequiper", C.Bordure, -94)
+rocketEquipBtn.Visible   = false
+rocketUnequipBtn.Visible = false
+
+local function refreshRocket(data)
+    local has      = data.hasRocket      or false
+    local equipped = data.rocketEquipped or false
+    rocketPriceBtn.Visible   = not has
+    rocketEquipBtn.Visible   = has and not equipped
+    rocketUnequipBtn.Visible = has and equipped
+end
+
+rocketPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Rocket_Buy")     end)
+rocketEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Rocket_Equip")   end)
+rocketUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("Rocket_Unequip") end)
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- TAB UPGRADES
@@ -706,6 +722,7 @@ local function refreshUI(data)
     refreshSpeedCoil(data)
     refreshGravityCoil(data)
     refreshCape(data)
+    refreshRocket(data)
 end
 
 -- Gestion des onglets
