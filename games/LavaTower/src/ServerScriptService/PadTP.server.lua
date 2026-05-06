@@ -192,6 +192,8 @@ local function setupTour(tour, baseIndex)
 	local laveConnexion = nil
 	local lavaVitesse   = LAVA_CONFIG.VITESSE_BASE
 	local hauteurDepart = lava and lava.Position.Y or 0
+	local lavaX         = lava and lava.Position.X or 0
+	local lavaZ         = lava and lava.Position.Z or 0
 	local lavaOwner     = nil
 
 	local function resetLava()
@@ -203,15 +205,16 @@ local function setupTour(tour, baseIndex)
 			laveConnexion = nil
 		end
 		lavaVitesse = LAVA_CONFIG.VITESSE_BASE
-		local function cacherEnPlace(p)
+		local function cacherEtReset(p)
 			if not p then return end
 			p.Anchored     = true
 			p.Transparency = 1
 			p.CanCollide   = false
+			p.Position     = Vector3.new(lavaX, hauteurDepart, lavaZ)
 		end
-		cacherEnPlace(lava)
-		cacherEnPlace(toxicLava)
-		cacherEnPlace(nebulaLava)
+		cacherEtReset(lava)
+		cacherEtReset(toxicLava)
+		cacherEtReset(nebulaLava)
 		Logger.debug("Pad", "%s Lave reset (Base_%d)", tour.Name, baseIndex)
 	end
 
@@ -241,11 +244,9 @@ local function setupTour(tour, baseIndex)
 			p.Anchored   = true
 			p.CanCollide = actif
 			if actif then
-				-- Repositionner pendant qu'elle est encore invisible, puis afficher
-				p.Position     = Vector3.new(lava.Position.X, hauteurDepart, lava.Position.Z)
+				p.Position     = Vector3.new(lavaX, hauteurDepart, lavaZ)
 				p.Transparency = 0
 			else
-				-- Cacher en place, sans repositionner
 				p.Transparency = 1
 			end
 		end

@@ -63,33 +63,38 @@ end)
 -- HUD Luck (bas droite)
 local hudFrame = Instance.new("Frame")
 hudFrame.Name                   = "LuckHud"
-hudFrame.Size                   = UDim2.new(0, 130, 0, 36)
+hudFrame.Size                   = UDim2.new(0, 150, 0, 44)
 hudFrame.AnchorPoint            = Vector2.new(1, 1)
 hudFrame.Position               = UDim2.new(1, -12, 1, -12)
-hudFrame.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
-hudFrame.BackgroundTransparency = 0.2
+hudFrame.BackgroundTransparency = 1
 hudFrame.BorderSizePixel        = 0
 hudFrame.Visible                = false
 hudFrame.ZIndex                 = 10
 hudFrame.Parent                 = hudGui
 
-local _hc = Instance.new("UICorner")
-_hc.CornerRadius = UDim.new(0, 2)
-_hc.Parent = hudFrame
-
-local _hs = Instance.new("UIStroke")
-_hs.Color     = Color3.fromRGB(60, 60, 60)
-_hs.Thickness = 1
-_hs.Parent    = hudFrame
+local hudThumb = Instance.new("ImageLabel")
+hudThumb.Name                   = "LuckThumb"
+hudThumb.Size                   = UDim2.new(0, 40, 0, 40)
+hudThumb.Position               = UDim2.new(0, 0, 0.5, -20)
+hudThumb.BackgroundTransparency = 1
+hudThumb.Image                  = ""
+hudThumb.ScaleType              = Enum.ScaleType.Fit
+hudThumb.ZIndex                 = 11
+hudThumb.Parent                 = hudFrame
+local _htc = Instance.new("UICorner")
+_htc.CornerRadius = UDim.new(0, 8)
+_htc.Parent = hudThumb
 
 local hudLabel = Instance.new("TextLabel")
-hudLabel.Size                   = UDim2.fromScale(1, 1)
+hudLabel.Size                   = UDim2.new(1, -48, 1, 0)
+hudLabel.Position               = UDim2.new(0, 48, 0, 0)
 hudLabel.BackgroundTransparency = 1
-hudLabel.Text                   = "x1 - 0:00"
+hudLabel.Text                   = "0:00"
 hudLabel.Font                   = Enum.Font.GothamBold
-hudLabel.TextSize               = 14
+hudLabel.TextSize               = 22
 hudLabel.TextScaled             = false
-hudLabel.TextColor3             = Color3.fromRGB(220, 220, 220)
+hudLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
+hudLabel.TextXAlignment         = Enum.TextXAlignment.Left
 hudLabel.ZIndex                 = 11
 hudLabel.Parent                 = hudFrame
 
@@ -151,6 +156,17 @@ task.spawn(function()
         revenuParSeconde = 0, slotsLibres = 0,
     }
     local activeTab = "CASH"
+
+    local LUCK_THUMBNAILS = {
+        [2]  = "rbxassetid://111745539282701",
+        [4]  = "rbxassetid://137698896976042",
+        [8]  = "rbxassetid://130005113801836",
+        [10] = "rbxassetid://107848322283156",
+        [15] = "rbxassetid://104594587868527",
+        [20] = "rbxassetid://131234471865617",
+        [25] = "rbxassetid://115112170622704",
+        [30] = "rbxassetid://99957610639343",
+    }
 
     -- ========================================================================
     -- UTILITAIRES UI
@@ -535,12 +551,21 @@ task.spawn(function()
         VerticalAlignment = Enum.VerticalAlignment.Center,
         SortOrder = Enum.SortOrder.LayoutOrder, Parent = thumbRow,
     })
+    local STARTER_THUMBS = { [3] = "rbxassetid://88226292288257" }
     for ti = 1, 3 do
         local t = newInst("Frame", {
             Size = UDim2.new(0, 80, 0, 80), BackgroundColor3 = C.Thumb,
             BorderSizePixel = 0, LayoutOrder = ti, ZIndex = 7, Parent = thumbRow,
+            ClipsDescendants = true,
         })
         addCorner(t, 2); addStroke(t)
+        if STARTER_THUMBS[ti] then
+            newInst("ImageLabel", {
+                Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
+                Image = STARTER_THUMBS[ti], ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 8, Parent = t,
+            })
+        end
     end
 
     newInst("TextLabel", {
@@ -588,13 +613,22 @@ task.spawn(function()
         VerticalAlignment = Enum.VerticalAlignment.Center,
         SortOrder = Enum.SortOrder.LayoutOrder, Parent = vipThumbRow,
     })
+    local VIP_THUMBS = { [2] = "rbxassetid://111745539282701", [3] = "rbxassetid://88226292288257" }
     for ti = 1, 3 do
         local t = newInst("Frame", {
             Size = UDim2.new(0, 64, 0, 64), BackgroundColor3 = Color3.fromRGB(50, 40, 5),
             BorderSizePixel = 0, LayoutOrder = ti, ZIndex = 7, Parent = vipThumbRow,
+            ClipsDescendants = true,
         })
         addCorner(t, 2)
         local s = Instance.new("UIStroke"); s.Color = Color3.fromRGB(200, 160, 20); s.Thickness = 1; s.Parent = t
+        if VIP_THUMBS[ti] then
+            newInst("ImageLabel", {
+                Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
+                Image = VIP_THUMBS[ti], ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 8, Parent = t,
+            })
+        end
     end
 
     newInst("TextLabel", {
@@ -648,11 +682,12 @@ task.spawn(function()
     })
     addCorner(luckCard, 2); addStroke(luckCard); addPadding(luckCard, 10)
 
-    local luckCardThumb = newInst("Frame", {
+    local luckCardThumb = newInst("ImageLabel", {
         Size = UDim2.new(0, 60, 0, 60), Position = UDim2.new(0, 0, 0.5, -30),
-        BackgroundColor3 = C.Thumb, BorderSizePixel = 0, ZIndex = 6, Parent = luckCard,
+        BackgroundTransparency = 1, BorderSizePixel = 0, Image = "",
+        ScaleType = Enum.ScaleType.Fit, ZIndex = 6, Parent = luckCard,
     })
-    addCorner(luckCardThumb, 2); addStroke(luckCardThumb)
+    do local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 8); c.Parent = luckCardThumb end
 
     local luckUpgradeLabel = newInst("TextLabel", {
         Size = UDim2.new(0, 160, 0, 28), Position = UDim2.new(0, 76, 0.5, -14),
@@ -680,13 +715,16 @@ task.spawn(function()
     local function mettreAJourCarteLuck(palierActuel)
         local nextPalier = palierActuel + 1
         if nextPalier > #shopCfg.Luck.Paliers then
-            luckUpgradeLabel.Text        = "MAX Luck"
-            luckUpgradeBtn.Text          = "MAX"
+            luckUpgradeLabel.Text           = "MAX Luck"
+            luckUpgradeBtn.Text             = "MAX"
             luckUpgradeBtn.BackgroundColor3 = C.Disabled
+            luckCardThumb.Image             = LUCK_THUMBNAILS[shopCfg.Luck.Paliers[#shopCfg.Luck.Paliers]] or ""
         else
-            luckUpgradeLabel.Text        = "x" .. tostring(shopCfg.Luck.Paliers[nextPalier]) .. " Luck"
-            luckUpgradeBtn.Text          = tostring(shopCfg.Luck.Prix[nextPalier] or 0) .. " R"
+            local palierVal = shopCfg.Luck.Paliers[nextPalier]
+            luckUpgradeLabel.Text           = "x" .. tostring(palierVal) .. " Luck"
+            luckUpgradeBtn.Text             = tostring(shopCfg.Luck.Prix[nextPalier] or 0) .. " R"
             luckUpgradeBtn.BackgroundColor3 = C.Succes
+            luckCardThumb.Image             = LUCK_THUMBNAILS[palierVal] or ""
         end
     end
 
@@ -775,8 +813,14 @@ task.spawn(function()
     tabLuck.MouseButton1Click:Connect(function()  setTab("LUCK")          end)
 
     local function ouvrirShop(data)
-        local tpGui = playerGui:FindFirstChild("TeleportMenuGui")
-        if tpGui then tpGui.Enabled = false end
+        local tpGui   = playerGui:FindFirstChild("TeleportMenuGui")
+        if tpGui   then tpGui.Enabled   = false end
+        local shopGui = playerGui:FindFirstChild("ShopGui")
+        if shopGui then shopGui.Enabled = false end
+        local voteGui = playerGui:FindFirstChild("EventVoteGui")
+        if voteGui then voteGui.Enabled = false end
+        local fuseGui = playerGui:FindFirstChild("FuseSystemUI")
+        if fuseGui then fuseGui.Enabled = false end
         refreshUI(data)
         setTab("CASH")
         screenGui.Enabled  = true
@@ -825,7 +869,8 @@ task.spawn(function()
         LuckTimerUpdate.OnClientEvent:Connect(function(luck, secondes, palierActuel)
             if luck and luck > 1 then
                 hudFrame.Visible = true
-                hudLabel.Text    = "x" .. tostring(luck) .. " - " .. formaterTimer(secondes)
+                hudLabel.Text    = formaterTimer(secondes)
+                hudThumb.Image   = LUCK_THUMBNAILS[luck] or ""
             else
                 hudFrame.Visible = false
             end

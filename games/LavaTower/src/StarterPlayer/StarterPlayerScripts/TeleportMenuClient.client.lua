@@ -252,8 +252,14 @@ end
 -- ANIMATIONS OUVERTURE / FERMETURE
 -- ============================================================================
 local function ouvrirMenu()
-    local shopGui = playerGui:FindFirstChild("ShopMonetGui")
-    if shopGui then shopGui.Enabled = false end
+    local monetGui = playerGui:FindFirstChild("ShopMonetGui")
+    if monetGui then monetGui.Enabled = false end
+    local shopGui  = playerGui:FindFirstChild("ShopGui")
+    if shopGui  then shopGui.Enabled  = false end
+    local voteGui  = playerGui:FindFirstChild("EventVoteGui")
+    if voteGui  then voteGui.Enabled  = false end
+    local fuseGui  = playerGui:FindFirstChild("FuseSystemUI")
+    if fuseGui  then fuseGui.Enabled  = false end
     menuGui.Enabled    = true
     mainFrame.Position = UDim2.new(0.5, 0, 1.6, 0)
     TweenService:Create(mainFrame,

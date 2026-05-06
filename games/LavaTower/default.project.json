@@ -42,7 +42,8 @@
                 "ShopMonetizationClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopMonetizationClient.client.lua" },
                 "TeleportMenuClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/TeleportMenuClient.client.lua" },
                 "EventVoteClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/EventVoteClient.client.lua" },
-                "LeaderboardScrollClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/LeaderboardScrollClient.client.lua" }
+                "LeaderboardScrollClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/LeaderboardScrollClient.client.lua" },
+                "MenuController": { "$path": "src/StarterPlayer/StarterPlayerScripts/MenuController.client.lua" }
             }
         }
     }

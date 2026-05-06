@@ -114,9 +114,6 @@ local function lancerCycleTour(cfg)
     else
         Logger.warn("Tower", "%s NebulaLava INTROUVABLE", tag)
     end
-    Logger.warn("Tower", "%s Setup: toxicLava=%s nebulaLava=%s",
-        tag, tostring(toxicLava ~= nil), tostring(nebulaLava ~= nil))
-
     -- X/Z de référence : ceux de la lave normale (les lavas d'événement s'alignent dessus)
     local lavaX = lava.Position.X
     local lavaZ = lava.Position.Z
@@ -165,18 +162,17 @@ local function lancerCycleTour(cfg)
             laveConnexion = nil
         end
         lavaVitesse = CONFIG.VITESSE_BASE
-        -- Toutes les lavas : cachées EN PLACE, sans repositionnement.
-        -- Le repositionnement se fait dans demarrerLava pendant qu'elles sont
-        -- invisibles, pour éviter l'interpolation de descente visible côté client.
-        local function cacherEnPlace(p)
+        -- Toutes les lavas : cachées ET repositionnées à hauteurDepart.
+        local function cacherEtReset(p)
             if not p then return end
             p.Anchored     = true
             p.Transparency = 1
             p.CanCollide   = false
+            p.CFrame       = CFrame.new(lavaX, hauteurDepart, lavaZ)
         end
-        cacherEnPlace(lava)
-        cacherEnPlace(toxicLava)
-        cacherEnPlace(nebulaLava)
+        cacherEtReset(lava)
+        cacherEtReset(toxicLava)
+        cacherEtReset(nebulaLava)
         for uid in pairs(joueursEnTour) do
             local p = Players:GetPlayerByUserId(uid)
             if p then p:SetAttribute("InTower", false) end
@@ -248,11 +244,9 @@ local function lancerCycleTour(cfg)
             p.Anchored   = true
             p.CanCollide = actif
             if actif then
-                -- Repositionner pendant qu'elle est encore invisible, puis afficher
                 p.CFrame       = CFrame.new(lavaX, hauteurDepart, lavaZ)
                 p.Transparency = 0
             else
-                -- Cacher en place, sans repositionner (évite l'interpolation visible)
                 p.Transparency = 1
             end
         end

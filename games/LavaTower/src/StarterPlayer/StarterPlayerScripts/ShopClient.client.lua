@@ -743,6 +743,14 @@ tabUpgrades.MouseButton1Click:Connect(function() setTab("Upgrades") end)
 
 -- Ouvrir : slide depuis le bas (0.2s Quad Out)
 local function ouvrirShop(data)
+    local tpGui    = playerGui:FindFirstChild("TeleportMenuGui")
+    if tpGui    then tpGui.Enabled    = false end
+    local monetGui = playerGui:FindFirstChild("ShopMonetGui")
+    if monetGui then monetGui.Enabled = false end
+    local voteGui  = playerGui:FindFirstChild("EventVoteGui")
+    if voteGui  then voteGui.Enabled  = false end
+    local fuseGui  = playerGui:FindFirstChild("FuseSystemUI")
+    if fuseGui  then fuseGui.Enabled  = false end
     refreshUI(data)
     screenGui.Enabled  = true
     mainFrame.Position = UDim2.new(0.5, 0, 1.5, 0)

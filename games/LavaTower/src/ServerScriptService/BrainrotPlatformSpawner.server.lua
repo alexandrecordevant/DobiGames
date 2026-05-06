@@ -414,9 +414,7 @@ local function spawnBrainrot(plateforme, forceLifetime, forceToxic)
 	if isToxic   then clone:SetAttribute("IsToxic",  true)    end
 	if isNebula  then clone:SetAttribute("IsNebula", true)    end
 	if mutation  then clone:SetAttribute("Mutation", mutation) end
-	local prixSrc = modele:GetAttribute("Prix")
 	local cpsSrc  = modele:GetAttribute("CashParSeconde")
-	if prixSrc then clone:SetAttribute("Prix",           prixSrc) end
 	if cpsSrc  then clone:SetAttribute("CashParSeconde", cpsSrc)  end
 
 	clone.Parent = workspace
@@ -428,7 +426,7 @@ local function spawnBrainrot(plateforme, forceLifetime, forceToxic)
 
 	-- 7. Multiplicateur CPS — appliqué sur l'attribut AVANT le tag CollectionService
 	-- → BrainrotBillboard.SetupField lit directement la valeur multipliée
-	local cpsBase = clone:GetAttribute("CashParSeconde") or 0
+	local cpsBase = tonumber(clone:GetAttribute("CashParSeconde")) or 0
 	local mult = (mutation and MUTATION_MULT[mutation]) or (isToxic and TOXIC_MULT) or (isNebula and NEBULA_MULT) or 1
 	if mult > 1 and cpsBase > 0 then
 		clone:SetAttribute("CashParSeconde", math.floor(cpsBase * mult))
@@ -648,9 +646,7 @@ task.spawn(function()
 			newClone:SetAttribute("OriginalName",    nomOriginal)
 			newClone:SetAttribute("IsToxic",         true)
 			newClone:SetAttribute("SpawnTimestamp",  os.time())
-			local prixSrc = modele:GetAttribute("Prix")
 			local cpsSrc  = modele:GetAttribute("CashParSeconde")
-			if prixSrc then newClone:SetAttribute("Prix",           prixSrc) end
 			if cpsSrc  then newClone:SetAttribute("CashParSeconde", cpsSrc)  end
 
 			platformState[plateforme] = newClone
@@ -724,9 +720,7 @@ task.spawn(function()
 			newClone:SetAttribute("OriginalName",   nomOriginal)
 			newClone:SetAttribute("IsNebula",       true)
 			newClone:SetAttribute("SpawnTimestamp", os.time())
-			local prixSrc = modele:GetAttribute("Prix")
 			local cpsSrc  = modele:GetAttribute("CashParSeconde")
-			if prixSrc then newClone:SetAttribute("Prix",           prixSrc) end
 			if cpsSrc  then newClone:SetAttribute("CashParSeconde", cpsSrc)  end
 
 			platformState[plateforme] = newClone

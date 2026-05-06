@@ -222,6 +222,14 @@ end
 
 -- ── Ouverture / fermeture ─────────────────────────────────────────────────────
 local function openMenu()
+	local tpGui    = playerGui:FindFirstChild("TeleportMenuGui")
+	if tpGui    then tpGui.Enabled    = false end
+	local monetGui = playerGui:FindFirstChild("ShopMonetGui")
+	if monetGui then monetGui.Enabled = false end
+	local shopGui  = playerGui:FindFirstChild("ShopGui")
+	if shopGui  then shopGui.Enabled  = false end
+	local fuseGui  = playerGui:FindFirstChild("FuseSystemUI")
+	if fuseGui  then fuseGui.Enabled  = false end
 	titleLabel.Text = tr("title")
 	voteToxicBtn.Text  = tr("vote")
 	voteNebulaBtn.Text = tr("vote")

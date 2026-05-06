@@ -21,7 +21,9 @@ local AssignationSystem     = require(ServerScriptService.SharedLib.Server.Assig
 local BaseProgressionSystem = require(ServerScriptService.SharedLib.Server.BaseProgressionSystem)
 local AmelioSystem          = require(ServerScriptService.SharedLib.Server.AmelioSystem)
 local CarrySystem           = require(ServerScriptService.SharedLib.Server.CarrySystem)
+local BrainrotBillboard     = require(ServerScriptService.SharedLib.Server.BrainrotBillboard)
 local DropSystem                = require(ServerScriptService.SharedLib.Server.DropSystem)
+DropSystem.SetShowPrice(false)
 local IncomeSystem              = require(ServerScriptService.SharedLib.Server.IncomeSystem)
 IncomeSystem.AutoVerifierDeblocages = false   -- LavaTower : étages via Board uniquement
 local BoardSystem               = require(ServerScriptService.SharedLib.Server.BoardSystem)
@@ -310,6 +312,8 @@ local function OnPlayerAdded(player)
                         if mult > 1 and baseCPS > 0 then
                             clone:SetAttribute("CashParSeconde", math.floor(baseCPS * mult))
                         end
+                        -- Billboard visible quand le brainrot est tenu en main après rejoin
+                        pcall(BrainrotBillboard.SetupBase, clone, nil, false)
                         clone.Parent = ReplicatedStorage
                     end
                 end
