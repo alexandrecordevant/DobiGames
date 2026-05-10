@@ -33,7 +33,7 @@ local NightSkySystem = require(SharedLib.NightSkySystem)
 -- ============================================================
 local RARETE_ORDRE = {
     COMMON=1, OG=2, RARE=3, EPIC=4,
-    LEGENDARY=5, MYTHIC=6, SECRET=7, BRAINROT_GOD=8,
+    LEGENDARY=5, MYTHIC=6, SECRET=7, GOD=8,
 }
 local SEUIL_BOOST_NIGHT = 4  -- EPIC et au-dessus
 
@@ -268,14 +268,14 @@ local RARETE_COULEUR = {
     LEGENDARY    = Color3.fromRGB(255, 165, 0),
     MYTHIC       = Color3.fromRGB(255, 50, 50),
     SECRET       = Color3.fromRGB(0, 255, 200),
-    BRAINROT_GOD = Color3.fromRGB(255, 255, 100),
+    GOD          = Color3.fromRGB(255, 255, 100),
 }
 local RARETE_LIGHT = {
     EPIC         = { brightness = 2,  range = 18 },
     LEGENDARY    = { brightness = 3,  range = 25 },
     MYTHIC       = { brightness = 5,  range = 35 },
     SECRET       = { brightness = 7,  range = 42 },
-    BRAINROT_GOD = { brightness = 10, range = 55 },
+    GOD          = { brightness = 10, range = 55 },
 }
 
 local function boosterLumieresBR()

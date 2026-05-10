@@ -84,7 +84,7 @@ GameConfigSpecific.ZonePrestigeSeuil = 1
 -- === FUSE SYSTEM ===
 GameConfigSpecific.Fuse = {
 	MachineTag          = "FuseMachine",
-	FuseBrainrotsFolder = game:GetService("ReplicatedStorage"):FindFirstChild("FuseBrainrots"),
+	FuseBrainrotsFolder = game:GetService("ServerStorage"):FindFirstChild("FuseBrainrots"),
 	MutationRoot        = game:GetService("ReplicatedStorage"):FindFirstChild("Mutation"),
 	FuseDuration        = 5,  -- TODO remettre 5400 après test
 	DataStoreName       = "LavaTowerV1",

@@ -22,7 +22,7 @@ local function DefaultData()
         -- Inventaire Brain Rots (pour conditions rebirth)
         inventory={
             COMMON=0, OG=0, RARE=0, EPIC=0,
-            LEGENDARY=0, MYTHIC=0, SECRET=0, BRAINROT_GOD=0,
+            LEGENDARY=0, MYTHIC=0, SECRET=0, GOD=0,
         },
         -- Upgrades shop (niveaux achetés en coins)
         upgrades={

@@ -962,7 +962,7 @@ function LeaderboardSystem.EnregistrerRare(player, rareteNom)
     if not player or not rareteNom then return end
 
     local PRIORITES = {
-        BRAINROT_GOD = 5,
+        GOD          = 5,
         SECRET       = 4,
         MYTHIC       = 3,
         LEGENDARY    = 2,

@@ -87,7 +87,7 @@ else
         { nom = "RARE",         poids = 13,  dossier = "RARE"         },
         { nom = "EPIC",         poids = 7,   dossier = "EPIC"         },
         { nom = "LEGENDARY",    poids = 2.8, dossier = "LEGENDARY"    },
-        { nom = "BRAINROT_GOD", poids = 0.2, dossier = "BRAINROT_GOD" },
+        { nom = "GOD",          poids = 0.2, dossier = "GOD"          },
     }
 end
 -- MYTHIC et SECRET exclus de ce script (ZoneCommune uniquement)
@@ -95,7 +95,7 @@ end
 -- Ordre croissant des rarites (logique interne — non configurable)
 local RARETE_ORDRE = {
     COMMON=1, OG=2, RARE=3, EPIC=4,
-    LEGENDARY=5, MYTHIC=6, SECRET=7, BRAINROT_GOD=8,
+    LEGENDARY=5, MYTHIC=6, SECRET=7, GOD=8,
 }
 
 local POIDS_TOTAL = 0
@@ -128,8 +128,8 @@ local idCounter        = 0   -- compteur global pour nommer les clones
 local _adminAbusePool          = nil  -- { { nom, poids, dossier }, ... }
 local _adminAbusePoidsTot      = 0
 local _adminAbuseMutChance     = nil  -- remplace pfMutCfg.chance
-local _adminAbuseElemChance    = nil  -- chance mutation GALAXY/VOID sur MYTHIC/SECRET/BRAINROT_GOD
-local _adminAbuseElemRaretes   = nil  -- { MYTHIC=true, SECRET=true, BRAINROT_GOD=true }
+local _adminAbuseElemChance    = nil  -- chance mutation GALAXY/VOID sur MYTHIC/SECRET/GOD
+local _adminAbuseElemRaretes   = nil  -- { MYTHIC=true, SECRET=true, GOD=true }
 
 -- Lazy loader FlowerPotSystem (évite dépendance circulaire)
 local _FlowerPotSystem = nil
@@ -143,6 +143,10 @@ local function getFlowerPotSystem()
 end
 
 local brainrotsFolder = ReplicatedStorage:WaitForChild(_dosierBrainrots)
+
+-- Poids des sous-niveaux SECRET et GOD (lus depuis GameConfig)
+local _secretWeights = _GameConfig.SECRET_LEVEL_WEIGHTS or { [1] = 1 }
+local _godWeights    = _GameConfig.GOD_LEVEL_WEIGHTS    or { [1] = 1 }
 
 -- ============================================================
 -- Utilitaires internes
@@ -184,19 +188,43 @@ local function tirerRarete(hasLucky)
     return rarete
 end
 
--- Retourne un modèle aléatoire depuis le dossier de rareté
+-- Tirage pondéré dans une table { [index] = poids }
+local function tiragePondereNiveau(weights)
+    local total = 0
+    for _, p in pairs(weights) do total += p end
+    local r = math.random() * total
+    local cumul = 0
+    for niveau, p in pairs(weights) do
+        cumul += p
+        if r <= cumul then return niveau end
+    end
+    return next(weights)
+end
+
+-- Retourne un modèle aléatoire depuis le dossier de rareté.
+-- Pour SECRET et GOD, effectue un tirage pondéré sur les sous-niveaux numérotés.
 local function choisirModele(nomDossier)
-	local dossier = brainrotsFolder:FindFirstChild(nomDossier)
-	if not dossier then
-		Logger.warn("Spawn", "Dossier introuvable : %s", nomDossier)
-		return nil
-	end
-	local modeles = dossier:GetChildren()
-	if #modeles == 0 then
-		Logger.warn("Spawn", "Dossier vide : %s", nomDossier)
-		return nil
-	end
-	return modeles[math.random(1, #modeles)]
+    local dossier = brainrotsFolder:FindFirstChild(nomDossier)
+    if not dossier then
+        Logger.warn("Spawn", "Dossier introuvable : %s", nomDossier)
+        return nil
+    end
+    -- Sélection pondérée du sous-niveau pour SECRET et GOD
+    if nomDossier == "SECRET" then
+        local niveau = tiragePondereNiveau(_secretWeights)
+        local sousDossier = dossier:FindFirstChild(tostring(niveau))
+        if sousDossier then dossier = sousDossier end
+    elseif nomDossier == "GOD" then
+        local niveau = tiragePondereNiveau(_godWeights)
+        local sousDossier = dossier:FindFirstChild(tostring(niveau))
+        if sousDossier then dossier = sousDossier end
+    end
+    local modeles = dossier:GetChildren()
+    if #modeles == 0 then
+        Logger.warn("Spawn", "Dossier vide : %s", nomDossier)
+        return nil
+    end
+    return modeles[math.random(1, #modeles)]
 end
 
 -- Obtenir le PrimaryPart ou le premier BasePart trouvé

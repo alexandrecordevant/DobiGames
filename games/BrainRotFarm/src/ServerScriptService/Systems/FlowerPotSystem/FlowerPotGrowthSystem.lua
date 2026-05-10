@@ -295,16 +295,35 @@ local function clonerBRMutant(seedRarity, nomModele)
         return nil, nil
     end
 
-    local modeles = dossier:GetChildren()
-    if #modeles == 0 then
+    -- Construit un pool plat en incluant les modèles dans les sous-dossiers numérotés
+    local pool = {}
+    for _, enfant in ipairs(dossier:GetChildren()) do
+        if enfant:IsA("Folder") and tonumber(enfant.Name) then
+            for _, m in ipairs(enfant:GetChildren()) do table.insert(pool, m) end
+        else
+            table.insert(pool, enfant)
+        end
+    end
+    if #pool == 0 then
         Logger.warn("Pot", "Aucun modèle dans : %s", seedRarity)
         return nil, nil
     end
 
-    -- Utiliser le modèle sauvegardé si disponible, sinon aléatoire
-    local src = nomModele and dossier:FindFirstChild(nomModele)
+    -- Cherche le modèle exact (direct ou dans un sous-dossier numéroté)
+    local src = nil
+    if nomModele then
+        src = dossier:FindFirstChild(nomModele)
+        if not src then
+            for _, sub in ipairs(dossier:GetChildren()) do
+                if sub:IsA("Folder") and tonumber(sub.Name) then
+                    src = sub:FindFirstChild(nomModele)
+                    if src then break end
+                end
+            end
+        end
+    end
     if not src then
-        src = modeles[math.random(1, #modeles)]
+        src = pool[math.random(1, #pool)]
     end
 
     local clone = nil

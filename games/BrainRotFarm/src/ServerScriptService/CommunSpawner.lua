@@ -99,6 +99,22 @@ local LIGHT_RANGE_ALERTE   = 40
 
 local BRAINROTS_FOLDER = ReplicatedStorage:WaitForChild("Brainrots")
 
+-- Poids des sous-niveaux SECRET (lus depuis GameConfig)
+local _secretWeights = Config.SECRET_LEVEL_WEIGHTS or { [1] = 1 }
+
+-- Tirage pondéré dans une table { [index] = poids }
+local function tiragePondereNiveau(weights)
+    local total = 0
+    for _, p in pairs(weights) do total += p end
+    local r = math.random() * total
+    local cumul = 0
+    for niveau, p in pairs(weights) do
+        cumul += p
+        if r <= cumul then return niveau end
+    end
+    return next(weights)
+end
+
 -- ============================================================
 -- État interne
 -- ============================================================
@@ -138,18 +154,25 @@ local function formatTemps(secondes)
 	return string.format("%d:%02d", m, s)
 end
 
+-- Retourne un modèle aléatoire depuis le dossier de rareté.
+-- Pour SECRET, effectue un tirage pondéré sur les sous-niveaux numérotés.
 local function choisirModele(nomDossier)
-	local dossier = BRAINROTS_FOLDER:FindFirstChild(nomDossier)
-	if not dossier then
-		Logger.warn("Spawn", "Dossier introuvable : %s", nomDossier)
-		return nil
-	end
-	local modeles = dossier:GetChildren()
-	if #modeles == 0 then
-		Logger.warn("Spawn", "Dossier vide : %s", nomDossier)
-		return nil
-	end
-	return modeles[math.random(1, #modeles)]
+    local dossier = BRAINROTS_FOLDER:FindFirstChild(nomDossier)
+    if not dossier then
+        Logger.warn("Spawn", "Dossier introuvable : %s", nomDossier)
+        return nil
+    end
+    if nomDossier == "SECRET" then
+        local niveau = tiragePondereNiveau(_secretWeights)
+        local sousDossier = dossier:FindFirstChild(tostring(niveau))
+        if sousDossier then dossier = sousDossier end
+    end
+    local modeles = dossier:GetChildren()
+    if #modeles == 0 then
+        Logger.warn("Spawn", "Dossier vide : %s", nomDossier)
+        return nil
+    end
+    return modeles[math.random(1, #modeles)]
 end
 
 local function obtenirRacine(modele)

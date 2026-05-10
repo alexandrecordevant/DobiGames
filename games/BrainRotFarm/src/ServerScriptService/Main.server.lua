@@ -615,10 +615,22 @@ local function OnPlayerAdded(player)
                     elementType = porteeData.elementType,
                 }
                 -- Cloner le modèle exact si le nom est connu
+                -- Cherche en direct puis dans les sous-dossiers numérotés (SECRET/1..5, GOD/1..2)
                 local clone = nil
                 if porteeData.brNom and BrainrotsFolder then
                     local dossier = BrainrotsFolder:FindFirstChild(porteeData.dossier or porteeData.nom)
-                    local modele = dossier and dossier:FindFirstChild(porteeData.brNom)
+                    local modele = nil
+                    if dossier then
+                        modele = dossier:FindFirstChild(porteeData.brNom)
+                        if not modele then
+                            for _, sub in ipairs(dossier:GetChildren()) do
+                                if sub:IsA("Folder") and tonumber(sub.Name) then
+                                    modele = sub:FindFirstChild(porteeData.brNom)
+                                    if modele then break end
+                                end
+                            end
+                        end
+                    end
                     if modele then
                         clone = modele:Clone()
                         -- Parent temporaire requis : effectuerRamassage vérifie source.Parent ~= nil
@@ -1287,8 +1299,8 @@ end
 -- Hook LeaderboardSystem → notifié quand un joueur capture un RARE+ via ProximityPrompt
 SpawnManager.OnRareCollecte = function(player, rareteNom)
     LeaderboardSystem.EnregistrerRare(player, rareteNom)
-    -- Discord : BRAINROT_GOD uniquement (très rare → toujours envoyer)
-    if rareteNom == "BRAINROT_GOD" then
+    -- Discord : GOD uniquement (très rare → toujours envoyer)
+    if rareteNom == "GOD" then
         pcall(DiscordWebhook.BrainrotGodCapture, player.Name)
     end
 end
@@ -1714,6 +1726,7 @@ if FuseSystem then
                           or 1,
             elementType = mutantType,
         }
+        CarrySystem.SynchroniserCarry(player)
         local ok, err = pcall(CarrySystem.AjouterAuCarry, player, brainrotClone, rareteObj)
         if not ok then
             Logger.warn("Main", "[FuseSystem] AjouterAuCarry echec : %s", tostring(err))

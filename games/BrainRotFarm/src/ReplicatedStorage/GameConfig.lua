@@ -752,7 +752,7 @@ GameConfig.CaptureConfig = {
     LEGENDARY    = { mode="prompt",  holdDuration=1.5 },
     MYTHIC       = { mode="prompt",  holdDuration=3.0 },
     SECRET       = { mode="prompt",  holdDuration=5.0 },
-    BRAINROT_GOD = { mode="prompt",  holdDuration=8.0 },
+    GOD          = { mode="prompt",  holdDuration=8.0 },
 }
 
 -- === CARRY ===
@@ -782,7 +782,7 @@ GameConfig.ValeurParRarete = {
     LEGENDARY    = 60,
     MYTHIC       = 200,
     SECRET       = 500,
-    BRAINROT_GOD = 2000,
+    GOD          = 2000,
 }
 
 -- === INCOME PAR RARETÉ ===
@@ -794,7 +794,7 @@ GameConfig.IncomeParRarete = {
     LEGENDARY    = 60,
     MYTHIC       = 200,
     SECRET       = 500,
-    BRAINROT_GOD = 2000,
+    GOD          = 2000,
 }
 
 -- === MAX BASES ===
@@ -890,11 +890,11 @@ GameConfig.Combat = {
 
 -- === FUSE MACHINE ===
 -- Lu par FuseSystem (shared-lib) — injecter via FuseSystem.Init(GameConfig)
--- FuseBrainrotsFolder : creer ReplicatedStorage/FuseBrainrots/ dans Studio
+-- FuseBrainrotsFolder : creer ServerStorage/FuseBrainrots/ dans Studio
 -- MachineTag          : appliquer le tag CollectionService sur chaque Fuse Machine dans Workspace
 GameConfig.Fuse = {
 	MachineTag          = "FuseMachine",
-	FuseBrainrotsFolder = game:GetService("ReplicatedStorage"):FindFirstChild("FuseBrainrots"),
+	FuseBrainrotsFolder = game:GetService("ServerStorage"):FindFirstChild("FuseBrainrots"),
 	FuseDuration        = 10,  -- 1h30 en secondes
 	DataStoreName       = "BrainRotIdleV1",
 	DataStoreKeyPrefix  = "fusetest_",
@@ -949,8 +949,7 @@ GameConfig.LuckyHourMutationConfig = {
         { name = "CrazyBrainrots",   weight = 15, multiplier = 2   },
     },
 
-    -- Mapping rareté : Mutation/ utilise "GOD" au lieu de "BRAINROT_GOD"
-    rareteMapping = { BRAINROT_GOD = "GOD" },
+    rareteMapping = {},
 
     -- Sous-dossiers à ignorer dans chaque type de mutation
     ignoredFolders = { "LUCKY_BLOCK", "ToUseAfter" },
@@ -975,8 +974,23 @@ GameConfig.PersonalFieldMutationConfig = {
         { name = "CrazyBrainrots",   weight = 15, multiplier = 3 },
     },
 
-    rareteMapping  = { BRAINROT_GOD = "GOD" },
+    rareteMapping  = {},
     ignoredFolders = { "LUCKY_BLOCK", "ToUseAfter" },
+}
+
+-- === POIDS DES SOUS-NIVEAUX SECRET (plus le numéro est élevé, plus c'est rare) ===
+GameConfig.SECRET_LEVEL_WEIGHTS = {
+    [1] = 88.89,
+    [2] = 10,
+    [3] = 1,
+    [4] = 0.1,
+    [5] = 0.01,
+}
+
+-- === POIDS DES SOUS-NIVEAUX GOD ===
+GameConfig.GOD_LEVEL_WEIGHTS = {
+    [1] = 65,
+    [2] = 35,
 }
 
 return GameConfig
