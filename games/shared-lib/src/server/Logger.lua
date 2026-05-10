@@ -45,8 +45,9 @@ local PREFIXES = {
     Bat      = "[BAT]",
     Place    = "[PLACE]",
     Weather  = "[WEATHER]",
-    Mutation = "[MUTATION]",
-    Vote     = "[VOTE]",
+    Mutation    = "[MUTATION]",
+    Vote        = "[VOTE]",
+    LuckyBlock  = "[LUCKYBLOCK]",
 }
 
 -- Appeler une seule fois au boot du jeu

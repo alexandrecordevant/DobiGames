@@ -37,6 +37,7 @@ local PICKUP_MAX_DISTANCE  = 10
 local DEFAULT_LIFETIME     = 60
 local BILLBOARD_STUDS_Y    = 7
 local ERROR_COOLDOWN       = 1.5
+local SHOW_PRICE           = true
 
 
 -- ─────────────────────────────────────────────────────────────
@@ -212,7 +213,7 @@ local function SetupBrainrot(brainrot)
 	end
 
 	local duration = brainrot:GetAttribute("LifeTime") or DEFAULT_LIFETIME
-	BrainrotBillboard.SetupField(brainrot, duration, BILLBOARD_STUDS_Y)
+	BrainrotBillboard.SetupField(brainrot, duration, BILLBOARD_STUDS_Y, SHOW_PRICE)
 	SetupPickup(brainrot)
 	StartCountdown(brainrot, duration)
 end
@@ -244,6 +245,7 @@ function PickupSystem.Init(config)
 	if config.DefaultLifetime ~= nil then DEFAULT_LIFETIME    = config.DefaultLifetime end
 	if config.BillboardStudsY ~= nil then BILLBOARD_STUDS_Y   = config.BillboardStudsY end
 	if config.RarityColors        then RARETE_COULEURS        = config.RarityColors   end
+	if config.ShowPrice       ~= nil then SHOW_PRICE          = config.ShowPrice      end
 
 	-- Instances déjà taggées (placées en Studio)
 	for _, inst in ipairs(CollectionService:GetTagged(TAG)) do

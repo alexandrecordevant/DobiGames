@@ -26,7 +26,9 @@
       "Bash(find /c/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib -name *.lua)",
       "Bash(find /c/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm/src/StarterPlayer -type f -name *.lua)",
       "Bash(grep -r \"inventory\\\\.\\\\\\(COMMON\\\\|RARE\\\\|EPIC\\\\|LEGENDARY\\\\|MYTHIC\\\\\\)\" /c/Users/Admin/Documents/Developpement/DobiGames/games --include=*.lua)",
-      "Bash(find c:UsersAdminDocumentsDeveloppementDobiGamesgamesshared-lib -type f -name *.lua)"
+      "Bash(find c:UsersAdminDocumentsDeveloppementDobiGamesgamesshared-lib -type f -name *.lua)",
+      "Bash(Get-ChildItem -Recurse \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\LavaTower\\\\src\" -Filter \"*.lua\")",
+      "Bash(Select-Object FullName)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

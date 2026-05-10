@@ -162,8 +162,8 @@ GameConfig.ShopUpgrades = {
         description = "Speeds up Brain Rot spawns in your field",
         ordre       = 1,
         niveaux = {
-            [1] = { type="coins", prix=8000,  label="Lv.1",    effet={ spawnRateMultiplier=1.6 }, condition={ minUpgrade={ upgradeCarry=2 } } },
-            [2] = { type="coins", prix=30000, label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
+            [1] = { type="coins", prix=300000,   label="Lv.1",    effet={ spawnRateMultiplier=1.6 }, condition={ minUpgrade={ upgradeCarry=2 } } },
+            [2] = { type="coins", prix=2500000,  label="Lv.2",    effet={ spawnRateMultiplier=2.7 } },
             [3] = { type="robux", prix=149,   gamePassId=1814153843, label="MAX 🔥", effet={ spawnRateMultiplier=5.0 }, isMax=true },
         },
         maxNiveau        = 3,
@@ -177,20 +177,20 @@ GameConfig.ShopUpgrades = {
         description = "Increases your movement speed",
         ordre       = 2,
         niveaux = {
-            [1]  = { type="coins", prix=2000,        label="Lv.1",  effet={ walkSpeed=18 } },
-            [2]  = { type="coins", prix=6000,        label="Lv.2",  effet={ walkSpeed=19 } },
-            [3]  = { type="coins", prix=15000,       label="Lv.3",  effet={ walkSpeed=20 } },
-            [4]  = { type="coins", prix=40000,       label="Lv.4",  effet={ walkSpeed=21 } },
-            [5]  = { type="coins", prix=100000,      label="Lv.5",  effet={ walkSpeed=22 } },
-            [6]  = { type="coins", prix=250000,      label="Lv.6",  effet={ walkSpeed=23 } },
-            [7]  = { type="coins", prix=150000,      label="Lv.7",  effet={ walkSpeed=24 } },
-            [8]  = { type="coins", prix=400000,      label="Lv.8",  effet={ walkSpeed=26 } },
-            [9]  = { type="coins", prix=1000000,     label="Lv.9",  effet={ walkSpeed=28 } },
-            [10] = { type="coins", prix=2500000,     label="Lv.10", effet={ walkSpeed=30 } },
-            [11] = { type="coins", prix=6000000,     label="Lv.11", effet={ walkSpeed=32 } },
-            [12] = { type="coins", prix=15000000,    label="Lv.12", effet={ walkSpeed=33 } },
-            [13] = { type="coins", prix=40000000,    label="Lv.13", effet={ walkSpeed=34 } },
-            [14] = { type="coins", prix=100000000,   label="Lv.14", effet={ walkSpeed=35 } },
+            [1]  = { type="coins", prix=50000,        label="Lv.1",  effet={ walkSpeed=18 } },
+            [2]  = { type="coins", prix=200000,       label="Lv.2",  effet={ walkSpeed=19 } },
+            [3]  = { type="coins", prix=750000,       label="Lv.3",  effet={ walkSpeed=20 } },
+            [4]  = { type="coins", prix=2500000,      label="Lv.4",  effet={ walkSpeed=21 } },
+            [5]  = { type="coins", prix=8000000,      label="Lv.5",  effet={ walkSpeed=22 } },
+            [6]  = { type="coins", prix=25000000,     label="Lv.6",  effet={ walkSpeed=23 } },
+            [7]  = { type="coins", prix=75000000,     label="Lv.7",  effet={ walkSpeed=24 } },
+            [8]  = { type="coins", prix=200000000,    label="Lv.8",  effet={ walkSpeed=26 } },
+            [9]  = { type="coins", prix=500000000,    label="Lv.9",  effet={ walkSpeed=28 } },
+            [10] = { type="coins", prix=1500000000,   label="Lv.10", effet={ walkSpeed=30 } },
+            [11] = { type="coins", prix=4000000000,   label="Lv.11", effet={ walkSpeed=32 } },
+            [12] = { type="coins", prix=10000000000,  label="Lv.12", effet={ walkSpeed=33 } },
+            [13] = { type="coins", prix=25000000000,  label="Lv.13", effet={ walkSpeed=34 } },
+            [14] = { type="coins", prix=60000000000,  label="Lv.14", effet={ walkSpeed=35 } },
             [15] = { type="robux", prix=99, gamePassId=1818373456, label="MAX 🔥", effet={ walkSpeed=40 }, isMax=true },
         },
         maxNiveau        = 15,
@@ -204,10 +204,10 @@ GameConfig.ShopUpgrades = {
         description = "Increases your Brain Rot carry capacity",
         ordre       = 3,
         niveaux = {
-            [1] = { type="coins", prix=1000,   label="Lv.1", effet={ carryCapacite=2 } },
-            [2] = { type="coins", prix=10000,  label="Lv.2", effet={ carryCapacite=3 } },
-            [3] = { type="coins", prix=50000,  label="Lv.3", effet={ carryCapacite=4 } },
-            [4] = { type="coins", prix=200000, label="Lv.4", effet={ carryCapacite=5 } },
+            [1] = { type="coins", prix=75000,    label="Lv.1", effet={ carryCapacite=2 } },
+            [2] = { type="coins", prix=600000,   label="Lv.2", effet={ carryCapacite=3 } },
+            [3] = { type="coins", prix=4000000,  label="Lv.3", effet={ carryCapacite=4 } },
+            [4] = { type="coins", prix=25000000, label="Lv.4", effet={ carryCapacite=5 } },
             [5] = { type="robux", prix=149,    gamePassId=1816561688, label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
         },
         maxNiveau        = 5,
@@ -221,8 +221,8 @@ GameConfig.ShopUpgrades = {
         description = "Increases Brain Rot collection radius",
         ordre       = 4,
         niveaux = {
-            [1] = { type="coins", prix=10000, label="Lv.1",   effet={ rayonCollecte=8  }, condition={ minUpgrade={ upgradeCarry=2 } } },
-            [2] = { type="coins", prix=50000, label="Lv.2",   effet={ rayonCollecte=14 }, isMax=true },
+            [1] = { type="coins", prix=500000,   label="Lv.1",   effet={ rayonCollecte=8  }, condition={ minUpgrade={ upgradeCarry=2 } } },
+            [2] = { type="coins", prix=5000000,  label="Lv.2",   effet={ rayonCollecte=14 }, isMax=true },
         },
         maxNiveau        = 2,
         dataField        = "upgradeAimant",
@@ -500,9 +500,9 @@ GameConfig.FlowerPotConfig = {
     pots = {
         [1] = { nom = "FlowerPot_1", prixCoins = 0,     prixRobux = 0,
                 debloque = true  },
-        [2] = { nom = "FlowerPot_2", prixCoins = 5000,  prixRobux = 0,
+        [2] = { nom = "FlowerPot_2", prixCoins = 150000,  prixRobux = 0,
                 debloque = false },
-        [3] = { nom = "FlowerPot_3", prixCoins = 25000, prixRobux = 0,
+        [3] = { nom = "FlowerPot_3", prixCoins = 1500000, prixRobux = 0,
                 debloque = false },
         [4] = { nom = "FlowerPot_4", prixCoins = 0,     prixRobux = 149,
                 debloque = false, gamePassId = 1816555612 },
@@ -738,9 +738,9 @@ GameConfig.RebirthFloorDiscount = 0.15
 -- Prix de référence pour déblocage manuel des floors (Rebirth 0)
 -- Utilisé par BaseProgressionSystem.GetFloorUnlockCost()
 GameConfig.FloorUnlockCosts = {
-    [2] = 100000,
-    [3] = 200000,
-    [4] = 300000,
+    [2] = 2000000,
+    [3] = 20000000,
+    [4] = 150000000,
 }
 
 -- === CAPTURE CONFIG ===
@@ -766,10 +766,10 @@ GameConfig.CarryNiveaux = {
 }
 
 GameConfig.CarryPrices = {
-    [1] = 1000,
-    [2] = 10000,
-    [3] = 50000,
-    [4] = 200000,
+    [1] = 75000,
+    [2] = 600000,
+    [3] = 4000000,
+    [4] = 25000000,
     [5] = 0,  -- Game Pass
 }
 
@@ -895,9 +895,9 @@ GameConfig.Combat = {
 GameConfig.Fuse = {
 	MachineTag          = "FuseMachine",
 	FuseBrainrotsFolder = game:GetService("ReplicatedStorage"):FindFirstChild("FuseBrainrots"),
-	FuseDuration        = 5400,  -- 1h30 en secondes
+	FuseDuration        = 10,  -- 1h30 en secondes
 	DataStoreName       = "BrainRotIdleV1",
-	DataStoreKeyPrefix  = "fuse_",
+	DataStoreKeyPrefix  = "fusetest_",
 	Tiers = {
 		{ maxTotal = 1000                },  -- Tier 1
 		{ maxTotal = 100000              },  -- Tier 2
@@ -913,6 +913,20 @@ GameConfig.Fuse = {
 		{ folder = "30", weight = 30 },
 		{ folder = "18", weight = 18 },
 		{ folder = "2",  weight = 2  },
+	},
+	-- Multiplicateurs CPS par slot de mutation (calqués sur LavaTower)
+	MutationCPS = {
+		GOLD    = 2,   -- GALAXY  (rebirth 0, income ×2)
+		TOXIC   = 5,   -- TOXIC   (rebirth 0, income ×4)
+		RAINBOW = 10,  -- RAINBOW (rebirth 3, income ×6)
+		DIAMANT = 15,  -- VOID    (rebirth 5, income ×8)
+	},
+	-- Mapping MutantType FlowerPot → slot interne FuseSystem
+	MutantTypeToSlot = {
+		GALAXY  = "GOLD",
+		TOXIC   = "TOXIC",
+		RAINBOW = "RAINBOW",
+		VOID    = "DIAMANT",
 	},
 }
 

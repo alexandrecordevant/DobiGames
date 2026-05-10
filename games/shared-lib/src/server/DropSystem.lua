@@ -30,6 +30,10 @@ local ProgConfig = Config.ProgressionConfig
 -- Dossier source des Brainrots (ServerStorage par défaut, ReplicatedStorage pour LavaTower)
 -- Configurable via DropSystem.SetBrainrotsFolder(folder) depuis Main.server.lua
 local _brainrotsFolder = nil
+
+-- Affichage du prix dans les billboards de base (désactivé pour LavaTower via SetShowPrice)
+local _showPrice = true
+function DropSystem.SetShowPrice(v) _showPrice = v end
 local function getBrainrotsFolder()
     return _brainrotsFolder or ServerStorage:FindFirstChild("Brainrots")
 end
@@ -85,27 +89,14 @@ DropSystem.OnSpotChange  = nil
 DropSystem.OnMutantDepose = nil
 -- Appelé quand un Mutant est retiré d'un spot (touchPart)
 DropSystem.OnMutantRetire = nil
+-- Confirmation avant vente (optionnel) : function(player, rarete) -> bool
+-- Si nil, la vente s'effectue directement. Injecté par Main.server.lua pour LavaTower.
+DropSystem.SellConfirmCallback = nil
 
 -- ============================================================
 -- Centre de base par joueur (calculé à l'Init, utilisé pour orienter les BRs)
 -- ============================================================
 local baseCentres = {}
-
--- Retourne le centre XZ de la base (Vector3 avec Y=0) depuis le modèle workspace
-local function calculerCentreBase(baseIndex)
-    local bases = Workspace:FindFirstChild("Bases")
-    if not bases then return nil end
-    local baseRoot = bases:FindFirstChild("Base_" .. tostring(baseIndex))
-    if not baseRoot then return nil end
-    local ok, bbCF = pcall(function()
-        local cf, _ = baseRoot:GetBoundingBox()
-        return cf
-    end)
-    if ok and bbCF then
-        return Vector3.new(bbCF.Position.X, 0, bbCF.Position.Z)
-    end
-    return nil
-end
 
 -- ============================================================
 -- État interne par joueur
@@ -183,6 +174,23 @@ local function trouverBaseFolder(baseIndex)
         end
     end
     return baseRoot
+end
+
+-- Retourne le centre XZ de la zone de slots (Vector3 avec Y=0).
+-- Utilise trouverBaseFolder pour obtenir uniquement le dossier des slots
+-- (Base_X/Shared/Base dans LavaTower), et non le modèle entier Base_X
+-- qui inclut la Tour — ce qui décalerait le centre loin des slots.
+local function calculerCentreBase(baseIndex)
+    local baseFolder = trouverBaseFolder(baseIndex)
+    if not baseFolder then return nil end
+    local ok, bbCF = pcall(function()
+        local cf, _ = baseFolder:GetBoundingBox()
+        return cf
+    end)
+    if ok and bbCF then
+        return Vector3.new(bbCF.Position.X, 0, bbCF.Position.Z)
+    end
+    return nil
 end
 
 -- ============================================================
@@ -263,6 +271,40 @@ end
 -- Utilitaires — mini modèle Brain Rot
 -- ============================================================
 
+-- Cherche un modele (Model ou BasePart) par nom dans un conteneur, recursivement.
+-- Retourne nil si l'instance trouvee est un Folder/conteneur et non un modele affichable.
+-- Evite le cas ou brNom="3" trouve le sous-dossier Folder("3") au lieu d un vrai modele.
+local function trouverModeleParNom(conteneur, nom)
+    if not conteneur or not nom then return nil end
+    local trouve = conteneur:FindFirstChild(nom, true)
+    if trouve and (trouve:IsA("Model") or trouve:IsA("BasePart")) then
+        return trouve
+    end
+    return nil
+end
+
+-- Retourne la liste des modeles contenus dans un dossier de rarete.
+-- Si un enfant a un nom numerique (ex : "1", "2") c'est un sous-conteneur (SECRET/1, GOD/2…)
+-- et on collecte ses enfants directs. Sinon, l'enfant est lui-meme un modele.
+-- Meme logique que le spawner : tonumber(nom) detecte les sous-niveaux numerotes,
+-- independamment du type Roblox (Folder ou Model) du conteneur.
+local function getModelesDuDossier(dossier)
+    if not dossier then return {} end
+    local modeles = {}
+    for _, enfant in ipairs(dossier:GetChildren()) do
+        if tonumber(enfant.Name) ~= nil then
+            -- Sous-conteneur numerote : prendre ses enfants directs
+            for _, modele in ipairs(enfant:GetChildren()) do
+                table.insert(modeles, modele)
+            end
+        else
+            -- Element direct (structure plate : COMMON, RARE, etc.)
+            table.insert(modeles, enfant)
+        end
+    end
+    return modeles
+end
+
 -- Clone un modèle depuis ServerStorage.Brainrots/[dossier]
 -- Décision : on clone un aléatoire parmi les modèles du dossier (cohérent avec CarrySystem)
 local function clonerModeleSlot(rarete)
@@ -278,7 +320,7 @@ local function clonerModeleSlot(rarete)
     end
     if not dossier then return nil end
 
-    local modeles = dossier:GetChildren()
+    local modeles = getModelesDuDossier(dossier)
     if #modeles == 0 then return nil end
 
     local source = modeles[math.random(1, #modeles)]
@@ -407,7 +449,11 @@ local function placerModeleSlot(touchPart, rarete, modeleSource, baseCenter)
     -- (corrige le bug : avant, le PIVOT était placé à surfaceY, enfouissant
     --  les grands modèles à moitié sous le sol)
     if clone:IsA("Model") then
-        BrainrotPositioner.positionnerSurSurface(clone, surfaceY, posX, posZ, baseCenter, 0.6)
+        -- Projeter le centre sur la même ligne Z que le slot : le brainrot regarde
+        -- perpendiculairement au chemin (en X) et jamais en diagonale vers un centre
+        -- éloigné en Z (cas où les floors sont disposés en profondeur, ex. LavaTower).
+        local lookCenter = baseCenter and Vector3.new(baseCenter.X, 0, posZ) or nil
+        BrainrotPositioner.positionnerSurSurface(clone, surfaceY, posX, posZ, lookCenter, 0.6)
     end
 
     -- Fade in vers la transparence ORIGINALE (pas vers 0)
@@ -650,6 +696,15 @@ local function restaurerDepots(player, playerData)
     for spotKey, info in pairs(playerData.spotsOccupes) do
         local touchPart = index[spotKey]
         if touchPart and info and info.rarete then
+            -- brNom numerique pur = donnee corrompue par l ancienne version du spawner
+            -- (le sous-dossier "3" ou "5" etait clone a la place du modele).
+            -- On nettoie la cle et on passe au slot suivant sans rien restaurer.
+            if info.brNom and tonumber(info.brNom) ~= nil then
+                Logger.warn("Drop", "Restauration : brNom '%s' corrompu (numero de sous-dossier) — slot supprime", tostring(info.brNom))
+                playerData.spotsOccupes[spotKey] = nil
+                continue
+            end
+
             -- valeurSec sauvegardée lors du dépôt initial (attribut CashParSeconde du modèle)
             -- Sera complété via fallback modèle source si 0/nil (anciens saves ou BR sans attribut)
             local valeur   = (info.valeurSec and info.valeurSec > 0) and info.valeurSec or nil
@@ -685,12 +740,12 @@ local function restaurerDepots(player, playerData)
                 )
             end
             if info.brNom then
+                -- brNom present : chercher le modele exact par son nom
                 local dossier  = trouverDossier()
-                local brSource = dossier and dossier:FindFirstChild(info.brNom)
+                local brSource = trouverModeleParNom(dossier, info.brNom)
                 if brSource then
                     pcall(function()
                         modeleSource = brSource:Clone()
-                        -- Garantir les attributs mutation pour le watcher DescendantAdded
                         if info.mutation then modeleSource:SetAttribute("Mutation", info.mutation) end
                         if info.isToxic  then modeleSource:SetAttribute("IsToxic",  true)         end
                         if isNebula      then modeleSource:SetAttribute("IsNebula", true)          end
@@ -707,7 +762,7 @@ local function restaurerDepots(player, playerData)
                 -- brNom nil : donnée ancienne OU mutant sans brNom sauvegardé
                 local dossier = trouverDossier()
                 if dossier then
-                    local modeles = dossier:GetChildren()
+                    local modeles = getModelesDuDossier(dossier)
                     if #modeles > 0 then
                         pcall(function()
                             modeleSource = modeles[1]:Clone()
@@ -773,7 +828,7 @@ local function restaurerDepots(player, playerData)
                         if info.mutationTypeLucky then modeleSlot:SetAttribute("MutationType", info.mutationTypeLucky) end
                     end
                 end)
-                pcall(BrainrotBillboard.SetupBase, modeleSlot)
+                pcall(BrainrotBillboard.SetupBase, modeleSlot, nil, _showPrice)
             end
 
             if isMutant then
@@ -790,6 +845,7 @@ local function restaurerDepots(player, playerData)
                 brNom             = info.brNom,
                 isMutant          = isMutant,
                 elementType       = info.elementType,
+                mutantValeur      = info.mutantValeur or nil,
                 mutation          = info.mutation,
                 isToxic           = info.isToxic,
                 isNebula          = isNebula or nil,
@@ -802,6 +858,13 @@ local function restaurerDepots(player, playerData)
             mettreAJourGui(touchPart, valeur)
             creerPromptRecuperer(touchPart, player)
             creerPromptRemplacer(touchPart, player, info.rarete)
+
+            -- Connecter le bouton de collecte + initialiser $offline (parity avec DeposerBrainRots)
+            local IS = getIncomeSystem()
+            if IS then
+                IS.MettreAJourVisuel(touchPart, 0, valeur)
+                IS.ConnecterButton(player, touchPart, spotKey)
+            end
         end
     end
 end
@@ -1013,7 +1076,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
                 or brainrots:FindFirstChild(string.upper(rarete))
             )
         end
-        local brSource = dossier and dossier:FindFirstChild(brNom)
+        local brSource = trouverModeleParNom(dossier, brNom)
         if brSource then
             pcall(function()
                 modeleSource = brSource:Clone()
@@ -1064,6 +1127,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         brNom             = brNom,        -- nom exact du modèle BR (ex: "Tralalero_Tralala")
         isMutant          = isMutant,
         elementType       = elementType,
+        mutantValeur      = entree.rarete.valeur,  -- multiplicateur élémentaire (×2/4/6/8) pour re-dépôt
         mutation          = mutation,
         isToxic           = isToxic or nil,
         isNebula          = isNebula or nil,
@@ -1096,7 +1160,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
                 if mutationTypeLucky then modeleSlot:SetAttribute("MutationType", mutationTypeLucky) end
             end
         end)
-        pcall(BrainrotBillboard.SetupBase, modeleSlot)
+        pcall(BrainrotBillboard.SetupBase, modeleSlot, nil, _showPrice)
     end
 
     -- Mettre à jour le SurfaceGui
@@ -1185,6 +1249,10 @@ function DropSystem.RecupererBrainRot(player, touchPart)
         end
         if dossierRarete then
             local function appliquerMutSurClone(c, source)
+                if entree.isMutant then
+                    c:SetAttribute("IsMutant", true)
+                    if entree.elementType then c:SetAttribute("MutantType", entree.elementType) end
+                end
                 if entree.mutation then c:SetAttribute("Mutation", entree.mutation) end
                 if entree.isToxic  then c:SetAttribute("IsToxic",  true)            end
                 if isNebula        then c:SetAttribute("IsNebula", true)             end
@@ -1199,7 +1267,7 @@ function DropSystem.RecupererBrainRot(player, touchPart)
                 end
                 c.Parent = Workspace
             end
-            local brSource = dossierRarete:FindFirstChild(brNom)
+            local brSource = trouverModeleParNom(dossierRarete, brNom)
             if brSource then
                 pcall(function()
                     modeleRestitue = brSource:Clone()
@@ -1207,11 +1275,11 @@ function DropSystem.RecupererBrainRot(player, touchPart)
                 end)
             end
             if not modeleRestitue then
-                local premiers = dossierRarete:GetChildren()
-                if #premiers > 0 then
+                local modeles = getModelesDuDossier(dossierRarete)
+                if #modeles > 0 then
                     pcall(function()
-                        modeleRestitue = premiers[1]:Clone()
-                        appliquerMutSurClone(modeleRestitue, premiers[1])
+                        modeleRestitue = modeles[1]:Clone()
+                        appliquerMutSurClone(modeleRestitue, modeles[1])
                     end)
                 end
             end
@@ -1220,13 +1288,19 @@ function DropSystem.RecupererBrainRot(player, touchPart)
 
     -- Remettre le BR en TÊTE du carry avec tous les champs mutation préservés
     local rareteObj = {
-        nom      = rarete,
-        dossier  = rarete,
-        isMutant = entree.isMutant,
-        mutation = entree.mutation,
-        isToxic  = entree.isToxic,
-        isNebula = isNebula or nil,
+        nom         = rarete,
+        dossier     = rarete,
+        isMutant    = entree.isMutant,
+        elementType = entree.elementType,   -- préserve le type élémentaire (billboard + filtres)
+        valeur      = entree.mutantValeur,  -- préserve le multiplicateur élémentaire (×2/4/6/8)
+        mutation    = entree.mutation,
+        isToxic     = entree.isToxic,
+        isNebula    = isNebula or nil,
     }
+    -- Billboard visible quand le brainrot est tenu en main après récupération du slot
+    if modeleRestitue then
+        pcall(BrainrotBillboard.SetupBase, modeleRestitue, nil, _showPrice)
+    end
     pcall(CarrySystem.InsererEnTeteCarry, player, modeleRestitue, rareteObj)
 
     -- Remettre le SurfaceGui à vide
@@ -1318,6 +1392,7 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
             brNom             = entry.brNom,
             isMutant          = entry.isMutant,
             elementType       = entry.elementType,
+            mutantValeur      = entry.mutantValeur or nil,
             mutation          = entry.mutation,
             isToxic           = entry.isToxic,
             isNebula          = entry.isNebula or nil,
@@ -1418,7 +1493,7 @@ function DropSystem.EjecterBR(player, touchPart)
     if brainrots then
         local dossier = brainrots:FindFirstChild(rarete) or brainrots:FindFirstChild("COMMON")
         if dossier then
-            local modeles = dossier:GetChildren()
+            local modeles = getModelesDuDossier(dossier)
             if #modeles > 0 then
                 local source = modeles[math.random(1, #modeles)]
                 local clone  = nil
@@ -1496,7 +1571,14 @@ function DropSystem.VendreBR(player, touchPart)
     local entree = spotsData[uid][touchPart]
     if not entree then return end
 
-    local rarete    = entree.rarete
+    local rarete = entree.rarete
+
+    -- Confirmation requise pour les raretés protégées (GOD / SECRET / OG)
+    if DropSystem.SellConfirmCallback then
+        local confirmed = DropSystem.SellConfirmCallback(player, rarete)
+        if not confirmed then return end
+    end
+
     local modeleSlot = entree.modeleSlot
     local spotKey   = entree.spotKey
     spotsData[uid][touchPart] = nil

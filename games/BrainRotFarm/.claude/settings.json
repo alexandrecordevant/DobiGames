@@ -19,7 +19,9 @@
       "Bash(git -C \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm\" diff --stat src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua src/StarterPlayer/StarterPlayerScripts/SeedsHUD.client.lua src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua)",
       "Bash(git -C \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm\" diff --stat -- \"src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua\" \"src/StarterPlayer/StarterPlayerScripts/SeedsHUD.client.lua\" \"src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua\" \"src/ServerScriptService/CommunSpawner.lua\")",
       "Bash(git -C \"c:/Users/Admin/Documents/Developpement/DobiGames/games/BrainRotFarm\" add src/ServerScriptService/CommunSpawner.lua \"src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua\" \"src/StarterPlayer/StarterPlayerScripts/SeedsHUD.client.lua\" \"src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua\")",
-      "Bash(git -C \"c:/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib\" add src/client/HUDController.client.lua)"
+      "Bash(git -C \"c:/Users/Admin/Documents/Developpement/DobiGames/games/shared-lib\" add src/client/HUDController.client.lua)",
+      "Bash(grep -E \"\\\\.\\(lua|json\\)$\")",
+      "Bash(Select-String \"VIP|Pack|luck\" -List)"
     ]
   }
 }

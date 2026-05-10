@@ -61,6 +61,22 @@ GameConfigSpecific.SonUpgrade  = 0
 -- === BADGE ===
 GameConfigSpecific.BadgePremierPrestige = 0
 
+-- === POIDS DES SOUS-NIVEAUX SECRET (plus le numero est eleve, plus c est rare) ===
+-- Modifier ces valeurs pour ajuster les chances par niveau
+GameConfigSpecific.SECRET_LEVEL_WEIGHTS = {
+    [1] = 88.89,
+    [2] = 10,
+    [3] = 1,
+    [4] = 0.1,
+    [5] = 0.01,
+}
+
+-- === POIDS DES SOUS-NIVEAUX GOD ===
+GameConfigSpecific.GOD_LEVEL_WEIGHTS = {
+    [1] = 65,
+    [2] = 35,
+}
+
 -- === PROGRESSION DES ZONES ===
 GameConfigSpecific.ZoneUnlockSeuils  = { [1] = 0, [2] = 3, [3] = 6 }
 GameConfigSpecific.ZonePrestigeSeuil = 1
@@ -117,6 +133,7 @@ GameConfigSpecific.Shop = {
         {
             nom    = "Mythic",
             prix   = 49,
+            image  = "rbxassetid://115883899717307",
             folder = "ReplicatedStorage.LuckyBlocks.Tier_1",
             weights = {
                 { chance = 49.5, label = "50"  },
@@ -129,7 +146,8 @@ GameConfigSpecific.Shop = {
         {
             nom    = "Brainrot God",
             prix   = 149,
-            folder = "ReplicatedStorage.LuckyBlocks.Tier_3",
+            image  = "rbxassetid://109291267681539",
+            folder = "ReplicatedStorage.LuckyBlocks.Tier_2",
             weights = {
                 { chance = 49.5, label = "50"  },
                 { chance = 30,   label = "30"  },
@@ -141,7 +159,8 @@ GameConfigSpecific.Shop = {
         {
             nom    = "Secret",
             prix   = 399,
-            folder = "ReplicatedStorage.LuckyBlocks.Tier_2",
+            image  = "rbxassetid://82792065995734",
+            folder = "ReplicatedStorage.LuckyBlocks.Tier_3",
             weights = {
                 { chance = 49.5, label = "50"  },
                 { chance = 30,   label = "30"  },

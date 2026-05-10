@@ -15,7 +15,7 @@ local BrainrotPositioner = {}
 local function getPivot(modele)
     return modele:FindFirstChild("HumanoidRootPart")
         or modele:FindFirstChild("FakeRootPart")
-        or modele.PrimaryPart
+        or (modele:IsA("Model") and modele.PrimaryPart or nil)
 end
 
 -- Garantit que PrimaryPart est assigne avant tout appel a PivotTo.
@@ -25,6 +25,7 @@ end
 -- Doit etre appele avant GetPivot() pour que le calcul pivotToBottom
 -- soit coherent avec le pivot effectivement utilise par PivotTo.
 local function assurerPrimaryPart(modele)
+    if not modele:IsA("Model") then return end
     if not modele.PrimaryPart then
         local fakePart = modele:FindFirstChild("FakeRootPart")
         if fakePart then

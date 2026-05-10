@@ -119,7 +119,18 @@ local function choisirModele(nomDossier)
 		Logger.warn("Carry", "Dossier introuvable : %s", tostring(nomDossier))
 		return nil
 	end
-	local modeles = dossier:GetChildren()
+	-- Si un enfant a un nom numerique c'est un sous-conteneur (SECRET/1, GOD/2…)
+	-- et on collecte ses enfants. Sinon, l'enfant est directement un modele.
+	local modeles = {}
+	for _, enfant in ipairs(dossier:GetChildren()) do
+		if tonumber(enfant.Name) ~= nil then
+			for _, modele in ipairs(enfant:GetChildren()) do
+				table.insert(modeles, modele)
+			end
+		else
+			table.insert(modeles, enfant)
+		end
+	end
 	if #modeles == 0 then return nil end
 	return modeles[math.random(1, #modeles)]
 end

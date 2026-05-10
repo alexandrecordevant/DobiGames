@@ -1,8 +1,8 @@
 -- ServerScriptService/SharedLib/Server/BrainrotBillboard.lua
 -- DobiGames shared-lib — Billboard multi-lignes au-dessus des Brain Rots
 --
--- SetupField(brainrot, duration, studsY)  → champ  : Nom + Rareté + Prix + CPS/s + Timer
--- SetupBase(brainrot, studsY)             → base   : Nom + Rareté + Prix + CPS/s (sans timer)
+-- SetupField(brainrot, duration, studsY, showPrice)  → champ  : Nom + Rareté + [Prix] + CPS/s + Timer
+-- SetupBase(brainrot, studsY, showPrice)             → base   : Nom + Rareté + [Prix] + CPS/s (sans timer)
 -- UpdateTimer(brainrot, t)               → met à jour LTimer (appelé chaque seconde)
 --
 -- PRÉREQUIS sur le brainrot :
@@ -147,12 +147,12 @@ local function CreerBillboardGui(root, studsY, nbLignes)
 	if existing then pcall(function() existing:Destroy() end) end
 
 	local bb = Instance.new("BillboardGui")
-	bb.Name         = BILLBOARD_NAME
-	bb.Size         = UDim2.new(5, 0, nbLignes * 0.5, 0)
-	bb.StudsOffset  = Vector3.new(0, studsY, 0)
-	bb.AlwaysOnTop  = false
-	bb.ResetOnSpawn = false
-	bb.Parent       = root
+	bb.Name                  = BILLBOARD_NAME
+	bb.Size                  = UDim2.new(5, 0, nbLignes * 0.5, 0)
+	bb.StudsOffsetWorldSpace = Vector3.new(0, studsY, 0)
+	bb.AlwaysOnTop           = false
+	bb.ResetOnSpawn          = false
+	bb.Parent                = root
 	return bb
 end
 
@@ -162,19 +162,21 @@ end
 
 --[[
     SetupField — Billboard champ (avec timer)
-    Nom · Rareté · $Prix · $CPS/s · Timer
+    Nom · Rareté · [$Prix] · $CPS/s · Timer
 
-    @param brainrot  Model|BasePart
-    @param duration  number  — durée initiale du timer (secondes)
-    @param studsY    number? — hauteur override (défaut : 7)
+    @param brainrot   Model|BasePart
+    @param duration   number  — durée initiale du timer (secondes)
+    @param studsY     number? — hauteur override (défaut : 7)
+    @param showPrice  bool?   — afficher la ligne prix (défaut : true)
 ]]
-function BrainrotBillboard.SetupField(brainrot, duration, studsY)
+function BrainrotBillboard.SetupField(brainrot, duration, studsY, showPrice)
+	if showPrice == nil then showPrice = true end
 	local root = GetRootPart(brainrot)
 	if not root then return end
 
 	local rarete     = brainrot:GetAttribute("Rarete")         or "COMMON"
 	local nomAff     = brainrot:GetAttribute("OriginalName")   or brainrot.Name
-	local prix       = brainrot:GetAttribute("Prix")           or 0
+	local prix       = showPrice and (brainrot:GetAttribute("Prix") or 0) or nil
 	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
 	local isMutant    = brainrot:GetAttribute("IsMutant")
 	local mutantType  = brainrot:GetAttribute("MutantType")
@@ -216,7 +218,7 @@ function BrainrotBillboard.SetupField(brainrot, duration, studsY)
 	local hasSpecial = isToxic or isNebula or (isMutated and mutationType ~= nil)
 
 	if isMutant and mutantType then
-		local n  = hasSpecial and 7 or 6
+		local n  = hasSpecial and (showPrice and 7 or 6) or (showPrice and 6 or 5)
 		local s  = 1 / n
 		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, n)
 		local off = ajouterLabelSpecial(bb, s)
@@ -224,39 +226,49 @@ function BrainrotBillboard.SetupField(brainrot, duration, studsY)
 		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        off + s,   Color3.fromRGB(255, 215, 0))
 		local lRarete =
 		MakeLabel(bb, "LRarete", rarete,                            off + s*2, couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*3, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*4, Color3.fromRGB(255, 215, 0))
-		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         off + s*5, Color3.fromRGB(220, 60, 60))
+		local nextOff = off + s*3
+		if showPrice then
+			MakeLabel(bb, "LPrix", "$" .. FormatNombre(prix),       nextOff,   Color3.fromRGB(0, 220, 0))
+			nextOff = nextOff + s
+		end
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  nextOff,       Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         nextOff + s,   Color3.fromRGB(220, 60, 60))
 		AppliquerAnimationRarete(lRarete, rarete)
 	else
-		local n  = hasSpecial and 6 or 5
+		local n  = hasSpecial and (showPrice and 6 or 5) or (showPrice and 5 or 4)
 		local s  = 1 / n
 		local bb = CreerBillboardGui(root, studsY or STUDS_Y_FIELD, n)
 		local off = ajouterLabelSpecial(bb, s)
 		MakeLabel(bb, "LNom",   nomAff,                             off,       Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
 		local lRarete =
 		MakeLabel(bb, "LRarete", rarete,                            off + s,   couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*2, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*3, Color3.fromRGB(255, 215, 0))
-		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         off + s*4, Color3.fromRGB(220, 60, 60))
+		local nextOff = off + s*2
+		if showPrice then
+			MakeLabel(bb, "LPrix", "$" .. FormatNombre(prix),       nextOff,   Color3.fromRGB(0, 220, 0))
+			nextOff = nextOff + s
+		end
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  nextOff,       Color3.fromRGB(0, 220, 0))
+		MakeLabel(bb, "LTimer", FormatTimer(duration or 0),         nextOff + s,   Color3.fromRGB(220, 60, 60))
 		AppliquerAnimationRarete(lRarete, rarete)
 	end
 end
 
 --[[
     SetupBase — Billboard base/slot (sans timer)
-    Nom · Rareté · $Prix · $CPS/s
+    Nom · Rareté · [$Prix] · $CPS/s
 
-    @param brainrot  Model|BasePart
-    @param studsY    number? — hauteur override (défaut : 4)
+    @param brainrot   Model|BasePart
+    @param studsY     number? — hauteur override (défaut : 4)
+    @param showPrice  bool?   — afficher la ligne prix (défaut : true)
 ]]
-function BrainrotBillboard.SetupBase(brainrot, studsY)
+function BrainrotBillboard.SetupBase(brainrot, studsY, showPrice)
+	if showPrice == nil then showPrice = true end
 	local root = GetRootPart(brainrot)
 	if not root then return end
 
 	local rarete     = brainrot:GetAttribute("Rarete")         or "COMMON"
 	local nomAff     = brainrot:GetAttribute("OriginalName")   or brainrot.Name
-	local prix       = brainrot:GetAttribute("Prix")           or 0
+	local prix       = showPrice and (brainrot:GetAttribute("Prix") or 0) or nil
 	local cps        = brainrot:GetAttribute("CashParSeconde") or 0
 	local isMutant     = brainrot:GetAttribute("IsMutant")
 	local mutantType   = brainrot:GetAttribute("MutantType")
@@ -298,7 +310,7 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 	end
 
 	if isMutant and mutantType then
-		local n  = hasSpecial and 6 or 5
+		local n  = hasSpecial and (showPrice and 6 or 5) or (showPrice and 5 or 4)
 		local s  = 1 / n
 		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, n)
 		local off = ajouterLabelSpecialBase(bb, s)
@@ -306,13 +318,17 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 		MakeLabel(bb, "LMutant", "✨ Mutant " .. mutantType,        off + s,   Color3.fromRGB(255, 215, 0))
 		local lRarete =
 		MakeLabel(bb, "LRarete", rarete,                            off + s*2, couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*3, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*4, Color3.fromRGB(255, 215, 0))
+		local nextOff = off + s*3
+		if showPrice then
+			MakeLabel(bb, "LPrix", "$" .. FormatNombre(prix),       nextOff,   Color3.fromRGB(0, 220, 0))
+			nextOff = nextOff + s
+		end
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  nextOff,   Color3.fromRGB(0, 220, 0))
 		AppliquerAnimationRarete(lRarete, rarete)
 	elseif mutation and MUTATION_INFOS[mutation] then
 		local mutInfo    = MUTATION_INFOS[mutation]
 		local showRarete = rarete:upper() ~= mutation
-		local baseLines  = showRarete and 5 or 4
+		local baseLines  = showRarete and (showPrice and 5 or 4) or (showPrice and 4 or 3)
 		local n          = hasSpecial and (baseLines + 1) or baseLines
 		local s          = 1 / n
 		local bb         = CreerBillboardGui(root, studsY or STUDS_Y_BASE, n)
@@ -326,8 +342,11 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 			AppliquerAnimationRarete(lRarete, rarete)
 			nextOff = nextOff + s
 		end
-		MakeLabel(bb, "LPrix", "$" .. FormatNombre(prix),         nextOff,     Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",  "$" .. FormatNombre(cps) .. "/s", nextOff + s, Color3.fromRGB(255, 215, 0))
+		if showPrice then
+			MakeLabel(bb, "LPrix", "$" .. FormatNombre(prix),         nextOff,     Color3.fromRGB(0, 220, 0))
+			nextOff = nextOff + s
+		end
+		MakeLabel(bb, "LCPS",  "$" .. FormatNombre(cps) .. "/s", nextOff, Color3.fromRGB(0, 220, 0))
 		if mutation == "RAINBOW" then
 			local hue, conn = 0, nil
 			conn = RunService.Heartbeat:Connect(function(dt)
@@ -337,15 +356,19 @@ function BrainrotBillboard.SetupBase(brainrot, studsY)
 			end)
 		end
 	else
-		local n  = hasSpecial and 5 or 4
+		local n  = hasSpecial and (showPrice and 5 or 4) or (showPrice and 4 or 3)
 		local s  = 1 / n
 		local bb = CreerBillboardGui(root, studsY or STUDS_Y_BASE, n)
 		local off = ajouterLabelSpecialBase(bb, s)
 		MakeLabel(bb, "LNom",   nomAff,                             off,       Color3.fromRGB(255, 255, 255), Color3.new(0, 0, 0))
 		local lRarete =
 		MakeLabel(bb, "LRarete", rarete,                            off + s,   couleur)
-		MakeLabel(bb, "LPrix",  "$" .. FormatNombre(prix),          off + s*2, Color3.fromRGB(0, 220, 0))
-		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  off + s*3, Color3.fromRGB(255, 215, 0))
+		local nextOff = off + s*2
+		if showPrice then
+			MakeLabel(bb, "LPrix", "$" .. FormatNombre(prix),       nextOff,   Color3.fromRGB(0, 220, 0))
+			nextOff = nextOff + s
+		end
+		MakeLabel(bb, "LCPS",   "$" .. FormatNombre(cps) .. "/s",  nextOff,   Color3.fromRGB(0, 220, 0))
 		AppliquerAnimationRarete(lRarete, rarete)
 	end
 end

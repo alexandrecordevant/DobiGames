@@ -56,6 +56,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 end
 
 function MonetizationHandler.CheckGamePasses(player, data)
+    if game:GetService("RunService"):IsStudio() then return end
     local mps = game:GetService("MarketplaceService")
     local function check(id, field)
         if id > 0 then

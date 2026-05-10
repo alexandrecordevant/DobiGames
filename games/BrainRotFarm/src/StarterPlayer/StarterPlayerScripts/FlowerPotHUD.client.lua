@@ -1,11 +1,12 @@
 -- StarterPlayer/StarterPlayerScripts/Common/FlowerPotHUD.client.lua
 -- DobiGames — Interface pots de fleurs : plantation, croissance, Daily Seed
 
-local Players           = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService      = game:GetService("TweenService")
-local SoundService      = game:GetService("SoundService")
-local Logger            = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
+local Players             = game:GetService("Players")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local TweenService        = game:GetService("TweenService")
+local SoundService        = game:GetService("SoundService")
+local MarketplaceService  = game:GetService("MarketplaceService")
+local Logger              = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 
 local function jouerSonGraine()
     local s = SoundService:FindFirstChild("SonGraine")
@@ -18,12 +19,13 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- ============================================================
 -- RemoteEvents
 -- ============================================================
-local OuvrirPot        = ReplicatedStorage:WaitForChild("OuvrirPot",    10)
-local PotUpdate        = ReplicatedStorage:WaitForChild("PotUpdate",    10)
-local DebloquerPot     = ReplicatedStorage:WaitForChild("DebloquerPot", 10)
-local InstantGrowPot   = ReplicatedStorage:WaitForChild("InstantGrowPot", 10)
-local ClaimDailySeed   = ReplicatedStorage:WaitForChild("ClaimDailySeed", 10)
-local UpdateGraines    = ReplicatedStorage:WaitForChild("UpdateGraines",  10)
+local OuvrirPot            = ReplicatedStorage:WaitForChild("OuvrirPot",           10)
+local PotUpdate            = ReplicatedStorage:WaitForChild("PotUpdate",           10)
+local DebloquerPot         = ReplicatedStorage:WaitForChild("DebloquerPot",        10)
+local InstantGrowPot       = ReplicatedStorage:WaitForChild("InstantGrowPot",      10)
+local ClaimDailySeed       = ReplicatedStorage:WaitForChild("ClaimDailySeed",      10)
+local RequestSkipDailySeed = ReplicatedStorage:WaitForChild("RequestSkipDailySeed",10)
+local UpdateGraines        = ReplicatedStorage:WaitForChild("UpdateGraines",       10)
 
 if not OuvrirPot then
     Logger.warn("HUD", "[FlowerPotHUD] OuvrirPot RemoteEvent not found — aborting")
@@ -368,7 +370,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
                 UDim2.new(1, 0, 0, 36),
                 12,
                 function()
-                    Logger.warn("HUD", "[FlowerPotHUD] Skip Daily Seed — R$ not configured")
+                    RequestSkipDailySeed:FireServer()
                 end)
             skipBtn.LayoutOrder = 6
         end
@@ -384,6 +386,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     sepPacks.Parent           = scrollFrame
 
     -- Pack ×3 MYTHIC
+    local devP = Config.DevProductIds or {}
     if dsCfg and dsCfg.packPrixRobux and dsCfg.packPrixRobux > 0 then
         local packBtn = creerBouton(scrollFrame,
             "Seed Pack x3 MYTHIC — " .. dsCfg.packPrixRobux .. " R$",
@@ -392,7 +395,9 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
             UDim2.new(1, 0, 0, 36),
             12,
             function()
-                Logger.warn("HUD", "[FlowerPotHUD] Seed Pack — R$ not configured")
+                if devP.SeedPackx3 and devP.SeedPackx3 > 0 then
+                    MarketplaceService:PromptProductPurchase(player, devP.SeedPackx3)
+                end
             end)
         packBtn.LayoutOrder = 8
     end
@@ -406,7 +411,9 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
             UDim2.new(1, 0, 0, 36),
             12,
             function()
-                Logger.warn("HUD", "[FlowerPotHUD] SECRET Seed Pack — R$ not configured")
+                if devP.SecretSeed and devP.SecretSeed > 0 then
+                    MarketplaceService:PromptProductPurchase(player, devP.SecretSeed)
+                end
             end)
         premBtn.LayoutOrder = 9
     end
@@ -921,6 +928,9 @@ local function OuvrirDailySeedPanel()
     btnSkip.BorderSizePixel        = 0
     btnSkip.ZIndex                 = 21
     Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, 6)
+    btnSkip.MouseButton1Click:Connect(function()
+        RequestSkipDailySeed:FireServer()
+    end)
 
     local btnPack = Instance.new("TextButton", panel)
     btnPack.Size                   = UDim2.new(0, 145, 0, 32)
@@ -933,6 +943,12 @@ local function OuvrirDailySeedPanel()
     btnPack.BorderSizePixel        = 0
     btnPack.ZIndex                 = 21
     Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, 6)
+    local _dpDevP = Config.DevProductIds or {}
+    btnPack.MouseButton1Click:Connect(function()
+        if _dpDevP.SeedPackx3 and _dpDevP.SeedPackx3 > 0 then
+            MarketplaceService:PromptProductPurchase(player, _dpDevP.SeedPackx3)
+        end
+    end)
 
     -- Fermer avec Escape
     local uis = game:GetService("UserInputService")

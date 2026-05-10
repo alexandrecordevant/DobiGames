@@ -50,6 +50,7 @@ else
     Logger.info("Main", "[FuseSystem] Module chargé ✓")
 end
 
+
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
 -- ═══════════════════════════════════════════════
@@ -96,6 +97,7 @@ local DebloquerPot          = CreerRemoteEvent("DebloquerPot")
 local InstantGrowPot        = CreerRemoteEvent("InstantGrowPot")
 local DemandeOuvrirRebirth  = CreerRemoteEvent("DemandeOuvrirRebirth")
 local ClaimDailySeed        = CreerRemoteEvent("ClaimDailySeed")
+local RequestSkipDailySeed  = CreerRemoteEvent("RequestSkipDailySeed")
 local CollectAllEvent        = CreerRemoteEvent("CollectAllEvent")
 
 -- Functions (requêtes avec réponse)
@@ -891,29 +893,39 @@ DebloquerPot.OnServerEvent:Connect(function(player, potIndex)
     end
 end)
 
+-- potIndex en attente d'achat Instant Grow (DevProduct, contexte perdu à ProcessReceipt)
+local _pendingInstantGrow   = {}
+local _pendingSkipDailySeed = {}
+
 -- Croissance instantanée via modal FlowerPotHUD (bouton Instant Grow)
 InstantGrowPot.OnServerEvent:Connect(function(player, potIndex)
     local data = GetData(player)
     if not data or not data.pots or not data.pots[potIndex] then return end
     if not data.pots[potIndex].debloque or not data.pots[potIndex].rarete then
-        NotifEvent:FireClient(player, "ERROR", "❌ No seed in this pot!")
+        NotifEvent:FireClient(player, "ERROR", "No seed in this pot!")
         return
     end
-    local igCfg = Config.FlowerPotConfig and Config.FlowerPotConfig.instantGrow
-    local gpId  = igCfg and igCfg.gamePassId or 0
-    if gpId > 0 then
-        local ok, owned = pcall(function()
-            return game:GetService("MarketplaceService"):UserOwnsGamePassAsync(player.UserId, gpId)
-        end)
-        if ok and owned then
-            FlowerPotGrowthSystem.InstantGrow(player, potIndex)
-        else
-            game:GetService("MarketplaceService"):PromptGamePassPurchase(player, gpId)
-        end
-    else
-        -- DevProduct → géré dans MonetizationHandler via ProcessReceipt
-        NotifEvent:FireClient(player, "INFO", "Instant Grow requires a Robux purchase.")
+    local pid = Config.DevProductIds and Config.DevProductIds.SkipSeedTimer or 0
+    if pid == 0 then
+        NotifEvent:FireClient(player, "ERROR", "Instant Grow not configured.")
+        return
     end
+    _pendingInstantGrow[player.UserId] = potIndex
+    game:GetService("MarketplaceService"):PromptProductPurchase(player, pid)
+end)
+
+-- Skip Daily Seed timer (bouton "Skip — 25 R$")
+RequestSkipDailySeed.OnServerEvent:Connect(function(player)
+    local data = GetData(player)
+    if not data or not data.dailySeed then return end
+    if data.dailySeed.graineDispo then
+        NotifEvent:FireClient(player, "INFO", "Daily seed already available!")
+        return
+    end
+    local pid = Config.DevProductIds and Config.DevProductIds.SkipSeedTimer or 0
+    if pid == 0 then return end
+    _pendingSkipDailySeed[player.UserId] = true
+    game:GetService("MarketplaceService"):PromptProductPurchase(player, pid)
 end)
 
 -- Collecte manuelle (touch d'un collectible)
@@ -1539,12 +1551,21 @@ MonetizationHandler.SetGetData(GetData)
 -- Enregistrés ici pour garder shared-lib découplé de ces systèmes
 local devP = Config.DevProductIds or {}
 
--- Skip Seed Timer : rend la graine quotidienne disponible immédiatement
+-- SkipSeedTimer : Instant Grow (prioritaire) ou Skip Daily Seed selon le contexte
 if devP.SkipSeedTimer and devP.SkipSeedTimer > 0 then
     MonetizationHandler.RegisterProductHandler(devP.SkipSeedTimer, function(player, data)
-        if data and data.dailySeed then
-            data.dailySeed.graineDispo    = true
-            data.dailySeed.dernieresClaim = 0
+        local potIndex = _pendingInstantGrow[player.UserId]
+        _pendingInstantGrow[player.UserId] = nil
+        if potIndex then
+            FlowerPotGrowthSystem.InstantGrow(player, potIndex)
+            return
+        end
+        if _pendingSkipDailySeed[player.UserId] then
+            _pendingSkipDailySeed[player.UserId] = nil
+            if data and data.dailySeed then
+                data.dailySeed.graineDispo    = true
+                data.dailySeed.dernieresClaim = 0
+            end
         end
     end)
 end
@@ -1635,6 +1656,24 @@ end
 -- FUSE SYSTEM (tier par CashParSeconde, résultat dans le carry)
 -- ═══════════════════════════════════════════════
 
+-- Mapping slot interne FuseSystem → MutantType FlowerPot (pour filtre visuel)
+local FUSE_SLOT_TO_MUTANT_TYPE = {
+    GOLD    = "GALAXY",
+    DIAMANT = "VOID",
+    RAINBOW = "RAINBOW",
+    TOXIC   = "TOXIC",
+}
+local _FuseFM = nil
+local function getFuseFM()
+    if not _FuseFM then
+        local ok, m = pcall(function()
+            return require(ServerScriptService.SharedLib.BRFilterSystem.FilterManager)
+        end)
+        if ok and m then _FuseFM = m end
+    end
+    return _FuseFM
+end
+
 if FuseSystem then
     -- Notifications Fuse → client (même canal que le reste du jeu)
     FuseSystem.OnNotif = function(player, type, message)
@@ -1646,6 +1685,26 @@ if FuseSystem then
     -- Résultat : cloner dans le carry via CarrySystem
     FuseSystem.OnResultatPret = function(player, brainrotClone)
         local rarete    = brainrotClone:GetAttribute("Rarete") or "COMMON"
+
+        -- Appliquer filtre visuel si mutation FlowerPot
+        local mutation   = brainrotClone:GetAttribute("Mutation")
+        local mutantType = mutation and FUSE_SLOT_TO_MUTANT_TYPE[mutation]
+        if mutantType then
+            local mtInfo = Config.MutantTypesByName and Config.MutantTypesByName[mutantType]
+            if mtInfo then
+                brainrotClone:SetAttribute("IsMutant",   true)
+                brainrotClone:SetAttribute("MutantType", mutantType)
+                -- Parent requis avant Apply (FilterManager exige Parent ~= nil)
+                brainrotClone.Parent = game:GetService("ServerStorage")
+                local FM = getFuseFM()
+                if FM then
+                    pcall(FM.Apply, brainrotClone, { { Name = mtInfo.Filtre } })
+                end
+            end
+        else
+            brainrotClone.Parent = game:GetService("ServerStorage")
+        end
+
         local rareteObj = {
             nom         = rarete,
             dossier     = rarete,
@@ -1653,10 +1712,8 @@ if FuseSystem then
             valeur      = brainrotClone:GetAttribute("Valeur")
                           or (Config.ValeurParRarete and Config.ValeurParRarete[rarete])
                           or 1,
-            elementType = brainrotClone:GetAttribute("ElementType"),
+            elementType = mutantType,
         }
-        -- AjouterAuCarry attend le modèle dans un container valide
-        brainrotClone.Parent = game:GetService("ServerStorage")
         local ok, err = pcall(CarrySystem.AjouterAuCarry, player, brainrotClone, rareteObj)
         if not ok then
             Logger.warn("Main", "[FuseSystem] AjouterAuCarry echec : %s", tostring(err))
@@ -1673,5 +1730,6 @@ if FuseSystem then
 else
     Logger.warn("Main", "[FuseSystem] Init() ignoré — module non chargé")
 end
+
 
 Logger.info("Main", "Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))

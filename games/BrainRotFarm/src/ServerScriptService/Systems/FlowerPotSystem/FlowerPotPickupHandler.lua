@@ -39,17 +39,11 @@ local function notifier(player, typeNotif, message)
     end
 end
 
--- Son de récolte via SoundService (fallback silencieux si absent)
-local function jouerSonRecolte(position)
-    pcall(function()
-        local sound = Instance.new("Sound")
-        sound.SoundId  = "rbxassetid://9120386446"  -- Son "collecte" Roblox
-        sound.Volume   = 0.8
-        sound.RollOffMaxDistance = 20
-        sound.Parent   = workspace
-        sound:Play()
-        game:GetService("Debris"):AddItem(sound, 3)
-    end)
+local function jouerSonRecolte(player)
+    local ev = ReplicatedStorage:FindFirstChild("SoundEvent")
+    if ev then
+        pcall(function() ev:FireClient(player, "SonCollecte") end)
+    end
 end
 
 -- Burst de particules dorées au moment du pickup
@@ -198,13 +192,7 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
             -- Burst de particules dorées
             burstPickup(clone)
 
-            -- Son de récolte
-            local rootPart = clone:IsA("Model")
-                and (clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart"))
-                or  clone
-            if rootPart then
-                jouerSonRecolte(rootPart.Position)
-            end
+            jouerSonRecolte(triggerPlayer)
 
             Logger.info("Pickup", "%s récolté par %s | %s ×%d | Pot: %s", seedRarity, triggerPlayer.Name, elementType, multiplier, potModel.Name)
 

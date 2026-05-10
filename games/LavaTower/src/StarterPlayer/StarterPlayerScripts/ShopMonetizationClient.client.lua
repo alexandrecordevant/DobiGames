@@ -469,7 +469,15 @@ task.spawn(function()
             Size = UDim2.new(0, 100, 0, 100), BackgroundColor3 = C.Thumb,
             BorderSizePixel = 0, LayoutOrder = 2, ZIndex = 7, Parent = carte,
         })
-        addCorner(thumb, 2); addStroke(thumb)
+        addCorner(thumb, 8); addStroke(thumb)
+        if cfg.image then
+            local img = newInst("ImageLabel", {
+                Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
+                Image = cfg.image, ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 8, Parent = thumb,
+            })
+            addCorner(img, 8)
+        end
 
         local chanceLabel = newInst("TextLabel", {
             Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1,
@@ -551,20 +559,69 @@ task.spawn(function()
         VerticalAlignment = Enum.VerticalAlignment.Center,
         SortOrder = Enum.SortOrder.LayoutOrder, Parent = thumbRow,
     })
-    local STARTER_THUMBS = { [3] = "rbxassetid://88226292288257" }
+    local STARTER_THUMBS    = { [3] = "rbxassetid://88226292288257" }
+    local STARTER_BRAINROTS = { [1] = "Nuclearo Dinossauro", [2] = "67" }
+
+    local function trouverBrainrot(nom)
+        local brainrotsFolder = ReplicatedStorage:FindFirstChild("Brainrots")
+        if not brainrotsFolder then return nil end
+        for _, dossierRarete in ipairs(brainrotsFolder:GetChildren()) do
+            if dossierRarete:IsA("Folder") then
+                for _, enfant in ipairs(dossierRarete:GetChildren()) do
+                    if enfant:IsA("Folder") then
+                        local m = enfant:FindFirstChild(nom)
+                        if m then return m end
+                    elseif enfant:IsA("Model") and enfant.Name == nom then
+                        return enfant
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    local function creerViewportThumb(parent, modeleSource)
+        local vp = newInst("ViewportFrame", {
+            Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+            BackgroundTransparency = 0, BorderSizePixel = 0, ZIndex = 8, Parent = parent,
+        })
+        addCorner(vp, 8)
+        if modeleSource then
+            pcall(function()
+                local clone = modeleSource:Clone()
+                clone.Parent = vp
+                local cf, size = clone:GetBoundingBox()
+                local maxSize = math.max(size.X, size.Y, size.Z)
+                if maxSize < 0.1 then maxSize = 4 end
+                local dist = maxSize * 0.7
+                local cam = Instance.new("Camera")
+                cam.CFrame = CFrame.new(
+                    cf.Position + Vector3.new(dist, size.Y * 0.25, dist),
+                    cf.Position
+                )
+                vp.CurrentCamera = cam
+                cam.Parent = vp
+            end)
+        end
+        return vp
+    end
+
     for ti = 1, 3 do
         local t = newInst("Frame", {
             Size = UDim2.new(0, 80, 0, 80), BackgroundColor3 = C.Thumb,
             BorderSizePixel = 0, LayoutOrder = ti, ZIndex = 7, Parent = thumbRow,
             ClipsDescendants = true,
         })
-        addCorner(t, 2); addStroke(t)
+        addCorner(t, 8); addStroke(t)
         if STARTER_THUMBS[ti] then
-            newInst("ImageLabel", {
+            local img = newInst("ImageLabel", {
                 Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
                 Image = STARTER_THUMBS[ti], ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 8, Parent = t,
             })
+            addCorner(img, 8)
+        elseif STARTER_BRAINROTS[ti] then
+            creerViewportThumb(t, trouverBrainrot(STARTER_BRAINROTS[ti]))
         end
     end
 
@@ -604,7 +661,7 @@ task.spawn(function()
     })
 
     local vipThumbRow = newInst("Frame", {
-        Size = UDim2.new(1, 0, 0, 72), BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 90), BackgroundTransparency = 1,
         BorderSizePixel = 0, LayoutOrder = 7, ZIndex = 6, Parent = packScroll,
     })
     newInst("UIListLayout", {
@@ -613,21 +670,22 @@ task.spawn(function()
         VerticalAlignment = Enum.VerticalAlignment.Center,
         SortOrder = Enum.SortOrder.LayoutOrder, Parent = vipThumbRow,
     })
-    local VIP_THUMBS = { [2] = "rbxassetid://111745539282701", [3] = "rbxassetid://88226292288257" }
+    local VIP_THUMBS = { [1] = "rbxassetid://130750210611017", [2] = "rbxassetid://111745539282701", [3] = "rbxassetid://88226292288257" }
     for ti = 1, 3 do
         local t = newInst("Frame", {
-            Size = UDim2.new(0, 64, 0, 64), BackgroundColor3 = Color3.fromRGB(50, 40, 5),
+            Size = UDim2.new(0, 80, 0, 80), BackgroundColor3 = Color3.fromRGB(50, 40, 5),
             BorderSizePixel = 0, LayoutOrder = ti, ZIndex = 7, Parent = vipThumbRow,
             ClipsDescendants = true,
         })
-        addCorner(t, 2)
+        addCorner(t, 8)
         local s = Instance.new("UIStroke"); s.Color = Color3.fromRGB(200, 160, 20); s.Thickness = 1; s.Parent = t
         if VIP_THUMBS[ti] then
-            newInst("ImageLabel", {
+            local img = newInst("ImageLabel", {
                 Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
                 Image = VIP_THUMBS[ti], ScaleType = Enum.ScaleType.Fit,
                 ZIndex = 8, Parent = t,
             })
+            addCorner(img, 8)
         end
     end
 
@@ -812,15 +870,19 @@ task.spawn(function()
     tabPack.MouseButton1Click:Connect(function()  setTab("PACKS")         end)
     tabLuck.MouseButton1Click:Connect(function()  setTab("LUCK")          end)
 
+    local fermerMenusSignal do
+        local existing = ReplicatedStorage:FindFirstChild("FermerMenusSignal")
+        if existing and existing:IsA("BindableEvent") then
+            fermerMenusSignal = existing
+        else
+            fermerMenusSignal = Instance.new("BindableEvent")
+            fermerMenusSignal.Name   = "FermerMenusSignal"
+            fermerMenusSignal.Parent = ReplicatedStorage
+        end
+    end
+
     local function ouvrirShop(data)
-        local tpGui   = playerGui:FindFirstChild("TeleportMenuGui")
-        if tpGui   then tpGui.Enabled   = false end
-        local shopGui = playerGui:FindFirstChild("ShopGui")
-        if shopGui then shopGui.Enabled = false end
-        local voteGui = playerGui:FindFirstChild("EventVoteGui")
-        if voteGui then voteGui.Enabled = false end
-        local fuseGui = playerGui:FindFirstChild("FuseSystemUI")
-        if fuseGui then fuseGui.Enabled = false end
+        fermerMenusSignal:Fire("Shop")
         refreshUI(data)
         setTab("CASH")
         screenGui.Enabled  = true
@@ -837,6 +899,12 @@ task.spawn(function()
         tw:Play()
         tw.Completed:Connect(function() screenGui.Enabled = false end)
     end
+
+    fermerMenusSignal.Event:Connect(function(source)
+        if source ~= "Shop" and screenGui.Enabled then
+            fermerShop()
+        end
+    end)
 
     closeBtn.MouseButton1Click:Connect(fermerShop)
     backdrop.MouseButton1Click:Connect(fermerShop)

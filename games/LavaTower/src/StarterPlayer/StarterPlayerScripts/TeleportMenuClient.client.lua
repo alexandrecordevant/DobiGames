@@ -251,15 +251,19 @@ end
 -- ============================================================================
 -- ANIMATIONS OUVERTURE / FERMETURE
 -- ============================================================================
+local fermerMenusSignal do
+    local existing = ReplicatedStorage:FindFirstChild("FermerMenusSignal")
+    if existing and existing:IsA("BindableEvent") then
+        fermerMenusSignal = existing
+    else
+        fermerMenusSignal = Instance.new("BindableEvent")
+        fermerMenusSignal.Name   = "FermerMenusSignal"
+        fermerMenusSignal.Parent = ReplicatedStorage
+    end
+end
+
 local function ouvrirMenu()
-    local monetGui = playerGui:FindFirstChild("ShopMonetGui")
-    if monetGui then monetGui.Enabled = false end
-    local shopGui  = playerGui:FindFirstChild("ShopGui")
-    if shopGui  then shopGui.Enabled  = false end
-    local voteGui  = playerGui:FindFirstChild("EventVoteGui")
-    if voteGui  then voteGui.Enabled  = false end
-    local fuseGui  = playerGui:FindFirstChild("FuseSystemUI")
-    if fuseGui  then fuseGui.Enabled  = false end
+    fermerMenusSignal:Fire("TP")
     menuGui.Enabled    = true
     mainFrame.Position = UDim2.new(0.5, 0, 1.6, 0)
     TweenService:Create(mainFrame,
@@ -274,6 +278,12 @@ fermerMenu = function()
     tw:Play()
     tw.Completed:Connect(function() menuGui.Enabled = false end)
 end
+
+fermerMenusSignal.Event:Connect(function(source)
+    if source ~= "TP" and menuGui.Enabled then
+        fermerMenu()
+    end
+end)
 
 -- ============================================================================
 -- CONNEXIONS

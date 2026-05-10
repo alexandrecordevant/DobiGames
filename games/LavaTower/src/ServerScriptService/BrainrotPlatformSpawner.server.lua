@@ -138,31 +138,31 @@ local RARITY_ZONES = {
 	}},
 	-- Zone 2 : Bas (250 → 500) — RARE monte, LEGENDARY pointe
 	{ hauteurMin = 250,  poids = {
-		COMMON = 40, RARE = 35, EPIC = 18, LEGENDARY = 7,
+		COMMON = 40, RARE = 35, EPIC = 18, LEGENDARY = 4,
 	}},
 	-- Zone 3 : Quart bas (500 → 750) — EPIC prend de la place
 	{ hauteurMin = 500,  poids = {
-		COMMON = 15, RARE = 30, EPIC = 35, LEGENDARY = 18, MYTHIC = 2,
+		COMMON = 24, RARE = 30, EPIC = 35, LEGENDARY = 10, MYTHIC = 1,
 	}},
 	-- Zone 4 : Mi-tour (750 → 1000) — EPIC/LEGENDARY dominent, MYTHIC s'installe
 	{ hauteurMin = 750,  poids = {
-		RARE = 10, EPIC = 30, LEGENDARY = 32, MYTHIC = 24, GOD = 4,
+		RARE = 10, EPIC = 35, LEGENDARY = 28, MYTHIC = 10, GOD = 1,
 	}},
-	-- Zone 5 : Mi-haut (1000 → 1250) — MYTHIC dominant, GOD/SECRET apparaissent
+	-- Zone 5 : Mi-haut (1000 → 1250) — MYTHIC monte, GOD/SECRET très rares
 	{ hauteurMin = 1000, poids = {
-		EPIC = 10, LEGENDARY = 28, MYTHIC = 32, GOD = 24, SECRET = 6,
+		EPIC = 15, LEGENDARY = 30, MYTHIC = 25, GOD = 6, SECRET = 1,
 	}},
-	-- Zone 6 : Haut (1250 → 1500) — GOD dominant, OG pointe
+	-- Zone 6 : Haut (1250 → 1500) — GOD monte, SECRET rare
 	{ hauteurMin = 1250, poids = {
-		LEGENDARY = 16, MYTHIC = 22, GOD = 38, SECRET = 24,
+		LEGENDARY = 20, MYTHIC = 22, GOD = 15, SECRET = 4,
 	}},
-	-- Zone 7 : Très haut (1500 → 1750) — SECRET/OG prennent le dessus
+	-- Zone 7 : Très haut (1500 → 1750) — GOD dominant, SECRET rare
 	{ hauteurMin = 1500, poids = {
-		MYTHIC = 20, GOD = 50, SECRET = 30,
+		MYTHIC = 30, GOD = 28, SECRET = 8,
 	}},
-	-- Zone 8 : Sommet (1750 → 2000) — OG exclusif, SECRET rare
+	-- Zone 8 : Sommet (1750+) — SECRET/OG rares même au sommet
 	{ hauteurMin = 1750, poids = {
-		GOD = 40, SECRET = 59, OG = 1,
+		GOD = 18, SECRET = 12, OG = 4,
 	}},
 }
 
@@ -176,10 +176,29 @@ local ServerStorage        = game:GetService("ServerStorage")
 local Logger               = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local BrainrotPositioner   = require(game:GetService("ServerScriptService").SharedLib.Server.BrainrotPositioner)
 local RainbowEffect        = require(ReplicatedStorage.Modules.RainbowEffect)
+local GameConfig           = require(ReplicatedStorage.Modules.GameConfig)
 
 local function isToxicActif()
 	local flag = ServerStorage:FindFirstChild("ToxicEventActif")
 	return flag ~= nil and flag.Value == true
+end
+
+local function getServerLuck()
+	return ServerStorage:GetAttribute("ServerLuck") or 1
+end
+
+-- Raretés considérées comme "hautes" — leurs poids sont multipliés par la luck
+local HAUTES_RARETES = {
+	LEGENDARY = true, MYTHIC = true, GOD = true, SECRET = true, OG = true,
+}
+
+local function appliquerLuckAuxPoids(poids, luck)
+	if luck <= 1 then return poids end
+	local result = {}
+	for rarete, p in pairs(poids) do
+		result[rarete] = HAUTES_RARETES[rarete] and (p * luck) or p
+	end
+	return result
 end
 
 local function isNebulaActif()
@@ -275,10 +294,15 @@ if mutationRoot then
 end
 
 -- Tire le type de mutation à appliquer ("RAINBOW", "DIAMANT", "GOLD", ou nil = normal)
+-- La luck booste les chances via une formule √luck (douce) avec planchers pour éviter de trivialiser.
 local function tirerMutation()
-	if math.random(MUTATION_CONFIG.CHANCE_RAINBOW) == 1 then return "RAINBOW" end
-	if math.random(MUTATION_CONFIG.CHANCE_DIAMANT) == 1 then return "DIAMANT" end
-	if math.random(MUTATION_CONFIG.CHANCE_GOLD)    == 1 then return "GOLD"    end
+	local facteur       = math.sqrt(getServerLuck())
+	local chanceRainbow = math.max(10, math.floor(MUTATION_CONFIG.CHANCE_RAINBOW / facteur))
+	local chanceDiamant = math.max(5,  math.floor(MUTATION_CONFIG.CHANCE_DIAMANT / facteur))
+	local chanceGold    = math.max(3,  math.floor(MUTATION_CONFIG.CHANCE_GOLD    / facteur))
+	if math.random(chanceRainbow) == 1 then return "RAINBOW" end
+	if math.random(chanceDiamant) == 1 then return "DIAMANT" end
+	if math.random(chanceGold)    == 1 then return "GOLD"    end
 	return nil
 end
 
@@ -304,26 +328,66 @@ local function getZone(y)
 	return zone
 end
 
--- Tirage pondéré dans un tableau { RARETÉ = poids }
-local function tirerRarete(poids)
+-- Tirage pondéré dans un tableau { cle = poids } (cles string ou numerique)
+local function tiragePondere(poids)
 	local total = 0
 	for _, p in pairs(poids) do total += p end
 	local r = math.random() * total
 	local cumul = 0
-	for rarete, p in pairs(poids) do
+	for cle, p in pairs(poids) do
 		cumul += p
-		if r <= cumul then return rarete end
+		if r <= cumul then return cle end
 	end
 	return next(poids)
 end
 
+-- Selectionne un modele dans le dossier correspondant a la rarete.
+-- Pour SECRET et GOD, effectue un second tirage sur les sous-niveaux
+-- numerotes en lisant les poids depuis GameConfig.
+local function getRandomBrainrot(rarete, dossiersRarete)
+	local folder
+
+	if rarete == "SECRET" then
+		local niveau     = tiragePondere(GameConfig.SECRET_LEVEL_WEIGHTS)
+		local rootFolder = dossiersRarete["SECRET"]
+		folder = rootFolder and rootFolder:FindFirstChild(tostring(niveau))
+		Logger.debug("Spawn", "SECRET niveau %d selectionne", niveau)
+
+	elseif rarete == "GOD" then
+		local niveau     = tiragePondere(GameConfig.GOD_LEVEL_WEIGHTS)
+		local rootFolder = dossiersRarete["GOD"]
+		folder = rootFolder and rootFolder:FindFirstChild(tostring(niveau))
+		Logger.debug("Spawn", "GOD niveau %d selectionne", niveau)
+
+	else
+		folder = dossiersRarete[rarete]
+	end
+
+	if not folder then
+		Logger.warn("Spawn", "Folder introuvable pour rarete : " .. rarete)
+		return nil
+	end
+
+	local models = folder:GetChildren()
+	if #models == 0 then
+		Logger.warn("Spawn", "Folder vide : " .. folder:GetFullName())
+		return nil
+	end
+
+	return models[math.random(1, #models)]
+end
+
 -- Choisit une rareté ET un modèle dans le set de dossiers fourni, en ne considérant
--- que les dossiers non vides. Évite le cas où tirerRarete() sélectionne une rareté
+-- que les dossiers non vides. Évite le cas où tiragePondere() sélectionne une rareté
 -- sans modèles disponibles.
+-- La luck multiplie les poids des hautes raretés (LEGENDARY+) avant le tirage.
 local function choisirRareteEtModele(zone, dossiersRarete)
+	local luck        = getServerLuck()
+	local poidsLuck   = appliquerLuckAuxPoids(zone.poids, luck)
+
 	-- Construire un sous-tableau de poids limité aux raretés avec des modèles
 	local poisdsValides = {}
-	for rarete, poids in pairs(zone.poids) do
+	for rarete, poids in pairs(poidsLuck) do
 		local dossier = dossiersRarete[rarete]
 		if dossier and #dossier:GetChildren() > 0 then
 			poisdsValides[rarete] = poids
@@ -335,9 +399,14 @@ local function choisirRareteEtModele(zone, dossiersRarete)
 		return nil, nil
 	end
 
-	local rarete  = tirerRarete(poisdsValides)
-	local modeles = dossiersRarete[rarete]:GetChildren()
-	return modeles[math.random(1, #modeles)], rarete
+	local rarete = tiragePondere(poisdsValides)
+	local modele = getRandomBrainrot(rarete, dossiersRarete)
+
+	if luck > 1 and HAUTES_RARETES[rarete] then
+		Logger.debug("Spawn", "Luck x%d actif — rarete haute obtenue : %s", luck, rarete)
+	end
+
+	return modele, rarete
 end
 
 -- ════════════════════════════════════════════════════════════════

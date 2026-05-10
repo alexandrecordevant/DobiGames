@@ -31,6 +31,11 @@ local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.A
 local ShopSystem = require(ServerScriptService.ShopSystem)
 local ShopMonetizationSystem = require(ServerScriptService.ShopMonetizationSystem)
 local LeaderboardSystem = require(ServerScriptService.LeaderboardSystem)
+local _indexOk, IndexSystem = pcall(require, ServerScriptService.IndexSystem)
+if not _indexOk then
+    Logger.error("Main", "[IndexSystem] ERREUR require : %s", tostring(IndexSystem))
+    IndexSystem = nil
+end
 local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
     Logger.error("Main", "[FuseSystem] ERREUR require : %s", tostring(FuseSystem))
@@ -76,6 +81,16 @@ DataStoreManager.Setup("LavaTowerV1", function()
         -- Shop monetisation
         packAchete              = false,
         luckyBlocks             = {},
+        -- Index des Brainrots obtenus (par categorie)
+        indexObtenu             = {
+            NORMAL  = {},
+            GOLD    = {},
+            DIAMANT = {},
+            LAVA    = {},
+            NEBULA  = {},
+            RAINBOW = {},
+            TOXIC   = {},
+        },
     }
 end)
 
@@ -112,8 +127,12 @@ local OfflineIncomeNotif = CreerRemoteEvent("OfflineIncomeNotif")
 local DemandeUpgrade     = CreerRemoteEvent("DemandeUpgrade")
 local DemandePrestige    = CreerRemoteEvent("DemandePrestige")
 local AssignBase         = CreerRemoteEvent("AssignBase")         -- notifie le client de son baseIndex
-local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
-local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
+local IndexDemander      = CreerRemoteEvent("IndexDemander")      -- client demande son index
+local IndexRecevoir      = CreerRemoteEvent("IndexRecevoir")      -- serveur envoie l'index au client
+local GetPlayerData        = CreerRemoteFunction("GetPlayerData")
+local GetUpgradeCost       = CreerRemoteFunction("GetUpgradeCost")
+local SellConfirmShow      = CreerRemoteEvent("SellConfirmShow")   -- serveur → client : afficher dialog
+local SellConfirmReply     = CreerRemoteEvent("SellConfirmReply")  -- client → serveur : oui/non
 
 Logger.info("Main", "RemoteEvents créés ✓")
 LeaderboardSystem.Init()
@@ -187,9 +206,51 @@ CarrySystem.OnBeforeClean = function(player, portes)
     Logger.info("Main", "%s carry sauvegardé : %d BR(s)", player.Name, #carrySerial)
 end
 
--- DropSystem — mise à jour du bouton après dépôt/retrait/vente
+-- DropSystem — confirmation de vente pour GOD / SECRET / OG
+-- Architecture : deux RemoteEvents (FireClient + FireServer) + BindableEvent pour bloquer
+-- le thread serveur jusqu'à la réponse du client. Timeout 30s au cas où.
+local _confirmPending = {}  -- [userId] = BindableEvent en attente
+local RARETE_PROTEGEES = { GOD = true, SECRET = true, OG = true }
+
+SellConfirmReply.OnServerEvent:Connect(function(player, result)
+    local bindable = _confirmPending[player.UserId]
+    if bindable then
+        bindable:Fire(result == true)
+    end
+end)
+
+DropSystem.SellConfirmCallback = function(player, rarete)
+    if not RARETE_PROTEGEES[string.upper(rarete or "")] then return true end
+    if _confirmPending[player.UserId] then return false end
+
+    local bindable = Instance.new("BindableEvent")
+    _confirmPending[player.UserId] = bindable
+
+    SellConfirmShow:FireClient(player)
+
+    -- Timeout 30s : si le joueur ne répond pas, annuler la vente
+    task.delay(30, function()
+        if _confirmPending[player.UserId] == bindable then
+            bindable:Fire(false)
+        end
+    end)
+
+    local result = bindable.Event:Wait()
+    bindable:Destroy()
+    _confirmPending[player.UserId] = nil
+    return result == true
+end
+
+-- Libérer le BindableEvent si le joueur déconnecte pendant le dialog
+Players.PlayerRemoving:Connect(function(player)
+    local bindable = _confirmPending[player.UserId]
+    if bindable then bindable:Fire(false) end
+end)
+
+-- DropSystem — mise a jour du bouton apres depot/retrait/vente + suivi index
 DropSystem.OnSpotChange = function(player)
     AmelioSystem.MettreAJourBouton(player)
+    if IndexSystem then pcall(IndexSystem.OnSpotChange, player) end
 end
 AmelioSystem.OnButtonUpdate = function(player, etat)
     BoardSystem.MettreAJourBoard(player, etat)
@@ -215,6 +276,9 @@ AmelioCosmeticsSystem.GetData = GetData
 local function OnPlayerAdded(player)
     local data = DataStoreManager.Load(player)
     SetData(player, data)
+
+    -- Migration index (joueurs existants sans le champ)
+    if IndexSystem then IndexSystem.MigrerData(data) end
 
     -- Attribut VIP lisible par tous les scripts serveur (ex : VIPTowerSystem)
     player:SetAttribute("HasVIP", data.hasVIP == true)
@@ -295,7 +359,9 @@ local function OnPlayerAdded(player)
                     if not sourceFolder and BrainrotsFolder then
                         sourceFolder = BrainrotsFolder:FindFirstChild(porteeData.dossier or porteeData.nom)
                     end
-                    local modele = sourceFolder and sourceFolder:FindFirstChild(porteeData.brNom)
+                    local modele = sourceFolder and sourceFolder:FindFirstChild(porteeData.brNom, true)
+                    -- Rejeter si l'instance trouvee est un sous-dossier et non un modele affichable
+                    if modele and not modele:IsA("Model") and not modele:IsA("BasePart") then modele = nil end
                     if modele then
                         clone = modele:Clone()
                         -- Attributs mutation pour le watcher DescendantAdded
@@ -332,6 +398,9 @@ local function OnPlayerAdded(player)
             -- Réinitialiser les systèmes pour que le nouveau slot soit actif
             local bIndex = AssignationSystem.GetBaseIndex(p)
             if bIndex then
+                -- Sérialiser l'état courant AVANT Stop, sinon Init restaure des données périmées
+                d.spotsOccupes = DropSystem.GetSpotsOccupesSerialisables(p)
+                IncomeSystem.CollecterTousLesSlots(p)
                 DropSystem.Stop(p)
                 IncomeSystem.Stop(p)
                 DropSystem.Init(p, bIndex, d)
@@ -358,13 +427,31 @@ local function OnPlayerAdded(player)
     end
 
     DataStoreManager.StartAutoSave(player, function()
-        return GetData(player)
+        local d = GetData(player)
+        if d then
+            d.spotsOccupes = DropSystem.GetSpotsOccupesSerialisables(player)
+        end
+        return d
     end)
 
-    Logger.info("Main", "%s connecté", player.Name)
+    -- Envoyer l'index initial au client apres chargement
+    if IndexSystem then
+        task.delay(1.5, function()
+            if player.Parent then
+                local d = GetData(player)
+                if d and d.indexObtenu then
+                    IndexRecevoir:FireClient(player, d.indexObtenu)
+                end
+            end
+        end)
+    end
+
+    Logger.info("Main", "%s connecte", player.Name)
 end
 
 local function OnPlayerRemoving(player)
+    -- Collecter les coins en attente avant Stop (sinon ils sont perdus)
+    IncomeSystem.CollecterTousLesSlots(player)
     IncomeSystem.Stop(player)
 
     local data = GetData(player)
@@ -555,7 +642,66 @@ if not _shopMonetOk then
 end
 
 -- ═══════════════════════════════════════════════
+-- 12. INDEX SYSTEM
+-- ═══════════════════════════════════════════════
+
+if IndexSystem then
+    IndexSystem.GetData          = GetData
+    IndexSystem.DataStoreManager = DataStoreManager
+    local _idxInitOk, idxErr = pcall(IndexSystem.Init, IndexDemander, IndexRecevoir)
+    if not _idxInitOk then
+        Logger.error("Main", "[IndexSystem] ERREUR Init() : %s", tostring(idxErr))
+    end
+end
+
+-- ═══════════════════════════════════════════════
 -- 8. DÉMARRAGE
 -- ═══════════════════════════════════════════════
 
-Logger.info("Main", "🚀 Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))
+-- ═══════════════════════════════════════════════
+-- 13. LUCKY BLOCK SYSTEM
+-- ═══════════════════════════════════════════════
+
+local _lbOk, LuckyBlockSystem = pcall(require, ServerScriptService.LuckyBlockSystem)
+if not _lbOk then
+    Logger.error("Main", "[LuckyBlockSystem] ERREUR require : %s", tostring(LuckyBlockSystem))
+    LuckyBlockSystem = nil
+end
+
+if LuckyBlockSystem then
+    LuckyBlockSystem.GetData          = GetData
+    LuckyBlockSystem.DataStoreManager = DataStoreManager
+
+    -- Tous les touchParts du joueur (libres + occupes) pour localiser le slot du Lucky Block
+    LuckyBlockSystem.GetTousLesSpots = function(player)
+        local result = {}
+        for _, tp in ipairs(DropSystem.GetSpotsLibres(player)) do
+            table.insert(result, tp)
+        end
+        for _, entry in ipairs(DropSystem.GetSpotsOccupes(player)) do
+            table.insert(result, entry.touchPart)
+        end
+        return result
+    end
+
+    -- Retire le Lucky Block du slot sans le remettre dans le carry
+    LuckyBlockSystem.VendreBR = function(player, touchPart)
+        DropSystem.VendreBR(player, touchPart)
+    end
+
+    -- Donne le Brainrot resultat au joueur comme un vrai pickup de la tour
+    -- Configure le billboard, ajoute au carry, puis reactive les DepotPrompts
+    LuckyBlockSystem.DonnerAuCarry = function(player, clone, rareteObj)
+        clone.Parent = ReplicatedStorage
+        pcall(BrainrotBillboard.SetupBase, clone, nil, false)
+        pcall(CarrySystem.AjouterAuCarry, player, clone, rareteObj)
+        pcall(DropSystem.RecalculerPrompts, player)
+    end
+
+    local _lbInitOk, lbErr = pcall(LuckyBlockSystem.Init)
+    if not _lbInitOk then
+        Logger.error("Main", "[LuckyBlockSystem] ERREUR Init() : %s", tostring(lbErr))
+    end
+end
+
+Logger.info("Main", "Serveur demarre : %s", os.date("%d/%m/%Y %H:%M"))

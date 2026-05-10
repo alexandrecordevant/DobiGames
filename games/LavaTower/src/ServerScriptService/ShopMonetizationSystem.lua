@@ -196,31 +196,30 @@ local function traiterAchatLuckyBlock(player, index)
         return false, "Carry plein"
     end
 
-    local dossier = resoudreDossier(cfg.folder)
-    if not dossier then
-        Logger.warn("Shop", "%s LuckyBlock : dossier introuvable : %s", player.Name, tostring(cfg.folder))
-        return false, "Dossier introuvable"
-    end
-    local enfants = dossier:GetChildren()
-    if #enfants == 0 then
-        Logger.warn("Shop", "%s LuckyBlock : dossier vide : %s", player.Name, tostring(cfg.folder))
-        return false, "Modele introuvable"
+    -- Modele Lucky Block : ReplicatedStorage/LuckyBlocks/Tier_[index]/LuckyBlock
+    local lbFolder   = ReplicatedStorage:FindFirstChild("LuckyBlocks")
+    local tierFolder = lbFolder and lbFolder:FindFirstChild("Tier_" .. index)
+    local lbSource   = tierFolder and tierFolder:FindFirstChild("Lucky Block")
+
+    if not lbSource then
+        Logger.warn("Shop", "LuckyBlock introuvable : LuckyBlocks/Tier_%d/LuckyBlock", index)
+        return false, "Modele Lucky Block introuvable"
     end
 
-    local src = enfants[math.random(1, #enfants)]
-    local clone, cps = nil, 0
-    pcall(function()
-        clone = src:Clone()
-        cps   = src:GetAttribute("CashParSeconde") or 0
-    end)
-
+    local clone = nil
+    pcall(function() clone = lbSource:Clone() end)
     if not clone then
-        Logger.warn("Shop", "%s LuckyBlock : clone echoue pour %s", player.Name, tostring(cfg.folder))
-        return false, "Modele introuvable"
+        return false, "Erreur clonage Lucky Block"
     end
 
+    -- Attributs lus par LuckyBlockSystem quand le modele est depose sur un slot
+    clone:SetAttribute("IsLuckyBlock", true)
+    clone:SetAttribute("Tier",         index)
+    clone:SetAttribute("OwnerUserId",  player.UserId)
     clone.Parent = ReplicatedStorage
-    local rareteObj = { nom = cfg.nom, dossier = dossier.Name, isMutant = false, valeur = cps }
+
+    -- "LuckyBlock" comme rarete : evite le SellConfirmCallback (RARETE_PROTEGEES = GOD/SECRET/OG)
+    local rareteObj = { nom = "LuckyBlock", dossier = "LuckyBlock", isMutant = false, valeur = 0 }
     local ok, err = pcall(ajouterAuCarry, player, clone, rareteObj)
     if not ok then
         pcall(function() clone:Destroy() end)
@@ -228,8 +227,8 @@ local function traiterAchatLuckyBlock(player, index)
         return false, "Carry plein"
     end
 
-    Logger.info("Shop", "%s achat Lucky Block [%s]", player.Name, cfg.nom)
-    return true, "Lucky Block " .. cfg.nom .. " obtenu !"
+    Logger.info("Shop", "%s achat Lucky Block [%s] -> carry", player.Name, cfg.nom)
+    return true, "Lucky Block " .. cfg.nom .. " dans votre toolbar !"
 end
 
 -- -- Achat PACK DEMARRAGE -----------------------------------------------------
@@ -343,6 +342,7 @@ local function traiterAchatLuck(player, palierIndex)
     serverLuck            = cfg.Paliers[palierIndex]
     luckSecondesRestantes = cfg.Duree
     luckPalierActuel      = palierIndex
+    ServerStorage:SetAttribute("ServerLuck", serverLuck)
 
     LuckTimerUpdate:FireAllClients(serverLuck, luckSecondesRestantes, luckPalierActuel)
 
@@ -363,6 +363,7 @@ local function lancerBoucleTimerLuck()
                     luckSecondesRestantes = 0
                     serverLuck            = 1
                     luckPalierActuel      = 0
+                    ServerStorage:SetAttribute("ServerLuck", 1)
                     Logger.info("Shop", "Timer Luck expire -- serverLuck reset a 1")
                 end
                 LuckTimerUpdate:FireAllClients(serverLuck, luckSecondesRestantes, luckPalierActuel)
@@ -444,6 +445,7 @@ function ShopMonetizationSystem.AppliquerLuckVIP()
     serverLuck            = shopCfg.Luck.Paliers[1] or 2
     luckSecondesRestantes = duree
     luckPalierActuel      = 1
+    ServerStorage:SetAttribute("ServerLuck", serverLuck)
 
     if LuckTimerUpdate then
         LuckTimerUpdate:FireAllClients(serverLuck, luckSecondesRestantes, luckPalierActuel)

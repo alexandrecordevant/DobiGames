@@ -1,0 +1,3 @@
+-- StarterPlayer/StarterPlayerScripts/LuckyBlockClient.client.lua
+-- L animation Lucky Block est geree cote serveur (world-space sur le slot)
+-- Ce fichier est conserve vide intentionnellement

@@ -49,6 +49,7 @@ local SCROLL_H         = PANEL_H - SCROLL_TOP - 10
 local UPGRADE_H        = 116   -- hauteur d'un bloc upgrade
 local UPGRADE_PAD      = 8     -- espacement entre blocs
 local SEUIL_H          = 96    -- hauteur du bloc seuil tracteur
+local BOOST_H          = 96    -- hauteur du bloc boosts
 local BTN_H            = 38
 local BTN_CORNER       = UDim.new(0, 6)
 
@@ -550,6 +551,69 @@ local function construireSeuilTracteur(donnes, yPos)
 end
 
 -- ============================================================
+-- Bloc Boosts (LuckyHour)
+-- ============================================================
+local boostFrame = nil
+
+local function construireBoostsFrame(yPos)
+    if boostFrame and boostFrame.Parent then boostFrame:Destroy() end
+    boostFrame = nil
+
+    local devP = Config.DevProductIds or {}
+    local pid  = devP.LuckyHour
+    if not pid or pid == 0 then return yPos end
+
+    local frame = Instance.new("Frame")
+    frame.Name             = "Boosts"
+    frame.Size             = UDim2.new(1, -10, 0, BOOST_H)
+    frame.Position         = UDim2.new(0, 5, 0, yPos)
+    frame.BackgroundColor3 = T.fondSecondaire
+    frame.BorderSizePixel  = 0
+    frame.Parent           = scrollFrame
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 0)
+    local stroke = Instance.new("UIStroke", frame)
+    stroke.Color = C_BORDER ; stroke.Thickness = 1
+
+    local titre = Instance.new("TextLabel", frame)
+    titre.Size                = UDim2.new(1, -12, 0, 22)
+    titre.Position            = UDim2.new(0, 10, 0, 8)
+    titre.BackgroundTransparency = 1
+    titre.Text                = "BOOSTS"
+    titre.TextColor3          = C_TITLE
+    titre.Font                = Enum.Font.GothamBold
+    titre.TextSize            = 15
+    titre.TextScaled          = false
+    titre.TextXAlignment      = Enum.TextXAlignment.Left
+
+    local desc = Instance.new("TextLabel", frame)
+    desc.Size                = UDim2.new(1, -12, 0, 16)
+    desc.Position            = UDim2.new(0, 10, 0, 32)
+    desc.BackgroundTransparency = 1
+    desc.Text                = "x5 income for ALL players — 30 min"
+    desc.TextColor3          = C_DIM
+    desc.Font                = Enum.Font.Gotham
+    desc.TextSize            = 11
+    desc.TextScaled          = false
+    desc.TextXAlignment      = Enum.TextXAlignment.Left
+
+    local sep = Instance.new("Frame", frame)
+    sep.Size             = UDim2.new(1, -20, 0, 1)
+    sep.Position         = UDim2.new(0, 10, 0, 60)
+    sep.BackgroundColor3 = C_BORDER
+    sep.BorderSizePixel  = 0
+
+    local btn = creerBouton(frame, "Lucky Hour  35 R$", C_GOLD_BG, C_GOLD_TXT, 8, PANEL_W - 16 - 10 - 16, true)
+    btn.Size     = UDim2.new(1, -16, 0, BTN_H)
+    btn.Position = UDim2.new(0, 8, 0, 68)
+    btn.MouseButton1Click:Connect(function()
+        MarketplaceService:PromptProductPurchase(localPlayer, pid)
+    end)
+
+    boostFrame = frame
+    return yPos + BOOST_H + UPGRADE_PAD
+end
+
+-- ============================================================
 -- Construction complète du shop depuis les données reçues
 -- ============================================================
 local function construireShop(donnes)
@@ -576,6 +640,9 @@ local function construireShop(donnes)
 
     -- Bloc seuil Tracteur (visible seulement si hasTracteur)
     y = construireSeuilTracteur(donnes, y)
+
+    -- Bloc boosts (LuckyHour)
+    y = construireBoostsFrame(y)
 
     -- Ajuster le canvas de scroll
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
@@ -606,9 +673,9 @@ local function mettreAJourShop(donnes)
     end
     -- Recalculer la position Y du bloc seuil
     local y = 6 + #upgradeOrdre * (UPGRADE_H + UPGRADE_PAD)
-    construireSeuilTracteur(donnes, y)
-    local totalH = y + (donnes.hasTracteur and (SEUIL_H + UPGRADE_PAD) or 0)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalH + 4)
+    y = construireSeuilTracteur(donnes, y)
+    y = construireBoostsFrame(y)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
 end
 
 -- ============================================================

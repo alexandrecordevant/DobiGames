@@ -125,8 +125,14 @@ local function analyserMutations(toolInstances)
 			nbDiamant += 1
 		elseif mutation == "RAINBOW" then
 			nbRainbow += 1
+		elseif tool:GetAttribute("IsMutant") and FuseConfig.MutantTypeToSlot then
+			local slot = FuseConfig.MutantTypeToSlot[tool:GetAttribute("MutantType")]
+			if     slot == "GOLD"    then nbGold    += 1
+			elseif slot == "DIAMANT" then nbDiamant += 1
+			elseif slot == "RAINBOW" then nbRainbow += 1
+			elseif slot == "TOXIC"   then nbToxic   += 1
+			end
 		end
-		-- brainrots normaux : aucun bonus
 	end
 
 	local toxicBonus    = isToxicEventActif() and MUTATION_TOXIC_EVENT_BONUS or 0
@@ -239,7 +245,7 @@ local function tirerBrainrot(tier)
 			if not sousDossier then return nil end
 			local enfants = sousDossier:GetChildren()
 			if #enfants == 0 then return nil end
-			return enfants[1]
+			return enfants[math.random(1, #enfants)]
 		end
 	end
 

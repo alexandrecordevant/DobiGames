@@ -236,10 +236,27 @@ end
 -- ── Timer Toxic Event ────────────────────────────────────────────────────────
 local toxicActif = false
 
--- Timer toxic (bas droite, blanc)
-local toxicTimerLabel = Instance.new("TextLabel", gui)
-toxicTimerLabel.Size                   = UDim2.new(0, 140, 0, 34)
-toxicTimerLabel.Position               = UDim2.new(1, -150, 1, -44)
+-- Timer toxic (bas droite, même style que LuckHud : indicateur coloré + texte)
+local toxicTimerFrame = Instance.new("Frame", gui)
+toxicTimerFrame.Name                   = "ToxicTimer"
+toxicTimerFrame.Size                   = UDim2.new(0, 150, 0, 44)
+toxicTimerFrame.AnchorPoint            = Vector2.new(1, 1)
+toxicTimerFrame.Position               = UDim2.new(1, -12, 1, -64)
+toxicTimerFrame.BackgroundTransparency = 1
+toxicTimerFrame.BorderSizePixel        = 0
+toxicTimerFrame.Visible                = false
+
+local toxicIndicator = Instance.new("Frame", toxicTimerFrame)
+toxicIndicator.Size             = UDim2.new(0, 40, 0, 40)
+toxicIndicator.Position         = UDim2.new(0, 0, 0.5, -20)
+toxicIndicator.BackgroundColor3 = Color3.fromRGB(60, 200, 60)
+toxicIndicator.BorderSizePixel  = 0
+local _ticC = Instance.new("UICorner", toxicIndicator)
+_ticC.CornerRadius = UDim.new(0, 8)
+
+local toxicTimerLabel = Instance.new("TextLabel", toxicTimerFrame)
+toxicTimerLabel.Size                   = UDim2.new(1, -48, 1, 0)
+toxicTimerLabel.Position               = UDim2.new(0, 48, 0, 0)
 toxicTimerLabel.BackgroundTransparency = 1
 toxicTimerLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
 toxicTimerLabel.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
@@ -247,8 +264,8 @@ toxicTimerLabel.TextStrokeTransparency = 0.4
 toxicTimerLabel.TextScaled             = false
 toxicTimerLabel.TextSize               = 22
 toxicTimerLabel.Font                   = Enum.Font.GothamBold
+toxicTimerLabel.TextXAlignment         = Enum.TextXAlignment.Left
 toxicTimerLabel.Text                   = ""
-toxicTimerLabel.Visible                = false
 
 local toxicTimerThread = nil
 
@@ -264,14 +281,14 @@ local function stopperTimerClient()
         task.cancel(toxicTimerThread)
         toxicTimerThread = nil
     end
-    toxicTimerLabel.Visible = false
+    toxicTimerFrame.Visible = false
     toxicTimerLabel.Text    = ""
     restaurerLighting()
 end
 
 local function lancerTimerClient(endTime)
     toxicActif              = true
-    toxicTimerLabel.Visible = true
+    toxicTimerFrame.Visible = true
     activerEffetsLighting()
 
     if toxicTimerThread then task.cancel(toxicTimerThread) end
@@ -404,10 +421,27 @@ end)
 
 -- ── Timer Nebula Event ────────────────────────────────────────────────────────
 
--- Timer nebula (bas droite, au-dessus du timer toxic)
-local nebulaTimerLabel = Instance.new("TextLabel", gui)
-nebulaTimerLabel.Size                   = UDim2.new(0, 140, 0, 34)
-nebulaTimerLabel.Position               = UDim2.new(1, -150, 1, -84)
+-- Timer nebula (bas droite, même style que LuckHud : indicateur coloré + texte)
+local nebulaTimerFrame = Instance.new("Frame", gui)
+nebulaTimerFrame.Name                   = "NebulaTimer"
+nebulaTimerFrame.Size                   = UDim2.new(0, 150, 0, 44)
+nebulaTimerFrame.AnchorPoint            = Vector2.new(1, 1)
+nebulaTimerFrame.Position               = UDim2.new(1, -12, 1, -116)
+nebulaTimerFrame.BackgroundTransparency = 1
+nebulaTimerFrame.BorderSizePixel        = 0
+nebulaTimerFrame.Visible                = false
+
+local nebulaIndicator = Instance.new("Frame", nebulaTimerFrame)
+nebulaIndicator.Size             = UDim2.new(0, 40, 0, 40)
+nebulaIndicator.Position         = UDim2.new(0, 0, 0.5, -20)
+nebulaIndicator.BackgroundColor3 = Color3.fromRGB(180, 60, 220)
+nebulaIndicator.BorderSizePixel  = 0
+local _nebC = Instance.new("UICorner", nebulaIndicator)
+_nebC.CornerRadius = UDim.new(0, 8)
+
+local nebulaTimerLabel = Instance.new("TextLabel", nebulaTimerFrame)
+nebulaTimerLabel.Size                   = UDim2.new(1, -48, 1, 0)
+nebulaTimerLabel.Position               = UDim2.new(0, 48, 0, 0)
 nebulaTimerLabel.BackgroundTransparency = 1
 nebulaTimerLabel.TextColor3             = Color3.fromRGB(255, 100, 255)
 nebulaTimerLabel.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
@@ -415,8 +449,8 @@ nebulaTimerLabel.TextStrokeTransparency = 0.4
 nebulaTimerLabel.TextScaled             = false
 nebulaTimerLabel.TextSize               = 22
 nebulaTimerLabel.Font                   = Enum.Font.GothamBold
+nebulaTimerLabel.TextXAlignment         = Enum.TextXAlignment.Left
 nebulaTimerLabel.Text                   = ""
-nebulaTimerLabel.Visible                = false
 
 local nebulaTimerThread = nil
 
@@ -426,7 +460,7 @@ local function stopperTimerClientNebula()
 		task.cancel(nebulaTimerThread)
 		nebulaTimerThread = nil
 	end
-	nebulaTimerLabel.Visible = false
+	nebulaTimerFrame.Visible = false
 	nebulaTimerLabel.Text    = ""
 	restaurerLightingNebula()
 	retirerPhysiquesNebula()
@@ -434,7 +468,7 @@ end
 
 local function lancerTimerClientNebula(endTime)
 	nebulaActif              = true
-	nebulaTimerLabel.Visible = true
+	nebulaTimerFrame.Visible = true
 	activerEffetsLightingNebula()
 	if not player:GetAttribute("InTower") then
 		appliquerPhysiquesNebula()
