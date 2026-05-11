@@ -142,7 +142,7 @@ local function getFlowerPotSystem()
     return _FlowerPotSystem
 end
 
-local brainrotsFolder = ReplicatedStorage:WaitForChild(_dosierBrainrots)
+local brainrotsFolder = ServerStorage:WaitForChild(_dosierBrainrots)
 
 -- Poids des sous-niveaux SECRET et GOD (lus depuis GameConfig)
 local _secretWeights = _GameConfig.SECRET_LEVEL_WEIGHTS or { [1] = 1 }

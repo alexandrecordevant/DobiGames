@@ -49,6 +49,8 @@ local function DefaultData()
             dernieresClaim = 0,
             graineDispo    = true,
         },
+        -- Index des Brainrots decouverts (par categorie)
+        indexObtenu = {},
     }
 end
 

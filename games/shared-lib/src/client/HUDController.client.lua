@@ -297,23 +297,20 @@ shopBtnGui.Parent         = player.PlayerGui
 
 local btnShop = Instance.new("TextButton", shopBtnGui)
 btnShop.Name                   = "ShopRobuxButton"
-btnShop.Size                   = UDim2.new(0.25, 0, 0, 55)
-btnShop.Position               = UDim2.new(0, 10, 0.5, -153)
+btnShop.Size                   = UDim2.new(0, 80, 0, 80)
+btnShop.Position               = UDim2.new(0, 5, 0.5, -125)
 btnShop.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 btnShop.BackgroundTransparency = 0.05
 btnShop.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnShop.Font                   = Enum.Font.GothamBold
-btnShop.TextSize               = 13
+btnShop.TextSize               = 12
 btnShop.Text                   = "Shop"
 btnShop.TextWrapped            = true
 btnShop.BorderSizePixel        = 0
 btnShop.ZIndex                 = 5
-Instance.new("UICorner", btnShop).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", btnShop).CornerRadius = UDim.new(0, 8)
 local _btnShopStroke = Instance.new("UIStroke", btnShop)
 _btnShopStroke.Color = Color3.fromRGB(60, 60, 60) ; _btnShopStroke.Thickness = 1
-local _shopConstraint = Instance.new("UISizeConstraint", btnShop)
-_shopConstraint.MinSize = Vector2.new(80, 44)
-_shopConstraint.MaxSize = Vector2.new(120, 55)
 
 -- Fermeture des autres menus (1 seul ouvert a la fois)
 local function fermerAutresMenusRobux()

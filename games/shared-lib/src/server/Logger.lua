@@ -48,6 +48,7 @@ local PREFIXES = {
     Mutation    = "[MUTATION]",
     Vote        = "[VOTE]",
     LuckyBlock  = "[LUCKYBLOCK]",
+    Index       = "[INDEX]",
 }
 
 -- Appeler une seule fois au boot du jeu

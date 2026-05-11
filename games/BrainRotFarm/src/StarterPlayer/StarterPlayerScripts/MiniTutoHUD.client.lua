@@ -33,24 +33,24 @@ screenGui.Parent         = playerGui
 -- Bouton Tutorial — style identique au bouton FlowerPot (reference)
 local btn = Instance.new("TextButton", screenGui)
 btn.Name                   = "TutoButton"
-btn.Size                   = UDim2.new(0.25, 0, 0, 55)
-btn.Position               = UDim2.new(0, 10, 0.5, -90)
+btn.Size                   = UDim2.new(0, 80, 0, 80)
+btn.Position               = UDim2.new(0, 5, 0.5, -40)
 btn.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 btn.BackgroundTransparency = 0.05
 btn.TextColor3             = Color3.fromRGB(220, 220, 220)
 btn.Font                   = Enum.Font.GothamBold
-btn.TextSize               = 13
+btn.TextSize               = 12
 btn.Text                   = "Tutorial"
 btn.TextWrapped            = true
 btn.BorderSizePixel        = 0
 btn.ZIndex                 = 10
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 local btnStroke = Instance.new("UIStroke", btn)
 btnStroke.Color     = Color3.fromRGB(60, 60, 60)
 btnStroke.Thickness = 1
 local _tutoConstraint = Instance.new("UISizeConstraint", btn)
-_tutoConstraint.MinSize = Vector2.new(80, 44)
-_tutoConstraint.MaxSize = Vector2.new(120, 55)
+_tutoConstraint.MinSize = Vector2.new(80, 80)
+_tutoConstraint.MaxSize = Vector2.new(80, 80)
 
 -- ============================================================
 -- Tutorial panel

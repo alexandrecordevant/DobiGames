@@ -20,8 +20,8 @@ local playerGui   = localPlayer:WaitForChild("PlayerGui")
 --   FlowerPot (0,10, 0.5,+113) h=55  → bas à +168
 --   CollectAll (0,10, 0.5,+180) h=55
 
-local BOUTON_LARGEUR  = 120
-local BOUTON_HAUTEUR  = 55
+local BOUTON_LARGEUR  = 80
+local BOUTON_HAUTEUR  = 80
 local COIN_RADIUS     = 2
 
 local COULEUR_NORMALE  = Color3.fromRGB(10,  10,  10)   -- noir panel
@@ -48,9 +48,8 @@ screenGui.Parent         = playerGui
 -- ============================================================
 local bouton = Instance.new("TextButton")
 bouton.Name                  = "CollectAllBtn"
-bouton.Size                  = UDim2.new(0.25, 0, 0, BOUTON_HAUTEUR)
--- Aligné avec les autres boutons gauche (Shop, Rebirth, FlowerPot)
-bouton.Position              = UDim2.new(0, 10, 0.5, 99)
+bouton.Size                  = UDim2.new(0, BOUTON_LARGEUR, 0, BOUTON_HAUTEUR)
+bouton.Position              = UDim2.new(0, 90, 0.5, 45)
 bouton.AnchorPoint           = Vector2.new(0, 0)
 bouton.BackgroundColor3      = COULEUR_NORMALE
 bouton.BackgroundTransparency = 0.05
@@ -58,7 +57,7 @@ bouton.BorderSizePixel       = 0
 bouton.Text                  = "Collect\nAll"
 bouton.TextColor3            = COULEUR_TEXTE
 bouton.Font                  = Enum.Font.GothamBold
-bouton.TextSize              = 13
+bouton.TextSize              = 12
 bouton.TextWrapped           = true
 bouton.AutoButtonColor       = false
 bouton.ZIndex                = 10
@@ -68,8 +67,8 @@ local coin = Instance.new("UICorner")
 coin.CornerRadius = UDim.new(0, COIN_RADIUS)
 coin.Parent       = bouton
 local _collectConstraint = Instance.new("UISizeConstraint", bouton)
-_collectConstraint.MinSize = Vector2.new(80, 44)
-_collectConstraint.MaxSize = Vector2.new(120, 55)
+_collectConstraint.MinSize = Vector2.new(80, 80)
+_collectConstraint.MaxSize = Vector2.new(80, 80)
 
 local stroke = Instance.new("UIStroke")
 stroke.Color           = COULEUR_OMBRE

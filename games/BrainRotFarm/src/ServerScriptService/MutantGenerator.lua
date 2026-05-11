@@ -11,6 +11,7 @@ local MutantGenerator = {}
 -- Services
 -- ============================================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage     = game:GetService("ServerStorage")
 local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 local _GameConfig       = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
@@ -87,9 +88,9 @@ end
             ou nil, nil, nil en cas d'échec
 ]]
 function MutantGenerator.Generate(seedRarity, mutantType)
-    local brainrots = ReplicatedStorage:FindFirstChild("Brainrots")
+    local brainrots = ServerStorage:FindFirstChild("Brainrots")
     if not brainrots then
-        Logger.warn("Spawn", "ReplicatedStorage.Brainrots introuvable")
+        Logger.warn("Spawn", "ServerStorage.Brainrots introuvable")
         return nil, nil, nil
     end
 

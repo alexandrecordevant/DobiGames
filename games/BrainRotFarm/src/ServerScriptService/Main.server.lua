@@ -42,6 +42,9 @@ local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.A
 local _abOk, EventAdminAbuse = pcall(require, ServerScriptService.Events.EventAdminAbuse)
 if not _abOk then EventAdminAbuse = nil end  -- DEBUG TEMP
 
+local BRPreviewsBuilder = require(ServerScriptService.BRPreviewsBuilder)
+local IndexSystem       = require(ServerScriptService.IndexSystem)
+
 local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
     Logger.error("Main", "[FuseSystem] ERREUR require : %s", tostring(FuseSystem))
@@ -99,6 +102,8 @@ local DemandeOuvrirRebirth  = CreerRemoteEvent("DemandeOuvrirRebirth")
 local ClaimDailySeed        = CreerRemoteEvent("ClaimDailySeed")
 local RequestSkipDailySeed  = CreerRemoteEvent("RequestSkipDailySeed")
 local CollectAllEvent        = CreerRemoteEvent("CollectAllEvent")
+local IndexDemander          = CreerRemoteEvent("IndexDemander")
+local IndexRecevoir          = CreerRemoteEvent("IndexRecevoir")
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -568,9 +573,13 @@ local function OnPlayerAdded(player)
     -- Vérifier Game Passes
     MonetizationHandler.CheckGamePasses(player, data)
 
+    -- Migrer / initialiser l'index des Brainrots
+    IndexSystem.MigrerData(data)
+
     -- Envoyer HUD initial
     task.wait(1)  -- laisser le client charger
     EnvoyerHUD(player, data)
+    IndexRecevoir:FireClient(player, data.indexObtenu)
 
     -- Assigner une base (AssignationSystem remplace SpawnManager.AssignerBase)
     local baseIndex = AssignationSystem.AssignerJoueur(player)
@@ -1231,8 +1240,20 @@ end
 -- 6. INIT DES SYSTÈMES
 -- ═══════════════════════════════════════════════
 
--- Brainrots dans ReplicatedStorage (pas ServerStorage)
-DropSystem.SetBrainrotsFolder(ReplicatedStorage:WaitForChild("Brainrots"))
+-- Brainrots dans ServerStorage (fallback par défaut de DropSystem)
+
+-- Construire les previews visuels dans RS (shells pour ViewportFrame IndexClient)
+BRPreviewsBuilder.Build()
+
+-- IndexSystem : injecter les dépendances et initialiser
+IndexSystem.GetData          = GetData
+IndexSystem.DataStoreManager = DataStoreManager
+IndexSystem.Init(IndexDemander, IndexRecevoir)
+
+-- Hook DropSystem → IndexSystem (détection nouveaux BR déposés)
+DropSystem.OnSpotChange = function(player)
+    IndexSystem.OnSpotChange(player)
+end
 
 -- Visuels spot Mutant (doré + particules) — spécifique BRF, absent de LavaTower
 DropSystem.OnMutantDepose = function(touchPart, modeleSlot, _elementType)

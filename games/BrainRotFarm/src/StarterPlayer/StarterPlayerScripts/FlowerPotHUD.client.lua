@@ -1129,13 +1129,13 @@ end)
 -- Bouton FlowerPot
 local btnFlowerPot = Instance.new("TextButton", screenGui)
 btnFlowerPot.Name                   = "FlowerPotButton"
-btnFlowerPot.Size                   = UDim2.new(0.25, 0, 0, 55)
-btnFlowerPot.Position               = UDim2.new(0, 10, 0.5, 36)
+btnFlowerPot.Size                   = UDim2.new(0, 80, 0, 80)
+btnFlowerPot.Position               = UDim2.new(0, 90, 0.5, -40)
 btnFlowerPot.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 btnFlowerPot.BackgroundTransparency = 0.05
 btnFlowerPot.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnFlowerPot.Font                   = Enum.Font.GothamBold
-btnFlowerPot.TextSize               = 13
+btnFlowerPot.TextSize               = 12
 btnFlowerPot.Text                   = "FlowerPot"
 btnFlowerPot.TextWrapped            = true
 btnFlowerPot.BorderSizePixel        = 0
@@ -1144,8 +1144,8 @@ Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 2)
 local _bfpS = Instance.new("UIStroke", btnFlowerPot)
 _bfpS.Color = Color3.fromRGB(60, 60, 60) ; _bfpS.Thickness = 1
 local _fpConstraint = Instance.new("UISizeConstraint", btnFlowerPot)
-_fpConstraint.MinSize = Vector2.new(80, 44)
-_fpConstraint.MaxSize = Vector2.new(120, 55)
+_fpConstraint.MinSize = Vector2.new(80, 80)
+_fpConstraint.MaxSize = Vector2.new(80, 80)
 
 btnFlowerPot.MouseButton1Click:Connect(function()
     if fpPanel.Visible then

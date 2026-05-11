@@ -249,7 +249,7 @@ local NOM_DOSSIER_NEBULA = "BrainrotsNebula"
 -- mutation = "GOLD"|"DIAMANT"|"RAINBOW"|nil, isToxic = bool, rarity = "COMMON"|"RARE"|…
 -- isNebula = bool (brainrots du dossier BrainrotsNebula)
 local function getDossierMutation(mutation, isToxic, rarity, isNebula)
-    local mutRoot = ReplicatedStorage:FindFirstChild("Mutation")
+    local mutRoot = ServerStorage:FindFirstChild("Mutation")
     if not mutRoot then return nil end
     local nomDossier
     if mutation then

@@ -13,6 +13,7 @@ local Players             = game:GetService("Players")
 local Workspace           = game:GetService("Workspace")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local ServerStorage       = game:GetService("ServerStorage")
 
 -- Chargement différé FilterManager (système de filtres centralisé)
 local _FilterManager = nil
@@ -97,7 +98,7 @@ local PARTICLE_RATE_ALERTE = 40
 local LIGHT_RANGE_BASE     = 20
 local LIGHT_RANGE_ALERTE   = 40
 
-local BRAINROTS_FOLDER = ReplicatedStorage:WaitForChild("Brainrots")
+local BRAINROTS_FOLDER = ServerStorage:WaitForChild("Brainrots")
 
 -- Poids des sous-niveaux SECRET (lus depuis GameConfig)
 local _secretWeights = Config.SECRET_LEVEL_WEIGHTS or { [1] = 1 }
