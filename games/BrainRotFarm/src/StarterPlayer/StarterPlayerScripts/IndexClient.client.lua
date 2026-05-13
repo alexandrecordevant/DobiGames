@@ -34,7 +34,7 @@ local COULEURS_RARETE = {
     MYTHIC    = Color3.fromRGB(220, 80,  80),
 }
 
-local TABS = { "NORMAL", "GOLD", "DIAMANT", "RAINBOW", "NEBULA", "TOXIC" }
+local TABS = { "NORMAL", "GOLD", "DIAMANT", "RAINBOW", "NEBULA", "TOXIC", "MUTANTS" }
 
 -- Correspondance tab -> dossier dans BRPreviews/Mutation/
 local NOM_DOSSIER_MUTATION = {
@@ -43,6 +43,16 @@ local NOM_DOSSIER_MUTATION = {
     NEBULA  = "BrainrotsNebula",
     RAINBOW = "BrainrotsRainbow",
     TOXIC   = "BrainrotsToxic",
+}
+
+-- Types elementaires des Mutants FlowerPot (dans l'ordre d'affichage des badges)
+local MUTANT_TYPES  = { "GALAXY", "TOXIC", "RAINBOW", "VOID" }
+local MUTANT_EMOJIS = { GALAXY = "🌌", TOXIC = "☠️", RAINBOW = "🌈", VOID = "🕳️" }
+local MUTANT_COULEURS = {
+    GALAXY  = Color3.fromRGB(80,  100, 220),
+    TOXIC   = Color3.fromRGB(80,  200, 80),
+    RAINBOW = Color3.fromRGB(220, 100, 180),
+    VOID    = Color3.fromRGB(140, 50,  210),
 }
 
 -- Ordre de tri par rarete (du plus commun au plus rare)
@@ -127,6 +137,7 @@ local gui = newInst("ScreenGui", {
     Name           = "IndexGui",
     ResetOnSpawn   = false,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    IgnoreGuiInset = true,
     Parent         = pg,
 })
 
@@ -361,7 +372,8 @@ end
 -- Construction d'une carte Brainrot (100x130)
 -- ================================================================
 
-local function creerCarte(parent, brInfo, obtenu, layoutOrder)
+-- mutantData : table { GALAXY=bool, TOXIC=bool, ... } si onglet MUTANTS, nil sinon
+local function creerCarte(parent, brInfo, obtenu, layoutOrder, mutantData)
     local carte = newInst("Frame", {
         Size             = UDim2.new(0, 100, 0, 130),
         BackgroundColor3 = C.CarteBg,
@@ -375,7 +387,42 @@ local function creerCarte(parent, brInfo, obtenu, layoutOrder)
 
     creerViewportFrame(carte, brInfo.model, obtenu)
 
-    if obtenu then
+    if mutantData then
+        -- Onglet MUTANTS : 4 badges elementaires a la place du nom
+        local badgesFrame = newInst("Frame", {
+            Size                   = UDim2.new(1, -4, 0, 22),
+            Position               = UDim2.new(0, 2, 0, 88),
+            BackgroundTransparency = 1,
+            BorderSizePixel        = 0,
+            ZIndex                 = 22,
+            Parent                 = carte,
+        })
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection       = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment   = Enum.VerticalAlignment.Center
+        layout.Padding             = UDim.new(0, 2)
+        layout.Parent              = badgesFrame
+
+        for _, mType in ipairs(MUTANT_TYPES) do
+            local ok = mutantData[mType] == true
+            local badge = newInst("TextLabel", {
+                Size                   = UDim2.new(0, 20, 0, 20),
+                BackgroundColor3       = ok and MUTANT_COULEURS[mType] or Color3.fromRGB(35, 35, 35),
+                BackgroundTransparency = ok and 0.2 or 0.4,
+                BorderSizePixel        = 0,
+                Text                   = MUTANT_EMOJIS[mType],
+                TextScaled             = true,
+                TextTransparency       = ok and 0 or 0.55,
+                Font                   = Enum.Font.Gotham,
+                ZIndex                 = 23,
+                Parent                 = badgesFrame,
+            })
+            addCorner(badge, UDim.new(0, 3))
+        end
+
+    elseif obtenu then
+        -- Onglets normaux : nom defilant si trop long
         local CLIP_W    = 96
         local clipFrame = newInst("Frame", {
             Size                   = UDim2.new(1, -4, 0, 24),
@@ -492,6 +539,39 @@ local function listerBrainrotsTab(tab)
 
     if tab == "NORMAL" then
         return collecterDepuisDossier(previews:FindFirstChild("Brainrots"))
+    elseif tab == "MUTANTS" then
+        -- Uniquement les raretés MYTHIC et SECRET (seules graines compatibles FlowerPot)
+        local brainrotsFolder = previews:FindFirstChild("Brainrots")
+        if not brainrotsFolder then return {} end
+        local liste = {}
+        for _, rareteFolder in ipairs(brainrotsFolder:GetChildren()) do
+            if rareteFolder:IsA("Folder") and (rareteFolder.Name == "MYTHIC" or rareteFolder.Name == "SECRET") then
+                local rarete = rareteFolder.Name
+                for _, child in ipairs(rareteFolder:GetChildren()) do
+                    if child:IsA("Model") then
+                        table.insert(liste, {
+                            nom   = child.Name,
+                            rarete = rarete,
+                            model  = child,
+                            tri    = (ORDRE_RARETE[rarete] or 99) * 10000 + #liste,
+                        })
+                    elseif child:IsA("Folder") then
+                        for _, modele in ipairs(child:GetChildren()) do
+                            if modele:IsA("Model") then
+                                table.insert(liste, {
+                                    nom    = modele.Name,
+                                    rarete = rarete,
+                                    model  = modele,
+                                    tri    = (ORDRE_RARETE[rarete] or 99) * 10000 + #liste,
+                                })
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        table.sort(liste, function(a, b) return a.tri < b.tri end)
+        return liste
     else
         local nomDossier = NOM_DOSSIER_MUTATION[tab]
         if not nomDossier then return {} end
@@ -505,6 +585,15 @@ end
 -- ================================================================
 
 local function estObtenu(brNom, tab)
+    if tab == "MUTANTS" then
+        -- Bordure dorée si le BR a été obtenu normalement (onglet NORMAL)
+        local liste = indexObtenu["NORMAL"]
+        if not liste then return false end
+        for _, nom in ipairs(liste) do
+            if nom == brNom then return true end
+        end
+        return false
+    end
     local liste = indexObtenu[tab]
     if not liste then return false end
     for _, nom in ipairs(liste) do
@@ -528,10 +617,13 @@ local function remplirGrille(tab)
 
     local brainrots = listerBrainrotsTab(tab)
 
+    local mutantsData = (tab == "MUTANTS") and (indexObtenu.MUTANTS or {}) or nil
+
     for i, br in ipairs(brainrots) do
         if fillCounter ~= monCompteur then return end
-        local obtenu = estObtenu(br.nom, tab)
-        creerCarte(grille, br, obtenu, i)
+        local obtenu     = estObtenu(br.nom, tab)
+        local mutantData = mutantsData and (mutantsData[br.nom] or {}) or nil
+        creerCarte(grille, br, obtenu, i, mutantData)
         if i % 5 == 0 then task.wait() end
     end
 end

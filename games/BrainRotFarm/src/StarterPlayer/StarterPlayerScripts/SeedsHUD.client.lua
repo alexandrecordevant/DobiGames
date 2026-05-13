@@ -58,13 +58,13 @@ local function applyRariteStyle(label, rarity, strokeThick)
 end
 
 -- ============================================================
--- ScreenGui — IgnoreGuiInset = false pour matcher HUDController
+-- ScreenGui — IgnoreGuiInset = true pour aligner avec tous les autres boutons HUD
 -- ============================================================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name           = "SeedsHUD"
 screenGui.ResetOnSpawn   = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.IgnoreGuiInset = false   -- même espace coordonnées que HUDController
+screenGui.IgnoreGuiInset = true
 screenGui.Parent         = playerGui
 
 -- ============================================================
@@ -83,7 +83,7 @@ btnSeeds.BorderSizePixel        = 0
 btnSeeds.Text                   = "FlowerPot"
 btnSeeds.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnSeeds.Font                   = Enum.Font.GothamBold
-btnSeeds.TextSize               = 11
+btnSeeds.TextScaled             = true
 btnSeeds.TextWrapped            = true
 btnSeeds.AutoButtonColor        = false
 btnSeeds.ZIndex                 = 10

@@ -689,24 +689,25 @@ end
 
 local dailySeedButton = Instance.new("TextButton", screenGui)
 dailySeedButton.Name                   = "DailySeedButton"
-dailySeedButton.Size                   = UDim2.new(0.25, 0, 0, 55)
-dailySeedButton.Position               = UDim2.new(0, 10, 0.5, -27)
+dailySeedButton.Size                   = UDim2.new(0, 80, 0, 80)
+dailySeedButton.Position               = UDim2.new(0, 5, 0.5, -40)
 dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 dailySeedButton.BackgroundTransparency = 0.05
 dailySeedButton.TextColor3             = Color3.fromRGB(220, 220, 220)
 dailySeedButton.Font                   = Enum.Font.GothamBold
-dailySeedButton.TextSize               = 13
+dailySeedButton.TextSize               = 11
+dailySeedButton.TextWrapped            = true
 dailySeedButton.RichText               = false
 dailySeedButton.Text                   = "Day 1/7"
 dailySeedButton.BorderSizePixel        = 0
 dailySeedButton.ZIndex                 = 10
 local _dsCorner = Instance.new("UICorner", dailySeedButton)
-_dsCorner.CornerRadius = UDim.new(0, 2)
+_dsCorner.CornerRadius = UDim.new(0, 8)
 local _dsStroke = Instance.new("UIStroke", dailySeedButton)
 _dsStroke.Color = Color3.fromRGB(60, 60, 60) ; _dsStroke.Thickness = 1
 local _dsConstraint = Instance.new("UISizeConstraint", dailySeedButton)
-_dsConstraint.MinSize = Vector2.new(80, 44)
-_dsConstraint.MaxSize = Vector2.new(120, 55)
+_dsConstraint.MinSize = Vector2.new(80, 80)
+_dsConstraint.MaxSize = Vector2.new(80, 80)
 
 local _pulseTween = nil
 
