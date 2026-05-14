@@ -73,7 +73,7 @@ mainFrame.BorderSizePixel        = 0
 mainFrame.Visible                = false
 mainFrame.ZIndex                 = 11
 mainFrame.Parent                 = screenGui
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 0)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
 
 local _mainScale = Instance.new("UIScale", mainFrame)
 local function _ajusterMainFrame()
@@ -114,18 +114,18 @@ sep.Parent           = mainFrame
 
 -- Bouton fermer
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size              = UDim2.new(0, 32, 0, 32)
-closeBtn.Position          = UDim2.new(1, -38, 0, 6)
+closeBtn.Size              = UDim2.new(0, 44, 0, 44)
+closeBtn.Position          = UDim2.new(1, -50, 0, 4)
 closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
 closeBtn.Text              = "X"
 closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
 closeBtn.Font              = Enum.Font.GothamBold
-closeBtn.TextSize          = 13
-closeBtn.TextScaled        = false
+closeBtn.TextSize          = 16
+closeBtn.TextScaled        = true
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 12
 closeBtn.Parent            = mainFrame
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 local _closeBtnStroke = Instance.new("UIStroke", closeBtn)
 _closeBtnStroke.Color = Color3.fromRGB(60, 60, 60) ; _closeBtnStroke.Thickness = 1
 
@@ -177,11 +177,15 @@ local function creerBouton(parent, text, color, pos, size, zIndex, callback)
     btn.TextColor3        = T.texte
     btn.Font              = Enum.Font.GothamBold
     btn.TextSize          = 14
+    btn.TextScaled        = true
     btn.BorderSizePixel   = 0
     btn.TextWrapped       = true
     btn.ZIndex            = zIndex or 12
     btn.Parent            = parent
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    local _bp = Instance.new("UIPadding", btn)
+    _bp.PaddingLeft = UDim.new(0, 6) ; _bp.PaddingRight = UDim.new(0, 6)
+    _bp.PaddingTop = UDim.new(0, 2)  ; _bp.PaddingBottom = UDim.new(0, 2)
     if callback then btn.MouseButton1Click:Connect(callback) end
     return btn
 end
@@ -765,7 +769,7 @@ local function OuvrirDailySeedPanel()
     panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0
     panel.ZIndex                 = 20
-    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 8)
     local _panelStroke = Instance.new("UIStroke", panel)
     _panelStroke.Color     = T.bordure
     _panelStroke.Thickness = 1
@@ -802,10 +806,10 @@ local function OuvrirDailySeedPanel()
     btnClose.TextColor3             = Color3.fromRGB(180, 180, 180)
     btnClose.Font                   = Enum.Font.GothamBold
     btnClose.TextSize               = 16
-    btnClose.TextScaled             = false
+    btnClose.TextScaled             = true
     btnClose.BorderSizePixel        = 0
     btnClose.ZIndex                 = 21
-    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, 2)
+    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, 8)
     local _bcs = Instance.new("UIStroke", btnClose)
     _bcs.Color = T.bordure ; _bcs.Thickness = 1
     btnClose.MouseButton1Click:Connect(function() panel:Destroy() end)
@@ -853,7 +857,7 @@ local function OuvrirDailySeedPanel()
             and Color3.fromRGB(25, 35, 20) or Color3.fromRGB(20, 20, 20)
         ligne.BorderSizePixel        = 0
         ligne.ZIndex                 = 21
-        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 2)
+        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 8)
         local _ls = Instance.new("UIStroke", ligne)
         _ls.Color = statut == "dispo" and Color3.fromRGB(80, 140, 80) or Color3.fromRGB(60, 60, 60)
         _ls.Thickness = 1
@@ -891,10 +895,11 @@ local function OuvrirDailySeedPanel()
             btnClaim.TextColor3             = T.texte
             btnClaim.Font                   = Enum.Font.GothamBold
             btnClaim.TextSize               = 12
+            btnClaim.TextScaled             = true
             btnClaim.Text                   = "Claim"
             btnClaim.BorderSizePixel        = 0
             btnClaim.ZIndex                 = 23
-            Instance.new("UICorner", btnClaim).CornerRadius = UDim.new(0, 6)
+            Instance.new("UICorner", btnClaim).CornerRadius = UDim.new(0, 8)
             btnClaim.MouseButton1Click:Connect(function()
                 local re = ReplicatedStorage:FindFirstChild("ClaimDailySeed")
                 if re then re:FireServer() end
@@ -925,10 +930,11 @@ local function OuvrirDailySeedPanel()
     btnSkip.TextColor3             = T.fondPrincipal
     btnSkip.Font                   = Enum.Font.GothamBold
     btnSkip.TextSize               = 12
+    btnSkip.TextScaled             = true
     btnSkip.Text                   = "Skip — 25 R$"
     btnSkip.BorderSizePixel        = 0
     btnSkip.ZIndex                 = 21
-    Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, 8)
     btnSkip.MouseButton1Click:Connect(function()
         RequestSkipDailySeed:FireServer()
     end)
@@ -940,10 +946,11 @@ local function OuvrirDailySeedPanel()
     btnPack.TextColor3             = T.fondPrincipal
     btnPack.Font                   = Enum.Font.GothamBold
     btnPack.TextSize               = 12
+    btnPack.TextScaled             = true
     btnPack.Text                   = "Pack x3 — 99 R$"
     btnPack.BorderSizePixel        = 0
     btnPack.ZIndex                 = 21
-    Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, 8)
     local _dpDevP = Config.DevProductIds or {}
     btnPack.MouseButton1Click:Connect(function()
         if _dpDevP.SeedPackx3 and _dpDevP.SeedPackx3 > 0 then
@@ -979,7 +986,7 @@ fpPanel.BackgroundTransparency = 0.05
 fpPanel.BorderSizePixel        = 0
 fpPanel.Visible                = false
 fpPanel.ZIndex                 = 20
-Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, 0)
+Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, 8)
 local _fpStroke = Instance.new("UIStroke", fpPanel)
 _fpStroke.Color = T.bordure ; _fpStroke.Thickness = 1
 local _fpScale = Instance.new("UIScale", fpPanel)
@@ -999,12 +1006,12 @@ fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
 fpTitre.Text = "FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
-fpClose.Size = UDim2.new(0,30,0,30) ; fpClose.Position = UDim2.new(1,-36,0,4)
+fpClose.Size = UDim2.new(0,44,0,44) ; fpClose.Position = UDim2.new(1,-50,0,4)
 fpClose.BackgroundColor3 = Color3.fromRGB(50,50,50) ; fpClose.Text = "X"
 fpClose.TextColor3 = Color3.fromRGB(180,180,180) ; fpClose.Font = Enum.Font.GothamBold
-fpClose.TextSize = 12 ; fpClose.TextScaled = false
+fpClose.TextSize = 16 ; fpClose.TextScaled = true
 fpClose.BorderSizePixel = 0 ; fpClose.ZIndex = 21
-Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, 8)
 local _fpcs = Instance.new("UIStroke", fpClose)
 _fpcs.Color = Color3.fromRGB(60,60,60) ; _fpcs.Thickness = 1
 fpClose.MouseButton1Click:Connect(function()
@@ -1021,7 +1028,7 @@ end)
 local fpInv = Instance.new("Frame", fpPanel)
 fpInv.Size = UDim2.new(1,-20,0,26) ; fpInv.Position = UDim2.new(0,10,0,40)
 fpInv.BackgroundColor3 = T.fondSecondaire ; fpInv.BorderSizePixel = 0 ; fpInv.ZIndex = 21
-Instance.new("UICorner", fpInv).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", fpInv).CornerRadius = UDim.new(0, 8)
 local fpMythicLbl = Instance.new("TextLabel", fpInv)
 fpMythicLbl.Size = UDim2.new(0.5,0,1,0) ; fpMythicLbl.BackgroundTransparency = 1
 fpMythicLbl.Text = "MYTHIC: 0" ; fpMythicLbl.TextColor3 = Color3.fromRGB(180,0,255)
@@ -1046,7 +1053,7 @@ for i = 1, 4 do
     cell.Size = UDim2.new(0,cw,0,ch)
     cell.Position = UDim2.new(0, 10+(i-1)*(cw+6), 0, 74)
     cell.BackgroundColor3 = T.fondSecondaire ; cell.BorderSizePixel = 0 ; cell.ZIndex = 21
-    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 2)
+    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
     local _cs = Instance.new("UIStroke", cell)
     _cs.Color = Color3.fromRGB(60, 60, 60) ; _cs.Thickness = 1
     local function cl(txt, sz, pos, ts, bold)
@@ -1141,7 +1148,7 @@ btnFlowerPot.Text                   = "FlowerPot"
 btnFlowerPot.TextWrapped            = true
 btnFlowerPot.BorderSizePixel        = 0
 btnFlowerPot.ZIndex                 = 10
-Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 8)
 local _bfpS = Instance.new("UIStroke", btnFlowerPot)
 _bfpS.Color = Color3.fromRGB(60, 60, 60) ; _bfpS.Thickness = 1
 local _fpConstraint = Instance.new("UISizeConstraint", btnFlowerPot)

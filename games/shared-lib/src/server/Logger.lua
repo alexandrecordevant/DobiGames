@@ -49,6 +49,7 @@ local PREFIXES = {
     Vote        = "[VOTE]",
     LuckyBlock  = "[LUCKYBLOCK]",
     Index       = "[INDEX]",
+    Menu        = "[MENU]",
 }
 
 -- Appeler une seule fois au boot du jeu

@@ -270,6 +270,36 @@ GameConfig.CouleurPrimaire   = Color3.fromRGB(100, 200, 100)
 GameConfig.CouleurSecondaire = Color3.fromRGB(100, 100, 100)
 GameConfig.CouleurAccent     = Color3.fromRGB(255, 220, 50)
 
+-- === UI SHOP ===
+-- Clés lues par ShopHUD.client — ne pas hardcoder ces valeurs dans le script
+GameConfig.UI = {
+    Shop = {
+        -- Sizing adaptatif mobile / desktop
+        BtnHeightMobile  = 60,
+        BtnHeightDesktop = 45,
+        BtnCornerRadius  = 8,
+        BtnGap           = 8,
+        StrokeAvailable  = 1.5,
+        PaddingMobile    = 12,
+        PaddingDesktop   = 16,
+        UpgradeGap       = 16,
+        ScrollBarMobile  = 6,
+        ScrollBarDesktop = 4,
+
+        -- Couleurs par état des boutons upgrade
+        ColAchete        = Color3.fromRGB(27,  94,  32),   -- vert foncé — acheté
+        ColAcheteTxt     = Color3.fromRGB(255, 255, 255),
+        ColDisponible    = Color3.fromRGB(76,  175,  80),  -- vert vif — achetable
+        ColDisponibleTxt = Color3.fromRGB(255, 255, 255),
+        ColVerrouille    = Color3.fromRGB(66,   66,  66),  -- gris — verrouillé
+        ColVerrouilleTxt = Color3.fromRGB(180, 180, 180),
+        ColMax           = Color3.fromRGB(255, 179,   0),  -- or — niveau MAX
+        ColMaxTxt        = Color3.fromRGB(0,     0,   0),  -- noir sur fond or
+        ColFutureTxt     = Color3.fromRGB(70,   70,  80),  -- très sombre — non débloqué
+        ColStrokeDisp    = Color3.fromRGB(180, 255, 180),  -- bordure brillante bouton disponible
+    }
+}
+
 -- === AUDIO ===
 -- IDs à remplir : chercher dans Toolbox Studio (onglet Audio, filtre Free)
 --   SonCollecte → "pop" / "pickup" / "ding"         (< 1s)
@@ -991,6 +1021,17 @@ GameConfig.SECRET_LEVEL_WEIGHTS = {
 GameConfig.GOD_LEVEL_WEIGHTS = {
     [1] = 65,
     [2] = 35,
+}
+
+-- === MENU LATÉRAL (SideMenuHUD) ===
+-- Lu par SideMenuHUD.client.lua — valeurs UI uniquement, pas de logique métier
+GameConfig.MenuHUD = {
+    LargeurMobile  = 0.25,  -- fraction de ViewportSize.X sur mobile (Touch)
+    LargeurDesktop = 0.15,  -- fraction de ViewportSize.X sur desktop
+    HauteurBouton  = 60,    -- hauteur des boutons dans le menu (px)
+    RayonCoin      = 10,    -- rayon UICorner des boutons (px)
+    DureeAnimation = 0.2,   -- durée slide-in / slide-out (secondes)
+    BurgerSize     = 50,    -- largeur et hauteur du bouton hamburger (px)
 }
 
 return GameConfig

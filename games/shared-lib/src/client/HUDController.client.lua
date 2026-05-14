@@ -1,12 +1,16 @@
 -- StarterPlayerScripts/HUDController.client.lua
-local Players          = game:GetService("Players")
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService     = game:GetService("TweenService")
-local player           = Players.LocalPlayer
+local TweenService      = game:GetService("TweenService")
+local UserInputService  = game:GetService("UserInputService")
+local player            = Players.LocalPlayer
 local Config = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local _uiThemeModule = ReplicatedStorage.SharedLib.Shared:FindFirstChild("UITheme")
 if not _uiThemeModule then return end  -- HUDController BRF-only : pas de UITheme = mauvais jeu
 local T = require(_uiThemeModule)
+
+local estMobile = UserInputService.TouchEnabled
+local UI_SHOP   = (Config.UI and Config.UI.Shop) or {}
 local Logger       = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 local FormatNumber = require(ReplicatedStorage.SharedLib.Shared.FormatNumber)
 
@@ -303,7 +307,8 @@ btnShop.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 btnShop.BackgroundTransparency = 0.05
 btnShop.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnShop.Font                   = Enum.Font.GothamBold
-btnShop.TextSize               = 12
+btnShop.TextSize               = 14
+btnShop.TextScaled             = true
 btnShop.Text                   = "Shop"
 btnShop.TextWrapped            = true
 btnShop.BorderSizePixel        = 0
@@ -372,7 +377,7 @@ local function creerShopRobuxPanel()
     panel.BorderSizePixel        = 0
     panel.Visible                = false
     panel.ZIndex                 = 10
-    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 8)
 
     -- Reinitialiser l'etat si ferme par un autre menu
     panel:GetPropertyChangedSignal("Visible"):Connect(function()
@@ -416,11 +421,11 @@ local function creerShopRobuxPanel()
     btnFermer.TextColor3             = Color3.fromRGB(180, 180, 180)
     btnFermer.Font                   = Enum.Font.GothamBold
     btnFermer.TextSize               = 16
-    btnFermer.TextScaled             = false
+    btnFermer.TextScaled             = true
     btnFermer.Text                   = "X"
     btnFermer.BorderSizePixel        = 0
     btnFermer.ZIndex                 = 11
-    Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 2)
+    Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 8)
     local _bcs = Instance.new("UIStroke", btnFermer)
     _bcs.Color = T.bordure ; _bcs.Thickness = 1
     btnFermer.MouseButton1Click:Connect(function() panel.Visible = false end)
@@ -431,7 +436,7 @@ local function creerShopRobuxPanel()
     scroll.Position               = UDim2.new(0, 5, 0, 50)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel        = 0
-    scroll.ScrollBarThickness     = 4
+    scroll.ScrollBarThickness     = estMobile and (UI_SHOP.ScrollBarMobile or 6) or (UI_SHOP.ScrollBarDesktop or 4)
     scroll.ScrollBarImageColor3   = T.bordure
     scroll.CanvasSize             = UDim2.new(0, 0, 0, 0)
     scroll.ZIndex                 = 11
@@ -451,7 +456,7 @@ local function creerShopRobuxPanel()
                         nom        = (upgrade.nom or nomUpgrade) .. " " .. (niveau.label or ""),
                         prix       = niveau.prix,
                         gamePassId = niveau.gamePassId or 0,
-                        dataField  = upgrade.dataField,
+                        nomUpgrade = nomUpgrade,
                         niveauIdx  = niveauIdx,
                         ordre      = upgrade.ordre or 99,
                     })
@@ -480,6 +485,7 @@ local function creerShopRobuxPanel()
         lblNom.TextColor3             = T.texte
         lblNom.Font                   = Enum.Font.GothamBold
         lblNom.TextSize               = 13
+        lblNom.TextScaled             = true
         lblNom.TextXAlignment         = Enum.TextXAlignment.Left
         lblNom.TextWrapped            = true
         lblNom.ZIndex                 = 13
@@ -492,17 +498,21 @@ local function creerShopRobuxPanel()
         btnAcheter.TextColor3       = T.fondPrincipal
         btnAcheter.Font             = Enum.Font.GothamBold
         btnAcheter.TextSize         = 12
+        btnAcheter.TextScaled       = true
         btnAcheter.Text             = item.prix .. " R$"
         btnAcheter.BorderSizePixel  = 0
         btnAcheter.ZIndex           = 13
-        Instance.new("UICorner", btnAcheter).CornerRadius = UDim.new(0, 6)
+        Instance.new("UICorner", btnAcheter).CornerRadius = UDim.new(0, 8)
+        local _bap = Instance.new("UIPadding", btnAcheter)
+        _bap.PaddingLeft = UDim.new(0, 6) ; _bap.PaddingRight = UDim.new(0, 6)
+        _bap.PaddingTop = UDim.new(0, 2)  ; _bap.PaddingBottom = UDim.new(0, 2)
 
         local capturedItem = item
         btnAcheter.MouseButton1Click:Connect(function()
-            local achatEv = ReplicatedStorage:FindFirstChild("AchatUpgrade")
+            local achatEv = ReplicatedStorage:FindFirstChild("DemandeAchatRobux")
             if achatEv then
                 pcall(function()
-                    achatEv:FireServer(capturedItem.dataField, capturedItem.niveauIdx, false)
+                    achatEv:FireServer(capturedItem.nomUpgrade, capturedItem.niveauIdx)
                 end)
             end
         end)

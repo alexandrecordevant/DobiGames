@@ -49,6 +49,7 @@
                 "NightSkyClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/NightSkyClient.client.lua" },
                 "SeedsHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SeedsHUD.client.lua" },
                 "IndexClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/IndexClient.client.lua" },
+                "SideMenuHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SideMenuHUD.client.lua" },
                 "RainWeatherClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/RainWeatherClient.client.lua" },
                 "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" }
             }

@@ -16,6 +16,9 @@ local playerGui   = localPlayer:WaitForChild("PlayerGui")
 local Config = require(ReplicatedStorage.GameConfig)
 local T      = require(ReplicatedStorage.SharedLib.Shared.UITheme)
 
+local estMobile = UserInputService.TouchEnabled
+local UI_SHOP   = (Config.UI and Config.UI.Shop) or {}
+
 -- ============================================================
 -- Couleurs (palette sombre neutre -- aligné LavaTower)
 -- ============================================================
@@ -37,6 +40,18 @@ local C_OVERLAY     = Color3.fromRGB(0, 0, 0)
 local C_COINS       = Color3.fromRGB(255, 200, 50) -- gold coins
 local C_SEP         = T.bordure
 
+-- Couleurs d'état des boutons upgrade (lues depuis GameConfig.UI.Shop)
+local CS_OWNED_BG    = UI_SHOP.ColAchete        or Color3.fromRGB(27,  94,  32)
+local CS_OWNED_TXT   = UI_SHOP.ColAcheteTxt     or Color3.fromRGB(255, 255, 255)
+local CS_AVAIL_BG    = UI_SHOP.ColDisponible    or Color3.fromRGB(76,  175,  80)
+local CS_AVAIL_TXT   = UI_SHOP.ColDisponibleTxt or Color3.fromRGB(255, 255, 255)
+local CS_LOCK_BG     = UI_SHOP.ColVerrouille    or Color3.fromRGB(66,   66,  66)
+local CS_LOCK_TXT    = UI_SHOP.ColVerrouilleTxt or Color3.fromRGB(180, 180, 180)
+local CS_MAX_BG      = UI_SHOP.ColMax           or Color3.fromRGB(255, 179,   0)
+local CS_MAX_TXT     = UI_SHOP.ColMaxTxt        or Color3.fromRGB(0,     0,   0)
+local CS_FUTURE_TXT  = UI_SHOP.ColFutureTxt     or Color3.fromRGB(70,   70,  80)
+local CS_STROKE_DISP = UI_SHOP.ColStrokeDisp    or Color3.fromRGB(180, 255, 180)
+
 -- ============================================================
 -- Constantes layout
 -- ============================================================
@@ -46,12 +61,13 @@ local HEADER_H         = 54
 local COINS_H          = 36
 local SCROLL_TOP       = HEADER_H + COINS_H + 6
 local SCROLL_H         = PANEL_H - SCROLL_TOP - 10
-local UPGRADE_H        = 116   -- hauteur d'un bloc upgrade
-local UPGRADE_PAD      = 8     -- espacement entre blocs
-local SEUIL_H          = 96    -- hauteur du bloc seuil tracteur
-local BOOST_H          = 96    -- hauteur du bloc boosts
-local BTN_H            = 38
-local BTN_CORNER       = UDim.new(0, 6)
+local UPGRADE_PAD      = UI_SHOP.UpgradeGap    or 16   -- espacement entre blocs
+local BTN_GAP          = UI_SHOP.BtnGap        or 8    -- espacement entre boutons d'une même row
+local BTN_H            = estMobile and (UI_SHOP.BtnHeightMobile or 60) or (UI_SHOP.BtnHeightDesktop or 45)
+local UPGRADE_H        = 68 + BTN_H + 10   -- hauteur dynamique selon BTN_H
+local SEUIL_H          = 48 + BTN_H + 10   -- même logique
+local BOOST_H          = 68 + BTN_H + 10
+local BTN_CORNER       = UDim.new(0, UI_SHOP.BtnCornerRadius or 8)
 
 -- ============================================================
 -- ScreenGui
@@ -137,7 +153,7 @@ closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 4
 closeBtn.Parent            = headerBar
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 local closeBtnStroke = Instance.new("UIStroke", closeBtn)
 closeBtnStroke.Color = C_BORDER ; closeBtnStroke.Thickness = 1
 
@@ -180,11 +196,35 @@ scrollFrame.Size                  = UDim2.new(1, -10, 0, SCROLL_H)
 scrollFrame.Position              = UDim2.new(0, 5, 0, SCROLL_TOP)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel       = 0
-scrollFrame.ScrollBarThickness    = 4
+scrollFrame.ScrollBarThickness    = estMobile and (UI_SHOP.ScrollBarMobile or 6) or (UI_SHOP.ScrollBarDesktop or 4)
 scrollFrame.ScrollBarImageColor3  = T.fondBoutonRobux
 scrollFrame.CanvasSize            = UDim2.new(0, 0, 0, 0)
 scrollFrame.ZIndex                = 3
 scrollFrame.Parent                = panel
+
+-- Dégradé en bas du scroll pour indiquer qu'il y a plus de contenu
+local scrollFade = Instance.new("Frame")
+scrollFade.Name                   = "ScrollFade"
+scrollFade.Size                   = UDim2.new(1, -10, 0, 40)
+scrollFade.Position               = UDim2.new(0, 5, 0, SCROLL_TOP + SCROLL_H - 40)
+scrollFade.BackgroundColor3       = C_BG
+scrollFade.BackgroundTransparency = 0
+scrollFade.BorderSizePixel        = 0
+scrollFade.ZIndex                 = 6
+scrollFade.Visible                = false
+scrollFade.Parent                 = panel
+local fadeGrad = Instance.new("UIGradient")
+fadeGrad.Rotation     = 90
+fadeGrad.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 1),
+    NumberSequenceKeypoint.new(1, 0),
+})
+fadeGrad.Parent = scrollFade
+
+local function majScrollFade()
+    local canvasH = scrollFrame.CanvasSize.Y.Offset
+    scrollFade.Visible = canvasH > SCROLL_H
+end
 
 -- ============================================================
 -- État local
@@ -251,7 +291,7 @@ local AchatUpgrade         = nil
 local DemandeAchatRobux    = nil
 local ChangerSeuilTracteur = nil
 
-local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, cliquable)
+local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, cliquable, etat)
     local btn = Instance.new(cliquable and "TextButton" or "TextLabel")
     btn.Size             = UDim2.new(0, largeur, 0, BTN_H)
     btn.Position         = UDim2.new(0, xPos, 0, 0)
@@ -259,13 +299,26 @@ local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, 
     btn.Text             = texte
     btn.TextColor3       = couleurTxt
     btn.Font             = Enum.Font.GothamBold
-    btn.TextSize         = 12
-    btn.TextScaled       = false
+    btn.TextSize         = 14
+    btn.TextScaled       = true
     btn.BorderSizePixel  = 0
     btn.Parent           = parent
     Instance.new("UICorner", btn).CornerRadius = BTN_CORNER
-    local s = Instance.new("UIStroke", btn)
-    s.Color = C_BORDER ; s.Thickness = 1
+    local pad = Instance.new("UIPadding", btn)
+    pad.PaddingLeft   = UDim.new(0, 4)
+    pad.PaddingRight  = UDim.new(0, 4)
+    pad.PaddingTop    = UDim.new(0, 2)
+    pad.PaddingBottom = UDim.new(0, 2)
+    -- Bordure brillante uniquement sur le bouton disponible
+    if etat == "affordable" then
+        local s = Instance.new("UIStroke", btn)
+        s.Color     = CS_STROKE_DISP
+        s.Thickness = UI_SHOP.StrokeAvailable or 1.5
+    elseif etat == "owned" or etat == "robux" then
+        local s = Instance.new("UIStroke", btn)
+        s.Color     = C_BORDER
+        s.Thickness = 1
+    end
     return btn
 end
 
@@ -277,7 +330,7 @@ local function construireUpgradeFrame(nomUpgrade, upgradeConfig, yPos)
     frame.BackgroundColor3 = C_BG_ALT
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 0)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
     local stroke = Instance.new("UIStroke")
     stroke.Color     = C_SEP
@@ -353,7 +406,7 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
     local maxNiveau    = upgradeConfig.maxNiveau
     local niveauActuel = getNiveauActuel(donnes, upgradeConfig)
     local panelWidth   = PANEL_W - 16 - 10  -- largeur du container (approx)
-    local pad          = 6
+    local pad          = BTN_GAP
 
     -- Indicateur de progression dans le titre (si plus de 4 paliers)
     if maxNiveau > MAX_VISIBLE_BOUTONS then
@@ -392,27 +445,27 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
         local cliquable = false
 
         if etat == "owned" then
-            texte    = niveauConfig.label
-            bgCol    = C_GREEN_BG
-            txtCol   = C_GREEN_TXT
+            texte    = "✓ " .. niveauConfig.label
+            bgCol    = CS_OWNED_BG
+            txtCol   = CS_OWNED_TXT
             cliquable = false
 
         elseif etat == "max" then
-            texte    = "MAX"
-            bgCol    = C_MAX_BG
-            txtCol   = C_MAX_TXT
+            texte    = niveauConfig.label  -- "MAX 🔥" défini dans ShopUpgrades
+            bgCol    = CS_MAX_BG
+            txtCol   = CS_MAX_TXT
             cliquable = false
 
         elseif etat == "affordable" then
             texte    = niveauConfig.label .. "  " .. FormatCoins(niveauConfig.prix)
-            bgCol    = C_GREEN_BG
-            txtCol   = C_GREEN_TXT
+            bgCol    = CS_AVAIL_BG
+            txtCol   = CS_AVAIL_TXT
             cliquable = true
 
         elseif etat == "locked" then
             texte    = niveauConfig.label .. "  " .. FormatCoins(niveauConfig.prix)
-            bgCol    = C_GREY_BG
-            txtCol   = C_GREY_TXT
+            bgCol    = CS_LOCK_BG
+            txtCol   = CS_LOCK_TXT
             cliquable = false
 
         elseif etat == "robux" then
@@ -423,19 +476,27 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
                 cliquable = true
             else
                 texte    = niveauConfig.label
-                bgCol    = C_GREY_BG
-                txtCol   = C_GREY_TXT
+                bgCol    = CS_LOCK_BG
+                txtCol   = CS_LOCK_TXT
                 cliquable = false
             end
 
         elseif etat == "future" then
             texte    = niveauConfig.label
-            bgCol    = C_GREY_BG
-            txtCol   = Color3.fromRGB(55, 55, 65)
+            bgCol    = CS_LOCK_BG
+            txtCol   = CS_FUTURE_TXT
             cliquable = false
         end
 
-        local btn = creerBouton(container, texte, bgCol, txtCol, xPos, largeurBouton, cliquable)
+        local btn = creerBouton(container, texte, bgCol, txtCol, xPos, largeurBouton, cliquable, etat)
+
+        -- Pulse léger sur le bouton achetable pour le mettre en valeur
+        if etat == "affordable" and btn:IsA("TextButton") then
+            TweenService:Create(btn,
+                TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+                { BackgroundTransparency = 0.3 }
+            ):Play()
+        end
 
         -- Connexion du clic
         if cliquable and btn:IsA("TextButton") then
@@ -502,7 +563,7 @@ local function construireSeuilTracteur(donnes, yPos)
 
     local seuilActuel = donnes.tracteurSeuilMin or "RARE"
     local nbSeuils    = #seuils
-    local pad         = 6
+    local pad         = BTN_GAP
     local containerW  = PANEL_W - 16 - 10
     local btnW        = math.floor((containerW - (nbSeuils - 1) * pad) / nbSeuils)
 
@@ -570,7 +631,7 @@ local function construireBoostsFrame(yPos)
     frame.BackgroundColor3 = T.fondSecondaire
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 0)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
     local stroke = Instance.new("UIStroke", frame)
     stroke.Color = C_BORDER ; stroke.Thickness = 1
 
@@ -602,7 +663,7 @@ local function construireBoostsFrame(yPos)
     sep.BackgroundColor3 = C_BORDER
     sep.BorderSizePixel  = 0
 
-    local btn = creerBouton(frame, "Lucky Hour  35 R$", C_GOLD_BG, C_GOLD_TXT, 8, PANEL_W - 16 - 10 - 16, true)
+    local btn = creerBouton(frame, "Lucky Hour  35 R$", C_GOLD_BG, C_GOLD_TXT, 8, PANEL_W - 16 - 10 - 16, true, "robux")
     btn.Size     = UDim2.new(1, -16, 0, BTN_H)
     btn.Position = UDim2.new(0, 8, 0, 68)
     btn.MouseButton1Click:Connect(function()
@@ -646,6 +707,7 @@ local function construireShop(donnes)
 
     -- Ajuster le canvas de scroll
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
+    majScrollFade()
 
     -- Coins
     coinsLbl.Text = FormatCoins(donnes.playerCoins) .. " coins"
@@ -676,6 +738,7 @@ local function mettreAJourShop(donnes)
     y = construireSeuilTracteur(donnes, y)
     y = construireBoostsFrame(y)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
+    majScrollFade()
 end
 
 -- ============================================================

@@ -110,7 +110,17 @@ panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel        = 0
 panel.Visible                = false
 panel.ZIndex                 = 20
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 8)
+
+-- Adaptation mobile
+local _panelScale = Instance.new("UIScale", panel)
+local function _ajusterPanel()
+    local vp = workspace.CurrentCamera.ViewportSize
+    local s = math.min(vp.X / 360, vp.Y / 540, 1)
+    _panelScale.Scale = math.max(0.5, s)
+end
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterPanel)
+_ajusterPanel()
 local _panelStroke = Instance.new("UIStroke", panel)
 _panelStroke.Color = Color3.fromRGB(60, 60, 60) ; _panelStroke.Thickness = 1
 
@@ -128,16 +138,17 @@ titre.ZIndex                 = 21
 
 -- ── Bouton fermer ──
 local btnFermer = Instance.new("TextButton", panel)
-btnFermer.Size             = UDim2.new(0, 30, 0, 30)
-btnFermer.Position         = UDim2.new(1, -38, 0, 8)
+btnFermer.Size             = UDim2.new(0, 44, 0, 44)
+btnFermer.Position         = UDim2.new(1, -50, 0, 4)
 btnFermer.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 btnFermer.BorderSizePixel  = 0
 btnFermer.Text             = "X"
 btnFermer.TextColor3       = Color3.fromRGB(180, 180, 180)
 btnFermer.Font             = Enum.Font.GothamBold
-btnFermer.TextSize         = 12
+btnFermer.TextSize         = 16
+btnFermer.TextScaled       = true
 btnFermer.ZIndex           = 22
-Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 8)
 local _fermerStroke = Instance.new("UIStroke", btnFermer)
 _fermerStroke.Color = Color3.fromRGB(60, 60, 60) ; _fermerStroke.Thickness = 1
 
@@ -213,7 +224,7 @@ for i = 1, 4 do
     cell.BackgroundColor3 = C.fondCarte
     cell.BorderSizePixel  = 0
     cell.ZIndex           = 21
-    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 2)
+    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
 
     local function potLabel(name, size, pos, text, fontSize, bold)
         local l = Instance.new("TextLabel", cell)
@@ -283,7 +294,7 @@ for i = 1, 7 do
     cell.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     cell.BorderSizePixel  = 0
     cell.ZIndex           = 22
-    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 2)
+    Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
 
     local function calLabel(name, size, pos, text, fs)
         local l = Instance.new("TextLabel", cell)
