@@ -6,7 +6,8 @@ local IndexSystem = {}
 local ServerScriptService = game:GetService("ServerScriptService")
 local Logger = require(ServerScriptService.SharedLib.Server.Logger)
 
-local CATEGORIES = { "NORMAL", "GOLD", "DIAMANT", "RAINBOW", "NEBULA", "TOXIC" }
+local CATEGORIES     = { "NORMAL", "GOLD", "DIAMANT", "RAINBOW", "NEBULA", "TOXIC" }
+local MUTANT_TYPES   = { "GALAXY", "TOXIC", "RAINBOW", "VOID" }
 
 -- Dependances injectees depuis Main.server.lua
 IndexSystem.GetData          = nil
@@ -23,9 +24,13 @@ local function initialiserIndex(data)
             data.indexObtenu[cat] = {}
         end
     end
+    -- MUTANTS : dict { [brNom] = { GALAXY=bool, TOXIC=bool, RAINBOW=bool, VOID=bool } }
+    if not data.indexObtenu.MUTANTS then
+        data.indexObtenu.MUTANTS = {}
+    end
 end
 
--- Determine la categorie d'un spot depuis ses flags de mutation
+-- Determine la categorie d'un spot depuis ses flags de mutation (BRs normaux uniquement)
 local function determinerCategorie(info)
     local mut = info.mutation
     if mut == "GOLD"    then return "GOLD"    end
@@ -50,20 +55,34 @@ function IndexSystem.OnSpotChange(player)
     for _, info in pairs(spots) do
         local brNom = info.brNom
         if brNom and brNom ~= "" then
-            local cat   = determinerCategorie(info)
-            local liste = data.indexObtenu[cat]
-            if liste then
-                local dejaDans = false
-                for _, nom in ipairs(liste) do
-                    if nom == brNom then
-                        dejaDans = true
-                        break
-                    end
+            if info.isMutant and info.elementType then
+                -- Mutant FlowerPot : stockage dans MUTANTS[brNom][elementType]
+                local mutants = data.indexObtenu.MUTANTS
+                if not mutants[brNom] then
+                    mutants[brNom] = {}
                 end
-                if not dejaDans then
-                    table.insert(liste, brNom)
+                if not mutants[brNom][info.elementType] then
+                    mutants[brNom][info.elementType] = true
                     nouveaux = true
-                    Logger.info("Index", "%s debloque : %s [%s]", player.Name, brNom, cat)
+                    Logger.info("Index", "%s debloque mutant : %s [%s]", player.Name, brNom, info.elementType)
+                end
+            else
+                -- BR normal : stockage dans liste par categorie
+                local cat   = determinerCategorie(info)
+                local liste = data.indexObtenu[cat]
+                if liste then
+                    local dejaDans = false
+                    for _, nom in ipairs(liste) do
+                        if nom == brNom then
+                            dejaDans = true
+                            break
+                        end
+                    end
+                    if not dejaDans then
+                        table.insert(liste, brNom)
+                        nouveaux = true
+                        Logger.info("Index", "%s debloque : %s [%s]", player.Name, brNom, cat)
+                    end
                 end
             end
         end

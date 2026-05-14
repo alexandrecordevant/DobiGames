@@ -287,7 +287,11 @@ InitialiserPots = function(player, baseIndex, playerData)
 
         -- ── Pot avec graine en cours (rejoin) → reprendre croissance au bon stage ──
         elseif potData.rarete then
-            if not FlowerPotGrowthSystem.EstEnCroissance(potModel) then
+            -- Ne pas relancer PlantSeed si le BR Mutant est déjà tombé et attend la récolte
+            -- (sinon nettoyerPot le détruirait, bloquant définitivement le pot)
+            local _statutPot = FlowerPotGrowthSystem.GetStatut(potModel)
+            if not FlowerPotGrowthSystem.EstEnCroissance(potModel)
+                and (not _statutPot or _statutPot.statut ~= "ready") then
                 -- Calculer l'avancement depuis le temps de plantation
                 local dureeStage  = (FPCfg and FPCfg.GrowthDuration) or 120
                 local plantedAt   = potData.plantedAt or os.time()
@@ -298,8 +302,9 @@ InitialiserPots = function(player, baseIndex, playerData)
                 task.spawn(function()
                     FlowerPotGrowthSystem.PlantSeed(potModel, potData.rarete, player,
                         function(tp, elem, mult)
+                            Logger.warn("Pot", "onHarvest Pot%d (rejoin) | joueur=%s → reset", potIndex, player.Name)
                             -- Nettoyer l'état interne du GrowthSystem (_mutants, _plantages)
-                            FlowerPotGrowthSystem.Annuler(potModel)
+                            pcall(function() FlowerPotGrowthSystem.Annuler(potModel) end)
                             local d = GetData(player)
                             if d and d.pots and d.pots[potIndex] then
                                 d.pots[potIndex].rarete      = nil
@@ -480,8 +485,9 @@ InitialiserPots = function(player, baseIndex, playerData)
                 -- Lancer la séquence de croissance
                 FlowerPotGrowthSystem.PlantSeed(potModel, bestRarity, player,
                     function(tp, elem, mult)
+                        Logger.warn("Pot", "onHarvest Pot%d | joueur=%s | rarete=%s → reset", potIndex, player.Name, tostring(bestRarity))
                         -- Nettoyer l'état interne du GrowthSystem (_mutants, _plantages)
-                        FlowerPotGrowthSystem.Annuler(potModel)
+                        pcall(function() FlowerPotGrowthSystem.Annuler(potModel) end)
                         local d = GetData(player)
                         if d and d.pots and d.pots[potIndex] then
                             d.pots[potIndex].rarete      = nil
