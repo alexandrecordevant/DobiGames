@@ -17,14 +17,14 @@ local _GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 local Z_MIN   = -327.5 -- leaderboard 2 à Z=-347.5 + rayon ~20
 local Z_MAX   =  154   -- leaderboard 1 à Z=174.13 - rayon ~20
-local VITESSE = 30     -- studs/seconde (ajustable)
+local VITESSE = 75     -- studs/seconde (ajustable)
 
 -- Délais de départ désynchronisés
 local DELAIS = { 0, 3.5, 7.0, 10.5 }
 
 -- Pauses aléatoires au bord (secondes)
-local PAUSE_MIN = 0.3
-local PAUSE_MAX = 1.5
+local PAUSE_MIN = 0
+local PAUSE_MAX = 0.2
 
 -- ═══════════════════════════════════════
 -- HELPER — Trouver la Part principale
@@ -129,7 +129,7 @@ local function DemarrerBale(bale, delai)
         local direction = 1  -- 1 = vers Z_MAX, -1 = vers Z_MIN
 
         -- Vitesse légèrement variée par balot pour désynchronisation naturelle (±15 %)
-        local vitesse = VITESSE * (0.85 + math.random() * 0.30)
+        local vitesse = VITESSE * (0.75 + math.random() * 0.50)
 
         Logger.debug("Bale", "%s démarre (délai %.1fs, vitesse %.1f)", bale.Name, delai, vitesse)
 
