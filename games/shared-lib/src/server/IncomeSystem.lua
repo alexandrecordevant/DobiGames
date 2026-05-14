@@ -364,6 +364,15 @@ local function syncSpotsOccupes(player, playerData)
     local DS = getDropSystem()
     if not DS then return end
     local serialisable = DS.GetSpotsOccupesSerialisables(player)
+    -- Ne pas écraser avec {} si des BRs étaient sauvegardés : DropSystem.Init
+    -- peut rater le scan des spots (base folder introuvable) et renvoyer {} alors
+    -- que playerData.spotsOccupes contient des BRs valides → perte définitive.
+    local prevCount = playerData.spotsOccupes and next(playerData.spotsOccupes) ~= nil
+    local newCount  = next(serialisable) ~= nil
+    if prevCount and not newCount then
+        Logger.warn("Income", "syncSpotsOccupes : résultat vide alors que des BRs étaient en slots — sync ignorée pour %s", player.Name)
+        return
+    end
     playerData.spotsOccupes = serialisable
 end
 
