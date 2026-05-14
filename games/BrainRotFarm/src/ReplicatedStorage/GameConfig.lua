@@ -258,6 +258,20 @@ GameConfig.ShopUpgrades = {
         dataField        = "hasLuckyCharm",
         iconeLeaderboard = false,
     },
+
+    SeedDoubler = {
+        nom         = "Seed Doubler",
+        icone       = "🌱",
+        description = "Claim 2 Daily Seeds per day instead of 1",
+        ordre       = 7,
+        niveaux = {
+            [1] = { type="robux", prix=99, gamePassId=1817181575, label="Activate", effet={}, isMax=true },
+        },
+        maxNiveau        = 1,
+        isGamePass       = true,
+        dataField        = "hasSeedDoubler",
+        iconeLeaderboard = false,
+    },
 }
 
 -- Valeurs par défaut (utilisées par ShopSystem pour réinitialisation / defaults)
@@ -1023,15 +1037,16 @@ GameConfig.GOD_LEVEL_WEIGHTS = {
     [2] = 35,
 }
 
--- === MENU LATÉRAL (SideMenuHUD) ===
+-- === MENU HUD GRILLE (SideMenuHUD) ===
 -- Lu par SideMenuHUD.client.lua — valeurs UI uniquement, pas de logique métier
 GameConfig.MenuHUD = {
-    LargeurMobile  = 0.25,  -- fraction de ViewportSize.X sur mobile (Touch)
-    LargeurDesktop = 0.15,  -- fraction de ViewportSize.X sur desktop
-    HauteurBouton  = 60,    -- hauteur des boutons dans le menu (px)
-    RayonCoin      = 10,    -- rayon UICorner des boutons (px)
-    DureeAnimation = 0.2,   -- durée slide-in / slide-out (secondes)
-    BurgerSize     = 50,    -- largeur et hauteur du bouton hamburger (px)
+    BurgerSize     = 50,   -- taille du bouton hamburger (px)
+    TailleBouton   = 80,   -- taille d'un bouton carré dans la grille (px)
+    NbColonnes     = 2,    -- colonnes dans la grille
+    GrilleGap      = 6,    -- espace entre cellules (px)
+    GrillePadding  = 8,    -- padding intérieur du panneau (px)
+    RayonCoin      = 10,   -- rayon UICorner des boutons (px)
+    DureeAnimation = 0.2,  -- durée expand / collapse (secondes)
 }
 
 return GameConfig
