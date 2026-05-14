@@ -115,7 +115,6 @@ local function assigner(player)
     assignations[player.UserId] = baseIndex
     joueurParBase[baseIndex]    = player
 
-    -- Marquer l'attribut BaseAssignee pour que BotSystem détecte la base occupée
     player:SetAttribute("BaseAssignee", "Base_" .. baseIndex)
 
     -- Téléporter le joueur à sa base
@@ -153,7 +152,6 @@ local function liberer(player)
     assignations[player.UserId] = nil
     joueurParBase[baseIndex]    = nil
 
-    -- Retirer l'attribut BaseAssignee pour libérer la base côté BotSystem
     pcall(function() player:SetAttribute("BaseAssignee", nil) end)
 
     Logger.info("Assign", "Base_%s libérée (départ de %s)", tostring(baseIndex), player.Name)

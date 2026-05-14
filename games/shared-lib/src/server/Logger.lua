@@ -16,7 +16,6 @@ local PREFIXES = {
     Data    = "[DATA]",
     Event   = "[EVENT]",
     Prog    = "[PROG]",
-    Bot     = "[BOT]",
     Filter  = "[FILTER]",
     Pot     = "[POT]",
     AmelioBase = "[AMELIO-BASE]",

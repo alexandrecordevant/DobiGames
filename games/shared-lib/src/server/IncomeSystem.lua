@@ -83,7 +83,7 @@ local function FormatCoins(n)
     return FormatNumber.format(n)
 end
 
--- Remet à zéro l'affichage d'un slot (BillboardGui + SurfaceGui/Frame/CoinsText)
+-- Remet à zéro l'affichage d'un slot (BillboardGui + SurfaceGui/Frame/CoinsText + $offline)
 -- Utilisé au boot serveur, au PlayerAdded, et après chaque vente/retrait de BR
 local function ResetSlotDisplay(slotPart)
     if not slotPart then return end
@@ -110,6 +110,21 @@ local function ResetSlotDisplay(slotPart)
                 pcall(function()
                     coinText.Text = "$0"
                 end)
+            end
+        end
+    end
+
+    -- Cacher le label $offline sur Button/TouchPart (évite les valeurs Studio résiduelles)
+    local buttonModel = slotPart:FindFirstChild("Button")
+    if buttonModel then
+        local tp = buttonModel:FindFirstChild("TouchPart") or buttonModel:FindFirstChildWhichIsA("BasePart")
+        if tp then
+            local surfGui = tp:FindFirstChild("Text")
+            if surfGui then
+                local lblAmount  = surfGui:FindFirstChild("$amount")
+                local lblOffline = surfGui:FindFirstChild("$offline")
+                if lblAmount  then pcall(function() lblAmount.Visible  = false end) end
+                if lblOffline then pcall(function() lblOffline.Visible = false end) end
             end
         end
     end
@@ -197,11 +212,16 @@ local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
         end)
     end
 
-    -- $offline : revenu par seconde (toujours visible — $0/s quand slot vide)
+    -- $offline : revenu par seconde (caché si 0 ou slot vide)
     if lblOffline and incomeParSeconde ~= nil then
         pcall(function()
-            lblOffline.Text    = "Earns $" .. FormatCoins(incomeParSeconde) .. "/s"
-            lblOffline.Visible = true
+            if (incomeParSeconde or 0) > 0 then
+                lblOffline.Text       = "Earns $" .. FormatCoins(incomeParSeconde) .. "/s"
+                lblOffline.TextColor3 = Color3.fromRGB(255, 255, 255)
+                lblOffline.Visible    = true
+            else
+                lblOffline.Visible = false
+            end
         end)
     end
 end
