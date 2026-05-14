@@ -811,31 +811,7 @@ end
 -- ============================================================
 
 local function onMort(player)
-	local data = donneesJoueurs[player.UserId]
-	if not data or #data.portes == 0 then return end
-	if data.hasProtection then return end
-
-	local hrp     = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	local posMort = hrp and hrp.Position or Vector3.new(0, 5, 0)
-
-	-- Pas de notification publique — le drop est visible visuellement
-
-	local portesADrop = data.portes
-	data.portes = {}
-
-	for _, entree in ipairs(portesADrop) do
-		local modele = nil
-		if entree.toolRef and entree.toolRef.Parent then
-			-- extraireVisuel détache le visuel du Tool ET détruit le Tool
-			modele = extraireVisuel(entree.toolRef)
-		end
-		if modele then
-			dropBrainRot({ modele = modele, rarete = entree.rarete }, posMort)
-		end
-	end
-
-	envoyerCarryUpdate(player)
-	CarrySystem.UpdateDepotPrompts(player)
+	-- BRs conservés dans data.portes ; SynchroniserCarry les restaure au respawn
 end
 
 local function configurerMort(player, char)
@@ -862,9 +838,7 @@ initJoueur = function(player)
 		local data = donneesJoueurs[player.UserId]
 		if not data then return end
 		task.wait(0.5)
-		-- Nettoyer les entrées fantômes : outils qui auraient été détruits lors du respawn
-		-- (cas typique : joueur avec Protection + mort → onMort ne vide pas data.portes
-		-- → le Tool équipé dans le character est détruit lors du changement de character)
+		-- Restaurer les BRs après respawn (Tools du Backpack précédent détruits par Roblox)
 		CarrySystem.SynchroniserCarry(player)
 		envoyerCarryUpdate(player)
 		CarrySystem.UpdateDepotPrompts(player)
@@ -1011,29 +985,37 @@ function CarrySystem.InsererEnTeteCarry(player, clone, rarete)
 	return true
 end
 
--- Supprime les entrées fantômes (toolRef nil ou détruit) de data.portes.
--- Appelé au respawn pour nettoyer les outils détruits lors du changement de character.
+-- Synchronise data.portes après un changement de character :
+-- les Tools du Backpack précédent sont détruits par Roblox → entrées fantômes.
+-- Pour chaque fantôme, on recrée un Tool depuis ServerStorage afin que le joueur
+-- retrouve ses BRs intacts après un respawn.
 function CarrySystem.SynchroniserCarry(player)
 	local data = donneesJoueurs[player.UserId]
 	if not data then return end
 
 	local valides = {}
+	local raretesARestorer = {}
 	for _, entree in ipairs(data.portes) do
 		if entree.toolRef and entree.toolRef.Parent then
 			table.insert(valides, entree)
 		else
-			-- Détruire le Tool résiduel s'il existe encore mais sans parent valide
 			if entree.toolRef then
 				pcall(function() entree.toolRef:Destroy() end)
 			end
-			Logger.warn("Carry", "SynchroniserCarry : entrée fantôme supprimée pour %s", player.Name)
+			table.insert(raretesARestorer, entree.rarete)
 		end
 	end
 
-	if #valides ~= #data.portes then
-		data.portes = valides
-		envoyerCarryUpdate(player)
-		CarrySystem.UpdateDepotPrompts(player)
+	data.portes = valides
+	envoyerCarryUpdate(player)
+	CarrySystem.UpdateDepotPrompts(player)
+
+	-- Restaurer les BRs dont le Tool a été détruit lors du changement de character
+	for _, rarete in ipairs(raretesARestorer) do
+		CarrySystem.AjouterAuCarry(player, nil, rarete)
+	end
+	if #raretesARestorer > 0 then
+		Logger.info("Carry", "SynchroniserCarry : %d BR(s) restauré(s) pour %s", #raretesARestorer, player.Name)
 	end
 end
 
