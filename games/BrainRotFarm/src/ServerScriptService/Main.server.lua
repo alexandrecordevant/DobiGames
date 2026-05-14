@@ -1714,6 +1714,18 @@ local function getFuseFM()
 end
 
 if FuseSystem then
+    -- Ownership : seul le propriétaire de la base peut déposer dans sa Fuse Machine
+    -- machine hiérarchie : Workspace/Bases/Base_X/Shared/Fuse
+    FuseSystem.OnCheckOwnership = function(player, machine)
+        local playerBase = AssignationSystem.GetBaseIndex(player)
+        if not playerBase then return false end
+        local shared     = machine.Parent
+        local baseFolder = shared and shared.Parent
+        if not baseFolder then return false end
+        local machineBase = tonumber(baseFolder.Name:match("Base_(%d+)"))
+        return machineBase == playerBase
+    end
+
     -- Notifications Fuse → client (même canal que le reste du jeu)
     FuseSystem.OnNotif = function(player, type, message)
         if player and player.Parent then

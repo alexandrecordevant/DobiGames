@@ -45,6 +45,11 @@ FuseSystem.OnResultatPret = nil
 -- type : "SUCCESS" | "INFO" | "WARN"
 FuseSystem.OnNotif = nil
 
+-- Callback optionnel de vérification ownership
+-- function(player, machine) → boolean
+-- Si absent : tout joueur peut utiliser n'importe quelle machine libre
+FuseSystem.OnCheckOwnership = nil
+
 -- ═══════════════════════════════════════════════
 -- Constantes mutation (surchargées par FuseConfig.MutationConfig si présent)
 -- ═══════════════════════════════════════════════
@@ -536,6 +541,12 @@ local function setupMachine(machine)
 	prompt.Triggered:Connect(function(player)
 		local etat = machineEtats[machine]
 		if not etat or etat.actif then return end
+		if FuseSystem.OnCheckOwnership and not FuseSystem.OnCheckOwnership(player, machine) then
+			if FuseSystem.OnNotif then
+				pcall(FuseSystem.OnNotif, player, "WARN", "This Fuse Machine belongs to another player!")
+			end
+			return
+		end
 		OuvrirUI:FireClient(player, machine)
 	end)
 end
@@ -551,6 +562,8 @@ local function onLancer(player, machine, toolInstances)
 	if not etat or etat.actif then return end
 
 	if joueurEtats[player.UserId] and joueurEtats[player.UserId].actif then return end
+
+	if FuseSystem.OnCheckOwnership and not FuseSystem.OnCheckOwnership(player, machine) then return end
 
 	if type(toolInstances) ~= "table" or #toolInstances ~= 4 then return end
 
