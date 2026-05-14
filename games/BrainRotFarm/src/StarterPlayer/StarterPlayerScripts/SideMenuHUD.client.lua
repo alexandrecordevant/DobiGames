@@ -165,8 +165,9 @@ end
 local function ouvrirMenu()
     if menuOuvert then return end
     fermerAutresMenus()
-    menuOuvert      = true
-    overlay.Visible = true
+    menuOuvert         = true
+    overlay.Visible    = true
+    menuPanel.Visible  = true   -- révéler avant l'animation
     TweenService:Create(menuPanel,
         TweenInfo.new(DUREE, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
         { Size = UDim2.new(0, panelW, 0, panelH) }
@@ -178,10 +179,16 @@ local function fermerMenu()
     if not menuOuvert then return end
     menuOuvert      = false
     overlay.Visible = false
-    TweenService:Create(menuPanel,
+    local tween = TweenService:Create(menuPanel,
         TweenInfo.new(DUREE, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-        { Size = UDim2.new(0, panelW, 0, 0) }
-    ):Play()
+        { Size = UDim2.new(0, panelW, 0, 0) })
+    tween:Play()
+    -- Masquer complètement après fermeture : fond + UIStroke disparaissent
+    tween.Completed:Connect(function()
+        if not menuOuvert then
+            menuPanel.Visible = false
+        end
+    end)
     Logger.debug("Menu", "fermé")
 end
 

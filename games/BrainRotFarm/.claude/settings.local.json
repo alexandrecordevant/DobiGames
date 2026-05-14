@@ -28,7 +28,17 @@
       "Bash(grep -r \"inventory\\\\.\\\\\\(COMMON\\\\|RARE\\\\|EPIC\\\\|LEGENDARY\\\\|MYTHIC\\\\\\)\" /c/Users/Admin/Documents/Developpement/DobiGames/games --include=*.lua)",
       "Bash(find c:UsersAdminDocumentsDeveloppementDobiGamesgamesshared-lib -type f -name *.lua)",
       "Bash(Get-ChildItem -Recurse \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\LavaTower\\\\src\" -Filter \"*.lua\")",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(git -C \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" push)",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C \"../shared-lib\" status)",
+      "Bash(git tag *)",
+      "Bash(cd \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" && grep -n \"UIConfig\" src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua | head -3 && grep -n \"UIConfig\" src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua | head -3 && grep -n \"UIConfig\" src/StarterPlayer/StarterPlayerScripts/MiniTutoHUD.client.lua | head -3 && grep -n \"UIConfig\" src/StarterPlayer/StarterPlayerScripts/IndexClient.client.lua | head -3 && grep -n \"UIConfig\" ../shared-lib/src/client/HUDController.client.lua | head -3)",
+      "Read(//c/Users/Admin/Documents/Developpement/shared-lib/src/client/**)",
+      "Bash(git -C \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" status)",
+      "Bash(git -C \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" diff src/ServerScriptService/BaleSystem.lua)",
+      "Bash(git -C \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" add src/ServerScriptService/BaleSystem.lua)",
+      "Bash(git -C 'c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm' commit -m ' *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"
