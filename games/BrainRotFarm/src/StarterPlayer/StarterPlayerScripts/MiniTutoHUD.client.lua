@@ -76,7 +76,7 @@ panel.BackgroundTransparency = 0.04
 panel.BorderSizePixel        = 0
 panel.Visible                = false
 panel.ZIndex                 = 21
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 0)
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 8)
 local panelStroke = Instance.new("UIStroke", panel)
 panelStroke.Color     = T.bordure
 panelStroke.Thickness = 1
@@ -101,10 +101,10 @@ closeBtn.Text              = "X"
 closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
 closeBtn.Font              = Enum.Font.GothamBold
 closeBtn.TextSize          = 16
-closeBtn.TextScaled        = false
+closeBtn.TextScaled        = true
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 22
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 2)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 local _cbs = Instance.new("UIStroke", closeBtn)
 _cbs.Color = T.bordure ; _cbs.Thickness = 1
 
@@ -193,6 +193,13 @@ end
 -- ============================================================
 -- Tutorial content
 -- ============================================================
+makeCard(
+    "🕐", "TIMINGS — QUICK REFERENCE",
+    "<b>🌱 Daily Seed</b> — Every <b>24 hours</b> (claim with the 🌱 button on the left)\n\n<b>🌳 Sacred Trees</b> — Drop a seed every <b>30 min</b>: <b>70% MYTHIC ⚡ / 30% SECRET 🔴</b>. You have <b>5 min</b> to collect it before it disappears.\n\n<b>🗺️ Common Field</b> — <b>MYTHIC ⚡ every 8 min</b> · <b>SECRET 🔴 every 20 min</b>. A countdown appears above the spawn point before they land!\n\n<b>⚡ In-game Events</b> (Rain · Night · Meteor · Golden · Lucky Hour · Secret Spawn) — One triggers every <b>2 hours</b> in the Common Field. Watch the top-bar timer!\n\n<b>🌈 Admin Abuse</b> — Every <b>Saturday at 8 PM UTC</b>, 45 min of ×50 spawn + ×5 coins. Be there at the start for a <b>free MYTHIC Seed</b>!",
+    0,
+    Color3.fromRGB(80, 210, 200)
+)
+
 makeCard(
     "🧠", "BASICS",
     "Collect <b>Brainrots</b> that spawn on the map and carry them to the <b>Deposit Zone</b> to earn coins.\n\nUse coins in the <b>Shop</b> (left button) to unlock upgrades: more carry slots, faster brainrots, and more.",
