@@ -7,6 +7,8 @@ local TweenService        = game:GetService("TweenService")
 local SoundService        = game:GetService("SoundService")
 local MarketplaceService  = game:GetService("MarketplaceService")
 local Logger              = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
+local UI                  = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("UIConfig"))
+local ModalManager        = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("ModalManager"))
 
 local function jouerSonGraine()
     local s = SoundService:FindFirstChild("SonGraine")
@@ -37,8 +39,6 @@ end
 -- ============================================================
 local Config   = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local FPConfig = Config.FlowerPotConfig
-local T        = require(ReplicatedStorage:WaitForChild("SharedLib")
-    :WaitForChild("Shared"):WaitForChild("UITheme"))
 
 -- ============================================================
 -- GUI principale
@@ -61,31 +61,37 @@ overlay.Visible                = false
 overlay.ZIndex                 = 10
 overlay.Parent                 = screenGui
 
+-- Taille de la mainFrame calculée depuis UIConfig.Modal
+local function _calcMainFrameSize()
+    local vp = workspace.CurrentCamera.ViewportSize
+    local w  = math.min(math.floor(vp.X * UI.Modal.WidthScale), UI.Modal.WidthMaxPx)
+    local h  = math.floor(vp.Y * UI.Modal.HeightScale)
+    return UDim2.new(0, w, 0, h)
+end
+
 -- Frame principale
 local mainFrame = Instance.new("Frame")
 mainFrame.Name                   = "MainFrame"
 mainFrame.AnchorPoint            = Vector2.new(0.5, 0.5)
-mainFrame.Size                   = UDim2.new(0, 340, 0, 420)
+mainFrame.Size                   = _calcMainFrameSize()
 mainFrame.Position               = UDim2.new(0.5, 0, 0.5, 0)
-mainFrame.BackgroundColor3       = T.fondPrincipal
+mainFrame.BackgroundColor3       = UI.Colors.ModalBackground
 mainFrame.BackgroundTransparency = 0.05
 mainFrame.BorderSizePixel        = 0
 mainFrame.Visible                = false
 mainFrame.ZIndex                 = 11
 mainFrame.Parent                 = screenGui
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 
-local _mainScale = Instance.new("UIScale", mainFrame)
-local function _ajusterMainFrame()
-    local vp = workspace.CurrentCamera.ViewportSize
-    local s = math.min(vp.X / 380, vp.Y / 460, 1)
-    _mainScale.Scale = math.max(0.5, s)
-end
-workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterMainFrame)
-_ajusterMainFrame()
+-- Adaptation viewport
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+    if not mainFrame.Visible then
+        mainFrame.Size = _calcMainFrameSize()
+    end
+end)
 
 local uiStroke = Instance.new("UIStroke", mainFrame)
-uiStroke.Color     = T.bordure
+uiStroke.Color     = UI.Colors.ModalBorder
 uiStroke.Thickness = 1
 
 -- Titre
@@ -94,9 +100,10 @@ titleLabel.Name                   = "Title"
 titleLabel.Size                   = UDim2.new(1, -44, 0, 44)
 titleLabel.Position               = UDim2.new(0, 12, 0, 6)
 titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3             = T.texteTitre
-titleLabel.Font                   = Enum.Font.GothamBold
-titleLabel.TextSize               = 18
+titleLabel.TextColor3             = UI.Colors.TextOnDark
+titleLabel.Font                   = UI.Fonts.Title
+titleLabel.TextSize               = UI.TextSizes.H1
+titleLabel.TextScaled             = false
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.RichText               = true
 titleLabel.Text                   = "Flower Pot"
@@ -107,40 +114,40 @@ titleLabel.Parent                 = mainFrame
 local sep = Instance.new("Frame")
 sep.Size             = UDim2.new(1, -24, 0, 1)
 sep.Position         = UDim2.new(0, 12, 0, 52)
-sep.BackgroundColor3 = T.bordure
+sep.BackgroundColor3 = UI.Colors.ModalBorder
 sep.BorderSizePixel  = 0
 sep.ZIndex           = 12
 sep.Parent           = mainFrame
 
 -- Bouton fermer
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size              = UDim2.new(0, 44, 0, 44)
+closeBtn.Size              = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize)
 closeBtn.Position          = UDim2.new(1, -50, 0, 4)
 closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
 closeBtn.Text              = "X"
 closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
-closeBtn.Font              = Enum.Font.GothamBold
-closeBtn.TextSize          = 16
-closeBtn.TextScaled        = true
+closeBtn.Font              = UI.Fonts.Title
+closeBtn.TextSize          = UI.TextSizes.H2
+closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 12
 closeBtn.Parent            = mainFrame
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local _closeBtnStroke = Instance.new("UIStroke", closeBtn)
 _closeBtnStroke.Color = Color3.fromRGB(60, 60, 60) ; _closeBtnStroke.Thickness = 1
 
 -- Zone de contenu scrollable
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Name              = "Content"
-scrollFrame.Size              = UDim2.new(1, -24, 1, -110)
-scrollFrame.Position          = UDim2.new(0, 12, 0, 58)
+scrollFrame.Name                 = "Content"
+scrollFrame.Size                 = UDim2.new(1, -24, 1, -110)
+scrollFrame.Position             = UDim2.new(0, 12, 0, 58)
 scrollFrame.BackgroundTransparency = 1
-scrollFrame.BorderSizePixel   = 0
-scrollFrame.ScrollBarThickness = 4
-scrollFrame.ScrollBarImageColor3 = T.bordure
-scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scrollFrame.ZIndex            = 12
-scrollFrame.Parent            = mainFrame
+scrollFrame.BorderSizePixel      = 0
+scrollFrame.ScrollBarThickness   = UI.Modal.ScrollBarThickness
+scrollFrame.ScrollBarImageColor3 = UI.Colors.ModalBorder
+scrollFrame.AutomaticCanvasSize  = Enum.AutomaticSize.Y
+scrollFrame.ZIndex               = 12
+scrollFrame.Parent               = mainFrame
 
 local contentLayout = Instance.new("UIListLayout", scrollFrame)
 contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -170,19 +177,19 @@ end
 
 local function creerBouton(parent, text, color, pos, size, zIndex, callback)
     local btn = Instance.new("TextButton")
-    btn.Size              = size or UDim2.new(0.48, 0, 1, 0)
+    btn.Size              = size or UDim2.new(0.48, 0, 0, UI.ButtonSizes.Medium.Height)
     btn.Position          = pos  or UDim2.new(0, 0, 0, 0)
-    btn.BackgroundColor3  = color or T.fondBouton
+    btn.BackgroundColor3  = color or UI.Colors.GrayLocked
     btn.Text              = text
-    btn.TextColor3        = T.texte
-    btn.Font              = Enum.Font.GothamBold
-    btn.TextSize          = 14
-    btn.TextScaled        = true
+    btn.TextColor3        = UI.Colors.TextOnDark
+    btn.Font              = UI.Fonts.Title
+    btn.TextSize          = UI.ButtonSizes.Medium.TextSize
+    btn.TextScaled        = false
     btn.BorderSizePixel   = 0
     btn.TextWrapped       = true
     btn.ZIndex            = zIndex or 12
     btn.Parent            = parent
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
     local _bp = Instance.new("UIPadding", btn)
     _bp.PaddingLeft = UDim.new(0, 6) ; _bp.PaddingRight = UDim.new(0, 6)
     _bp.PaddingTop = UDim.new(0, 2)  ; _bp.PaddingBottom = UDim.new(0, 2)
@@ -192,12 +199,13 @@ end
 
 local function creerLigne(texte, couleur, taille, ordre, zIndex)
     local lbl = Instance.new("TextLabel")
-    lbl.Size                   = UDim2.new(1, 0, 0, taille or 28)
+    lbl.Size                   = UDim2.new(1, 0, 0, taille or (UI.TextSizes.Body + 8))
     lbl.BackgroundTransparency = 1
     lbl.Text                   = texte
-    lbl.TextColor3             = couleur or T.texte
-    lbl.Font                   = Enum.Font.Gotham
-    lbl.TextSize               = 14
+    lbl.TextColor3             = couleur or UI.Colors.TextOnDark
+    lbl.Font                   = UI.Fonts.Body
+    lbl.TextSize               = UI.TextSizes.Body
+    lbl.TextScaled             = false
     lbl.TextXAlignment         = Enum.TextXAlignment.Left
     lbl.TextWrapped            = true
     lbl.RichText               = true
@@ -254,15 +262,18 @@ local function fermerAutresMenus()
 end
 
 local function ouvrirPanel()
+    ModalManager.Open(ModalManager.Modals.FLOWER_POT)
     fermerAutresMenus()
+    local targetSize = _calcMainFrameSize()
     overlay.Visible   = true
     mainFrame.Visible = true
     mainFrame.Size    = UDim2.new(0, 0, 0, 0)
     TweenService:Create(mainFrame, TweenInfo.new(0.22, Enum.EasingStyle.Back),
-        { Size = UDim2.new(0, 340, 0, 420) }):Play()
+        { Size = targetSize }):Play()
 end
 
 local function fermer()
+    ModalManager.Close(ModalManager.Modals.FLOWER_POT)
     TweenService:Create(mainFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad),
         { Size = UDim2.new(0, 0, 0, 0) }):Play()
     task.wait(0.16)
@@ -271,11 +282,12 @@ local function fermer()
     currentPotIndex   = nil
 end
 
--- Reinitialiser l'etat si ferme par un autre menu
+-- Reinitialiser l'etat si ferme par un autre menu (sécurité auto-close)
 mainFrame:GetPropertyChangedSignal("Visible"):Connect(function()
     if not mainFrame.Visible then
         overlay.Visible = false
         currentPotIndex = nil
+        ModalManager.Close(ModalManager.Modals.FLOWER_POT)
     end
 end)
 
@@ -318,7 +330,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     -- Séparateur Daily Seed
     local sepLbl = Instance.new("Frame")
     sepLbl.Size             = UDim2.new(1, 0, 0, 1)
-    sepLbl.BackgroundColor3 = T.bordure
+    sepLbl.BackgroundColor3 = UI.Colors.ModalBorder
     sepLbl.BorderSizePixel  = 0
     sepLbl.LayoutOrder      = 2
     sepLbl.ZIndex           = 12
@@ -345,9 +357,9 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
 
         local claimBtn = creerBouton(scrollFrame,
             "Claim",
-            T.fondBouton,
+            UI.Colors.GreenNormal,
             nil,
-            UDim2.new(1, 0, 0, 36),
+            UDim2.new(1, 0, 0, UI.ButtonSizes.Medium.Height),
             12,
             function()
                 ClaimDailySeed:FireServer()
@@ -369,9 +381,9 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
         if dsCfg and dsCfg.skipPrixRobux and dsCfg.skipPrixRobux > 0 then
             local skipBtn = creerBouton(scrollFrame,
                 "Skip — " .. dsCfg.skipPrixRobux .. " R$",
-                T.fondBoutonRobux,
+                UI.Colors.OrangeNormal,
                 nil,
-                UDim2.new(1, 0, 0, 36),
+                UDim2.new(1, 0, 0, UI.ButtonSizes.Medium.Height),
                 12,
                 function()
                     RequestSkipDailySeed:FireServer()
@@ -383,7 +395,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     -- Séparateur packs R$
     local sepPacks = Instance.new("Frame")
     sepPacks.Size             = UDim2.new(1, 0, 0, 1)
-    sepPacks.BackgroundColor3 = T.bordure
+    sepPacks.BackgroundColor3 = UI.Colors.ModalBorder
     sepPacks.BorderSizePixel  = 0
     sepPacks.LayoutOrder      = 7
     sepPacks.ZIndex           = 12
@@ -394,9 +406,9 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     if dsCfg and dsCfg.packPrixRobux and dsCfg.packPrixRobux > 0 then
         local packBtn = creerBouton(scrollFrame,
             "Seed Pack x3 MYTHIC — " .. dsCfg.packPrixRobux .. " R$",
-            T.fondBoutonRobux,
+            UI.Colors.OrangeNormal,
             nil,
-            UDim2.new(1, 0, 0, 36),
+            UDim2.new(1, 0, 0, UI.ButtonSizes.Medium.Height),
             12,
             function()
                 if devP.SeedPackx3 and devP.SeedPackx3 > 0 then
@@ -410,9 +422,9 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
     if dsCfg and dsCfg.premiumPrixRobux and dsCfg.premiumPrixRobux > 0 then
         local premBtn = creerBouton(scrollFrame,
             "1 SECRET Seed — " .. dsCfg.premiumPrixRobux .. " R$",
-            T.fondBoutonDanger,
+            UI.Colors.RedNormal,
             nil,
-            UDim2.new(1, 0, 0, 36),
+            UDim2.new(1, 0, 0, UI.ButtonSizes.Medium.Height),
             12,
             function()
                 if devP.SecretSeed and devP.SecretSeed > 0 then
@@ -424,7 +436,7 @@ local function afficherMenuEmpty(potIndex, dailySeedData)
 
     -- Bouton fermer
     creerBouton(actionFrame, "Close",
-        T.fondBoutonDanger,
+        UI.Colors.RedNormal,
         UDim2.new(0.25, 0, 0, 0),
         UDim2.new(0.5, 0, 1, 0),
         12, fermer)
@@ -455,7 +467,7 @@ local function afficherMenuInfos(potIndex, potData)
     -- Barre de progression stage
     local barContainer = Instance.new("Frame")
     barContainer.Size             = UDim2.new(1, 0, 0, 30)
-    barContainer.BackgroundColor3 = T.barreVide
+    barContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     barContainer.BorderSizePixel  = 0
     barContainer.LayoutOrder      = 2
     barContainer.ZIndex           = 12
@@ -475,8 +487,9 @@ local function afficherMenuInfos(potIndex, potData)
     stageLbl.BackgroundTransparency = 1
     stageLbl.Text                   = "Stage " .. stage .. " / 4"
     stageLbl.TextColor3             = Color3.new(1, 1, 1)
-    stageLbl.Font                   = Enum.Font.GothamBold
-    stageLbl.TextSize               = 13
+    stageLbl.Font                   = UI.Fonts.Title
+    stageLbl.TextSize               = UI.TextSizes.Body
+    stageLbl.TextScaled             = false
     stageLbl.TextXAlignment         = Enum.TextXAlignment.Center
     stageLbl.ZIndex                 = 14
 
@@ -511,7 +524,7 @@ local function afficherMenuInfos(potIndex, potData)
         creerBouton(actionFrame,
             (igCfg and igCfg.label or "Instant Grow")
             .. "  " .. (igCfg and igCfg.prixRobux or 35) .. " R$",
-            T.fondBoutonRobux,
+            UI.Colors.OrangeNormal,
             UDim2.new(0, 0, 0, 0),
             UDim2.new(0.48, 0, 1, 0),
             12,
@@ -522,7 +535,7 @@ local function afficherMenuInfos(potIndex, potData)
     end
 
     creerBouton(actionFrame, "Close",
-        T.fondBoutonDanger,
+        UI.Colors.RedNormal,
         stage < 4 and UDim2.new(0.52, 0, 0, 0) or UDim2.new(0.25, 0, 0, 0),
         stage < 4 and UDim2.new(0.48, 0, 1, 0) or UDim2.new(0.5, 0, 1, 0),
         12, fermer)
@@ -550,7 +563,7 @@ local function afficherMenuDebloque(potIndex)
     creerLigne(prixTexte, Color3.fromRGB(220, 220, 220), 40, 1)
 
     creerBouton(actionFrame, "Unlock",
-        T.fondBouton,
+        UI.Colors.GreenNormal,
         UDim2.new(0, 0, 0, 0),
         UDim2.new(0.48, 0, 1, 0),
         12,
@@ -560,7 +573,7 @@ local function afficherMenuDebloque(potIndex)
         end)
 
     creerBouton(actionFrame, "Cancel",
-        T.fondBoutonDanger,
+        UI.Colors.RedNormal,
         UDim2.new(0.52, 0, 0, 0),
         UDim2.new(0.48, 0, 1, 0),
         12, fermer)
@@ -595,9 +608,9 @@ local function afficherMenuChoisirPot(extraData)
             end
             local btn = creerBouton(scrollFrame,
                 texte,
-                pot.rarete and T.fondBoutonDanger or T.fondBouton,
+                pot.rarete and UI.Colors.RedNormal or UI.Colors.GrayLocked,
                 nil,
-                UDim2.new(1, 0, 0, 36),
+                UDim2.new(1, 0, 0, UI.ButtonSizes.Medium.Height),
                 12,
                 function()
                     local re = ReplicatedStorage:FindFirstChild("ClaimDailySeed")
@@ -610,7 +623,7 @@ local function afficherMenuChoisirPot(extraData)
     end
 
     creerBouton(actionFrame, "Cancel",
-        T.fondBoutonDanger,
+        UI.Colors.RedNormal,
         UDim2.new(0.25, 0, 0, 0),
         UDim2.new(0.5, 0, 1, 0),
         12, fermer)
@@ -638,7 +651,7 @@ local function afficherMenuConfirmerEcrasement(potIndex, extraData)
         Color3.fromRGB(200, 200, 200), 28, 2)
 
     creerBouton(actionFrame, "Confirm",
-        T.fondBouton,
+        UI.Colors.GreenNormal,
         UDim2.new(0, 0, 0, 0),
         UDim2.new(0.48, 0, 1, 0),
         12,
@@ -649,7 +662,7 @@ local function afficherMenuConfirmerEcrasement(potIndex, extraData)
         end)
 
     creerBouton(actionFrame, "Cancel",
-        T.fondBoutonDanger,
+        UI.Colors.RedNormal,
         UDim2.new(0.52, 0, 0, 0),
         UDim2.new(0.48, 0, 1, 0),
         12, fermer)
@@ -755,30 +768,33 @@ local function FormatTempsLocal(secondes)
 end
 
 local function OuvrirDailySeedPanel()
+    -- Détruire l'ancienne instance avant d'enregistrer la nouvelle ouverture
     local existing = screenGui:FindFirstChild("DailySeedPanel")
     if existing then existing:Destroy() end
 
+    ModalManager.Open(ModalManager.Modals.DAILY_SEEDS)
     fermerAutresMenus()
 
+    -- Taille fixe (320×480) — UIScale adapte au viewport comme l'original
     local panel = Instance.new("Frame", screenGui)
     panel.Name                   = "DailySeedPanel"
     panel.AnchorPoint            = Vector2.new(0.5, 0.5)
     panel.Size                   = UDim2.new(0, 320, 0, 480)
     panel.Position               = UDim2.new(0.5, 0, 0.5, 0)
-    panel.BackgroundColor3       = T.fondPrincipal
+    panel.BackgroundColor3       = UI.Colors.ModalBackground
     panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0
     panel.ZIndex                 = 20
-    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
     local _panelStroke = Instance.new("UIStroke", panel)
-    _panelStroke.Color     = T.bordure
+    _panelStroke.Color     = UI.Colors.ModalBorder
     _panelStroke.Thickness = 1
 
-    -- Adaptation mobile
+    -- UIScale : adapte le panel 320×480 à la taille réelle du viewport
     local _dsScale = Instance.new("UIScale", panel)
     local function _ajusterDS()
-        local vp = workspace.CurrentCamera.ViewportSize
-        local s = math.min(vp.X / 360, vp.Y / 520, 1)
+        local vpNow = workspace.CurrentCamera.ViewportSize
+        local s = math.min(vpNow.X / 360, vpNow.Y / 520, 1)
         _dsScale.Scale = math.max(0.5, s)
     end
     workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterDS)
@@ -790,35 +806,45 @@ local function OuvrirDailySeedPanel()
     titre.Position               = UDim2.new(0, 16, 0, 6)
     titre.BackgroundTransparency = 1
     titre.Text                   = "DAILY SEEDS"
-    titre.TextColor3             = T.texteTitre
-    titre.Font                   = Enum.Font.GothamBold
-    titre.TextSize               = 18
+    titre.TextColor3             = UI.Colors.TextOnDark
+    titre.Font                   = UI.Fonts.Title
+    titre.TextSize               = UI.TextSizes.H1
     titre.TextScaled             = false
     titre.TextXAlignment         = Enum.TextXAlignment.Left
     titre.ZIndex                 = 21
 
     -- Bouton fermer
     local btnClose = Instance.new("TextButton", panel)
-    btnClose.Size                   = UDim2.new(0, 44, 0, 44)
+    btnClose.Size                   = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize)
     btnClose.Position               = UDim2.new(1, -50, 0, 4)
     btnClose.BackgroundColor3       = Color3.fromRGB(50, 50, 50)
     btnClose.Text                   = "X"
     btnClose.TextColor3             = Color3.fromRGB(180, 180, 180)
-    btnClose.Font                   = Enum.Font.GothamBold
-    btnClose.TextSize               = 16
-    btnClose.TextScaled             = true
+    btnClose.Font                   = UI.Fonts.Title
+    btnClose.TextSize               = UI.TextSizes.H2
+    btnClose.TextScaled             = false
     btnClose.BorderSizePixel        = 0
     btnClose.ZIndex                 = 21
-    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
     local _bcs = Instance.new("UIStroke", btnClose)
-    _bcs.Color = T.bordure ; _bcs.Thickness = 1
-    btnClose.MouseButton1Click:Connect(function() panel:Destroy() end)
+    _bcs.Color = UI.Colors.ModalBorder ; _bcs.Thickness = 1
+    btnClose.MouseButton1Click:Connect(function()
+        ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
+        panel:Destroy()
+    end)
+
+    -- Sécurité : fermeture si panel détruit de l'extérieur (ex: SideMenuHUD)
+    panel.AncestryChanged:Connect(function()
+        if not panel.Parent then
+            ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
+        end
+    end)
 
     -- Separateur
     local sep1 = Instance.new("Frame", panel)
     sep1.Size             = UDim2.new(1, -20, 0, 1)
     sep1.Position         = UDim2.new(0, 10, 0, 55)
-    sep1.BackgroundColor3 = T.bordure
+    sep1.BackgroundColor3 = UI.Colors.ModalBorder
     sep1.BorderSizePixel  = 0
     sep1.ZIndex           = 21
 
@@ -857,7 +883,7 @@ local function OuvrirDailySeedPanel()
             and Color3.fromRGB(25, 35, 20) or Color3.fromRGB(20, 20, 20)
         ligne.BorderSizePixel        = 0
         ligne.ZIndex                 = 21
-        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 8)
+        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
         local _ls = Instance.new("UIStroke", ligne)
         _ls.Color = statut == "dispo" and Color3.fromRGB(80, 140, 80) or Color3.fromRGB(60, 60, 60)
         _ls.Thickness = 1
@@ -869,37 +895,38 @@ local function OuvrirDailySeedPanel()
             l.BackgroundTransparency = 1
             l.Text                   = text
             l.TextColor3             = color or Color3.fromRGB(200, 200, 200)
-            l.Font                   = bold and Enum.Font.GothamBold or Enum.Font.Gotham
-            l.TextSize               = size or 13
+            l.Font                   = bold and UI.Fonts.Title or UI.Fonts.Body
+            l.TextSize               = size or UI.TextSizes.Body
+            l.TextScaled             = false
             l.TextXAlignment         = Enum.TextXAlignment.Left
             l.ZIndex                 = 22
             return l
         end
 
-        lbl("Day " .. i, 8, 44, Color3.fromRGB(150, 150, 150), false, 12)
+        lbl("Day " .. i, 8, 44, Color3.fromRGB(150, 150, 150), false, UI.TextSizes.Body)
         local iconeLbl = lbl(icones[rarete] or "M", 52, 24, nil, false, 18)
         applyRariteStyle(iconeLbl, rarete, 0)
         local rareLbl = lbl(rarete, 78, 80,
             rarete == "SECRET" and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(180, 100, 255),
-            true, 13)
+            true, UI.TextSizes.Body)
         applyRariteStyle(rareLbl, rarete, 1.5)
 
         if statut == "claimed" then
-            lbl("Claimed", 160, 100, Color3.fromRGB(100, 200, 100), false, 12)
+            lbl("Claimed", 160, 100, Color3.fromRGB(100, 200, 100), false, UI.TextSizes.Body)
         elseif statut == "dispo" then
-            lbl("Ready!", 160, 80, Color3.fromRGB(255, 255, 100), true, 12)
+            lbl("Ready!", 160, 80, Color3.fromRGB(255, 255, 100), true, UI.TextSizes.Body)
             local btnClaim = Instance.new("TextButton", ligne)
             btnClaim.Size                   = UDim2.new(0, 55, 0, 26)
             btnClaim.Position               = UDim2.new(1, -62, 0.5, -13)
-            btnClaim.BackgroundColor3       = T.barrePleine
-            btnClaim.TextColor3             = T.texte
-            btnClaim.Font                   = Enum.Font.GothamBold
-            btnClaim.TextSize               = 12
-            btnClaim.TextScaled             = true
+            btnClaim.BackgroundColor3       = UI.Colors.GreenNormal
+            btnClaim.TextColor3             = UI.Colors.TextOnDark
+            btnClaim.Font                   = UI.Fonts.Title
+            btnClaim.TextSize               = UI.TextSizes.Body
+            btnClaim.TextScaled             = false
             btnClaim.Text                   = "Claim"
             btnClaim.BorderSizePixel        = 0
             btnClaim.ZIndex                 = 23
-            Instance.new("UICorner", btnClaim).CornerRadius = UDim.new(0, 8)
+            Instance.new("UICorner", btnClaim).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
             btnClaim.MouseButton1Click:Connect(function()
                 local re = ReplicatedStorage:FindFirstChild("ClaimDailySeed")
                 if re then re:FireServer() end
@@ -908,9 +935,9 @@ local function OuvrirDailySeedPanel()
             end)
         elseif statut == "timer" then
             lbl(FormatTempsLocal(tempsRestant), 160, 130,
-                Color3.fromRGB(150, 150, 150), false, 12)
+                Color3.fromRGB(150, 150, 150), false, UI.TextSizes.Body)
         else
-            lbl("Locked", 160, 100, Color3.fromRGB(100, 100, 100), false, 12)
+            lbl("Locked", 160, 100, Color3.fromRGB(100, 100, 100), false, UI.TextSizes.Body)
         end
     end
 
@@ -918,39 +945,39 @@ local function OuvrirDailySeedPanel()
     local sep2 = Instance.new("Frame", panel)
     sep2.Size             = UDim2.new(1, -20, 0, 1)
     sep2.Position         = UDim2.new(0, 10, 0, 405)
-    sep2.BackgroundColor3 = T.bordure
+    sep2.BackgroundColor3 = UI.Colors.ModalBorder
     sep2.BorderSizePixel  = 0
     sep2.ZIndex           = 21
 
-    -- Boutons R$
+    -- Boutons R$ (Skip / Pack)
     local btnSkip = Instance.new("TextButton", panel)
-    btnSkip.Size                   = UDim2.new(0, 135, 0, 32)
-    btnSkip.Position               = UDim2.new(0, 10, 1, -45)
-    btnSkip.BackgroundColor3       = T.fondBoutonRobux
-    btnSkip.TextColor3             = T.fondPrincipal
-    btnSkip.Font                   = Enum.Font.GothamBold
-    btnSkip.TextSize               = 12
-    btnSkip.TextScaled             = true
+    btnSkip.Size                   = UDim2.new(0, 135, 0, UI.ButtonSizes.Large.Height)
+    btnSkip.Position               = UDim2.new(0, 10, 1, -(UI.ButtonSizes.Large.Height + 10))
+    btnSkip.BackgroundColor3       = UI.Colors.OrangeNormal
+    btnSkip.TextColor3             = UI.Colors.TextOnDark
+    btnSkip.Font                   = UI.Fonts.Title
+    btnSkip.TextSize               = UI.ButtonSizes.Large.TextSize
+    btnSkip.TextScaled             = false
     btnSkip.Text                   = "Skip — 25 R$"
     btnSkip.BorderSizePixel        = 0
     btnSkip.ZIndex                 = 21
-    Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
     btnSkip.MouseButton1Click:Connect(function()
         RequestSkipDailySeed:FireServer()
     end)
 
     local btnPack = Instance.new("TextButton", panel)
-    btnPack.Size                   = UDim2.new(0, 145, 0, 32)
-    btnPack.Position               = UDim2.new(1, -155, 1, -45)
-    btnPack.BackgroundColor3       = T.fondBoutonRobux
-    btnPack.TextColor3             = T.fondPrincipal
-    btnPack.Font                   = Enum.Font.GothamBold
-    btnPack.TextSize               = 12
-    btnPack.TextScaled             = true
+    btnPack.Size                   = UDim2.new(0, 145, 0, UI.ButtonSizes.Large.Height)
+    btnPack.Position               = UDim2.new(1, -155, 1, -(UI.ButtonSizes.Large.Height + 10))
+    btnPack.BackgroundColor3       = UI.Colors.OrangeNormal
+    btnPack.TextColor3             = UI.Colors.TextOnDark
+    btnPack.Font                   = UI.Fonts.Title
+    btnPack.TextSize               = UI.ButtonSizes.Large.TextSize
+    btnPack.TextScaled             = false
     btnPack.Text                   = "Pack x3 — 99 R$"
     btnPack.BorderSizePixel        = 0
     btnPack.ZIndex                 = 21
-    Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
     local _dpDevP = Config.DevProductIds or {}
     btnPack.MouseButton1Click:Connect(function()
         if _dpDevP.SeedPackx3 and _dpDevP.SeedPackx3 > 0 then
@@ -963,6 +990,7 @@ local function OuvrirDailySeedPanel()
     local conn
     conn = uis.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Escape and panel.Parent then
+            ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
             panel:Destroy()
             conn:Disconnect()
         end
@@ -981,14 +1009,14 @@ fpPanel.Name                   = "FlowerPotPanel"
 fpPanel.AnchorPoint            = Vector2.new(0.5, 0.5)
 fpPanel.Size                   = UDim2.new(0, 280, 0, 180)
 fpPanel.Position               = UDim2.new(0.5, 0, 0.5, 0)
-fpPanel.BackgroundColor3       = T.fondPrincipal
+fpPanel.BackgroundColor3       = UI.Colors.ModalBackground
 fpPanel.BackgroundTransparency = 0.05
 fpPanel.BorderSizePixel        = 0
 fpPanel.Visible                = false
 fpPanel.ZIndex                 = 20
-Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local _fpStroke = Instance.new("UIStroke", fpPanel)
-_fpStroke.Color = T.bordure ; _fpStroke.Thickness = 1
+_fpStroke.Color = UI.Colors.ModalBorder ; _fpStroke.Thickness = 1
 local _fpScale = Instance.new("UIScale", fpPanel)
 local function _ajusterFpPanel()
     local vp = workspace.CurrentCamera.ViewportSize
@@ -1000,45 +1028,50 @@ _ajusterFpPanel()
 
 local fpTitre = Instance.new("TextLabel", fpPanel)
 fpTitre.Size = UDim2.new(1,-50,0,28) ; fpTitre.Position = UDim2.new(0,12,0,6)
-fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = T.texteTitre
-fpTitre.Font = Enum.Font.GothamBold ; fpTitre.TextSize = 14
+fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = UI.Colors.TextOnDark
+fpTitre.Font = UI.Fonts.Title ; fpTitre.TextSize = UI.TextSizes.H2
 fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
 fpTitre.Text = "FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
 fpClose.Size = UDim2.new(0,44,0,44) ; fpClose.Position = UDim2.new(1,-50,0,4)
 fpClose.BackgroundColor3 = Color3.fromRGB(50,50,50) ; fpClose.Text = "X"
-fpClose.TextColor3 = Color3.fromRGB(180,180,180) ; fpClose.Font = Enum.Font.GothamBold
-fpClose.TextSize = 16 ; fpClose.TextScaled = true
+fpClose.TextColor3 = Color3.fromRGB(180,180,180) ; fpClose.Font = UI.Fonts.Title
+fpClose.TextSize = UI.TextSizes.H2 ; fpClose.TextScaled = false
 fpClose.BorderSizePixel = 0 ; fpClose.ZIndex = 21
-Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local _fpcs = Instance.new("UIStroke", fpClose)
 _fpcs.Color = Color3.fromRGB(60,60,60) ; _fpcs.Thickness = 1
 fpClose.MouseButton1Click:Connect(function()
+    ModalManager.Close(ModalManager.Modals.FLOWER_POT_PANEL)
     fpPanel.Visible = false
 end)
 
+-- Sécurité auto-close si fpPanel masqué de l'extérieur (ex: fermerAutresMenus d'un autre script)
 fpPanel:GetPropertyChangedSignal("Visible"):Connect(function()
     if not fpPanel.Visible then
         overlay.Visible = false
+        ModalManager.Close(ModalManager.Modals.FLOWER_POT_PANEL)
     end
 end)
 
 -- Inventaire graines
 local fpInv = Instance.new("Frame", fpPanel)
 fpInv.Size = UDim2.new(1,-20,0,26) ; fpInv.Position = UDim2.new(0,10,0,40)
-fpInv.BackgroundColor3 = T.fondSecondaire ; fpInv.BorderSizePixel = 0 ; fpInv.ZIndex = 21
+fpInv.BackgroundColor3 = UI.Colors.SectionBackground ; fpInv.BorderSizePixel = 0 ; fpInv.ZIndex = 21
 Instance.new("UICorner", fpInv).CornerRadius = UDim.new(0, 8)
 local fpMythicLbl = Instance.new("TextLabel", fpInv)
 fpMythicLbl.Size = UDim2.new(0.5,0,1,0) ; fpMythicLbl.BackgroundTransparency = 1
 fpMythicLbl.Text = "MYTHIC: 0" ; fpMythicLbl.TextColor3 = Color3.fromRGB(180,0,255)
 fpMythicLbl.Font = Enum.Font.GothamBold ; fpMythicLbl.TextSize = 11
+fpMythicLbl.TextScaled = false
 fpMythicLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpMythicLbl.ZIndex = 22
 local fpSecretLbl = Instance.new("TextLabel", fpInv)
 fpSecretLbl.Size = UDim2.new(0.5,0,1,0) ; fpSecretLbl.Position = UDim2.new(0.5,0,0,0)
 fpSecretLbl.BackgroundTransparency = 1
 fpSecretLbl.Text = "SECRET: 0" ; fpSecretLbl.TextColor3 = Color3.fromRGB(255,80,80)
 fpSecretLbl.Font = Enum.Font.GothamBold ; fpSecretLbl.TextSize = 11
+fpSecretLbl.TextScaled = false
 fpSecretLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpSecretLbl.ZIndex = 22
 applyRariteStyle(fpMythicLbl, "MYTHIC", 1.5)
 applyRariteStyle(fpSecretLbl, "SECRET", 1.5)
@@ -1052,16 +1085,16 @@ for i = 1, 4 do
     local cell = Instance.new("Frame", fpPanel)
     cell.Size = UDim2.new(0,cw,0,ch)
     cell.Position = UDim2.new(0, 10+(i-1)*(cw+6), 0, 74)
-    cell.BackgroundColor3 = T.fondSecondaire ; cell.BorderSizePixel = 0 ; cell.ZIndex = 21
+    cell.BackgroundColor3 = UI.Colors.SectionBackground ; cell.BorderSizePixel = 0 ; cell.ZIndex = 21
     Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
     local _cs = Instance.new("UIStroke", cell)
     _cs.Color = Color3.fromRGB(60, 60, 60) ; _cs.Thickness = 1
     local function cl(txt, sz, pos, ts, bold)
         local l = Instance.new("TextLabel", cell)
         l.Size=sz ; l.Position=pos ; l.BackgroundTransparency=1
-        l.Text=txt ; l.TextColor3=T.texte
-        l.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
-        l.TextSize=ts ; l.ZIndex=22 ; return l
+        l.Text=txt ; l.TextColor3=UI.Colors.TextOnDark
+        l.Font = bold and UI.Fonts.Title or UI.Fonts.Body
+        l.TextSize=ts ; l.TextScaled=false ; l.ZIndex=22 ; return l
     end
     cl("Pot "..i, UDim2.new(1,0,0,14), UDim2.new(0,0,0,2),  8,  false)
     local ic = cl("",    UDim2.new(1,0,0,28), UDim2.new(0,0,0,16), 20, true)
@@ -1076,23 +1109,23 @@ local function fpMajAffichage(pots, graines)
         local p = pots and pots[i]
         if not p then f.ic.Text="?"; f.ra.Text=""; f.el.Text=""
         elseif not p.debloque then
-            f.ic.Text="X"; f.ic.TextColor3=T.texte; f.ra.Text="Lock."; f.el.Text=""
-            f.cell.BackgroundColor3=T.fondSecondaire
+            f.ic.Text="X"; f.ic.TextColor3=UI.Colors.TextOnDark; f.ra.Text="Lock."; f.el.Text=""
+            f.cell.BackgroundColor3=UI.Colors.SectionBackground
         elseif p.statut == nil then
-            f.ic.Text="-"; f.ic.TextColor3=T.texte; f.ra.Text="Empty"; f.el.Text=""
-            f.cell.BackgroundColor3=T.fondSecondaire
+            f.ic.Text="-"; f.ic.TextColor3=UI.Colors.TextOnDark; f.ra.Text="Empty"; f.el.Text=""
+            f.cell.BackgroundColor3=UI.Colors.SectionBackground
         elseif p.statut.statut == "growing" then
             local s=p.statut
             f.ic.Text=tostring(math.max(0,s.stage or 0)); f.ic.TextColor3=Color3.fromRGB(100,180,255)
             f.ra.Text=(s.rarity=="SECRET" and "SEC" or "MYT").." S"..math.max(0,s.stage or 0)
-            f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
+            f.ra.TextColor3=FP_RARCOL[s.rarity] or UI.Colors.TextOnDark
             f.el.Text=s.elementType and FP_ELEM[s.elementType] or ""
             f.cell.BackgroundColor3=Color3.fromRGB(15, 22, 30); nbGrow=nbGrow+1
         elseif p.statut.statut == "ready" then
             local s=p.statut
             f.ic.Text="!"; f.ic.TextColor3=Color3.fromRGB(220,110,15)
             f.ra.Text=s.rarity=="SECRET" and "SECRET" or "MYTHIC"
-            f.ra.TextColor3=FP_RARCOL[s.rarity] or T.texte
+            f.ra.TextColor3=FP_RARCOL[s.rarity] or UI.Colors.TextOnDark
             f.el.Text=s.elementType and FP_ELEM[s.elementType] or ""
             f.cell.BackgroundColor3=Color3.fromRGB(28, 20, 10); nbReady=nbReady+1
         end
@@ -1157,9 +1190,11 @@ _fpConstraint.MaxSize = Vector2.new(80, 80)
 
 btnFlowerPot.MouseButton1Click:Connect(function()
     if fpPanel.Visible then
+        ModalManager.Close(ModalManager.Modals.FLOWER_POT_PANEL)
         fpPanel.Visible = false
         overlay.Visible = false
     else
+        ModalManager.Open(ModalManager.Modals.FLOWER_POT_PANEL)
         fermerAutresMenus()
         overlay.Visible = true
         fpPanel.Visible = true
@@ -1282,6 +1317,7 @@ local function creerBillboard(potModel, plantedAt, dureeStage)
     stageLbl.TextColor3            = Color3.fromRGB(255, 255, 255)
     stageLbl.Font                  = Enum.Font.GothamBold
     stageLbl.TextSize              = 20
+    stageLbl.TextScaled            = false
     stageLbl.TextStrokeTransparency = 0
     stageLbl.TextStrokeColor3      = Color3.fromRGB(0, 0, 0)
 
@@ -1293,6 +1329,7 @@ local function creerBillboard(potModel, plantedAt, dureeStage)
     timerLbl.TextColor3            = Color3.fromRGB(150, 210, 255)
     timerLbl.Font                  = Enum.Font.Gotham
     timerLbl.TextSize              = 17
+    timerLbl.TextScaled            = false
     timerLbl.TextStrokeTransparency = 0
     timerLbl.TextStrokeColor3      = Color3.fromRGB(0, 0, 0)
 

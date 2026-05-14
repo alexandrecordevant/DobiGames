@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
 local UserInputService  = game:GetService("UserInputService")
 local Logger            = require(ReplicatedStorage.SharedLib.Logger)
+local ModalManager      = require(ReplicatedStorage.SharedLib.ModalManager)
 
 local player = Players.LocalPlayer
 
@@ -222,4 +223,15 @@ end)
 -- ─────────────────────────────────────────────────────────────
 
 RefreshUI()
+
+-- Masquer le HUD inventaire quand une modale est ouverte
+ModalManager.OnModalStateChanged:Connect(function(isAnyOpen)
+	gui.Enabled = not isAnyOpen
+end)
+
+-- Remettre le HUD visible au respawn et vider les modales enregistrées
+player.CharacterAdded:Connect(function()
+	ModalManager.Reset()
+end)
+
 Logger.info("Carry", "BrainrotCarryUI initialisé")

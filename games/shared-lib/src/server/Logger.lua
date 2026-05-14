@@ -50,6 +50,7 @@ local PREFIXES = {
     LuckyBlock  = "[LUCKYBLOCK]",
     Index       = "[INDEX]",
     Menu        = "[MENU]",
+    Modal       = "[MODAL]",
 }
 
 -- Appeler une seule fois au boot du jeu

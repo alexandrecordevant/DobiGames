@@ -11,19 +11,23 @@ local TextService       = game:GetService("TextService")
 local player = Players.LocalPlayer
 local pg     = player:WaitForChild("PlayerGui")
 
+-- Import UIConfig
+local UI           = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("UIConfig"))
+local ModalManager = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("ModalManager"))
+
 -- ================================================================
 -- Palette et constantes
 -- ================================================================
 
 local C = {
-    PanelBg    = Color3.fromRGB(10,  10,  10),
-    CarteBg    = Color3.fromRGB(20,  20,  20),
-    TabActif   = Color3.fromRGB(180, 90,  20),
-    TabInactif = Color3.fromRGB(30,  30,  30),
-    TextPrim   = Color3.fromRGB(220, 220, 220),
-    TextSec    = Color3.fromRGB(130, 130, 130),
-    BordureOk  = Color3.fromRGB(180, 90,  20),
-    BordureNon = Color3.fromRGB(60,  60,  60),
+    PanelBg    = UI.Colors.ModalBackground,
+    CarteBg    = UI.Colors.SectionBackground,
+    TabActif   = UI.Colors.OrangeNormal,
+    TabInactif = UI.Colors.GrayLocked,
+    TextPrim   = UI.Colors.TextOnDark,
+    TextSec    = UI.Colors.TextDim,
+    BordureOk  = UI.Colors.OrangeNormal,
+    BordureNon = UI.Colors.ModalBorder,
 }
 
 local COULEURS_RARETE = {
@@ -94,6 +98,27 @@ local RARETES_DEGRADE = {
 }
 
 -- ================================================================
+-- Dimensions — calculées lazily dans ouvrirPanel() pour éviter viewport=0 au boot
+-- ================================================================
+
+-- Retourne (panelW, panelH) depuis le viewport courant (safe au boot)
+local function calcDimensions()
+    local vp = workspace.CurrentCamera.ViewportSize
+    -- Fallback si viewport pas encore initialisé
+    local vpX = vp.X > 0 and vp.X or 700
+    local vpY = vp.Y > 0 and vp.Y or 520
+    local w = math.min(math.floor(vpX * UI.Modal.WidthScale), UI.Modal.WidthMaxPx)
+    local h = math.min(math.floor(vpY * UI.Modal.HeightScale), vpY - 20)
+    return w, h
+end
+
+local PANEL_W, PANEL_H = calcDimensions()
+
+-- Taille des cellules selon la plateforme
+local cellW = UI.IsMobile and 90  or 100
+local cellH = UI.IsMobile and 120 or 130
+
+-- ================================================================
 -- Etat
 -- ================================================================
 
@@ -138,11 +163,12 @@ local gui = newInst("ScreenGui", {
     ResetOnSpawn   = false,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
     IgnoreGuiInset = true,
+    DisplayOrder   = 16,   -- au-dessus du SideMenuHUD (DisplayOrder=15) pour éviter le recouvrement
     Parent         = pg,
 })
 
 -- ================================================================
--- Bouton INDEX (HUD)
+-- Bouton INDEX (HUD) -- position et taille 80x80 inchangees (gerees par SideMenuHUD)
 -- ================================================================
 
 local btnIndex = newInst("TextButton", {
@@ -166,11 +192,8 @@ local _idxStroke = Instance.new("UIStroke", btnIndex)
 _idxStroke.Color = Color3.fromRGB(60, 60, 60) ; _idxStroke.Thickness = 1
 
 -- ================================================================
--- Panneau principal (centre a l'ecran)
+-- Panneau principal (centre a l'ecran) -- dimensions depuis UIConfig
 -- ================================================================
-
-local PANEL_W = 700
-local PANEL_H = 520
 
 local panel = newInst("Frame", {
     Name                   = "IndexPanel",
@@ -184,8 +207,8 @@ local panel = newInst("Frame", {
     ZIndex                 = 20,
     Parent                 = gui,
 })
-addCorner(panel, UDim.new(0, 2))
-addStroke(panel, C.BordureNon, 1)
+addCorner(panel, UDim.new(0, UI.Modal.CornerRadius))
+addStroke(panel, UI.Colors.ModalBorder, 1)
 
 newInst("TextLabel", {
     Size                   = UDim2.new(1, -55, 0, 40),
@@ -194,8 +217,8 @@ newInst("TextLabel", {
     Text                   = "INDEX",
     TextColor3             = C.TextPrim,
     TextScaled             = false,
-    TextSize               = 22,
-    Font                   = Enum.Font.GothamBold,
+    TextSize               = UI.TextSizes.H1,
+    Font                   = UI.Fonts.Title,
     TextXAlignment         = Enum.TextXAlignment.Left,
     TextYAlignment         = Enum.TextYAlignment.Center,
     ZIndex                 = 21,
@@ -203,13 +226,13 @@ newInst("TextLabel", {
 })
 
 local btnFermer = newInst("TextButton", {
-    Size                   = UDim2.new(0, 40, 0, 40),
-    Position               = UDim2.new(1, -45, 0, 0),
+    Size                   = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize),
+    Position               = UDim2.new(1, -(UI.Modal.CloseButtonSize + 5), 0, 0),
     BackgroundTransparency = 1,
     Text                   = "X",
     TextColor3             = Color3.fromRGB(180, 180, 180),
     TextScaled             = false,
-    TextSize               = 18,
+    TextSize               = UI.TextSizes.H2,
     Font                   = Enum.Font.GothamBold,
     ZIndex                 = 21,
     Parent                 = panel,
@@ -254,7 +277,7 @@ local grille = newInst("ScrollingFrame", {
     Position               = UDim2.new(0, 5, 0, 84),
     BackgroundTransparency = 1,
     BorderSizePixel        = 0,
-    ScrollBarThickness     = 6,
+    ScrollBarThickness     = UI.Modal.ScrollBarThickness,
     ScrollBarImageColor3   = Color3.fromRGB(80, 80, 80),
     CanvasSize             = UDim2.new(0, 0, 0, 0),
     ZIndex                 = 21,
@@ -262,8 +285,9 @@ local grille = newInst("ScrollingFrame", {
 })
 
 local gridLayout = Instance.new("UIGridLayout")
-gridLayout.CellSize            = UDim2.new(0, 100, 0, 130)
+gridLayout.CellSize            = UDim2.new(0, cellW, 0, cellH)
 gridLayout.CellPadding         = UDim2.new(0, 8, 0, 8)
+gridLayout.FillDirection       = Enum.FillDirection.Horizontal
 gridLayout.SortOrder           = Enum.SortOrder.LayoutOrder
 gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 gridLayout.VerticalAlignment   = Enum.VerticalAlignment.Top
@@ -289,12 +313,25 @@ local POS_OUVERT = UDim2.new(0.5, 0, 0.5, 0)
 local POS_FERME  = UDim2.new(0.5, 0, 1.5, 0)
 
 local function ouvrirPanel()
+    ModalManager.Open(ModalManager.Modals.INDEX)
+    -- Recalculer la taille au moment de l'ouverture (gère portrait/paysage)
+    local w, h = calcDimensions()
+    panel.Size = UDim2.new(0, w, 0, h)
+
+    -- Recalculer la largeur des onglets pour correspondre au panel redimensionné
+    local newTabW = math.max(1, math.floor((w - 10 - (#TABS - 1) * 4) / #TABS))
+    for _, tabName in ipairs(TABS) do
+        local tabBtn = tabButtons[tabName]
+        if tabBtn then tabBtn.Size = UDim2.new(0, newTabW, 1, 0) end
+    end
+
     panelOuvert   = true
     panel.Visible = true
     TweenService:Create(panel, TWEEN_INFO, { Position = POS_OUVERT }):Play()
 end
 
 local function fermerPanel()
+    ModalManager.Close(ModalManager.Modals.INDEX)
     panelOuvert = false
     local t = TweenService:Create(panel, TWEEN_INFO, { Position = POS_FERME })
     t:Play()
@@ -305,12 +342,19 @@ local function fermerPanel()
     end)
 end
 
+-- Sécurité auto-close si le panel est masqué par un script externe (ex: SideMenuHUD)
+panel:GetPropertyChangedSignal("Visible"):Connect(function()
+    if not panel.Visible then
+        ModalManager.Close(ModalManager.Modals.INDEX)
+    end
+end)
+
 -- ================================================================
 -- Construction ViewportFrame avec rendu 3D du modele
 -- ================================================================
 
 local function creerViewportFrame(parent, modeleSource, obtenu)
-    local vp = newInst("ViewportFrame", {
+    local vpFrame = newInst("ViewportFrame", {
         Size                   = UDim2.new(0, 80, 0, 80),
         Position               = UDim2.new(0.5, -40, 0, 5),
         BackgroundColor3       = Color3.fromRGB(25, 25, 25),
@@ -319,12 +363,18 @@ local function creerViewportFrame(parent, modeleSource, obtenu)
         ZIndex                 = 22,
         Parent                 = parent,
     })
-    addCorner(vp, UDim.new(0, 2))
+    addCorner(vpFrame, UDim.new(0, 2))
+
+    -- Contrainte de ratio pour garder le ViewportFrame carre
+    local arc = Instance.new("UIAspectRatioConstraint")
+    arc.AspectRatio = 1
+    arc.DominantAxis = Enum.DominantAxis.Width
+    arc.Parent = vpFrame
 
     if modeleSource then
         pcall(function()
             local clone = modeleSource:Clone()
-            clone.Parent = vp
+            clone.Parent = vpFrame
 
             local cf, size = clone:GetBoundingBox()
             local maxSize  = math.max(size.X, size.Y, size.Z)
@@ -336,8 +386,8 @@ local function creerViewportFrame(parent, modeleSource, obtenu)
                 cf.Position + Vector3.new(0, size.Y * 0.2, distance),
                 cf.Position
             )
-            vp.CurrentCamera = cam
-            cam.Parent       = vp
+            vpFrame.CurrentCamera = cam
+            cam.Parent            = vpFrame
         end)
     end
 
@@ -348,7 +398,7 @@ local function creerViewportFrame(parent, modeleSource, obtenu)
             BackgroundTransparency = 0.4,
             BorderSizePixel        = 0,
             ZIndex                 = 23,
-            Parent                 = vp,
+            Parent                 = vpFrame,
         })
         newInst("TextLabel", {
             Size                   = UDim2.new(1, 0, 1, 0),
@@ -361,29 +411,29 @@ local function creerViewportFrame(parent, modeleSource, obtenu)
             TextXAlignment         = Enum.TextXAlignment.Center,
             TextYAlignment         = Enum.TextYAlignment.Center,
             ZIndex                 = 24,
-            Parent                 = vp,
+            Parent                 = vpFrame,
         })
     end
 
-    return vp
+    return vpFrame
 end
 
 -- ================================================================
--- Construction d'une carte Brainrot (100x130)
+-- Construction d'une carte Brainrot
 -- ================================================================
 
 -- mutantData : table { GALAXY=bool, TOXIC=bool, ... } si onglet MUTANTS, nil sinon
 local function creerCarte(parent, brInfo, obtenu, layoutOrder, mutantData)
     local carte = newInst("Frame", {
-        Size             = UDim2.new(0, 100, 0, 130),
-        BackgroundColor3 = C.CarteBg,
+        Size             = UDim2.new(0, cellW, 0, cellH),
+        BackgroundColor3 = UI.Colors.SectionBackground,
         BorderSizePixel  = 0,
         LayoutOrder      = layoutOrder or 0,
         ZIndex           = 22,
         Parent           = parent,
     })
     addCorner(carte, UDim.new(0, 2))
-    addStroke(carte, obtenu and C.BordureOk or C.BordureNon, obtenu and 2 or 1)
+    addStroke(carte, obtenu and UI.Colors.OrangeNormal or UI.Colors.ModalBorder, obtenu and 2 or 1)
 
     creerViewportFrame(carte, brInfo.model, obtenu)
 
@@ -423,7 +473,7 @@ local function creerCarte(parent, brInfo, obtenu, layoutOrder, mutantData)
 
     elseif obtenu then
         -- Onglets normaux : nom defilant si trop long
-        local CLIP_W    = 96
+        local CLIP_W    = cellW - 4
         local clipFrame = newInst("Frame", {
             Size                   = UDim2.new(1, -4, 0, 24),
             Position               = UDim2.new(0, 2, 0, 88),
@@ -433,14 +483,15 @@ local function creerCarte(parent, brInfo, obtenu, layoutOrder, mutantData)
             ZIndex                 = 22,
             Parent                 = carte,
         })
-        local bounds   = TextService:GetTextSize(brInfo.nom, 11, Enum.Font.GothamBold, Vector2.new(1000, 24))
+        local nomSize  = UI.TextSizes.Caption
+        local bounds   = TextService:GetTextSize(brInfo.nom, nomSize, Enum.Font.GothamBold, Vector2.new(1000, 24))
         local overflow = bounds.X - CLIP_W
         local nomLabel = newInst("TextLabel", {
             BackgroundTransparency = 1,
             Text                   = brInfo.nom,
             TextColor3             = C.TextPrim,
             TextScaled             = false,
-            TextSize               = 11,
+            TextSize               = nomSize,
             Font                   = Enum.Font.GothamBold,
             ZIndex                 = 22,
             Parent                 = clipFrame,
@@ -463,12 +514,12 @@ local function creerCarte(parent, brInfo, obtenu, layoutOrder, mutantData)
     local rareteStr   = brInfo.rarete or "COMMON"
     local rareteLabel = newInst("TextLabel", {
         Size                   = UDim2.new(1, -4, 0, 14),
-        Position               = UDim2.new(0, 2, 0, 113),
+        Position               = UDim2.new(0, 2, 0, cellH - 17),
         BackgroundTransparency = 1,
         Text                   = rareteStr,
         TextColor3             = Color3.fromRGB(255, 255, 255),
         TextScaled             = false,
-        TextSize               = 10,
+        TextSize               = UI.TextSizes.Caption,
         Font                   = Enum.Font.Gotham,
         TextXAlignment         = Enum.TextXAlignment.Center,
         ZIndex                 = 22,
@@ -586,7 +637,7 @@ end
 
 local function estObtenu(brNom, tab)
     if tab == "MUTANTS" then
-        -- Bordure dorée si le BR a été obtenu normalement (onglet NORMAL)
+        -- Bordure doree si le BR a ete obtenu normalement (onglet NORMAL)
         local liste = indexObtenu["NORMAL"]
         if not liste then return false end
         for _, nom in ipairs(liste) do
@@ -652,8 +703,8 @@ for i, tabName in ipairs(TABS) do
         Text             = tabName,
         TextColor3       = C.TextPrim,
         TextScaled       = false,
-        TextSize         = 11,
-        Font             = Enum.Font.GothamBold,
+        TextSize         = UI.TextSizes.Caption,
+        Font             = UI.Fonts.Title,
         LayoutOrder      = i,
         ZIndex           = 22,
         Parent           = tabsFrame,

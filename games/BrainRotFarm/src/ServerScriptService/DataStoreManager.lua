@@ -85,6 +85,13 @@ function DataStoreManager.Load(player)
     end
     if not data.carryPortes then data.carryPortes = {} end
 
+    -- Migration one-shot : bonus de démarrage 35 000 coins pour les joueurs existants
+    if not data.welcomeBonusV1 then
+        data.coins = (data.coins or 0) + 35000
+        data.welcomeBonusV1 = true
+        Logger.info("Data", "welcomeBonusV1 : +35 000 coins appliqués à %s", player.Name)
+    end
+
     -- Migration plantedAt : pots déjà en cours de croissance sans timestamp
     -- Traité comme planté maintenant → timer repart de zéro (conservatif)
     for _, pot in pairs(data.pots) do

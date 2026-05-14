@@ -1,15 +1,16 @@
 -- StarterPlayer/StarterPlayerScripts/MiniTutoHUD.client.lua
 -- DobiGames BrainRotFarm — Mini Tutorial button (left HUD, below FlowerPot)
 
-local Players      = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UIS          = game:GetService("UserInputService")
+local Players           = game:GetService("Players")
+local TweenService      = game:GetService("TweenService")
+local UIS               = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local T = require(game:GetService("ReplicatedStorage"):WaitForChild("SharedLib")
-    :WaitForChild("Shared"):WaitForChild("UITheme"))
+local UI           = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("UIConfig"))
+local ModalManager = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("ModalManager"))
 
 -- ============================================================
 -- ScreenGui
@@ -19,6 +20,7 @@ screenGui.Name           = "MiniTutoHUD"
 screenGui.ResetOnSpawn   = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder   = 16   -- au-dessus du SideMenuHUD (DisplayOrder=15)
 screenGui.Parent         = playerGui
 
 -- ============================================================
@@ -53,14 +55,23 @@ _tutoConstraint.MinSize = Vector2.new(80, 80)
 _tutoConstraint.MaxSize = Vector2.new(80, 80)
 
 -- ============================================================
--- Tutorial panel
+-- Dimensions calculées lazily au moment de l'ouverture (vp.X peut être 0 au boot)
 -- ============================================================
-local PANEL_W = 360
-local PANEL_H = 500
+local function calcTutoDimensions()
+    local vp  = workspace.CurrentCamera.ViewportSize
+    local vpX = vp.X > 0 and vp.X or 500
+    local vpY = vp.Y > 0 and vp.Y or 700
+    local w = math.min(math.floor(vpX * UI.Modal.WidthScale), UI.Modal.WidthMaxPx)
+    local h = math.min(math.floor(vpY * UI.Modal.HeightScale), vpY - 20)
+    return w, h
+end
+
+-- Valeurs initiales (peuvent être 0 si viewport pas encore initialisé)
+local PANEL_W, PANEL_H = calcTutoDimensions()
 
 local overlay = Instance.new("Frame", screenGui)
 overlay.Size                   = UDim2.new(1, 0, 1, 0)
-overlay.BackgroundColor3       = Color3.new(0, 0, 0)
+overlay.BackgroundColor3       = UI.Colors.Overlay
 overlay.BackgroundTransparency = 0.55
 overlay.BorderSizePixel        = 0
 overlay.Visible                = false
@@ -71,60 +82,61 @@ panel.Name                   = "TutoPanel"
 panel.AnchorPoint            = Vector2.new(0.5, 0.5)
 panel.Size                   = UDim2.new(0, PANEL_W, 0, PANEL_H)
 panel.Position               = UDim2.new(0.5, 0, 0.5, 0)
-panel.BackgroundColor3       = T.fondPrincipal
+panel.BackgroundColor3       = UI.Colors.ModalBackground
 panel.BackgroundTransparency = 0.04
 panel.BorderSizePixel        = 0
 panel.Visible                = false
 panel.ZIndex                 = 21
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local panelStroke = Instance.new("UIStroke", panel)
-panelStroke.Color     = T.bordure
+panelStroke.Color     = UI.Colors.ModalBorder
 panelStroke.Thickness = 1
 
--- Title bar
+-- Barre de titre
 local titleLbl = Instance.new("TextLabel", panel)
 titleLbl.Size                   = UDim2.new(1, -50, 0, 44)
 titleLbl.Position               = UDim2.new(0, 14, 0, 6)
 titleLbl.BackgroundTransparency = 1
 titleLbl.Text                   = "HOW TO PLAY"
-titleLbl.TextColor3             = T.texteTitre
-titleLbl.Font                   = Enum.Font.GothamBold
-titleLbl.TextSize               = 18
+titleLbl.TextColor3             = UI.Colors.TextOnDark
+titleLbl.Font                   = UI.Fonts.Title
+titleLbl.TextSize               = UI.TextSizes.H1
+titleLbl.TextScaled             = false
 titleLbl.TextXAlignment         = Enum.TextXAlignment.Left
 titleLbl.ZIndex                 = 22
 
 local closeBtn = Instance.new("TextButton", panel)
-closeBtn.Size              = UDim2.new(0, 44, 0, 44)
+closeBtn.Size              = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize)
 closeBtn.Position          = UDim2.new(1, -50, 0, 4)
 closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
 closeBtn.Text              = "X"
 closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
-closeBtn.Font              = Enum.Font.GothamBold
-closeBtn.TextSize          = 16
-closeBtn.TextScaled        = true
+closeBtn.Font              = UI.Fonts.Title
+closeBtn.TextSize          = UI.TextSizes.H2
+closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 22
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 local _cbs = Instance.new("UIStroke", closeBtn)
-_cbs.Color = T.bordure ; _cbs.Thickness = 1
+_cbs.Color = UI.Colors.ModalBorder ; _cbs.Thickness = 1
 
 local sep = Instance.new("Frame", panel)
 sep.Size             = UDim2.new(1, -24, 0, 1)
 sep.Position         = UDim2.new(0, 12, 0, 54)
-sep.BackgroundColor3 = T.bordure
+sep.BackgroundColor3 = UI.Colors.ModalBorder
 sep.BorderSizePixel  = 0
 sep.ZIndex           = 22
 
--- Scrollable content
+-- Zone de contenu scrollable
 local scroll = Instance.new("ScrollingFrame", panel)
-scroll.Size                  = UDim2.new(1, -16, 1, -70)
-scroll.Position              = UDim2.new(0, 8, 0, 62)
+scroll.Size                   = UDim2.new(1, -16, 1, -70)
+scroll.Position               = UDim2.new(0, 8, 0, 62)
 scroll.BackgroundTransparency = 1
-scroll.BorderSizePixel       = 0
-scroll.ScrollBarThickness    = 4
-scroll.ScrollBarImageColor3  = T.bordure
-scroll.AutomaticCanvasSize   = Enum.AutomaticSize.Y
-scroll.ZIndex                = 22
+scroll.BorderSizePixel        = 0
+scroll.ScrollBarThickness     = UI.Modal.ScrollBarThickness
+scroll.ScrollBarImageColor3   = UI.Colors.ModalBorder
+scroll.AutomaticCanvasSize    = Enum.AutomaticSize.Y
+scroll.ZIndex                 = 22
 
 local layout = Instance.new("UIListLayout", scroll)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -134,55 +146,57 @@ local padding = Instance.new("UIPadding", scroll)
 padding.PaddingTop    = UDim.new(0, 6)
 padding.PaddingBottom = UDim.new(0, 6)
 padding.PaddingLeft   = UDim.new(0, 6)
-padding.PaddingRight  = UDim.new(0, 6)
+padding.PaddingRight  = UDim.new(0, 10)  -- marge extra : évite que le UIStroke des cartes soit clippé
 
 -- ============================================================
--- Helper: section card
+-- Helper : carte de section
 -- ============================================================
 local function makeCard(icon, title, body, order, accentColor)
     local card = Instance.new("Frame", scroll)
-    card.Size             = UDim2.new(1, 0, 0, 0)  -- height driven by AutomaticSize
+    card.Size             = UDim2.new(1, 0, 0, 0)  -- hauteur pilotée par AutomaticSize
     card.AutomaticSize    = Enum.AutomaticSize.Y
-    card.BackgroundColor3 = T.fondSecondaire
+    card.BackgroundColor3 = UI.Colors.SectionBackground
     card.BorderSizePixel  = 0
     card.LayoutOrder      = order
     card.ZIndex           = 23
     Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
     local cs = Instance.new("UIStroke", card)
-    cs.Color     = accentColor or T.bordure
+    cs.Color     = accentColor or UI.Colors.ModalBorder  -- couleur de section intentionnelle
     cs.Thickness = 1.5
 
     local cp = Instance.new("UIPadding", card)
-    cp.PaddingTop    = UDim.new(0, 8)
-    cp.PaddingBottom = UDim.new(0, 10)
-    cp.PaddingLeft   = UDim.new(0, 10)
-    cp.PaddingRight  = UDim.new(0, 10)
+    cp.PaddingTop    = UDim.new(0, UI.Spacing.SM)
+    cp.PaddingBottom = UDim.new(0, UI.Spacing.SM)
+    cp.PaddingLeft   = UDim.new(0, UI.Spacing.SM)
+    cp.PaddingRight  = UDim.new(0, UI.Spacing.SM)
 
     local cardLayout = Instance.new("UIListLayout", card)
     cardLayout.SortOrder = Enum.SortOrder.LayoutOrder
     cardLayout.Padding   = UDim.new(0, 4)
 
-    -- Header row
+    -- Ligne d'en-tête
     local header = Instance.new("TextLabel", card)
     header.Size                   = UDim2.new(1, 0, 0, 22)
     header.BackgroundTransparency = 1
     header.Text                   = icon .. "  " .. title
-    header.TextColor3             = accentColor or T.texteTitre
-    header.Font                   = Enum.Font.GothamBold
-    header.TextSize               = 15
+    header.TextColor3             = accentColor or UI.Colors.TextOnDark
+    header.Font                   = UI.Fonts.Title
+    header.TextSize               = UI.TextSizes.H2
+    header.TextScaled             = false
     header.TextXAlignment         = Enum.TextXAlignment.Left
     header.LayoutOrder            = 1
     header.ZIndex                 = 24
 
-    -- Body text
+    -- Corps de la carte
     local bodyLbl = Instance.new("TextLabel", card)
     bodyLbl.Size                   = UDim2.new(1, 0, 0, 0)
     bodyLbl.AutomaticSize          = Enum.AutomaticSize.Y
     bodyLbl.BackgroundTransparency = 1
     bodyLbl.Text                   = body
-    bodyLbl.TextColor3             = T.texte
-    bodyLbl.Font                   = Enum.Font.Gotham
-    bodyLbl.TextSize               = 12
+    bodyLbl.TextColor3             = UI.Colors.TextOnDark
+    bodyLbl.Font                   = UI.Fonts.Body
+    bodyLbl.TextSize               = UI.TextSizes.Body
+    bodyLbl.TextScaled             = false
     bodyLbl.TextXAlignment         = Enum.TextXAlignment.Left
     bodyLbl.TextWrapped            = true
     bodyLbl.RichText               = true
@@ -191,7 +205,7 @@ local function makeCard(icon, title, body, order, accentColor)
 end
 
 -- ============================================================
--- Tutorial content
+-- Contenu du tutoriel
 -- ============================================================
 makeCard(
     "🕐", "TIMINGS — QUICK REFERENCE",
@@ -273,7 +287,10 @@ local function fermerAutresMenus()
         local mf = fpGui:FindFirstChild("MainFrame")
         if mf then mf.Visible = false end
         local ds = fpGui:FindFirstChild("DailySeedPanel")
-        if ds then ds:Destroy() end
+        if ds then
+            ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
+            ds:Destroy()
+        end
         local fp = fpGui:FindFirstChild("FlowerPotPanel")
         if fp then fp.Visible = false end
     end
@@ -291,18 +308,22 @@ end
 local panelOpen = false
 
 local function openPanel()
+    ModalManager.Open(ModalManager.Modals.HOW_TO_PLAY)
     fermerAutresMenus()
+    -- Recalcul au moment de l'ouverture (vp.X peut être 0 au boot)
+    local pw, ph = calcTutoDimensions()
     panelOpen       = true
     overlay.Visible = true
     panel.Visible   = true
     panel.Size      = UDim2.new(0, 0, 0, 0)
     TweenService:Create(panel, TweenInfo.new(0.22, Enum.EasingStyle.Back), {
-        Size = UDim2.new(0, PANEL_W, 0, PANEL_H),
+        Size = UDim2.new(0, pw, 0, ph),
     }):Play()
 end
 
 local function closePanel()
     if not panelOpen then return end
+    ModalManager.Close(ModalManager.Modals.HOW_TO_PLAY)
     panelOpen = false
     TweenService:Create(panel, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
         Size = UDim2.new(0, 0, 0, 0),
@@ -313,19 +334,20 @@ local function closePanel()
     end)
 end
 
--- Reinitialiser l'etat si ferme par un autre menu
+-- Reinitialiser l'etat si ferme par un autre menu (sécurité auto-close)
 panel:GetPropertyChangedSignal("Visible"):Connect(function()
     if not panel.Visible then
         panelOpen       = false
         overlay.Visible = false
+        ModalManager.Close(ModalManager.Modals.HOW_TO_PLAY)
     end
 end)
 
--- Adaptation mobile
+-- Adaptation mobile (UIScale recalculee sur chaque changement de viewport)
 local uiScale = Instance.new("UIScale", panel)
 local function ajusterScaleTuto()
     local vp = workspace.CurrentCamera.ViewportSize
-    local s = math.min(vp.X / 400, vp.Y / 540, 1)
+    local s = math.min(vp.X / (UI.Modal.WidthMaxPx + 40), vp.Y / (PANEL_H + 40), 1)
     uiScale.Scale = math.max(0.5, s)
 end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScaleTuto)

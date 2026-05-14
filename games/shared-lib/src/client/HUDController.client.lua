@@ -8,11 +8,14 @@ local Config = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local _uiThemeModule = ReplicatedStorage.SharedLib.Shared:FindFirstChild("UITheme")
 if not _uiThemeModule then return end  -- HUDController BRF-only : pas de UITheme = mauvais jeu
 local T = require(_uiThemeModule)
+local _uiConfigModule = ReplicatedStorage.SharedLib:FindFirstChild("UIConfig")
+local UI = _uiConfigModule and require(_uiConfigModule) or nil
 
 local estMobile = UserInputService.TouchEnabled
 local UI_SHOP   = (Config.UI and Config.UI.Shop) or {}
 local Logger       = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
 local FormatNumber = require(ReplicatedStorage.SharedLib.Shared.FormatNumber)
+local ModalManager = require(ReplicatedStorage.SharedLib.ModalManager)
 
 local gui = Instance.new("ScreenGui")
 gui.Name          = "HUD"
@@ -305,15 +308,20 @@ btnShop.Size                   = UDim2.new(0, 80, 0, 80)
 btnShop.Position               = UDim2.new(0, 5, 0.5, -125)
 btnShop.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
 btnShop.BackgroundTransparency = 0.05
-btnShop.TextColor3             = Color3.fromRGB(220, 220, 220)
-btnShop.Font                   = Enum.Font.GothamBold
-btnShop.TextSize               = 14
-btnShop.TextScaled             = true
-btnShop.Text                   = "Shop"
-btnShop.TextWrapped            = true
+btnShop.Text                   = ""   -- texte masqué : icône image ci-dessous
 btnShop.BorderSizePixel        = 0
 btnShop.ZIndex                 = 5
 Instance.new("UICorner", btnShop).CornerRadius = UDim.new(0, 8)
+
+-- Icône Shop (Decal personnel)
+local shopIcon = Instance.new("ImageLabel", btnShop)
+shopIcon.Name                   = "ShopIcon"
+shopIcon.Size                   = UDim2.new(1, -16, 1, -16)   -- padding 8 px de chaque côté
+shopIcon.Position               = UDim2.new(0, 8, 0, 8)
+shopIcon.BackgroundTransparency = 1
+shopIcon.Image                  = "rbxassetid://108897847737947"
+shopIcon.ScaleType              = Enum.ScaleType.Fit
+shopIcon.ZIndex                 = 6
 local _btnShopStroke = Instance.new("UIStroke", btnShop)
 _btnShopStroke.Color = Color3.fromRGB(60, 60, 60) ; _btnShopStroke.Thickness = 1
 
@@ -331,7 +339,10 @@ local function fermerAutresMenusRobux()
         local mf = fpGui:FindFirstChild("MainFrame")
         if mf then mf.Visible = false end
         local ds = fpGui:FindFirstChild("DailySeedPanel")
-        if ds then ds:Destroy() end
+        if ds then
+            ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
+            ds:Destroy()
+        end
     end
 end
 
@@ -340,6 +351,7 @@ local robuxPanelOpen = false
 local function ouvrirRobuxPanel()
     local panel = gui:FindFirstChild("ShopRobuxPanel")
     if not panel then return end
+    ModalManager.Open(ModalManager.Modals.ROBUX_SHOP)
     fermerAutresMenusRobux()
     robuxPanelOpen = true
     panel.Visible  = true
@@ -351,6 +363,7 @@ end
 local function fermerRobuxPanel()
     local panel = gui:FindFirstChild("ShopRobuxPanel")
     if not panel or not robuxPanelOpen then return end
+    ModalManager.Close(ModalManager.Modals.ROBUX_SHOP)
     robuxPanelOpen = false
     TweenService:Create(panel, TweenInfo.new(0.15, Enum.EasingStyle.Quad),
         { Size = UDim2.new(0, 0, 0, 0) }):Play()
@@ -367,23 +380,28 @@ end)
 -- ShopRobuxPanel — items lus depuis Config.ShopUpgrades
 -- ============================================================
 local function creerShopRobuxPanel()
+    -- Dimensions du panel via UIConfig si disponible, sinon valeurs de repli
+    local panelW = UI and math.min(math.floor(workspace.CurrentCamera.ViewportSize.X * UI.Modal.WidthScale), UI.Modal.WidthMaxPx) or 340
+    local panelH = UI and math.floor(workspace.CurrentCamera.ViewportSize.Y * UI.Modal.HeightScale) or 500
+
     local panel = Instance.new("Frame", gui)
     panel.Name                   = "ShopRobuxPanel"
     panel.AnchorPoint            = Vector2.new(0.5, 0.5)
-    panel.Size                   = UDim2.new(0, 340, 0, 500)
+    panel.Size                   = UDim2.new(0, panelW, 0, panelH)
     panel.Position               = UDim2.new(0.5, 0, 0.5, 0)
-    panel.BackgroundColor3       = T.fondPrincipal
+    panel.BackgroundColor3       = UI and UI.Colors.ModalBackground or T.fondPrincipal
     panel.BackgroundTransparency = 0.05
     panel.BorderSizePixel        = 0
     panel.Visible                = false
     panel.ZIndex                 = 10
-    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, UI and UI.Modal.CornerRadius or 8)
 
-    -- Reinitialiser l'etat si ferme par un autre menu
+    -- Reinitialiser l'etat si ferme par un autre menu (sécurité auto-close)
     panel:GetPropertyChangedSignal("Visible"):Connect(function()
         if not panel.Visible then
             robuxPanelOpen = false
-            panel.Size = UDim2.new(0, 340, 0, 500)
+            panel.Size = UDim2.new(0, panelW, 0, panelH)
+            ModalManager.Close(ModalManager.Modals.ROBUX_SHOP)
         end
     end)
 
@@ -398,7 +416,7 @@ local function creerShopRobuxPanel()
     ajusterScale()
 
     local stroke = Instance.new("UIStroke", panel)
-    stroke.Color     = T.bordure
+    stroke.Color     = UI and UI.Colors.ModalBorder or T.bordure
     stroke.Thickness = 1
 
     -- Titre
@@ -407,27 +425,29 @@ local function creerShopRobuxPanel()
     titre.Position               = UDim2.new(0, 10, 0, 5)
     titre.BackgroundTransparency = 1
     titre.TextColor3             = T.texteTitre
-    titre.Font                   = Enum.Font.GothamBold
-    titre.TextSize               = 18
+    titre.Font                   = UI and UI.Fonts.Title or Enum.Font.GothamBold
+    titre.TextSize               = UI and UI.TextSizes.H1 or 18
+    titre.TextScaled             = false
     titre.TextXAlignment         = Enum.TextXAlignment.Left
     titre.Text                   = "ROBUX SHOP"
     titre.ZIndex                 = 11
 
     -- Bouton fermer
+    local closeSize = UI and UI.Modal.CloseButtonSize or 44
     local btnFermer = Instance.new("TextButton", panel)
-    btnFermer.Size                   = UDim2.new(0, 44, 0, 44)
+    btnFermer.Size                   = UDim2.new(0, closeSize, 0, closeSize)
     btnFermer.Position               = UDim2.new(1, -50, 0, 4)
     btnFermer.BackgroundColor3       = Color3.fromRGB(50, 50, 50)
     btnFermer.TextColor3             = Color3.fromRGB(180, 180, 180)
     btnFermer.Font                   = Enum.Font.GothamBold
-    btnFermer.TextSize               = 16
-    btnFermer.TextScaled             = true
+    btnFermer.TextSize               = UI and UI.TextSizes.H2 or 16
+    btnFermer.TextScaled             = false
     btnFermer.Text                   = "X"
     btnFermer.BorderSizePixel        = 0
     btnFermer.ZIndex                 = 11
-    Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, UI and UI.Modal.CornerRadius or 8)
     local _bcs = Instance.new("UIStroke", btnFermer)
-    _bcs.Color = T.bordure ; _bcs.Thickness = 1
+    _bcs.Color = UI and UI.Colors.ModalBorder or T.bordure ; _bcs.Thickness = 1
     btnFermer.MouseButton1Click:Connect(function() panel.Visible = false end)
 
     -- ScrollingFrame
@@ -436,8 +456,8 @@ local function creerShopRobuxPanel()
     scroll.Position               = UDim2.new(0, 5, 0, 50)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel        = 0
-    scroll.ScrollBarThickness     = estMobile and (UI_SHOP.ScrollBarMobile or 6) or (UI_SHOP.ScrollBarDesktop or 4)
-    scroll.ScrollBarImageColor3   = T.bordure
+    scroll.ScrollBarThickness     = UI and UI.Modal.ScrollBarThickness or 4
+    scroll.ScrollBarImageColor3   = UI and UI.Colors.ModalBorder or T.bordure
     scroll.CanvasSize             = UDim2.new(0, 0, 0, 0)
     scroll.ZIndex                 = 11
 
@@ -466,58 +486,101 @@ local function creerShopRobuxPanel()
     end
     table.sort(items, function(a, b) return a.ordre < b.ordre end)
 
+    -- Trier les items en deux sections : "BOOSTS" si Lucky Hour, sinon "MAX UPGRADES"
+    local sectionsOrdre = { "MAX UPGRADES", "BOOSTS" }
+    local sections = { ["MAX UPGRADES"] = {}, ["BOOSTS"] = {} }
+    for _, item in ipairs(items) do
+        if string.find(item.nom, "Lucky Hour") then
+            table.insert(sections["BOOSTS"], item)
+        else
+            table.insert(sections["MAX UPGRADES"], item)
+        end
+    end
+
+    -- Hauteur d'une ligne item (bouton Medium + marge)
+    local ligneH = UI and (UI.ButtonSizes.Medium.Height + 20) or 60
+
+    local layoutOrder = 0
     local totalHeight = 0
-    for idx, item in ipairs(items) do
-        local ligne = Instance.new("Frame", scroll)
-        ligne.Name                   = "Item_" .. idx
-        ligne.Size                   = UDim2.new(1, -10, 0, 60)
-        ligne.BackgroundColor3       = T.fondSecondaire
-        ligne.BackgroundTransparency = 0.1
-        ligne.BorderSizePixel        = 0
-        ligne.LayoutOrder            = idx
-        ligne.ZIndex                 = 12
-        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 8)
 
-        local lblNom = Instance.new("TextLabel", ligne)
-        lblNom.Size                   = UDim2.new(0.6, 0, 1, 0)
-        lblNom.Position               = UDim2.new(0, 10, 0, 0)
-        lblNom.BackgroundTransparency = 1
-        lblNom.TextColor3             = T.texte
-        lblNom.Font                   = Enum.Font.GothamBold
-        lblNom.TextSize               = 13
-        lblNom.TextScaled             = true
-        lblNom.TextXAlignment         = Enum.TextXAlignment.Left
-        lblNom.TextWrapped            = true
-        lblNom.ZIndex                 = 13
-        lblNom.Text                   = item.nom
+    for _, nomSection in ipairs(sectionsOrdre) do
+        local sectionItems = sections[nomSection]
+        -- N'afficher la section que si elle contient au moins un item
+        if #sectionItems > 0 then
+            -- Titre de section
+            layoutOrder = layoutOrder + 1
+            local lblSection = Instance.new("TextLabel", scroll)
+            lblSection.Name                   = "Section_" .. nomSection
+            lblSection.Size                   = UDim2.new(1, -10, 0, 28)
+            lblSection.BackgroundTransparency = 1
+            lblSection.BorderSizePixel        = 0
+            lblSection.TextColor3             = UI and UI.Colors.TextDim or Color3.fromRGB(130, 130, 130)
+            lblSection.Font                   = UI and UI.Fonts.Body or Enum.Font.GothamBold
+            lblSection.TextSize               = UI and UI.TextSizes.H2 or 13
+            lblSection.TextScaled             = false
+            lblSection.TextXAlignment         = Enum.TextXAlignment.Left
+            lblSection.TextWrapped            = false
+            lblSection.Text                   = nomSection
+            lblSection.LayoutOrder            = layoutOrder
+            lblSection.ZIndex                 = 12
+            totalHeight = totalHeight + 28 + 8  -- hauteur label + padding layout
 
-        local btnAcheter = Instance.new("TextButton", ligne)
-        btnAcheter.Size             = UDim2.new(0, 95, 0, 36)
-        btnAcheter.Position         = UDim2.new(1, -105, 0.5, -18)
-        btnAcheter.BackgroundColor3 = T.fondBoutonRobux
-        btnAcheter.TextColor3       = T.fondPrincipal
-        btnAcheter.Font             = Enum.Font.GothamBold
-        btnAcheter.TextSize         = 12
-        btnAcheter.TextScaled       = true
-        btnAcheter.Text             = item.prix .. " R$"
-        btnAcheter.BorderSizePixel  = 0
-        btnAcheter.ZIndex           = 13
-        Instance.new("UICorner", btnAcheter).CornerRadius = UDim.new(0, 8)
-        local _bap = Instance.new("UIPadding", btnAcheter)
-        _bap.PaddingLeft = UDim.new(0, 6) ; _bap.PaddingRight = UDim.new(0, 6)
-        _bap.PaddingTop = UDim.new(0, 2)  ; _bap.PaddingBottom = UDim.new(0, 2)
+            for _, item in ipairs(sectionItems) do
+                layoutOrder = layoutOrder + 1
 
-        local capturedItem = item
-        btnAcheter.MouseButton1Click:Connect(function()
-            local achatEv = ReplicatedStorage:FindFirstChild("DemandeAchatRobux")
-            if achatEv then
-                pcall(function()
-                    achatEv:FireServer(capturedItem.nomUpgrade, capturedItem.niveauIdx)
+                local ligne = Instance.new("Frame", scroll)
+                ligne.Name                   = "Item_" .. item.nomUpgrade .. "_" .. item.niveauIdx
+                ligne.Size                   = UDim2.new(1, -10, 0, ligneH)
+                ligne.BackgroundColor3       = UI and UI.Colors.SectionBackground or T.fondSecondaire
+                ligne.BackgroundTransparency = 0.1
+                ligne.BorderSizePixel        = 0
+                ligne.LayoutOrder            = layoutOrder
+                ligne.ZIndex                 = 12
+                Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, UI and UI.Modal.CornerRadius or 8)
+
+                local lblNom = Instance.new("TextLabel", ligne)
+                lblNom.Size                   = UDim2.new(0.6, 0, 1, 0)
+                lblNom.Position               = UDim2.new(0, 10, 0, 0)
+                lblNom.BackgroundTransparency = 1
+                lblNom.TextColor3             = T.texte
+                lblNom.Font                   = UI and UI.Fonts.Body or Enum.Font.GothamBold
+                lblNom.TextSize               = UI and UI.TextSizes.H2 or 13
+                lblNom.TextScaled             = false
+                lblNom.TextXAlignment         = Enum.TextXAlignment.Left
+                lblNom.TextWrapped            = true
+                lblNom.ZIndex                 = 13
+                lblNom.Text                   = item.nom
+
+                local btnH = UI and UI.ButtonSizes.Medium.Height or 36
+                local btnAcheter = Instance.new("TextButton", ligne)
+                btnAcheter.Size             = UDim2.new(0, 110, 0, btnH)
+                btnAcheter.Position         = UDim2.new(1, -120, 0.5, -btnH / 2)
+                btnAcheter.BackgroundColor3 = UI and UI.Colors.OrangeNormal or T.fondBoutonRobux
+                btnAcheter.TextColor3       = T.fondPrincipal
+                btnAcheter.Font             = UI and UI.Fonts.Title or Enum.Font.GothamBold
+                btnAcheter.TextSize         = UI and UI.ButtonSizes.Medium.TextSize or 12
+                btnAcheter.TextScaled       = false
+                btnAcheter.Text             = item.prix .. " R$"
+                btnAcheter.BorderSizePixel  = 0
+                btnAcheter.ZIndex           = 13
+                Instance.new("UICorner", btnAcheter).CornerRadius = UDim.new(0, UI and UI.Modal.CornerRadius or 6)
+                local _bap = Instance.new("UIPadding", btnAcheter)
+                _bap.PaddingLeft = UDim.new(0, 6) ; _bap.PaddingRight = UDim.new(0, 6)
+                _bap.PaddingTop = UDim.new(0, 2)  ; _bap.PaddingBottom = UDim.new(0, 2)
+
+                local capturedItem = item
+                btnAcheter.MouseButton1Click:Connect(function()
+                    local achatEv = ReplicatedStorage:FindFirstChild("DemandeAchatRobux")
+                    if achatEv then
+                        pcall(function()
+                            achatEv:FireServer(capturedItem.nomUpgrade, capturedItem.niveauIdx)
+                        end)
+                    end
                 end)
-            end
-        end)
 
-        totalHeight = totalHeight + 68
+                totalHeight = totalHeight + ligneH + 8  -- hauteur ligne + padding layout
+            end
+        end
     end
 
     scroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)

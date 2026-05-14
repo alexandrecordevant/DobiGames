@@ -13,32 +13,33 @@ local localPlayer = Players.LocalPlayer
 local playerGui   = localPlayer:WaitForChild("PlayerGui")
 
 -- GameConfig
-local Config = require(ReplicatedStorage.GameConfig)
-local T      = require(ReplicatedStorage.SharedLib.Shared.UITheme)
+local Config       = require(ReplicatedStorage.GameConfig)
+local UI           = require(ReplicatedStorage.SharedLib.UIConfig)
+local ModalManager = require(ReplicatedStorage.SharedLib.ModalManager)
 
 local estMobile = UserInputService.TouchEnabled
 local UI_SHOP   = (Config.UI and Config.UI.Shop) or {}
 
 -- ============================================================
--- Couleurs (palette sombre neutre -- aligné LavaTower)
+-- Couleurs (via UIConfig)
 -- ============================================================
-local C_BG          = T.fondPrincipal       -- RGB(10,10,10)
-local C_BG_ALT      = T.fondSecondaire      -- RGB(20,20,20)
-local C_BORDER      = T.bordure             -- RGB(60,60,60)
-local C_TITLE       = T.texteTitre          -- RGB(220,220,220)
-local C_TEXT        = T.texte               -- RGB(220,220,220)
-local C_DIM         = T.texteSecondaire     -- RGB(130,130,130)
-local C_GREEN_BG    = T.fondBouton          -- RGB(80,140,80)
-local C_GREEN_TXT   = T.texte
-local C_GREY_BG     = Color3.fromRGB(35, 35, 35)
-local C_GREY_TXT    = T.texteSecondaire
-local C_GOLD_BG     = T.fondBoutonRobux     -- RGB(220,110,15)
-local C_GOLD_TXT    = T.texte               -- gris clair (lisible sur orange)
-local C_MAX_BG      = Color3.fromRGB(40, 40, 40)
-local C_MAX_TXT     = T.texteSecondaire
-local C_OVERLAY     = Color3.fromRGB(0, 0, 0)
-local C_COINS       = Color3.fromRGB(255, 200, 50) -- gold coins
-local C_SEP         = T.bordure
+local C_BG       = UI.Colors.ModalBackground
+local C_BG_ALT   = UI.Colors.SectionBackground
+local C_BORDER   = UI.Colors.ModalBorder
+local C_SEP      = UI.Colors.ModalBorder
+local C_TITLE    = UI.Colors.TextOnDark
+local C_TEXT     = UI.Colors.TextOnDark
+local C_DIM      = UI.Colors.TextDim
+local C_GREEN_BG = UI.Colors.GreenNormal
+local C_GREEN_TXT = UI.Colors.TextOnDark
+local C_GREY_BG  = UI.Colors.GrayLocked
+local C_GREY_TXT = UI.Colors.TextLocked
+local C_GOLD_BG  = UI.Colors.OrangeNormal
+local C_GOLD_TXT = UI.Colors.TextOnDark
+local C_MAX_BG   = UI.Colors.GrayOwned
+local C_MAX_TXT  = UI.Colors.TextDim
+local C_OVERLAY  = Color3.fromRGB(0, 0, 0)
+local C_COINS    = UI.Colors.TextGold
 
 -- Couleurs d'état des boutons upgrade (lues depuis GameConfig.UI.Shop)
 local CS_OWNED_BG    = UI_SHOP.ColAchete        or Color3.fromRGB(27,  94,  32)
@@ -55,7 +56,7 @@ local CS_STROKE_DISP = UI_SHOP.ColStrokeDisp    or Color3.fromRGB(180, 255, 180)
 -- ============================================================
 -- Constantes layout
 -- ============================================================
-local PANEL_W          = 460
+local PANEL_W          = 460   -- valeur fixe pour compatibilité du scroll/layout existant
 local PANEL_H          = 560
 local HEADER_H         = 54
 local COINS_H          = 36
@@ -63,11 +64,11 @@ local SCROLL_TOP       = HEADER_H + COINS_H + 6
 local SCROLL_H         = PANEL_H - SCROLL_TOP - 10
 local UPGRADE_PAD      = UI_SHOP.UpgradeGap    or 16   -- espacement entre blocs
 local BTN_GAP          = UI_SHOP.BtnGap        or 8    -- espacement entre boutons d'une même row
-local BTN_H            = estMobile and (UI_SHOP.BtnHeightMobile or 60) or (UI_SHOP.BtnHeightDesktop or 45)
+local BTN_H            = UI.ButtonSizes.Medium.Height
 local UPGRADE_H        = 68 + BTN_H + 10   -- hauteur dynamique selon BTN_H
 local SEUIL_H          = 48 + BTN_H + 10   -- même logique
 local BOOST_H          = 68 + BTN_H + 10
-local BTN_CORNER       = UDim.new(0, UI_SHOP.BtnCornerRadius or 8)
+local BTN_CORNER       = UDim.new(0, UI.Modal.CornerRadius)
 
 -- ============================================================
 -- ScreenGui
@@ -102,6 +103,9 @@ panel.BorderSizePixel  = 0
 panel.ZIndex           = 2
 panel.Parent           = screenGui
 
+local panelCorner = Instance.new("UICorner", panel)
+panelCorner.CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+
 local panelStroke = Instance.new("UIStroke")
 panelStroke.Color     = C_BORDER
 panelStroke.Thickness = 1
@@ -133,8 +137,8 @@ titreLbl.Position            = UDim2.new(0, 16, 0, 0)
 titreLbl.BackgroundTransparency = 1
 titreLbl.Text                = "SHOP"
 titreLbl.TextColor3          = C_TITLE
-titreLbl.Font                = Enum.Font.GothamBold
-titreLbl.TextSize            = 18
+titreLbl.Font                = UI.Fonts.Title
+titreLbl.TextSize            = UI.TextSizes.H1
 titreLbl.TextScaled          = false
 titreLbl.TextXAlignment      = Enum.TextXAlignment.Left
 titreLbl.ZIndex              = 4
@@ -147,13 +151,13 @@ closeBtn.Position          = UDim2.new(1, -50, 0, 4)
 closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
 closeBtn.Text              = "X"
 closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
-closeBtn.Font              = Enum.Font.GothamBold
-closeBtn.TextSize          = 16
+closeBtn.Font              = UI.Fonts.Title
+closeBtn.TextSize          = UI.TextSizes.H2
 closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 4
 closeBtn.Parent            = headerBar
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local closeBtnStroke = Instance.new("UIStroke", closeBtn)
 closeBtnStroke.Color = C_BORDER ; closeBtnStroke.Thickness = 1
 
@@ -182,8 +186,8 @@ coinsLbl.Size                = UDim2.new(1, 0, 1, 0)
 coinsLbl.BackgroundTransparency = 1
 coinsLbl.Text                = "0 coins"
 coinsLbl.TextColor3          = C_COINS
-coinsLbl.Font                = Enum.Font.GothamBold
-coinsLbl.TextSize            = 13
+coinsLbl.Font                = UI.Fonts.Title
+coinsLbl.TextSize            = UI.TextSizes.Caption
 coinsLbl.TextScaled          = false
 coinsLbl.TextXAlignment      = Enum.TextXAlignment.Left
 coinsLbl.ZIndex              = 4
@@ -196,8 +200,8 @@ scrollFrame.Size                  = UDim2.new(1, -10, 0, SCROLL_H)
 scrollFrame.Position              = UDim2.new(0, 5, 0, SCROLL_TOP)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel       = 0
-scrollFrame.ScrollBarThickness    = estMobile and (UI_SHOP.ScrollBarMobile or 6) or (UI_SHOP.ScrollBarDesktop or 4)
-scrollFrame.ScrollBarImageColor3  = T.fondBoutonRobux
+scrollFrame.ScrollBarThickness    = UI.Modal.ScrollBarThickness
+scrollFrame.ScrollBarImageColor3  = UI.Colors.OrangeNormal
 scrollFrame.CanvasSize            = UDim2.new(0, 0, 0, 0)
 scrollFrame.ZIndex                = 3
 scrollFrame.Parent                = panel
@@ -298,9 +302,9 @@ local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, 
     btn.BackgroundColor3 = couleurBg
     btn.Text             = texte
     btn.TextColor3       = couleurTxt
-    btn.Font             = Enum.Font.GothamBold
-    btn.TextSize         = 14
-    btn.TextScaled       = true
+    btn.Font             = UI.Fonts.Title
+    btn.TextSize         = UI.ButtonSizes.Medium.TextSize
+    btn.TextScaled       = false
     btn.BorderSizePixel  = 0
     btn.Parent           = parent
     Instance.new("UICorner", btn).CornerRadius = BTN_CORNER
@@ -330,7 +334,7 @@ local function construireUpgradeFrame(nomUpgrade, upgradeConfig, yPos)
     frame.BackgroundColor3 = C_BG_ALT
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 
     local stroke = Instance.new("UIStroke")
     stroke.Color     = C_SEP
@@ -345,8 +349,8 @@ local function construireUpgradeFrame(nomUpgrade, upgradeConfig, yPos)
     nomLbl.BackgroundTransparency = 1
     nomLbl.Text                = string.upper(upgradeConfig.nom)
     nomLbl.TextColor3          = C_TEXT
-    nomLbl.Font                = Enum.Font.GothamBold
-    nomLbl.TextSize            = 15
+    nomLbl.Font                = UI.Fonts.Title
+    nomLbl.TextSize            = UI.TextSizes.H2
     nomLbl.TextScaled          = false
     nomLbl.TextXAlignment      = Enum.TextXAlignment.Left
     nomLbl.Parent              = frame
@@ -359,8 +363,8 @@ local function construireUpgradeFrame(nomUpgrade, upgradeConfig, yPos)
     descLbl.BackgroundTransparency = 1
     descLbl.Text               = upgradeConfig.description
     descLbl.TextColor3         = C_DIM
-    descLbl.Font               = Enum.Font.Gotham
-    descLbl.TextSize           = 11
+    descLbl.Font               = UI.Fonts.Body
+    descLbl.TextSize           = UI.TextSizes.Caption
     descLbl.TextScaled         = false
     descLbl.TextXAlignment     = Enum.TextXAlignment.Left
     descLbl.Parent             = frame
@@ -539,13 +543,13 @@ local function construireSeuilTracteur(donnes, yPos)
     frame.Name             = "SeuilTracteur"
     frame.Size             = UDim2.new(1, -10, 0, SEUIL_H)
     frame.Position         = UDim2.new(0, 5, 0, yPos)
-    frame.BackgroundColor3 = T.fondSecondaire
+    frame.BackgroundColor3 = C_BG_ALT
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color     = T.bordure
+    stroke.Color     = C_BORDER
     stroke.Thickness = 1.5
     stroke.Parent    = frame
 
@@ -592,7 +596,8 @@ local function construireSeuilTracteur(donnes, yPos)
         btn.Text             = texte
         btn.TextColor3       = txtCol
         btn.Font             = Enum.Font.GothamBold
-        btn.TextScaled       = true
+        btn.TextScaled       = false
+        btn.TextSize         = UI.ButtonSizes.Medium.TextSize
         btn.BorderSizePixel  = 0
         btn.Parent           = btnContainer
         Instance.new("UICorner", btn).CornerRadius = BTN_CORNER
@@ -628,10 +633,10 @@ local function construireBoostsFrame(yPos)
     frame.Name             = "Boosts"
     frame.Size             = UDim2.new(1, -10, 0, BOOST_H)
     frame.Position         = UDim2.new(0, 5, 0, yPos)
-    frame.BackgroundColor3 = T.fondSecondaire
+    frame.BackgroundColor3 = C_BG_ALT
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
     local stroke = Instance.new("UIStroke", frame)
     stroke.Color = C_BORDER ; stroke.Thickness = 1
 
@@ -641,8 +646,8 @@ local function construireBoostsFrame(yPos)
     titre.BackgroundTransparency = 1
     titre.Text                = "BOOSTS"
     titre.TextColor3          = C_TITLE
-    titre.Font                = Enum.Font.GothamBold
-    titre.TextSize            = 15
+    titre.Font                = UI.Fonts.Title
+    titre.TextSize            = UI.TextSizes.H2
     titre.TextScaled          = false
     titre.TextXAlignment      = Enum.TextXAlignment.Left
 
@@ -652,8 +657,8 @@ local function construireBoostsFrame(yPos)
     desc.BackgroundTransparency = 1
     desc.Text                = "x5 income for ALL players — 30 min"
     desc.TextColor3          = C_DIM
-    desc.Font                = Enum.Font.Gotham
-    desc.TextSize            = 11
+    desc.Font                = UI.Fonts.Body
+    desc.TextSize            = UI.TextSizes.Caption
     desc.TextScaled          = false
     desc.TextXAlignment      = Enum.TextXAlignment.Left
 
@@ -755,7 +760,10 @@ local function fermerAutresMenus()
         local mf = fpGui:FindFirstChild("MainFrame")
         if mf then mf.Visible = false end
         local ds = fpGui:FindFirstChild("DailySeedPanel")
-        if ds then ds:Destroy() end
+        if ds then
+            ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
+            ds:Destroy()
+        end
         local fp = fpGui:FindFirstChild("FlowerPotPanel")
         if fp then fp.Visible = false end
     end
@@ -770,6 +778,7 @@ end
 -- Ouverture / Fermeture (slide depuis le bas)
 -- ============================================================
 local function ouvrirShop(donnes)
+    ModalManager.Open(ModalManager.Modals.SHOP)
     fermerAutresMenus()
     donneesShop = donnes
     construireShop(donnes)
@@ -782,6 +791,7 @@ local function ouvrirShop(donnes)
 end
 
 local function fermerShop()
+    ModalManager.Close(ModalManager.Modals.SHOP)
     local tween = TweenService:Create(panel,
         TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
         { Position = UDim2.new(0.5, 0, 1.5, 0) })
@@ -791,10 +801,11 @@ local function fermerShop()
     end)
 end
 
--- Reinitialiser position si ferme par un autre menu
+-- Reinitialiser position si ferme par un autre menu (sécurité auto-close)
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
     if not screenGui.Enabled then
         panel.Position = UDim2.new(0.5, 0, 1.5, 0)
+        ModalManager.Close(ModalManager.Modals.SHOP)
     end
 end)
 
