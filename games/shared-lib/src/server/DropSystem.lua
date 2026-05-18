@@ -811,6 +811,11 @@ local function restaurerDepots(player, playerData)
                     valeur = appliquerMultiplicateurs(cpsAttr)
                 end
             end
+            -- Ré-appliquer le Scale filter avant positionnement (clone sans scale depuis ServerStorage)
+            if modeleSource and info.scaleFilter then
+                local FM = getFilterManager()
+                if FM then pcall(FM.Apply, modeleSource, { { Name = info.scaleFilter } }) end
+            end
             local modeleSlot = placerModeleSlot(touchPart, info.rarete, modeleSource, baseCentres[uid])
 
             -- Fallback définitif : lire CashParSeconde depuis le modèle restauré sur le slot.
@@ -853,6 +858,7 @@ local function restaurerDepots(player, playerData)
                 spotKey           = spotKey,
                 rarete            = info.rarete,
                 brNom             = info.brNom,
+                scaleFilter       = info.scaleFilter or nil,
                 isMutant          = isMutant,
                 elementType       = info.elementType,
                 mutantValeur      = info.mutantValeur or nil,
@@ -1075,6 +1081,18 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         brNom = brNomFallback
     end
 
+    -- Conserver le Scale filter d'origine pour le ré-appliquer au retrieve
+    -- (le clone frais depuis ServerStorage n'a pas cette info)
+    local scaleFilter = nil
+    if modeleDepose then
+        local af = modeleDepose:GetAttribute("AppliedFilters")
+        if af then
+            for _, nom in ipairs({"Miniature", "Normal", "Large", "Geant"}) do
+                if string.find(af, nom, 1, true) then scaleFilter = nom break end
+            end
+        end
+    end
+
     -- Si modeleDepose nil mais brNom connu → cloner depuis le bon dossier (mutation ou normal)
     local modeleSource = modeleDepose
     if not modeleSource and brNom then
@@ -1135,6 +1153,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
         spotKey           = spotKey,
         rarete            = rarete,
         brNom             = brNom,        -- nom exact du modèle BR (ex: "Tralalero_Tralala")
+        scaleFilter       = scaleFilter,
         isMutant          = isMutant,
         elementType       = elementType,
         mutantValeur      = entree.rarete.valeur,  -- multiplicateur élémentaire (×2/4/6/8) pour re-dépôt
@@ -1296,6 +1315,12 @@ function DropSystem.RecupererBrainRot(player, touchPart)
         end
     end
 
+    -- Ré-appliquer le Scale filter (perdu lors du clone frais depuis ServerStorage)
+    if modeleRestitue and entree.scaleFilter then
+        local FM = getFilterManager()
+        if FM then pcall(FM.Apply, modeleRestitue, { { Name = entree.scaleFilter } }) end
+    end
+
     -- Remettre le BR en TÊTE du carry avec tous les champs mutation préservés
     local rareteObj = {
         nom         = rarete,
@@ -1400,6 +1425,7 @@ function DropSystem.GetSpotsOccupesSerialisables(player)
             rarete            = entry.rarete,
             valeurSec         = entry.valeurSec,
             brNom             = entry.brNom,
+            scaleFilter       = entry.scaleFilter or nil,
             isMutant          = entry.isMutant,
             elementType       = entry.elementType,
             mutantValeur      = entry.mutantValeur or nil,
