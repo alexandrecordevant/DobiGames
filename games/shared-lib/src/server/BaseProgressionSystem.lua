@@ -385,6 +385,8 @@ local function cacherEtage(floorObj)
 			pcall(cacherPart, v)
 		elseif v:IsA("ProximityPrompt") or v:IsA("ClickDetector") then
 			pcall(function() v.Enabled = false end)
+		elseif v:IsA("SurfaceGui") or v:IsA("BillboardGui") then
+			pcall(function() v.Enabled = false end)
 		end
 	end
 end

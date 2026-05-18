@@ -173,7 +173,7 @@ local function CleanupDefaultValues()
     end
 
     for _, base in ipairs(basesFolder:GetChildren()) do
-        for _, floor in ipairs(base:GetChildren()) do
+        for _, floor in ipairs(base:GetDescendants()) do
             if floor.Name:match("^Floor") then
                 for _, spot in ipairs(floor:GetChildren()) do
                     if spot.Name:match("^spot_") then
