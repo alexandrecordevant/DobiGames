@@ -1049,4 +1049,51 @@ GameConfig.MenuHUD = {
     DureeAnimation = 0.2,  -- durée expand / collapse (secondes)
 }
 
+-- === CODES PROMO ===
+-- Clés = codes en MAJUSCULES (comparaison case-insensitive côté serveur)
+-- Rewards.Coins       : entier ajouté à player.leaderstats.Coins
+-- Rewards.Seeds       : { { Rarity="MYTHIC"|"SECRET", Quantity=N }, ... }
+-- Rewards.BrainRots   : réservé pour usage futur
+-- ExpiresAt           : 0 = jamais, sinon timestamp Unix (os.time())
+-- MaxUses             : -1 = illimité, sinon quota global (DataStore PromoCodesGlobal)
+-- Active              : false = code désactivé sans le supprimer
+GameConfig.PromoCodes = {
+
+    ["BETA2026"] = {
+        Rewards = {
+            Coins     = 100000,
+            Seeds     = { { Rarity = "MYTHIC", Quantity = 1 } },
+            BrainRots = {},
+        },
+        ExpiresAt   = 0,
+        MaxUses     = -1,
+        Description = "Code de bienvenue pour les beta testeurs",
+        Active      = true,
+    },
+
+    ["LAUNCH"] = {
+        Rewards = {
+            Coins     = 50000,
+            Seeds     = {},
+            BrainRots = {},
+        },
+        ExpiresAt   = 0,
+        MaxUses     = -1,
+        Description = "Code de lancement officiel",
+        Active      = true,
+    },
+
+    ["TIKTOK1K"] = {
+        Rewards = {
+            Coins     = 25000,
+            Seeds     = { { Rarity = "SECRET", Quantity = 1 } },
+            BrainRots = {},
+        },
+        ExpiresAt   = 0,
+        MaxUses     = 1000,
+        Description = "TikTok 1K followers milestone — premiers 1000 joueurs uniquement",
+        Active      = true,
+    },
+}
+
 return GameConfig

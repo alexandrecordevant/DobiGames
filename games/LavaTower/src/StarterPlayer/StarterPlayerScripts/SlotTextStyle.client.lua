@@ -33,22 +33,63 @@ local UpdateHUD     = ReplicatedStorage:WaitForChild("UpdateHUD",     15)
 -- Utilitaires — trouver les TextLabels d'un spot
 -- Structure : spot_X / Button / TouchPart / Text (SurfaceGui) → $amount, $offline
 -- ───────────────────────────────────────────────
+-- Cherche les labels dans un SurfaceGui : $amount/$offline par nom, sinon premier TextLabel
+local function searchLabelsInSurfGui(sg)
+    if not sg or not sg:IsA("SurfaceGui") then return nil, nil end
+    local a = sg:FindFirstChild("$amount")
+    local o = sg:FindFirstChild("$offline")
+    if a or o then return a, o end
+    local tl = sg:FindFirstChildOfClass("TextLabel")
+    return tl, nil
+end
+
+-- Cherche les labels du spot : Button children → outer TouchPart → tous descendants
 local function getTextLabels(spotModel)
+    -- 1. Tous les BaseParts enfants de Button
     local buttonModel = spotModel:FindFirstChild("Button")
-    if not buttonModel then return nil, nil end
-    local tp = buttonModel:FindFirstChild("TouchPart")
-    if not tp then tp = buttonModel:FindFirstChildWhichIsA("BasePart") end
-    if not tp then return nil, nil end
-    local surfGui = tp:FindFirstChild("Text")
-    if not surfGui then return nil, nil end
-    return surfGui:FindFirstChild("$amount"), surfGui:FindFirstChild("$offline")
+    if buttonModel then
+        for _, child in ipairs(buttonModel:GetChildren()) do
+            if child:IsA("BasePart") then
+                for _, sg in ipairs(child:GetChildren()) do
+                    if sg:IsA("SurfaceGui") then
+                        local a, o = searchLabelsInSurfGui(sg)
+                        if a or o then return a, o end
+                    end
+                end
+            end
+        end
+    end
+    -- 2. Outer TouchPart
+    local outerTp = spotModel:FindFirstChild("TouchPart")
+    if outerTp then
+        for _, sg in ipairs(outerTp:GetChildren()) do
+            if sg:IsA("SurfaceGui") then
+                local a, o = searchLabelsInSurfGui(sg)
+                if a or o then return a, o end
+            end
+        end
+    end
+    -- 3. Tout descendant SurfaceGui dans le spot
+    for _, desc in ipairs(spotModel:GetDescendants()) do
+        if desc:IsA("SurfaceGui") then
+            local a, o = searchLabelsInSurfGui(desc)
+            if a or o then return a, o end
+        end
+    end
+    return nil, nil
 end
 
 -- Applique le style grand/centré avec stroke sur un TextLabel
+-- Active aussi le SurfaceGui parent s'il était désactivé
 local function appliquerStyle(lbl)
     if not lbl or not lbl:IsA("TextLabel") then return end
     pcall(function()
+        local sg = lbl.Parent
+        if sg and sg:IsA("SurfaceGui") and not sg.Enabled then
+            sg.Enabled = true
+        end
         lbl.TextColor3             = COULEUR_TEXTE
+        lbl.TextTransparency       = 0
         lbl.TextSize               = TAILLE_TEXTE
         lbl.TextScaled             = false
         lbl.TextXAlignment         = Enum.TextXAlignment.Center
@@ -56,6 +97,7 @@ local function appliquerStyle(lbl)
         lbl.TextStrokeColor3       = COULEUR_STROKE
         lbl.TextStrokeTransparency = 0.3
         lbl.Font                   = Enum.Font.GothamBold
+        lbl.BackgroundTransparency = 1
     end)
 end
 
@@ -91,17 +133,37 @@ local function mettreAJourVisuels(progression)
             local spotObj = floorObj:FindFirstChild("spot_" .. spotNum)
             if not spotObj then continue end
 
-            -- Masquer le vieux SurfaceGui rouge sur l'outer TouchPart (géré par DropSystem)
+            -- Labels : Button/TouchPart/Text en priorité, outer TouchPart/Text en fallback
+            local lblAmount, lblOffline = getTextLabels(spotObj)
+
+            -- Désactiver le SurfaceGui de l'outer TouchPart seulement si les labels actifs
+            -- sont dans le Button interne — sinon l'outer est le seul affichage, ne pas le cacher
             local outerTp = spotObj:FindFirstChild("TouchPart")
             if outerTp then
                 local outerGui = outerTp:FindFirstChild("Text")
                 if outerGui and outerGui:IsA("SurfaceGui") then
-                    pcall(function() outerGui.Enabled = false end)
+                    -- Désactiver l'outer seulement si les labels actifs sont dans le Button
+                    local hasInnerLabels = false
+                    local bm = spotObj:FindFirstChild("Button")
+                    if bm then
+                        for _, child in ipairs(bm:GetChildren()) do
+                            if child:IsA("BasePart") then
+                                for _, sg in ipairs(child:GetChildren()) do
+                                    if sg:IsA("SurfaceGui") then
+                                        local a2, o2 = searchLabelsInSurfGui(sg)
+                                        if a2 or o2 then
+                                            hasInnerLabels = true
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    if hasInnerLabels then
+                        pcall(function() outerGui.Enabled = false end)
+                    end
                 end
             end
-
-            -- Labels sur Button/TouchPart (gérés par IncomeSystem)
-            local lblAmount, lblOffline = getTextLabels(spotObj)
 
             -- $amount : coins accumulés en attente — stylé bleu, visibilité gérée par IncomeSystem
             if lblAmount then

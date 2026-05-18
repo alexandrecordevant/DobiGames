@@ -414,6 +414,7 @@ task.spawn(function()
             BorderSizePixel = 0, LayoutOrder = 4, ZIndex = 7, Parent = carte,
         })
         addCorner(buyBtn, 2); addStroke(buyBtn); addHover(buyBtn)
+        buyBtn:SetAttribute("NoSound", true)
 
         local capturedIdx = i
         buyBtn.MouseButton1Click:Connect(function()
@@ -447,6 +448,52 @@ task.spawn(function()
 
     local luckyCartes = {}
 
+    -- Resout un chemin "Service.Dossier.Sous" en instance (cote client)
+    local function resoudreDossierClient(chemin)
+        local parties = {}
+        for p in chemin:gmatch("[^%.]+") do table.insert(parties, p) end
+        if #parties == 0 then return nil end
+        local ok, svc = pcall(function() return game:GetService(parties[1]) end)
+        if not ok or not svc then return nil end
+        local noeud = svc
+        for i2 = 2, #parties do
+            if not noeud then return nil end
+            noeud = noeud:FindFirstChild(parties[i2])
+        end
+        return noeud
+    end
+
+    -- Cree un ViewportFrame 3D pour la bande defilante des Lucky Blocks
+    local function creerVpBande(parent, modeleSource)
+        local vp = newInst("ViewportFrame", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundColor3 = Color3.fromRGB(18, 18, 28),
+            BackgroundTransparency = 0,
+            BorderSizePixel = 0,
+            ZIndex = 10,
+            Parent = parent,
+        })
+        addCorner(vp, 4)
+        if modeleSource then
+            pcall(function()
+                local clone = modeleSource:Clone()
+                clone.Parent = vp
+                local cf, size = clone:GetBoundingBox()
+                local maxSz = math.max(size.X, size.Y, size.Z)
+                if maxSz < 0.1 then maxSz = 4 end
+                local dist = maxSz * 1.1
+                local cam = Instance.new("Camera")
+                cam.CFrame = CFrame.new(
+                    cf.Position + Vector3.new(0, size.Y * 0.2, dist),
+                    cf.Position
+                )
+                vp.CurrentCamera = cam
+                cam.Parent = vp
+            end)
+        end
+        return vp
+    end
+
     for i, cfg in ipairs(shopCfg.LuckyBlocks) do
         local carte = newInst("Frame", {
             BackgroundColor3 = C.CardBg, BorderSizePixel = 0,
@@ -479,27 +526,103 @@ task.spawn(function()
             addCorner(img, 8)
         end
 
-        local chanceLabel = newInst("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1,
-            Text = formaterChance(cfg.weights[1].chance),
-            Font = Enum.Font.GothamBold, TextSize = 13, TextScaled = false,
-            TextColor3 = C.TextPrim, LayoutOrder = 3, ZIndex = 7, Parent = carte,
+        -- Bande defilante : ViewportFrames 3D + pourcentages
+        local BAND_H   = 58
+        local ITEM_W   = 52
+        local ITEM_GAP = 4
+        local VP_H     = 42
+
+        -- Collecter les brainrots du tier avec leur chance individuelle
+        local bandItems = {}
+        local tierFolder = resoudreDossierClient(cfg.folder)
+        if tierFolder then
+            for _, w in ipairs(cfg.weights) do
+                local sous = tierFolder:FindFirstChild(w.label)
+                if sous then
+                    local modeles = {}
+                    for _, m in ipairs(sous:GetChildren()) do
+                        if (m:IsA("Model") or m:IsA("BasePart")) and m.Name ~= "Lucky Block" then
+                            table.insert(modeles, m)
+                        end
+                    end
+                    if #modeles > 0 then
+                        local chanceIndiv = w.chance / #modeles
+                        for _, m in ipairs(modeles) do
+                            table.insert(bandItems, { model = m, chance = chanceIndiv })
+                        end
+                    end
+                end
+            end
+        end
+
+        local bandContainer = newInst("Frame", {
+            Size = UDim2.new(1, 0, 0, BAND_H),
+            BackgroundTransparency = 1,
+            ClipsDescendants = true,
+            LayoutOrder = 3, ZIndex = 7, Parent = carte,
         })
 
-        -- Animation defilante des chances (2s par slot)
-        local capturedWeights = cfg.weights
-        task.spawn(function()
-            local idx = 1
-            while true do
-                local w = capturedWeights[idx]
-                if w and chanceLabel and chanceLabel.Parent then
-                    chanceLabel.Text = formaterChance(w.chance)
+        if #bandItems == 0 then
+            -- Fallback texte si le dossier n'est pas encore peuple
+            newInst("TextLabel", {
+                Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
+                Text = formaterChance(cfg.weights[1].chance),
+                Font = Enum.Font.GothamBold, TextSize = 13, TextScaled = false,
+                TextColor3 = C.TextPrim, ZIndex = 8, Parent = bandContainer,
+            })
+        else
+            local singleW = #bandItems * (ITEM_W + ITEM_GAP)
+
+            -- Frame interieur mobile (contenu double pour boucle seamless)
+            local inner = newInst("Frame", {
+                Size = UDim2.new(0, singleW * 2, 1, 0),
+                Position = UDim2.fromOffset(0, 0),
+                BackgroundTransparency = 1,
+                ZIndex = 8, Parent = bandContainer,
+            })
+
+            for pass = 0, 1 do
+                for j, item in ipairs(bandItems) do
+                    local xOff = (pass * #bandItems + (j - 1)) * (ITEM_W + ITEM_GAP)
+                    local itemF = newInst("Frame", {
+                        Size = UDim2.new(0, ITEM_W, 1, 0),
+                        Position = UDim2.fromOffset(xOff, 0),
+                        BackgroundTransparency = 1,
+                        ZIndex = 9, Parent = inner,
+                    })
+                    local vpHolder = newInst("Frame", {
+                        Size = UDim2.new(0, ITEM_W, 0, VP_H),
+                        Position = UDim2.fromOffset(0, 0),
+                        BackgroundTransparency = 1,
+                        ZIndex = 9, Parent = itemF,
+                    })
+                    creerVpBande(vpHolder, item.model)
+                    newInst("TextLabel", {
+                        Size = UDim2.new(1, 0, 0, BAND_H - VP_H),
+                        Position = UDim2.fromOffset(0, VP_H),
+                        BackgroundTransparency = 1,
+                        Text = formaterChance(item.chance),
+                        Font = Enum.Font.GothamBold, TextSize = 10, TextScaled = false,
+                        TextColor3 = C.TextPrim,
+                        TextXAlignment = Enum.TextXAlignment.Center,
+                        ZIndex = 10, Parent = itemF,
+                    })
                 end
-                idx = idx + 1
-                if idx > #capturedWeights then idx = 1 end
-                task.wait(2)
             end
-        end)
+
+            -- Animation de defilement continu
+            local capturedInner  = inner
+            local capturedSingleW = singleW
+            task.spawn(function()
+                local pos = 0
+                while capturedInner.Parent do
+                    local dt = task.wait()
+                    pos = pos + 35 * dt  -- 35 px/s
+                    if pos >= capturedSingleW then pos = pos - capturedSingleW end
+                    capturedInner.Position = UDim2.fromOffset(-math.floor(pos), 0)
+                end
+            end)
+        end
 
         local buyBtn = newInst("TextButton", {
             Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = C.Succes,
@@ -508,6 +631,7 @@ task.spawn(function()
             BorderSizePixel = 0, LayoutOrder = 4, ZIndex = 7, Parent = carte,
         })
         addCorner(buyBtn, 2); addStroke(buyBtn); addHover(buyBtn)
+        buyBtn:SetAttribute("NoSound", true)
 
         local capturedIdx = i
         buyBtn.MouseButton1Click:Connect(function()
@@ -640,6 +764,7 @@ task.spawn(function()
         TextColor3 = C.TextPrim, BorderSizePixel = 0, LayoutOrder = 4, ZIndex = 6, Parent = packScroll,
     })
     addCorner(packBuyBtn, 2); addStroke(packBuyBtn); addHover(packBuyBtn)
+    packBuyBtn:SetAttribute("NoSound", true)
 
     packBuyBtn.MouseButton1Click:Connect(function()
         if currentData.packAchete then return end
@@ -706,6 +831,7 @@ task.spawn(function()
     addCorner(vipBuyBtn, 2)
     do local s = Instance.new("UIStroke"); s.Color = Color3.fromRGB(200, 160, 20); s.Thickness = 1; s.Parent = vipBuyBtn end
     addHover(vipBuyBtn)
+    vipBuyBtn:SetAttribute("NoSound", true)
 
     vipBuyBtn.MouseButton1Click:Connect(function()
         if currentData.hasVIP then return end
@@ -762,6 +888,7 @@ task.spawn(function()
         TextColor3 = C.TextPrim, BorderSizePixel = 0, ZIndex = 6, Parent = luckCard,
     })
     addCorner(luckUpgradeBtn, 2); addStroke(luckUpgradeBtn); addHover(luckUpgradeBtn)
+    luckUpgradeBtn:SetAttribute("NoSound", true)
 
     luckUpgradeBtn.MouseButton1Click:Connect(function()
         local palierActuel = currentData.luckPalierActuel or 0

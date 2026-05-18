@@ -134,19 +134,15 @@ local gui = newInst("ScreenGui", {
 -- Meme style que le bouton FlowerPot : fond clair, texte noir
 -- ================================================================
 
-local btnIndex = newInst("TextButton", {
+local btnIndex = newInst("ImageButton", {
     Name                   = "IndexBtn",
     Size                   = UDim2.new(0, 100, 0, 100),
     AnchorPoint            = Vector2.new(0, 0.5),
     Position               = UDim2.new(0, 0, 0.5, 110),
-    BackgroundColor3       = Color3.fromRGB(50, 50, 60),
-    BackgroundTransparency = 0,
+    BackgroundTransparency = 1,
     BorderSizePixel        = 0,
-    Text                   = "INDEX",
-    TextColor3             = Color3.fromRGB(220, 220, 220),
-    TextScaled             = false,
-    TextSize               = 16,
-    Font                   = Enum.Font.GothamBold,
+    Image                  = "rbxassetid://133541387019181",
+    ScaleType              = Enum.ScaleType.Fit,
     ZIndex                 = 10,
     Parent                 = gui,
 })

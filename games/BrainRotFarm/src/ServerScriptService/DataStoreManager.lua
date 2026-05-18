@@ -51,6 +51,8 @@ local function DefaultData()
         },
         -- Index des Brainrots decouverts (par categorie)
         indexObtenu = {},
+        -- Codes promo utilisés
+        RedeemedCodes = {},
     }
 end
 
@@ -83,7 +85,8 @@ function DataStoreManager.Load(player)
         data.grainesMigratedV2 = true
         Logger.warn("Data", "Migration grainesMigratedV2 : graines remises à 0 pour %s (ancienne valeur : MYTHIC=%s SECRET=%s)", player.Name, tostring(ancien.MYTHIC or 0), tostring(ancien.SECRET or 0))
     end
-    if not data.carryPortes then data.carryPortes = {} end
+    if not data.carryPortes    then data.carryPortes    = {} end
+    if not data.RedeemedCodes  then data.RedeemedCodes  = {} end
 
     -- Migration one-shot : bonus de démarrage 35 000 coins pour les joueurs existants
     if not data.welcomeBonusV1 then

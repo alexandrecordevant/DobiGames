@@ -133,6 +133,8 @@ local GetPlayerData        = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost       = CreerRemoteFunction("GetUpgradeCost")
 local SellConfirmShow      = CreerRemoteEvent("SellConfirmShow")   -- serveur → client : afficher dialog
 local SellConfirmReply     = CreerRemoteEvent("SellConfirmReply")  -- client → serveur : oui/non
+local _IncomeCollected     = CreerRemoteEvent("IncomeCollected")   -- IncomeSystem → client : son collecte
+local _LuckyBlockOpened   = CreerRemoteEvent("LuckyBlockOpened")  -- LuckyBlockSystem → client : sons ouverture
 
 Logger.info("Main", "RemoteEvents créés ✓")
 LeaderboardSystem.Init()
@@ -266,6 +268,40 @@ end
 CarrySystem.Init(BrainrotsFolder)
 DropSystem.SetBrainrotsFolder(BrainrotsFolder)
 
+-- Fallback pour les modèles issus de Lucky Blocks (ReplicatedStorage.LuckyBlocks.*)
+-- Appelé par DropSystem quand un brNom n'est pas trouvé dans ReplicatedStorage.Brainrots.*
+-- Gère : Lucky Block visuel (brNom="Lucky Block") ET brainrots résultat (brNom=nom du BR)
+DropSystem.FindModelFallback = function(brNom, rarete)
+    local lbRoot = ReplicatedStorage:FindFirstChild("LuckyBlocks")
+    if not lbRoot or not brNom then return nil end
+    -- Cas 1 : rarete = "LuckyBlock_N" (format encode par ShopMonetizationSystem)
+    local tierIdx = rarete and tonumber(rarete:match("LuckyBlock_(%d+)$"))
+    if tierIdx then
+        local tierFolder = lbRoot:FindFirstChild("Tier_" .. tierIdx)
+        if tierFolder then
+            local found = tierFolder:FindFirstChild(brNom, true)
+            if found and (found:IsA("Model") or found:IsA("BasePart")) then return found end
+        end
+    end
+    -- Cas 2 : rarete = nom de tier en clair ex "Mythic" (anciens saves ou BRs resultat)
+    if Config and Config.Shop and Config.Shop.LuckyBlocks then
+        for _, lbCfg in ipairs(Config.Shop.LuckyBlocks) do
+            if lbCfg.nom == rarete and lbCfg.folder then
+                local tierName = lbCfg.folder:match("[^%.]+$")
+                local tierFolder = tierName and lbRoot:FindFirstChild(tierName)
+                if tierFolder then
+                    local found = tierFolder:FindFirstChild(brNom, true)
+                    if found and (found:IsA("Model") or found:IsA("BasePart")) then return found end
+                end
+            end
+        end
+    end
+    -- Fallback : recherche recursive dans tous les tiers
+    local found = lbRoot:FindFirstChild(brNom, true)
+    if found and (found:IsA("Model") or found:IsA("BasePart")) then return found end
+    return nil
+end
+
 -- AmelioCosmeticsSystem — source de données
 AmelioCosmeticsSystem.GetData = GetData
 
@@ -362,6 +398,27 @@ local function OnPlayerAdded(player)
                     local modele = sourceFolder and sourceFolder:FindFirstChild(porteeData.brNom, true)
                     -- Rejeter si l'instance trouvee est un sous-dossier et non un modele affichable
                     if modele and not modele:IsA("Model") and not modele:IsA("BasePart") then modele = nil end
+                    -- Fallback Lucky Blocks : les BRs gagnes via Lucky Block sont dans
+                    -- ReplicatedStorage.LuckyBlocks.* (pas dans ReplicatedStorage.Brainrots.*)
+                    if not modele and porteeData.brNom then
+                        local lbRoot = ReplicatedStorage:FindFirstChild("LuckyBlocks")
+                        if lbRoot then
+                            -- Cas 1 : nom = "LuckyBlock_N" → tier precis
+                            local tierIdx = porteeData.nom and tonumber(porteeData.nom:match("LuckyBlock_(%d+)$"))
+                            if tierIdx then
+                                local tierFolder = lbRoot:FindFirstChild("Tier_" .. tierIdx)
+                                if tierFolder then
+                                    modele = tierFolder:FindFirstChild(porteeData.brNom, true)
+                                    if modele and not modele:IsA("Model") and not modele:IsA("BasePart") then modele = nil end
+                                end
+                            end
+                            -- Cas 2 : recherche recursive tous tiers (anciens saves ou BRs resultat)
+                            if not modele then
+                                modele = lbRoot:FindFirstChild(porteeData.brNom, true)
+                                if modele and not modele:IsA("Model") and not modele:IsA("BasePart") then modele = nil end
+                            end
+                        end
+                    end
                     if modele then
                         clone = modele:Clone()
                         -- Attributs mutation pour le watcher DescendantAdded

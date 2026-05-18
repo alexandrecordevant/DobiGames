@@ -31,6 +31,11 @@ local ProgConfig = Config.ProgressionConfig
 -- Configurable via DropSystem.SetBrainrotsFolder(folder) depuis Main.server.lua
 local _brainrotsFolder = nil
 
+-- Fallback injectable pour trouver un modèle par son nom quand les dossiers standard échouent.
+-- Signature : function(brNom: string, rarete: string) -> Model|BasePart|nil
+-- Utile pour les BR issus de Lucky Blocks (ReplicatedStorage.LuckyBlocks.*) ou d'autres sources.
+DropSystem.FindModelFallback = nil
+
 -- Affichage du prix dans les billboards de base (désactivé pour LavaTower via SetShowPrice)
 local _showPrice = true
 function DropSystem.SetShowPrice(v) _showPrice = v end
@@ -743,6 +748,11 @@ local function restaurerDepots(player, playerData)
                 -- brNom present : chercher le modele exact par son nom
                 local dossier  = trouverDossier()
                 local brSource = trouverModeleParNom(dossier, info.brNom)
+                -- Fallback injectable (Lucky Blocks, dossiers non-standard, etc.)
+                if not brSource and DropSystem.FindModelFallback then
+                    local ok, found = pcall(DropSystem.FindModelFallback, info.brNom, info.rarete)
+                    if ok and found then brSource = found end
+                end
                 if brSource then
                     pcall(function()
                         modeleSource = brSource:Clone()

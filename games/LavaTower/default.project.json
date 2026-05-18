@@ -45,7 +45,8 @@
                 "LeaderboardScrollClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/LeaderboardScrollClient.client.lua" },
                 "MenuController": { "$path": "src/StarterPlayer/StarterPlayerScripts/MenuController.client.lua" },
                 "IndexClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/IndexClient.client.lua" },
-                "SellConfirmClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/SellConfirmClient.client.lua" }
+                "SellConfirmClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/SellConfirmClient.client.lua" },
+                "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" }
             }
         }
     }

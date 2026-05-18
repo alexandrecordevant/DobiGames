@@ -50,6 +50,8 @@ local PREFIXES = {
     Index       = "[INDEX]",
     Menu        = "[MENU]",
     Modal       = "[MODAL]",
+    Code        = "[CODE]",
+    Sound       = "[SOUND]",
 }
 
 -- Appeler une seule fois au boot du jeu

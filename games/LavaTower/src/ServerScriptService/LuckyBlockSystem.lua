@@ -11,7 +11,9 @@
 local Players             = game:GetService("Players")
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local ServerStorage       = game:GetService("ServerStorage")
 local Workspace           = game:GetService("Workspace")
+local CollectionService   = game:GetService("CollectionService")
 local Logger              = require(ServerScriptService.SharedLib.Server.Logger)
 local BrainrotPositioner  = require(ServerScriptService.SharedLib.Server.BrainrotPositioner)
 
@@ -26,8 +28,11 @@ LuckyBlockSystem.GetTousLesSpots  = nil  -- function(player) -> {touchPart}
 LuckyBlockSystem.VendreBR         = nil  -- function(player, touchPart)
 LuckyBlockSystem.DonnerAuCarry    = nil  -- function(player, clone, rareteObj)
 
-local locked       = {}  -- verrou anti-double-activation par userId
-local promptsAjoutes = {} -- modele -> true
+-- Verrou par touchPart (pas par joueur) pour permettre l ouverture simultanee
+-- de plusieurs Lucky Blocks differents par le meme joueur.
+-- Valeur = userId du joueur qui a declenche, pour nettoyage au depart.
+local locked         = {}  -- [touchPart] = userId
+local promptsAjoutes = {}  -- [modele]    = true
 
 -- =========================================================
 -- Utilitaires tirage
@@ -167,6 +172,13 @@ end
 -- =========================================================
 
 local function nettoyer(clone)
+    -- Retirer BrainrotCollectible avant d'entrer dans Workspace :
+    -- sinon PickupSystem recrée un Collect prompt + _BRBillboard via GetInstanceAddedSignal
+    pcall(function()
+        if CollectionService:HasTag(clone, "BrainrotCollectible") then
+            CollectionService:RemoveTag(clone, "BrainrotCollectible")
+        end
+    end)
     for _, v in ipairs(clone:GetDescendants()) do
         if v:IsA("Script") or v:IsA("LocalScript")
             or v:IsA("ProximityPrompt") or v:IsA("BillboardGui")
@@ -191,7 +203,11 @@ local function placerTemporaire(touchPart, source, lbYaw)
     if not clone then return nil end
 
     nettoyer(clone)
-    clone.Parent = Workspace
+
+    -- Parent temporaire dans ServerStorage (non replique au client) pour positionner
+    -- le clone avant de le scaler. Le client ne verra jamais la taille initiale complete.
+    -- animerGrandir deplace le clone dans Workspace apres ScaleTo initial.
+    clone.Parent = ServerStorage
 
     local surfY = touchPart.Position.Y + touchPart.Size.Y * 0.5
     local posX  = touchPart.Position.X
@@ -210,70 +226,140 @@ local function placerTemporaire(touchPart, source, lbYaw)
             * CFrame.Angles(0, lbYaw or 0, 0)
     end
 
-    return clone
+    return clone  -- toujours dans ServerStorage ici
 end
 
--- Anime un clone sur le slot avec effect grandir/retrecir puis le detruit
--- tempsTotal = duree totale d affichage (grow + attente + shrink)
-local function afficherModeleAnime(touchPart, source, lbYaw, tempsTotal)
-    local clone = placerTemporaire(touchPart, source, lbYaw)
-    if not clone then
-        task.wait(tempsTotal)
-        return
-    end
+-- Constantes d animation
+local ANIM_SCALE_START = 0.01   -- echelle de depart (1% = vraiment minuscule)
+local ANIM_MIN_STEP    = 1 / 60 -- delai minimum par step (un heartbeat a 60 fps)
+local ANIM_STEPS       = 10     -- maximum de steps par phase
+local ANIM_STEPS_MIN   = 6      -- minimum pour garantir une animation visible
 
-    local STEPS       = 6
-    local dureeGrow   = math.min(0.06, tempsTotal * 0.35)
-    local dureeShrink = math.min(0.05, tempsTotal * 0.28)
-    local dureeStay   = math.max(0, tempsTotal - dureeGrow - dureeShrink)
+-- Grandit un clone de ANIM_SCALE_START a 1 (ease-out quad) puis attend au pic.
+-- Le clone arrive dans ServerStorage (invisible au client) depuis placerTemporaire.
+-- Cette fonction le scale d abord, puis le deplace dans Workspace → le client
+-- ne voit jamais la taille initiale complete (plus de "double grow").
+-- Bloque le thread appelant (grow + stay).
+local function animerGrandir(clone, dureeGrow, dureeStay)
+    local isModel   = clone and clone:IsA("Model")
+    local steps     = math.max(ANIM_STEPS_MIN, math.min(ANIM_STEPS, math.floor(dureeGrow / ANIM_MIN_STEP)))
+    local stepDelay = math.max(ANIM_MIN_STEP, dureeGrow / steps)
 
-    -- Partir d une echelle minuscule (invisible)
-    if clone:IsA("Model") then
-        pcall(function() clone:ScaleTo(0.04) end)
-    end
+    -- Scaler pendant que le clone est encore dans ServerStorage (non visible)
+    if isModel then pcall(function() clone:ScaleTo(ANIM_SCALE_START) end) end
+    -- Transferer dans Workspace : le client decouvre le clone deja a l echelle initiale
+    if clone then clone.Parent = Workspace end
 
-    -- Grandir : ease Out Quad (0.04 → 1)
-    for i = 1, STEPS do
-        local t     = i / STEPS
-        local scale = 1 - (1 - t) ^ 2   -- ease out quad
-        if clone:IsA("Model") then
-            pcall(function() if clone.Parent then clone:ScaleTo(math.max(0.04, scale)) end end)
+    for i = 1, steps do
+        local scale = 1 - (1 - i / steps) ^ 2  -- ease out quad
+        if isModel then
+            pcall(function() if clone.Parent then clone:ScaleTo(math.max(ANIM_SCALE_START, scale)) end end)
         end
-        task.wait(dureeGrow / STEPS)
+        task.wait(stepDelay)
     end
-    if clone:IsA("Model") then
-        pcall(function() if clone.Parent then clone:ScaleTo(1) end end)
-    end
+    if isModel then pcall(function() if clone.Parent then clone:ScaleTo(1) end end) end
 
-    -- Attente au pic
     if dureeStay > 0 then task.wait(dureeStay) end
+end
 
-    -- Retrecir : ease In Quad (1 → 0.04)
-    for i = 1, STEPS do
-        local t     = i / STEPS
-        local scale = 1 - t ^ 2          -- ease in quad
-        if clone:IsA("Model") then
-            pcall(function() if clone.Parent then clone:ScaleTo(math.max(0.04, scale)) end end)
+-- Retrecit un clone de 1 a ANIM_SCALE_START (ease-in quad) puis le detruit.
+-- Peut etre appele en tache de fond (task.spawn).
+local function animerRetrecir(clone, dureeShrink)
+    local isModel   = clone and clone:IsA("Model")
+    local steps     = math.max(ANIM_STEPS_MIN, math.min(ANIM_STEPS, math.floor(dureeShrink / ANIM_MIN_STEP)))
+    local stepDelay = math.max(ANIM_MIN_STEP, dureeShrink / steps)
+
+    for i = 1, steps do
+        local scale = 1 - (i / steps) ^ 2      -- ease in quad
+        if isModel then
+            pcall(function() if clone.Parent then clone:ScaleTo(math.max(ANIM_SCALE_START, scale)) end end)
         end
-        task.wait(dureeShrink / STEPS)
+        task.wait(stepDelay)
     end
-
     pcall(function() if clone and clone.Parent then clone:Destroy() end end)
 end
 
+-- Melange Fisher-Yates sur une copie du tableau
+local function melanger(t)
+    local r = {}
+    for _, v in ipairs(t) do table.insert(r, v) end
+    for i = #r, 2, -1 do
+        local j = math.random(1, i)
+        r[i], r[j] = r[j], r[i]
+    end
+    return r
+end
+
 local function jouerAnimation(player, touchPart, sourcesTier, sourceResultat, lbYaw)
-    -- Phase 1 : defilement rapide (15 modeles, 0.1 s chacun)
+    -- Construire la file complete d avance pour fixer les aleatoires avant l animation
+    local queue = {}
+
+    -- Phase 1 : defilement en cycle shufflé — chaque modele apparait une fois par cycle,
+    -- jamais deux fois d affile. Re-shuffle en fin de cycle en s assurant que le premier
+    -- element du nouveau cycle ≠ dernier element du precedent.
+    local cycle    = melanger(sourcesTier)
+    local cycleIdx = 1
     for _ = 1, 15 do
-        local src = sourcesTier[math.random(1, #sourcesTier)]
-        afficherModeleAnime(touchPart, src, lbYaw, 0.1)
+        if cycleIdx > #cycle then
+            local dernier = cycle[#cycle]
+            cycle = melanger(sourcesTier)
+            -- Echanger le premier si identique au dernier du cycle precedent
+            if #cycle > 1 and cycle[1] == dernier then
+                cycle[1], cycle[2] = cycle[2], cycle[1]
+            end
+            cycleIdx = 1
+        end
+        table.insert(queue, { src = cycle[cycleIdx], temps = 0.20 })
+        cycleIdx = cycleIdx + 1
     end
 
-    -- Phase 2 : ralentissement (dernier changement = resultat)
-    local intervalles = { 0.18, 0.3, 0.45, 0.65, 0.9 }
+    -- Phase 2 : ralentissement progressif — on continue le meme cycle pour eviter une
+    -- repetition entre la fin de la Phase 1 et le debut de la Phase 2.
+    local intervalles = { 0.30, 0.50, 0.65, 0.80, 0.95 }
     for etape, intervalle in ipairs(intervalles) do
-        local src = (etape == #intervalles) and sourceResultat
-                    or sourcesTier[math.random(1, #sourcesTier)]
-        afficherModeleAnime(touchPart, src, lbYaw, intervalle)
+        if etape == #intervalles then
+            -- Dernier = resultat definitif
+            table.insert(queue, { src = sourceResultat, temps = intervalle })
+        else
+            if cycleIdx > #cycle then
+                local dernier = cycle[#cycle]
+                cycle = melanger(sourcesTier)
+                if #cycle > 1 and cycle[1] == dernier then
+                    cycle[1], cycle[2] = cycle[2], cycle[1]
+                end
+                cycleIdx = 1
+            end
+            table.insert(queue, { src = cycle[cycleIdx], temps = intervalle })
+            cycleIdx = cycleIdx + 1
+        end
+    end
+
+    -- Lecture avec overlap : le shrink du brendrot courant se lance en parallele
+    -- pendant que le suivant commence deja a grandir, eliminant tout moment vide.
+    for i, item in ipairs(queue) do
+        local isLast      = (i == #queue)
+        local dureeGrow   = item.temps * 0.50  -- 50% pour un grow vraiment visible
+        local dureeShrink = item.temps * 0.40
+        local dureeStay   = item.temps * 0.10
+
+        local clone = placerTemporaire(touchPart, item.src, lbYaw)
+
+        -- Grow + stay (thread principal bloque)
+        if clone then
+            animerGrandir(clone, dureeGrow, dureeStay)
+        else
+            task.wait(dureeGrow + dureeStay)
+        end
+
+        -- Shrink : synchrone pour le dernier (garantit fin avant recompense),
+        -- asynchrone pour tous les autres (overlap avec le prochain grow).
+        if isLast then
+            -- Pause pour que le joueur puisse lire ce qu il a obtenu avant que ca disparaisse
+            task.wait(1.5)
+            animerRetrecir(clone, dureeShrink)
+        else
+            task.spawn(animerRetrecir, clone, dureeShrink)
+        end
     end
 
     -- Phase 3 : donner le Brainrot resultat au joueur comme un vrai pickup de la tour
@@ -386,19 +472,22 @@ end
 
 function LuckyBlockSystem.OuvrirLuckyBlock(player, modele, touchPart)
     local uid = player.UserId
-    if locked[uid] then return end
-    locked[uid] = true
+    if locked[touchPart] then return end
+    locked[touchPart] = uid  -- verrou par slot, pas par joueur
+
+    local lbOpenedRE = ReplicatedStorage:FindFirstChild("LuckyBlockOpened")
+    if lbOpenedRE then pcall(function() lbOpenedRE:FireClient(player) end) end
 
     local tierIndex = modele:GetAttribute("Tier")
     if not tierIndex or type(tierIndex) ~= "number" then
-        locked[uid] = nil; return
+        locked[touchPart] = nil; return
     end
 
     local shopCfg   = Config and Config.Shop
     local luckyList = shopCfg and shopCfg.LuckyBlocks
     if not luckyList or not luckyList[tierIndex] then
         Logger.warn("LuckyBlock", "Config LuckyBlocks[%d] introuvable", tierIndex)
-        locked[uid] = nil; return
+        locked[touchPart] = nil; return
     end
 
     -- Tirage serveur avant toute animation
@@ -406,14 +495,14 @@ function LuckyBlockSystem.OuvrirLuckyBlock(player, modele, touchPart)
     local sourceResultat = tirerModele(tierCfg)
     if not sourceResultat then
         Logger.warn("LuckyBlock", "%s : aucun resultat dans tier %d", player.Name, tierIndex)
-        locked[uid] = nil; return
+        locked[touchPart] = nil; return
     end
 
     local dossierTier = resoudreDossier(tierCfg.folder)
     local sourcesTier = dossierTier and getSourcesTier(dossierTier) or {}
     if #sourcesTier == 0 then
         Logger.warn("LuckyBlock", "%s : dossier tier %d vide", player.Name, tierIndex)
-        locked[uid] = nil; return
+        locked[touchPart] = nil; return
     end
 
     Logger.info("LuckyBlock", "%s ouvre Lucky Block tier %d -> %s",
@@ -447,7 +536,7 @@ function LuckyBlockSystem.OuvrirLuckyBlock(player, modele, touchPart)
     task.spawn(function()
         jouerAnimation(player, touchPart, sourcesTier, sourceResultat, lbYaw + math.pi)
         mettreAJourIndex(player, sourceResultat.Name)
-        locked[uid] = nil
+        locked[touchPart] = nil
         Logger.info("LuckyBlock", "%s Lucky Block resolu : %s", player.Name, sourceResultat.Name)
     end)
 end
@@ -458,7 +547,11 @@ end
 
 function LuckyBlockSystem.Init()
     Players.PlayerRemoving:Connect(function(player)
-        locked[player.UserId] = nil
+        -- Liberer tous les slots verouilles par ce joueur
+        local uid = player.UserId
+        for tp, lockedUid in pairs(locked) do
+            if lockedUid == uid then locked[tp] = nil end
+        end
     end)
     task.spawn(scannerWorkspace)
     Logger.info("LuckyBlock", "LuckyBlockSystem initialise")

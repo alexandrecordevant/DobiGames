@@ -53,7 +53,9 @@
                 "IndexClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/IndexClient.client.lua" },
                 "SideMenuHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SideMenuHUD.client.lua" },
                 "RainWeatherClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/RainWeatherClient.client.lua" },
-                "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" }
+                "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" },
+                "SpeedTrailClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/SpeedTrailClient.client.lua" },
+                "CodeRedeemGUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua" }
             }
         }
     }

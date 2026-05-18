@@ -218,8 +218,9 @@ local function traiterAchatLuckyBlock(player, index)
     clone:SetAttribute("OwnerUserId",  player.UserId)
     clone.Parent = ReplicatedStorage
 
-    -- "LuckyBlock" comme rarete : evite le SellConfirmCallback (RARETE_PROTEGEES = GOD/SECRET/OG)
-    local rareteObj = { nom = "LuckyBlock", dossier = "LuckyBlock", isMutant = false, valeur = 0 }
+    -- "LuckyBlock_N" encode le tier dans la rarete pour permettre la restauration precise
+    -- des slots et du carry lors d un rejoin. Evite le SellConfirmCallback.
+    local rareteObj = { nom = "LuckyBlock_" .. index, dossier = "LuckyBlock_" .. index, isMutant = false, valeur = 0 }
     local ok, err = pcall(ajouterAuCarry, player, clone, rareteObj)
     if not ok then
         pcall(function() clone:Destroy() end)

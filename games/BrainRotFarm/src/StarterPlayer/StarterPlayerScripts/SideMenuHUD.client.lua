@@ -10,8 +10,9 @@ local SoundService      = game:GetService("SoundService")
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local Config = require(ReplicatedStorage:WaitForChild("GameConfig"))
-local Logger = require(ReplicatedStorage.SharedLib.Logger)
+local Config       = require(ReplicatedStorage:WaitForChild("GameConfig"))
+local Logger       = require(ReplicatedStorage.SharedLib.Logger)
+local ModalManager = require(ReplicatedStorage.SharedLib.ModalManager)
 
 local MenuCfg = Config.MenuHUD or {}
 
@@ -23,7 +24,7 @@ local GAP   = MenuCfg.GrilleGap     or 6
 local PAD   = MenuCfg.GrillePadding or 8
 local RAYON = MenuCfg.RayonCoin     or 10
 local DUREE = MenuCfg.DureeAnimation or 0.2
-local ROWS  = 3  -- 6 boutons / 2 colonnes
+local ROWS  = 4  -- 7 boutons / 2 colonnes (+ proxy CollectAll = 8 slots)
 
 -- Dimensions du panneau
 local panelW = COLS * CELL + (COLS - 1) * GAP + 2 * PAD   -- 182 px
@@ -95,7 +96,7 @@ end
 local menuPanel = Instance.new("Frame")
 menuPanel.Name                   = "MenuPanel"
 menuPanel.Size                   = UDim2.new(0, panelW, 0, 0)
-menuPanel.Position               = UDim2.new(0, 10, 0, 10 + BSIZE + 6)
+menuPanel.Position               = UDim2.new(0, 10 + BSIZE + 6, 0, 10)
 menuPanel.BackgroundColor3       = Color3.fromRGB(12, 12, 12)
 menuPanel.BackgroundTransparency = 0.08
 menuPanel.BorderSizePixel        = 0
@@ -159,6 +160,17 @@ local function fermerAutresMenus()
     if tutoGui then
         local p = tutoGui:FindFirstChild("TutoPanel")
         if p then p.Visible = false end
+    end
+    -- CodeRedeemGUI
+    local codeGui = playerGui:FindFirstChild("CodeRedeemGUI")
+    if codeGui then
+        local p = codeGui:FindFirstChild("CodePanel")
+        if p and p.Visible then
+            p.Visible = false
+            local ov = codeGui:FindFirstChild("Overlay")
+            if ov then ov.Visible = false end
+            ModalManager.Close("CodeRedeem")
+        end
     end
 end
 
@@ -257,6 +269,16 @@ task.spawn(function()
             end)
         end
     end
+    -- CodePanel
+    local codeRedeemGui = playerGui:WaitForChild("CodeRedeemGUI", 30)
+    if codeRedeemGui then
+        local p = codeRedeemGui:WaitForChild("CodePanel", 10)
+        if p then
+            p:GetPropertyChangedSignal("Visible"):Connect(function()
+                if p.Visible and menuOuvert then fermerMenu() end
+            end)
+        end
+    end
 end)
 
 -- ============================================================
@@ -308,7 +330,14 @@ task.spawn(function()
         if b then preparerBouton(b, 5) else Logger.warn("Menu", "TutoButton introuvable") end
     end
 
-    Logger.info("Menu", "Grille 2x3 montée")
+    -- 7. Codes promo
+    local codeRedeemGui = playerGui:WaitForChild("CodeRedeemGUI", 60)
+    if codeRedeemGui then
+        local b = codeRedeemGui:WaitForChild("CodesButton", 30)
+        if b then preparerBouton(b, 7) else Logger.warn("Menu", "CodesButton introuvable") end
+    end
+
+    Logger.info("Menu", "Grille 2x4 montee")
 end)
 
 -- ============================================================

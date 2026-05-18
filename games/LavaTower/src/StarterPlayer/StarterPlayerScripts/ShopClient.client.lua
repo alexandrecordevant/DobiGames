@@ -382,6 +382,7 @@ local function refreshSpeedCoil(data)
     speedCoilUnequipBtn.Visible = has and equipped
 end
 
+speedCoilPriceBtn:SetAttribute("PlayCollect", true)
 speedCoilPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("SpeedCoil_Buy")     end)
 speedCoilEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("SpeedCoil_Equip")   end)
 speedCoilUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("SpeedCoil_Unequip") end)
@@ -406,6 +407,7 @@ local function refreshGravityCoil(data)
     gravityCoilUnequipBtn.Visible = has and equipped
 end
 
+gravityCoilPriceBtn:SetAttribute("PlayCollect", true)
 gravityCoilPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("GravityCoil_Buy")     end)
 gravityCoilEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("GravityCoil_Equip")   end)
 gravityCoilUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("GravityCoil_Unequip") end)
@@ -464,6 +466,7 @@ local function refreshCape(data)
     capeUnequipBtn.Visible = has and equipped
 end
 
+capePriceBtn:SetAttribute("PlayCollect", true)
 capePriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Cape_Buy")     end)
 capeEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Cape_Equip")   end)
 capeUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("Cape_Unequip") end)
@@ -488,6 +491,7 @@ local function refreshRocket(data)
     rocketUnequipBtn.Visible = has and equipped
 end
 
+rocketPriceBtn:SetAttribute("PlayCollect", true)
 rocketPriceBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Rocket_Buy")     end)
 rocketEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Rocket_Equip")   end)
 rocketUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("Rocket_Unequip") end)
@@ -541,6 +545,7 @@ local function creerBoutonAchat(lbl, color, parent, onClick)
     addCorner(btn, 2)
     addStroke(btn)
     addHover(btn)
+    btn:SetAttribute("PlayCollect", true)
     btn.MouseButton1Click:Connect(onClick)
     return btn
 end
@@ -602,6 +607,7 @@ local function creerRowCarry()
     addCorner(buyBtn, 2)
     addStroke(buyBtn)
     addHover(buyBtn)
+    buyBtn:SetAttribute("PlayCollect", true)
 
     buyBtn.MouseButton1Click:Connect(function()
         ShopPurchase:FireServer("Carry", 1)

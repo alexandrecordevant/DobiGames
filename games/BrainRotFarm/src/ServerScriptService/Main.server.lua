@@ -42,8 +42,9 @@ local AmelioCosmeticsSystem     = require(ServerScriptService.SharedLib.Server.A
 local _abOk, EventAdminAbuse = pcall(require, ServerScriptService.Events.EventAdminAbuse)
 if not _abOk then EventAdminAbuse = nil end  -- DEBUG TEMP
 
-local BRPreviewsBuilder = require(ServerScriptService.BRPreviewsBuilder)
-local IndexSystem       = require(ServerScriptService.IndexSystem)
+local BRPreviewsBuilder  = require(ServerScriptService.BRPreviewsBuilder)
+local IndexSystem        = require(ServerScriptService.IndexSystem)
+local CodeRedeemSystem   = require(ServerScriptService.Systems.CodeRedeemSystem)
 
 local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
@@ -109,6 +110,7 @@ local IndexRecevoir          = CreerRemoteEvent("IndexRecevoir")
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
 local GetSeedInfo        = CreerRemoteFunction("GetSeedInfo")
+local CodeRedeem         = CreerRemoteFunction("CodeRedeem")
 
 Logger.info("Main", "RemoteEvents créés ✓")
 
@@ -163,7 +165,7 @@ local function makeOnBRNomChosen(player, potIndex)
 end
 
 local InitialiserPots  -- déclaration forward (la fonction s'appelle elle-même)
-InitialiserPots = function(player, baseIndex, playerData)
+InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
     Logger.debug("Main", "[InitialiserPots] START player=%s baseIndex=%s", player.Name, tostring(baseIndex))
     local bases = workspace:FindFirstChild("Bases")
     local base  = bases and bases:FindFirstChild("Base_" .. baseIndex)
@@ -181,6 +183,7 @@ InitialiserPots = function(player, baseIndex, playerData)
     -- FlowerPots dans Specific/ (structure Shared/Specific)
     local specificFolderIP = base:FindFirstChild("Specific")
     for potIndex = 1, 4 do
+        if onlyPotIndex and potIndex ~= onlyPotIndex then continue end
         local potModel = specificFolderIP and specificFolderIP:FindFirstChild("FlowerPot_" .. potIndex)
         if not potModel then
             Logger.warn("Main", "[InitialiserPots] FlowerPot_%d introuvable dans Base_%s", potIndex, tostring(baseIndex))
@@ -504,11 +507,13 @@ InitialiserPots = function(player, baseIndex, playerData)
                         onBRNomChosen   = makeOnBRNomChosen(player, potIndex),
                     })
 
-                -- Recréer les prompts immédiatement (pot passe en mode "growing")
-                -- task.defer laisse le thread PlantSeed démarrer avant
+                -- Recréer uniquement CE pot (passe en mode "growing")
+                -- Ne pas toucher aux autres pots : Roblox ne remontre pas un prompt
+                -- détruit/recréé si le joueur est déjà à portée (bug détection proximité)
+                local _plantedPotIndex = potIndex
                 task.defer(function()
                     local latest = GetData(player)
-                    if latest then InitialiserPots(player, baseIndex, latest) end
+                    if latest then InitialiserPots(player, baseIndex, latest, _plantedPotIndex) end
                 end)
             end)
         end
@@ -815,6 +820,7 @@ end
 local function OnPlayerRemoving(player)
     -- Arrêter la boucle income avant la sauvegarde (évite les doublons de +coins)
     IncomeSystem.Stop(player)
+    CodeRedeemSystem.OnPlayerRemoving(player)
 
     local data = GetData(player)
     if data then
@@ -1627,6 +1633,16 @@ if devP.SecretSeed and devP.SecretSeed > 0 then
             SeedInventory.NotifyClient(player, data)
         end
     end)
+end
+
+-- CodeRedeemSystem : injecter les dépendances et connecter la RemoteFunction
+CodeRedeemSystem.GetData       = GetData
+CodeRedeemSystem.FireUpdateHUD = function(player, data) EnvoyerHUD(player, data) end
+CodeRedeemSystem.SeedInventory = SeedInventory
+CodeRedeemSystem.CarrySystem   = CarrySystem
+
+CodeRedeem.OnServerInvoke = function(player, code)
+    return CodeRedeemSystem.Redeem(player, code)
 end
 
 -- ArbreSystem : graines sur les arbres du ChampCommun

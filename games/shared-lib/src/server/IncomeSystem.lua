@@ -114,7 +114,8 @@ local function ResetSlotDisplay(slotPart)
         end
     end
 
-    -- Cacher le label $offline sur Button/TouchPart (évite les valeurs Studio résiduelles)
+    -- Cacher les labels $amount/$offline — cherche dans les deux structures possibles
+    -- 1. Button / TouchPart / Text (structure interne)
     local buttonModel = slotPart:FindFirstChild("Button")
     if buttonModel then
         local tp = buttonModel:FindFirstChild("TouchPart") or buttonModel:FindFirstChildWhichIsA("BasePart")
@@ -126,6 +127,17 @@ local function ResetSlotDisplay(slotPart)
                 if lblAmount  then pcall(function() lblAmount.Visible  = false end) end
                 if lblOffline then pcall(function() lblOffline.Visible = false end) end
             end
+        end
+    end
+    -- 2. Outer TouchPart / Text (fallback LavaTower)
+    local outerTp = slotPart:FindFirstChild("TouchPart")
+    if outerTp and outerTp:IsA("BasePart") then
+        local surfGui = outerTp:FindFirstChild("Text")
+        if surfGui then
+            local lblAmount  = surfGui:FindFirstChild("$amount")
+            local lblOffline = surfGui:FindFirstChild("$offline")
+            if lblAmount  then pcall(function() lblAmount.Visible  = false end) end
+            if lblOffline then pcall(function() lblOffline.Visible = false end) end
         end
     end
 end
@@ -185,19 +197,58 @@ local function GetButtonTouchPart(spotModel)
     return buttonModel:FindFirstChildWhichIsA("BasePart")
 end
 
--- Retourne les TextBox $amount et $offline depuis le SurfaceGui "Text"
--- situé sur Button/TouchPart
-local function GetTextLabels(spotModel)
-    local tp = GetButtonTouchPart(spotModel)
-    if not tp then return nil, nil end
-    local surfGui = tp:FindFirstChild("Text")
-    if not surfGui then return nil, nil end
-    return surfGui:FindFirstChild("$amount"), surfGui:FindFirstChild("$offline")
+-- Cherche les labels d'un SurfaceGui : $amount/$offline par nom, sinon premier TextLabel trouvé.
+-- Active le SurfaceGui si désactivé. Retourne (lblAmount, lblOffline).
+local function searchLabelsInSurfGui(sg)
+    if not sg or not sg:IsA("SurfaceGui") then return nil, nil end
+    if not sg.Enabled then pcall(function() sg.Enabled = true end) end
+    local a = sg:FindFirstChild("$amount")
+    local o = sg:FindFirstChild("$offline")
+    if a or o then return a, o end
+    -- Noms non-standard : retourner le premier TextLabel comme label "montant"
+    local tl = sg:FindFirstChildOfClass("TextLabel")
+    return tl, nil
 end
 
--- Met à jour les TextBox $amount et $offline du SurfaceGui Studio
--- NE crée PAS de nouveaux SurfaceGui — utilise uniquement ceux posés dans Studio
--- touchPart = ProximityPrompt TouchPart (outer) ; son parent = spotModel
+-- Retourne (lblAmount, lblOffline) pour un spot.
+-- Cherche dans l'ordre : Button/TouchPart → outer TouchPart → tous les descendants BasePart.
+local function GetTextLabels(spotModel)
+    -- 1. Button / premiers BasePart enfants (plateforme de collecte verte)
+    local buttonModel = spotModel:FindFirstChild("Button")
+    if buttonModel then
+        for _, child in ipairs(buttonModel:GetChildren()) do
+            if child:IsA("BasePart") then
+                for _, sg in ipairs(child:GetChildren()) do
+                    if sg:IsA("SurfaceGui") then
+                        local a, o = searchLabelsInSurfGui(sg)
+                        if a or o then return a, o end
+                    end
+                end
+            end
+        end
+    end
+    -- 2. Outer TouchPart
+    local outerTp = spotModel:FindFirstChild("TouchPart")
+    if outerTp and outerTp:IsA("BasePart") then
+        for _, sg in ipairs(outerTp:GetChildren()) do
+            if sg:IsA("SurfaceGui") then
+                local a, o = searchLabelsInSurfGui(sg)
+                if a or o then return a, o end
+            end
+        end
+    end
+    -- 3. Tout descendant BasePart du spot (noms non-standard)
+    for _, desc in ipairs(spotModel:GetDescendants()) do
+        if desc:IsA("SurfaceGui") then
+            local a, o = searchLabelsInSurfGui(desc)
+            if a or o then return a, o end
+        end
+    end
+    return nil, nil
+end
+
+-- Met à jour les TextLabels du spot (SurfaceGui Studio existant).
+-- touchPart = outer TouchPart (son parent = spotModel)
 local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
     if not touchPart or not touchPart.Parent then return end
     local spotModel = touchPart.Parent
@@ -207,6 +258,8 @@ local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
     -- $amount : montant accumulé (caché si 0)
     if lblAmount then
         pcall(function()
+            local sg = lblAmount.Parent
+            if sg and sg:IsA("SurfaceGui") and not sg.Enabled then sg.Enabled = true end
             lblAmount.Text    = "$" .. FormatCoins(montant or 0)
             lblAmount.Visible = (montant or 0) > 0
         end)
@@ -215,6 +268,8 @@ local function mettreAJourVisuel(touchPart, montant, incomeParSeconde)
     -- $offline : revenu par seconde (caché si 0 ou slot vide)
     if lblOffline and incomeParSeconde ~= nil then
         pcall(function()
+            local sg = lblOffline.Parent
+            if sg and sg:IsA("SurfaceGui") and not sg.Enabled then sg.Enabled = true end
             if (incomeParSeconde or 0) > 0 then
                 lblOffline.Text       = "Earns $" .. FormatCoins(incomeParSeconde) .. "/s"
                 lblOffline.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -274,6 +329,11 @@ local function connecterButton(player, uid, touchPart, spotKey)
                         notif:FireClient(touchPlayer, "SUCCESS",
                             "+" .. FormatCoins(pending) .. " coins!")
                     end)
+                end
+                -- Signal dédié collecte (son côté client, distinct de SUCCESS générique)
+                local incomeRE = ReplicatedStorage:FindFirstChild("IncomeCollected")
+                if incomeRE then
+                    pcall(function() incomeRE:FireClient(touchPlayer) end)
                 end
                 -- Mise à jour HUD immédiate
                 local UpdateHUD = ReplicatedStorage:FindFirstChild("UpdateHUD")
@@ -349,6 +409,8 @@ local function mettreAJourGuiSpots(spotsTable, multTotal)
         if not lblOffline then continue end
 
         pcall(function()
+            local sg = lblOffline.Parent
+            if sg and sg:IsA("SurfaceGui") and not sg.Enabled then sg.Enabled = true end
             lblOffline.Text    = "Earns $" .. FormatCoins(valeurReelle) .. "/s"
             lblOffline.Visible = true
         end)
