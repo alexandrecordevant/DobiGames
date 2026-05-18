@@ -8,8 +8,9 @@ local TweenService      = game:GetService("TweenService")
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local Logger       = require(ReplicatedStorage.SharedLib.Logger)
-local ModalManager = require(ReplicatedStorage.SharedLib.ModalManager)
+local Logger               = require(ReplicatedStorage.SharedLib.Logger)
+local ModalManager         = require(ReplicatedStorage.SharedLib.ModalManager)
+local CodeRedeemAnimations = require(script.Parent:WaitForChild("CodeRedeemAnimations"))
 
 local MODAL_NAME = "CodeRedeem"
 
@@ -286,14 +287,16 @@ local function effectuerRedeem()
         setFeedback("✅ " .. (result.Message or "Code redeemed!"), COULEUR_SUCCES, 6)
         inputBox.Text = ""
         flashBtn(Color3.fromRGB(40, 140, 60))
+        CodeRedeemAnimations.PlaySuccess(result.Rewards, redeemBtn)
     else
         setFeedback("❌ " .. (result.Message or "Invalid code."), COULEUR_ERREUR, 4)
         flashBtn(Color3.fromRGB(140, 40, 40))
+        CodeRedeemAnimations.PlayError(result.Message, redeemBtn)
     end
 
-    -- Cooldown anti-spam client (2s)
+    -- Cooldown anti-spam client (3s sur succès pour couvrir l'animation, 2s sur erreur)
     enCooldown = true
-    task.delay(2, function() enCooldown = false end)
+    task.delay(result.Success and 3 or 2, function() enCooldown = false end)
 end
 
 -- ============================================================

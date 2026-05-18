@@ -189,7 +189,7 @@ local btnIndex = newInst("TextButton", {
 })
 addCorner(btnIndex, UDim.new(0, 8))
 local _idxStroke = Instance.new("UIStroke", btnIndex)
-_idxStroke.Color = Color3.fromRGB(60, 60, 60) ; _idxStroke.Thickness = 1
+_idxStroke.Color = Color3.fromRGB(255, 180, 30) ; _idxStroke.Thickness = 3
 
 -- ================================================================
 -- Panneau principal (centre a l'ecran) -- dimensions depuis UIConfig
@@ -208,14 +208,19 @@ local panel = newInst("Frame", {
     Parent                 = gui,
 })
 addCorner(panel, UDim.new(0, UI.Modal.CornerRadius))
-addStroke(panel, UI.Colors.ModalBorder, 1)
+local _ps = addStroke(panel, Color3.fromRGB(255, 180, 30), 5)
+_ps.ApplyStrokeMode    = Enum.ApplyStrokeMode.Border
+panel.ClipsDescendants = true
 
 newInst("TextLabel", {
-    Size                   = UDim2.new(1, -55, 0, 40),
-    Position               = UDim2.new(0, 12, 0, 0),
-    BackgroundTransparency = 1,
-    Text                   = "INDEX",
-    TextColor3             = C.TextPrim,
+    Size                   = UDim2.new(1, 0, 0, 40),
+    Position               = UDim2.new(0, 0, 0, 0),
+    BackgroundColor3       = Color3.fromRGB(255, 200, 50),
+    BackgroundTransparency = 0,
+    Text                   = "  INDEX",
+    TextColor3             = Color3.fromRGB(255, 255, 255),
+    TextStrokeColor3       = Color3.fromRGB(80, 40, 0),
+    TextStrokeTransparency = 0,
     TextScaled             = false,
     TextSize               = UI.TextSizes.H1,
     Font                   = UI.Fonts.Title,
@@ -228,15 +233,18 @@ newInst("TextLabel", {
 local btnFermer = newInst("TextButton", {
     Size                   = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize),
     Position               = UDim2.new(1, -(UI.Modal.CloseButtonSize + 5), 0, 0),
-    BackgroundTransparency = 1,
+    BackgroundColor3       = Color3.fromRGB(230, 50, 50),
+    BackgroundTransparency = 0,
     Text                   = "X",
-    TextColor3             = Color3.fromRGB(180, 180, 180),
+    TextColor3             = Color3.fromRGB(255, 255, 255),
     TextScaled             = false,
     TextSize               = UI.TextSizes.H2,
     Font                   = Enum.Font.GothamBold,
-    ZIndex                 = 21,
+    ZIndex                 = 22,
     Parent                 = panel,
 })
+addCorner(btnFermer, UDim.new(0, 6))
+addStroke(btnFermer, Color3.fromRGB(255, 255, 255), 3)
 
 newInst("Frame", {
     Size             = UDim2.new(1, 0, 0, 1),

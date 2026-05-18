@@ -323,7 +323,7 @@ shopIcon.Image                  = "rbxassetid://108897847737947"
 shopIcon.ScaleType              = Enum.ScaleType.Fit
 shopIcon.ZIndex                 = 6
 local _btnShopStroke = Instance.new("UIStroke", btnShop)
-_btnShopStroke.Color = Color3.fromRGB(60, 60, 60) ; _btnShopStroke.Thickness = 1
+_btnShopStroke.Color = Color3.fromRGB(255, 180, 30) ; _btnShopStroke.Thickness = 3
 
 -- Fermeture des autres menus (1 seul ouvert a la fois)
 local function fermerAutresMenusRobux()
@@ -416,20 +416,25 @@ local function creerShopRobuxPanel()
     ajusterScale()
 
     local stroke = Instance.new("UIStroke", panel)
-    stroke.Color     = UI and UI.Colors.ModalBorder or T.bordure
-    stroke.Thickness = 1
+    stroke.Color           = Color3.fromRGB(255, 180, 30)
+    stroke.Thickness       = 5
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    panel.ClipsDescendants = true
 
     -- Titre
     local titre = Instance.new("TextLabel", panel)
-    titre.Size                   = UDim2.new(1, -50, 0, 40)
-    titre.Position               = UDim2.new(0, 10, 0, 5)
-    titre.BackgroundTransparency = 1
-    titre.TextColor3             = T.texteTitre
+    titre.Size                   = UDim2.new(1, 0, 0, 46)
+    titre.Position               = UDim2.new(0, 0, 0, 0)
+    titre.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+    titre.BackgroundTransparency = 0
+    titre.TextColor3             = Color3.fromRGB(255, 255, 255)
     titre.Font                   = UI and UI.Fonts.Title or Enum.Font.GothamBold
     titre.TextSize               = UI and UI.TextSizes.H1 or 18
     titre.TextScaled             = false
     titre.TextXAlignment         = Enum.TextXAlignment.Left
-    titre.Text                   = "ROBUX SHOP"
+    titre.Text                   = "  ROBUX SHOP"
+    titre.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
+    titre.TextStrokeTransparency = 0
     titre.ZIndex                 = 11
 
     -- Bouton fermer
@@ -437,23 +442,23 @@ local function creerShopRobuxPanel()
     local btnFermer = Instance.new("TextButton", panel)
     btnFermer.Size                   = UDim2.new(0, closeSize, 0, closeSize)
     btnFermer.Position               = UDim2.new(1, -50, 0, 4)
-    btnFermer.BackgroundColor3       = Color3.fromRGB(50, 50, 50)
-    btnFermer.TextColor3             = Color3.fromRGB(180, 180, 180)
+    btnFermer.BackgroundColor3       = Color3.fromRGB(230, 50, 50)
+    btnFermer.TextColor3             = Color3.fromRGB(255, 255, 255)
     btnFermer.Font                   = Enum.Font.GothamBold
     btnFermer.TextSize               = UI and UI.TextSizes.H2 or 16
     btnFermer.TextScaled             = false
     btnFermer.Text                   = "X"
     btnFermer.BorderSizePixel        = 0
     btnFermer.ZIndex                 = 11
-    Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, UI and UI.Modal.CornerRadius or 8)
+    Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 6)
     local _bcs = Instance.new("UIStroke", btnFermer)
-    _bcs.Color = UI and UI.Colors.ModalBorder or T.bordure ; _bcs.Thickness = 1
+    _bcs.Color = Color3.fromRGB(255, 255, 255) ; _bcs.Thickness = 3
     btnFermer.MouseButton1Click:Connect(function() panel.Visible = false end)
 
     -- ScrollingFrame
     local scroll = Instance.new("ScrollingFrame", panel)
-    scroll.Size                   = UDim2.new(1, -10, 1, -55)
-    scroll.Position               = UDim2.new(0, 5, 0, 50)
+    scroll.Size                   = UDim2.new(1, -10, 1, -56)
+    scroll.Position               = UDim2.new(0, 5, 0, 51)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel        = 0
     scroll.ScrollBarThickness     = UI and UI.Modal.ScrollBarThickness or 4
@@ -555,15 +560,17 @@ local function creerShopRobuxPanel()
                 local btnAcheter = Instance.new("TextButton", ligne)
                 btnAcheter.Size             = UDim2.new(0, 110, 0, btnH)
                 btnAcheter.Position         = UDim2.new(1, -120, 0.5, -btnH / 2)
-                btnAcheter.BackgroundColor3 = UI and UI.Colors.OrangeNormal or T.fondBoutonRobux
-                btnAcheter.TextColor3       = T.fondPrincipal
+                btnAcheter.BackgroundColor3 = Color3.fromRGB(140, 220, 70)
+                btnAcheter.TextColor3       = Color3.fromRGB(255, 255, 255)
                 btnAcheter.Font             = UI and UI.Fonts.Title or Enum.Font.GothamBold
                 btnAcheter.TextSize         = UI and UI.ButtonSizes.Medium.TextSize or 12
                 btnAcheter.TextScaled       = false
                 btnAcheter.Text             = item.prix .. " R$"
                 btnAcheter.BorderSizePixel  = 0
                 btnAcheter.ZIndex           = 13
-                Instance.new("UICorner", btnAcheter).CornerRadius = UDim.new(0, UI and UI.Modal.CornerRadius or 6)
+                Instance.new("UICorner", btnAcheter).CornerRadius = UDim.new(0, 20)
+                local _bap2 = Instance.new("UIStroke", btnAcheter)
+                _bap2.Color = Color3.fromRGB(60, 120, 30) ; _bap2.Thickness = 2
                 local _bap = Instance.new("UIPadding", btnAcheter)
                 _bap.PaddingLeft = UDim.new(0, 6) ; _bap.PaddingRight = UDim.new(0, 6)
                 _bap.PaddingTop = UDim.new(0, 2)  ; _bap.PaddingBottom = UDim.new(0, 2)

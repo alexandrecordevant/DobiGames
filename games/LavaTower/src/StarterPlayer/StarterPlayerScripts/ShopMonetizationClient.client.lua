@@ -136,19 +136,44 @@ task.spawn(function()
     -- ========================================================================
 
     local C = {
-        PanelBg      = Color3.fromRGB(10,  10,  10),
-        CardBg       = Color3.fromRGB(20,  20,  20),
+        PanelBg      = Color3.fromRGB(12,  10,  8),
+        CardBg       = Color3.fromRGB(22,  20,  18),
         Bordure      = Color3.fromRGB(60,  60,  60),
-        Accent       = Color3.fromRGB(180, 90,  20),
-        Succes       = Color3.fromRGB(80,  140, 80),
+        Accent       = Color3.fromRGB(200, 100, 20),
+        AccentStr    = Color3.fromRGB(255, 150, 40),
+        Succes       = Color3.fromRGB(70,  150, 80),
         Danger       = Color3.fromRGB(140, 50,  50),
-        TextPrim     = Color3.fromRGB(220, 220, 220),
+        TextPrim     = Color3.fromRGB(230, 230, 230),
         TextSec      = Color3.fromRGB(130, 130, 130),
         Thumb        = Color3.fromRGB(40,  40,  40),
         Disabled     = Color3.fromRGB(50,  50,  50),
         Badge        = Color3.fromRGB(80,  140, 80),
         OrangeStroke = Color3.fromRGB(200, 90,  10),
     }
+
+    -- Couleurs CASH : top = highlight (+30 luminosité), bot = couleur base — gradient subtil et propre
+    local CASH_STYLES = {
+        { top = Color3.fromRGB(90,  155, 255), bot = Color3.fromRGB(55,  115, 230), str = Color3.fromRGB(140, 195, 255) },
+        { top = Color3.fromRGB(175, 110, 255), bot = Color3.fromRGB(135, 68,  220), str = Color3.fromRGB(215, 160, 255) },
+        { top = Color3.fromRGB(255, 205, 65),  bot = Color3.fromRGB(220, 165, 20),  str = Color3.fromRGB(255, 230, 110) },
+    }
+
+    local function addGradientV(parent, c0, c1)
+        local g = Instance.new("UIGradient")
+        g.Color    = ColorSequence.new(c0, c1)
+        g.Rotation = 90
+        g.Parent   = parent
+        return g
+    end
+
+    -- Pulse discret sur le stroke du bouton (n'interfère pas avec les clics)
+    local function addPulseBtn(btn)
+        local sk = btn:FindFirstChildWhichIsA("UIStroke")
+        if not sk then return end
+        TweenService:Create(sk,
+            TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            { Thickness = 3 }):Play()
+    end
 
     local currentData = {
         coins = 0, packAchete = false, serverLuck = 1,
@@ -259,17 +284,16 @@ task.spawn(function()
     })
 
     local mainFrame = newInst("Frame", {
-        Size                   = UDim2.new(0, 420, 0, 560),
-        AnchorPoint            = Vector2.new(0.5, 0.5),
-        Position               = UDim2.new(0.5, 0, 1.5, 0),
-        BackgroundColor3       = C.PanelBg,
-        BackgroundTransparency = 0.05,
-        BorderSizePixel        = 0,
-        ZIndex                 = 2,
-        Parent                 = screenGui,
+        Size             = UDim2.new(0, 420, 0, 560),
+        AnchorPoint      = Vector2.new(0.5, 0.5),
+        Position         = UDim2.new(0.5, 0, 1.5, 0),
+        BackgroundColor3 = C.PanelBg,
+        BorderSizePixel  = 0,
+        ZIndex           = 2,
+        Parent           = screenGui,
     })
-    addCorner(mainFrame, 2)
-    addStroke(mainFrame)
+    addCorner(mainFrame, 4)
+    do local s = Instance.new("UIStroke"); s.Color = Color3.fromRGB(140, 195, 255); s.Thickness = 2; s.Parent = mainFrame end
 
     local uiScale = Instance.new("UIScale")
     uiScale.Parent = mainFrame
@@ -282,14 +306,21 @@ task.spawn(function()
 
     -- Titre
     local titleBar = newInst("Frame", {
-        Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1,
-        BorderSizePixel = 0, ZIndex = 3, Parent = mainFrame,
+        Size             = UDim2.new(1, 0, 0, 52),
+        BackgroundColor3 = C.Accent,
+        BorderSizePixel  = 0,
+        ZIndex           = 3,
+        Parent           = mainFrame,
     })
+    addCorner(titleBar, 4)
+    addGradientV(titleBar, Color3.fromRGB(60, 140, 255), Color3.fromRGB(30, 80, 200))
     newInst("TextLabel", {
         Size = UDim2.new(1, -60, 1, 0), Position = UDim2.new(0, 16, 0, 0),
         BackgroundTransparency = 1, Text = "SHOP",
         Font = Enum.Font.GothamBold, TextSize = 18, TextScaled = false,
-        TextColor3 = C.TextPrim, TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextStrokeColor3 = Color3.fromRGB(80, 30, 0), TextStrokeTransparency = 0.5,
+        TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 4, Parent = titleBar,
     })
     local closeBtn = newInst("TextButton", {
@@ -352,6 +383,7 @@ task.spawn(function()
         Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
         Visible = true, ZIndex = 4, Parent = contentFrame,
     })
+    -- UIListLayout vertical : 3 cartes pleine largeur → plus d'espace vide
     local cashScroll = newInst("ScrollingFrame", {
         Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
         BorderSizePixel = 0, ScrollBarThickness = 4,
@@ -360,60 +392,102 @@ task.spawn(function()
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         ZIndex = 5, Parent = cashFrame,
     })
-    newInst("UIGridLayout", {
-        CellSize = UDim2.new(0, 116, 0, 200), CellPadding = UDim2.new(0, 8, 0, 8),
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        SortOrder = Enum.SortOrder.LayoutOrder, Parent = cashScroll,
+    newInst("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder, FillDirection = Enum.FillDirection.Vertical,
+        Padding = UDim.new(0, 10), Parent = cashScroll,
     })
-    addPadding(cashScroll, 6)
+    addPadding(cashScroll, 8)
 
     local cashCartes = {}
 
     for i, cfg in ipairs(shopCfg.Cash) do
-        local carte = newInst("Frame", {
-            BackgroundColor3 = C.CardBg, BorderSizePixel = 0,
-            LayoutOrder = i, ZIndex = 6, Parent = cashScroll,
-        })
-        addCorner(carte, 2); addStroke(carte); addPadding(carte, 8)
-        newInst("UIListLayout", {
-            SortOrder = Enum.SortOrder.LayoutOrder, FillDirection = Enum.FillDirection.Vertical,
-            Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center,
-            Parent = carte,
-        })
+        local style = CASH_STYLES[i] or CASH_STYLES[1]
 
-        local thumb = newInst("Frame", {
-            Size = UDim2.new(0, 80, 0, 80), BackgroundColor3 = C.Thumb,
-            BorderSizePixel = 0, LayoutOrder = 1, ZIndex = 7, Parent = carte,
+        -- Carte horizontale pleine largeur
+        local carte = newInst("Frame", {
+            Size             = UDim2.new(1, -16, 0, 110),
+            BackgroundColor3 = style.bot,
+            BorderSizePixel  = 0,
+            LayoutOrder      = i,
+            ZIndex           = 6,
+            Parent           = cashScroll,
         })
-        addCorner(thumb, 2); addStroke(thumb)
+        addCorner(carte, 6)
+        do local sk = Instance.new("UIStroke"); sk.Color = style.str; sk.Thickness = 1.5; sk.Parent = carte end
+        addGradientV(carte, style.top, style.bot)
+
+        -- Thumbnail image (gauche) — utilise l'asset de la config si disponible
+        local iconFrame = newInst("Frame", {
+            Size             = UDim2.new(0, 72, 0, 72),
+            AnchorPoint      = Vector2.new(0, 0.5),
+            Position         = UDim2.new(0, 12, 0.5, 0),
+            BackgroundColor3 = style.bot,
+            BorderSizePixel  = 0,
+            ZIndex           = 7,
+            ClipsDescendants = true,
+            Parent           = carte,
+        })
+        addCorner(iconFrame, 8)
+        do local sk = Instance.new("UIStroke"); sk.Color = style.str; sk.Thickness = 1.5; sk.Parent = iconFrame end
         if cfg.image and cfg.image ~= "" then
             newInst("ImageLabel", {
                 Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
                 Image = cfg.image, ScaleType = Enum.ScaleType.Fit,
-                ZIndex = 8, Parent = thumb,
+                ZIndex = 8, Parent = iconFrame,
             })
         end
 
+        -- Texte durée (milieu)
         newInst("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1,
-            Text = cfg.duree or cfg.label, Font = Enum.Font.Gotham, TextSize = 12,
-            TextScaled = false, TextColor3 = C.TextSec, LayoutOrder = 2, ZIndex = 7, Parent = carte,
+            Size             = UDim2.new(0, 140, 0, 24),
+            AnchorPoint      = Vector2.new(0, 0.5),
+            Position         = UDim2.new(0, 96, 0.5, -16),
+            BackgroundTransparency = 1,
+            Text             = cfg.duree or cfg.label,
+            Font             = Enum.Font.GothamBold,
+            TextSize         = 14,
+            TextScaled       = false,
+            TextColor3       = Color3.fromRGB(240, 240, 240),
+            TextXAlignment   = Enum.TextXAlignment.Left,
+            ZIndex           = 7,
+            Parent           = carte,
         })
 
+        -- Montant coins (milieu, dessous)
         local montantLabel = newInst("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1,
-            Text = "...", Font = Enum.Font.GothamBold, TextSize = 13,
-            TextScaled = false, TextColor3 = C.Accent, TextWrapped = true,
-            LayoutOrder = 3, ZIndex = 7, Parent = carte,
+            Size             = UDim2.new(0, 140, 0, 22),
+            AnchorPoint      = Vector2.new(0, 0.5),
+            Position         = UDim2.new(0, 96, 0.5, 12),
+            BackgroundTransparency = 1,
+            Text             = "...",
+            Font             = Enum.Font.GothamBold,
+            TextSize         = 12,
+            TextScaled       = false,
+            TextColor3       = Color3.fromRGB(255, 210, 70),
+            TextXAlignment   = Enum.TextXAlignment.Left,
+            ZIndex           = 7,
+            Parent           = carte,
         })
 
+        -- Bouton Robux (droite)
         local buyBtn = newInst("TextButton", {
-            Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = C.Succes,
-            Text = tostring(cfg.prix) .. " R", Font = Enum.Font.GothamBold,
-            TextSize = 12, TextScaled = false, TextColor3 = C.TextPrim,
-            BorderSizePixel = 0, LayoutOrder = 4, ZIndex = 7, Parent = carte,
+            Size             = UDim2.new(0, 100, 0, 46),
+            AnchorPoint      = Vector2.new(1, 0.5),
+            Position         = UDim2.new(1, -12, 0.5, 0),
+            BackgroundColor3 = C.Succes,
+            Text             = tostring(cfg.prix) .. " R",
+            Font             = Enum.Font.GothamBold,
+            TextSize         = 13,
+            TextScaled       = false,
+            TextColor3       = Color3.fromRGB(255, 255, 255),
+            BorderSizePixel  = 0,
+            ZIndex           = 7,
+            Parent           = carte,
         })
-        addCorner(buyBtn, 2); addStroke(buyBtn); addHover(buyBtn)
+        addCorner(buyBtn, 8)
+        do local sk = Instance.new("UIStroke"); sk.Color = Color3.fromRGB(100, 200, 110); sk.Thickness = 1.5; sk.Parent = buyBtn end
+        addHover(buyBtn)
+        addPulseBtn(buyBtn)
         buyBtn:SetAttribute("NoSound", true)
 
         local capturedIdx = i
@@ -496,10 +570,13 @@ task.spawn(function()
 
     for i, cfg in ipairs(shopCfg.LuckyBlocks) do
         local carte = newInst("Frame", {
-            BackgroundColor3 = C.CardBg, BorderSizePixel = 0,
+            BackgroundColor3 = Color3.fromRGB(15, 8, 40), BorderSizePixel = 0,
             LayoutOrder = i, ZIndex = 6, Parent = luckyScroll,
         })
-        addCorner(carte, 2); addStroke(carte); addPadding(carte, 8)
+        addCorner(carte, 4)
+        do local sk = Instance.new("UIStroke"); sk.Color = Color3.fromRGB(175, 110, 255); sk.Thickness = 1.5; sk.Parent = carte end
+        addGradientV(carte, Color3.fromRGB(175, 110, 255), Color3.fromRGB(135, 68, 220))
+        addPadding(carte, 8)
         newInst("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder, FillDirection = Enum.FillDirection.Vertical,
             Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -847,24 +924,38 @@ task.spawn(function()
         Visible = false, ZIndex = 4, Parent = contentFrame,
     })
 
+    -- Badge Server Luck (visible, fond orange)
     local luckHeader = newInst("Frame", {
-        Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = C.CardBg,
-        BorderSizePixel = 0, ZIndex = 5, Parent = luckFrame,
+        Size             = UDim2.new(1, 0, 0, 48),
+        BackgroundColor3 = C.Accent,
+        BorderSizePixel  = 0,
+        ZIndex           = 5,
+        Parent           = luckFrame,
     })
-    addCorner(luckHeader, 2); addStroke(luckHeader)
+    addCorner(luckHeader, 4)
+    addGradientV(luckHeader, Color3.fromRGB(200, 100, 10), Color3.fromRGB(130, 60, 5))
 
     local luckHeaderLabel = newInst("TextLabel", {
         Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1,
-        Text = "Server Luck: x1", Font = Enum.Font.GothamBold, TextSize = 15,
-        TextScaled = false, TextColor3 = C.Accent, ZIndex = 6, Parent = luckHeader,
+        Text = "Server Luck: x1", Font = Enum.Font.GothamBold, TextSize = 16,
+        TextScaled = false, TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextStrokeColor3 = Color3.fromRGB(80, 30, 0), TextStrokeTransparency = 0.5,
+        ZIndex = 6, Parent = luckHeader,
     })
 
-    -- Carte unique d'upgrade — se met à jour en fonction du palier actuel
+    -- Carte unique Luck — fond vert citron
     local luckCard = newInst("Frame", {
-        Size = UDim2.new(1, 0, 0, 80), Position = UDim2.new(0, 0, 0, 52),
-        BackgroundColor3 = C.CardBg, BorderSizePixel = 0, ZIndex = 5, Parent = luckFrame,
+        Size             = UDim2.new(1, 0, 0, 86),
+        Position         = UDim2.new(0, 0, 0, 56),
+        BackgroundColor3 = Color3.fromRGB(18, 55, 12),
+        BorderSizePixel  = 0,
+        ZIndex           = 5,
+        Parent           = luckFrame,
     })
-    addCorner(luckCard, 2); addStroke(luckCard); addPadding(luckCard, 10)
+    addCorner(luckCard, 4)
+    do local sk = Instance.new("UIStroke"); sk.Color = Color3.fromRGB(80, 220, 80); sk.Thickness = 1.5; sk.Parent = luckCard end
+    addGradientV(luckCard, Color3.fromRGB(30, 90, 20), Color3.fromRGB(18, 55, 12))
+    addPadding(luckCard, 10)
 
     local luckCardThumb = newInst("ImageLabel", {
         Size = UDim2.new(0, 60, 0, 60), Position = UDim2.new(0, 0, 0.5, -30),
@@ -987,8 +1078,13 @@ task.spawn(function()
         }
         for _, t in ipairs(tabs) do
             local actif = (t.nom == tab)
-            t.btn.BackgroundColor3 = actif and Color3.fromRGB(180, 90, 20) or Color3.fromRGB(30, 30, 30)
-            t.btn.TextColor3       = actif and Color3.fromRGB(220, 220, 220) or Color3.fromRGB(130, 130, 130)
+            t.btn.BackgroundColor3 = actif and Color3.fromRGB(50, 130, 255) or Color3.fromRGB(30, 30, 30)
+            t.btn.TextColor3       = actif and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(130, 130, 130)
+            local g = t.btn:FindFirstChildWhichIsA("UIGradient")
+            if g then g:Destroy() end
+            if actif then
+                addGradientV(t.btn, Color3.fromRGB(80, 160, 255), Color3.fromRGB(35, 90, 210))
+            end
         end
     end
 

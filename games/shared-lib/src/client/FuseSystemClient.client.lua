@@ -43,23 +43,23 @@ end
 Logger.info("Fuse", "RemoteEvents trouves")
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- Palette
+-- Palette — thème Lava Tower (fond sombre, accents lave vifs)
 -- ═══════════════════════════════════════════════════════════════════════════════
-local C_BG           = Color3.fromRGB(10,  10,  10)
-local C_BG2          = Color3.fromRGB(18,  18,  18)
-local C_BG3          = Color3.fromRGB(25,  25,  25)
-local C_ACCENT       = Color3.fromRGB(160, 80,  15)
-local C_ACCENT_LIGHT = Color3.fromRGB(180, 95,  20)
+local C_BG           = Color3.fromRGB(18,  16,  22)   -- fond foncé neutre
+local C_BG2          = Color3.fromRGB(28,  25,  35)
+local C_BG3          = Color3.fromRGB(38,  34,  48)
+local C_ACCENT       = Color3.fromRGB(255, 100, 20)   -- lave orange vif
+local C_ACCENT_LIGHT = Color3.fromRGB(255, 145, 50)
 local C_TEXTE        = Color3.fromRGB(220, 220, 220)
 local C_TEXTE2       = Color3.fromRGB(130, 130, 130)
-local C_BORDURE      = Color3.fromRGB(60,  60,  60)
-local C_BORDURE_SOMBRE = Color3.fromRGB(35, 35, 35)
-local C_SLOT         = Color3.fromRGB(18,  18,  18)
-local C_SLOT_FILL    = Color3.fromRGB(32,  32,  32)
-local C_BTN_ON       = Color3.fromRGB(160, 80,  15)
-local C_BTN_OFF      = Color3.fromRGB(40,  40,  40)
-local C_FERMER       = Color3.fromRGB(50,  50,  50)
-local C_ORANGE_STROKE = Color3.fromRGB(180, 90, 20)
+local C_BORDURE      = Color3.fromRGB(65,  70,  95)   -- ardoise
+local C_BORDURE_SOMBRE = Color3.fromRGB(40, 42, 60)
+local C_SLOT         = Color3.fromRGB(32,  36,  50)   -- slot vide ardoise
+local C_SLOT_FILL    = Color3.fromRGB(42,  45,  65)   -- slot rempli
+local C_BTN_ON       = Color3.fromRGB(200, 65,  10)   -- bouton actif = lave
+local C_BTN_OFF      = Color3.fromRGB(38,  40,  55)
+local C_FERMER       = Color3.fromRGB(50,  50,  65)
+local C_ORANGE_STROKE = Color3.fromRGB(220, 110, 20)
 
 -- Couleurs mutation
 local C_GOLD    = Color3.fromRGB(255, 215,   0)
@@ -80,6 +80,7 @@ local screenGui, cadre
 local slotsFrames = {}
 local carryFrame
 local btnLancer
+local btnGradTween        -- Tween gradient lave sur bouton FUSIONNER
 local mutLignesContainer  -- Frame du panneau mutation (contient les lignes dynamiques)
 local mutEventBanner      -- Label bannière event toxique
 
@@ -250,6 +251,14 @@ mettreAJourBouton = function()
 		btnLancer.Font             = complet and Enum.Font.GothamBold or Enum.Font.Gotham
 		btnLancer.TextSize         = complet and 16 or 14
 		btnLancer.Active           = complet
+		-- Gradient lave animé uniquement quand tous les slots sont remplis
+		local g = btnLancer:FindFirstChildWhichIsA("UIGradient")
+		if g then
+			g.Enabled = complet
+			if btnGradTween then
+				if complet then btnGradTween:Play() else btnGradTween:Pause() end
+			end
+		end
 	end
 	mettreAJourMutation()
 end
@@ -540,18 +549,26 @@ local function creerUI()
 	screenGui.Enabled        = false
 	screenGui.Parent         = playerGui
 
-	-- Cadre principal 668x380, ancre centre (côté gauche : 456 contenu, côté droit : 180 mutation)
+	-- Cadre principal 668x380
 	cadre = Instance.new("Frame")
-	cadre.Name                   = "Cadre"
-	cadre.Size                   = UDim2.new(0, 668, 0, 380)
-	cadre.AnchorPoint            = Vector2.new(0.5, 0.5)
-	cadre.Position               = UDim2.new(0.5, 0, 1.5, 0)
-	cadre.BackgroundColor3       = C_BG
-	cadre.BackgroundTransparency = 0.05
-	cadre.BorderSizePixel        = 0
-	cadre.Parent                 = screenGui
-	coin(cadre, 0)
-	stroke(cadre, C_BORDURE, 1)
+	cadre.Name             = "Cadre"
+	cadre.Size             = UDim2.new(0, 668, 0, 380)
+	cadre.AnchorPoint      = Vector2.new(0.5, 0.5)
+	cadre.Position         = UDim2.new(0.5, 0, 1.5, 0)
+	cadre.BackgroundColor3 = C_BG
+	cadre.BorderSizePixel  = 0
+	cadre.Parent           = screenGui
+	coin(cadre, 10)
+	-- Gradient fond : ardoise bleutée du haut vers légèrement plus clair en bas
+	do
+		local g = Instance.new("UIGradient")
+		g.Color    = ColorSequence.new(Color3.fromRGB(12, 15, 25), Color3.fromRGB(20, 22, 35))
+		g.Rotation = 90
+		g.Parent   = cadre
+	end
+	local _cs = stroke(cadre, Color3.fromRGB(220, 100, 20), 4)
+	_cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cadre.ClipsDescendants = true
 
 	-- UIScale pour mobile
 	local uiScale = Instance.new("UIScale")
@@ -564,29 +581,31 @@ local function creerUI()
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
 	ajusterScale()
 
-	-- ─── Header ──────────────────────────────────────────────────────────────
-	local accentBande = Instance.new("Frame")
-	accentBande.Size             = UDim2.new(0, 3, 0, 52)
-	accentBande.BackgroundColor3 = C_ACCENT
-	accentBande.BorderSizePixel  = 0
-	accentBande.Parent           = cadre
-
+	-- ─── Header (gradient lava orange→rouge) ──────────────────────────────────
 	local titreBar = Instance.new("Frame")
-	titreBar.Size                   = UDim2.new(1, 0, 0, 52)
-	titreBar.BackgroundTransparency = 1
-	titreBar.BorderSizePixel        = 0
-	titreBar.Parent                 = cadre
+	titreBar.Size             = UDim2.new(1, 0, 0, 52)
+	titreBar.BackgroundColor3 = C_ACCENT
+	titreBar.BorderSizePixel  = 0
+	titreBar.Parent           = cadre
+	do
+		local g = Instance.new("UIGradient")
+		g.Color    = ColorSequence.new(Color3.fromRGB(210, 65, 8), Color3.fromRGB(155, 40, 5))
+		g.Rotation = 0
+		g.Parent   = titreBar
+	end
 
 	local lTitre = Instance.new("TextLabel")
 	lTitre.Size                   = UDim2.new(1, -60, 0, 28)
 	lTitre.Position               = UDim2.new(0, 16, 0, 8)
 	lTitre.BackgroundTransparency = 1
 	lTitre.Text                   = "FUSE MACHINE"
-	lTitre.TextColor3             = C_TEXTE
+	lTitre.TextColor3             = Color3.fromRGB(255, 255, 255)
 	lTitre.TextSize               = 18
 	lTitre.TextScaled             = false
 	lTitre.Font                   = Enum.Font.GothamBold
 	lTitre.TextXAlignment         = Enum.TextXAlignment.Left
+	lTitre.TextStrokeColor3       = Color3.fromRGB(80, 20, 0)
+	lTitre.TextStrokeTransparency = 0.4
 	lTitre.Parent                 = titreBar
 
 	local lSousTitre = Instance.new("TextLabel")
@@ -611,17 +630,17 @@ local function creerUI()
 	local btnX = Instance.new("TextButton")
 	btnX.Size             = UDim2.new(0, 44, 0, 44)
 	btnX.Position         = UDim2.new(1, -50, 0, 4)
-	btnX.BackgroundColor3 = C_FERMER
+	btnX.BackgroundColor3 = Color3.fromRGB(230, 50, 50)
 	btnX.BorderSizePixel  = 0
 	btnX.Text             = "X"
-	btnX.TextColor3       = Color3.fromRGB(180, 180, 180)
+	btnX.TextColor3       = Color3.fromRGB(255, 255, 255)
 	btnX.TextSize         = 16
 	btnX.TextScaled       = false
 	btnX.Font             = Enum.Font.GothamBold
 	btnX.AutoButtonColor  = false
 	btnX.Parent           = titreBar
-	coin(btnX, 2)
-	stroke(btnX, C_BORDURE, 1)
+	coin(btnX, 6)
+	stroke(btnX, Color3.fromRGB(255, 255, 255), 3)
 	addHover(btnX)
 	btnX.MouseButton1Click:Connect(function() fermerUI() end)
 
@@ -658,8 +677,8 @@ local function creerUI()
 		slot.Text                   = ""
 		slot.AutoButtonColor        = false
 		slot.Parent                 = slotsConteneur
-		coin(slot, 0)
-		stroke(slot, C_BORDURE, 1)
+		coin(slot, 6)
+		stroke(slot, C_BORDURE, 1.5)
 
 		-- "+" quand slot vide
 		local iconeL = Instance.new("TextLabel")
@@ -749,7 +768,7 @@ local function creerUI()
 	carryPad.PaddingBottom = UDim.new(0, 6)
 	carryPad.Parent        = carryFrame
 
-	-- Bouton Lancer (y=234, h=52)
+	-- Bouton FUSIONNER (y=234, h=52) — gradient lave animé quand actif
 	btnLancer = Instance.new("TextButton")
 	btnLancer.Name             = "BtnLancer"
 	btnLancer.Size             = UDim2.new(1, 0, 0, 52)
@@ -764,25 +783,75 @@ local function creerUI()
 	btnLancer.AutoButtonColor  = false
 	btnLancer.Active           = false
 	btnLancer.Parent           = contenu
-	coin(btnLancer, 2)
-	stroke(btnLancer, C_BORDURE, 1)
+	coin(btnLancer, 10)
+	local btnStroke = stroke(btnLancer, C_BORDURE_SOMBRE, 2)
 	addHover(btnLancer)
+
+	-- Gradient lave sur le bouton (rotation animée en boucle)
+	local btnGrad = Instance.new("UIGradient")
+	btnGrad.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0,   Color3.fromRGB(220, 55,  5)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 20)),
+		ColorSequenceKeypoint.new(1,   Color3.fromRGB(220, 55,  5)),
+	}
+	btnGrad.Rotation = 0
+	btnGrad.Parent   = btnLancer
+	btnGrad.Enabled  = false  -- activé uniquement quand les 4 slots sont remplis
+
+	btnGradTween = TweenService:Create(btnGrad,
+		TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+		{ Rotation = 360 })
+
 	btnLancer.MouseButton1Click:Connect(function()
 		if not btnLancer.Active then return end
 		onLancer()
 	end)
 
+	-- ─── Barre de lave animée en bas du cadre ────────────────────────────────
+	local laveBar = Instance.new("Frame")
+	laveBar.Name             = "LavaBarre"
+	laveBar.Size             = UDim2.new(1, 0, 0, 14)
+	laveBar.AnchorPoint      = Vector2.new(0, 1)
+	laveBar.Position         = UDim2.new(0, 0, 1, 0)
+	laveBar.BackgroundColor3 = Color3.fromRGB(220, 50, 0)
+	laveBar.BorderSizePixel  = 0
+	laveBar.ZIndex           = 8
+	laveBar.Parent           = cadre
+	do
+		local lavGrad = Instance.new("UIGradient")
+		lavGrad.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0,   Color3.fromRGB(220, 50,  0)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 0)),
+			ColorSequenceKeypoint.new(1,   Color3.fromRGB(220, 50,  0)),
+		}
+		lavGrad.Rotation = 0
+		lavGrad.Parent   = laveBar
+		-- Animation montée et rotation gradient en boucle
+		TweenService:Create(lavGrad,
+			TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+			{ Rotation = 360 }):Play()
+		TweenService:Create(laveBar,
+			TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Size = UDim2.new(1, 0, 0, 22) }):Play()
+	end
+
 	-- ─── Panneau MUTATION (droite, x=468, largeur=188) ────────────────────────
 	local mutPanel = Instance.new("Frame")
-	mutPanel.Name                   = "MutationPanel"
-	mutPanel.Size                   = UDim2.new(0, 188, 1, -70)
-	mutPanel.Position               = UDim2.new(0, 468, 0, 62)
-	mutPanel.BackgroundColor3       = C_BG2
-	mutPanel.BackgroundTransparency = 0
-	mutPanel.BorderSizePixel        = 0
-	mutPanel.Parent                 = cadre
-	coin(mutPanel, 0)
-	stroke(mutPanel, C_BORDURE, 1)
+	mutPanel.Name             = "MutationPanel"
+	mutPanel.Size             = UDim2.new(0, 188, 1, -70)
+	mutPanel.Position         = UDim2.new(0, 468, 0, 62)
+	mutPanel.BackgroundColor3 = Color3.fromRGB(20, 22, 35)
+	mutPanel.BorderSizePixel  = 0
+	mutPanel.Parent           = cadre
+	coin(mutPanel, 8)
+	do
+		local g = Instance.new("UIGradient")
+		g.Color    = ColorSequence.new(Color3.fromRGB(25, 28, 45), Color3.fromRGB(15, 17, 30))
+		g.Rotation = 90
+		g.Parent   = mutPanel
+	end
+	local _mps = stroke(mutPanel, Color3.fromRGB(200, 90, 20), 2)
+	_mps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 	-- Barre accent gauche
 	local mutAccent = Instance.new("Frame")
@@ -882,3 +951,50 @@ end)
 -- ═══════════════════════════════════════════════════════════════════════════════
 creerUI()
 Logger.info("Fuse", "UI creee")
+
+-- ─── Bulles de lave animées ──────────────────────────────────────────────────
+-- Petites sphères oranges/rouges qui montent depuis le bas du cadre
+local BULLE_COULEURS = {
+	Color3.fromRGB(255, 100, 20),
+	Color3.fromRGB(255, 150, 40),
+	Color3.fromRGB(230, 60,  5),
+	Color3.fromRGB(255, 180, 50),
+}
+local function creerBulle()
+	if not cadre or not screenGui or not screenGui.Enabled then return end
+	local taille = math.random(8, 22)
+	local xPos   = math.random(10, 640)
+	local duree  = math.random(2, 5) * 0.8
+	local couleur= BULLE_COULEURS[math.random(1, #BULLE_COULEURS)]
+
+	local bulle = Instance.new("Frame")
+	bulle.Size                  = UDim2.new(0, taille, 0, taille)
+	bulle.Position              = UDim2.new(0, xPos, 1, -taille - 10)
+	bulle.BackgroundColor3      = couleur
+	bulle.BackgroundTransparency= 0.25
+	bulle.BorderSizePixel       = 0
+	bulle.ZIndex                = 1  -- sous tout le contenu
+	bulle.Parent                = cadre
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(1, 0)
+	c.Parent = bulle
+
+	local targetY = -taille - 20
+	TweenService:Create(bulle,
+		TweenInfo.new(duree, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(0, xPos, 0, targetY), BackgroundTransparency = 1 }
+	):Play()
+
+	task.delay(duree + 0.1, function()
+		if bulle.Parent then bulle:Destroy() end
+	end)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(0.25 + math.random() * 0.35)
+		if screenGui and screenGui.Enabled then
+			creerBulle()
+		end
+	end
+end)

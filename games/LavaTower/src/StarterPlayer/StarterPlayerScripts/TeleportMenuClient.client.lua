@@ -1,6 +1,5 @@
 -- StarterPlayerScripts/TeleportMenuClient.client.lua
--- Bouton TP (au-dessus du shop) + menu de téléportation
--- 3 destinations : Tour Vite (TP_VIP), Tour Commune (TP_Tour), Ma Baie (spawn base)
+-- Bouton TP + menu de téléportation — thème coloré par destination
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,19 +9,52 @@ local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- ============================================================================
--- PALETTE — même DA que le shop, accent crimson-orange
+-- PALETTE
 -- ============================================================================
 local C = {
-    PanelBg      = Color3.fromRGB(10,  10,  10),
-    CardBg       = Color3.fromRGB(20,  20,  20),
+    PanelBg      = Color3.fromRGB(15,  12,  8),
     Bordure      = Color3.fromRGB(60,  60,  60),
-    Accent       = Color3.fromRGB(180, 90,  20),
+    AccentHdr    = Color3.fromRGB(50,  130, 255),
+    AccentHdrStr = Color3.fromRGB(110, 185, 255),
     TextPrim     = Color3.fromRGB(220, 220, 220),
     TextSec      = Color3.fromRGB(130, 130, 130),
     Disabled     = Color3.fromRGB(50,  50,  50),
-    OrangeStroke = Color3.fromRGB(200, 90,  10),
-    BtnGrey      = Color3.fromRGB(90,  90,  90),
+    PanelStroke  = Color3.fromRGB(180, 90,  20),
 }
+
+-- Couleurs destination — même palette que le reste du jeu (highlight subtil → base)
+local DEST_STYLES = {
+    TOUR_VITE    = {  -- ambre doré (même famille que Carry / 10h CASH)
+        cardTop   = Color3.fromRGB(255, 205, 65),
+        cardBot   = Color3.fromRGB(220, 165, 20),
+        cardStr   = Color3.fromRGB(255, 230, 110),
+        btnColor  = Color3.fromRGB(235, 180, 30),
+        btnStroke = Color3.fromRGB(255, 220, 90),
+        btnDark   = true,
+    },
+    TOUR_COMMUNE = {  -- bleu (même famille que SpeedCoil / 30min CASH)
+        cardTop   = Color3.fromRGB(90,  155, 255),
+        cardBot   = Color3.fromRGB(55,  115, 230),
+        cardStr   = Color3.fromRGB(140, 195, 255),
+        btnColor  = Color3.fromRGB(75,  140, 250),
+        btnStroke = Color3.fromRGB(140, 195, 255),
+        btnDark   = false,
+    },
+    BASE         = {  -- teal (variante verte distincte)
+        cardTop   = Color3.fromRGB(70,  215, 160),
+        cardBot   = Color3.fromRGB(38,  180, 125),
+        cardStr   = Color3.fromRGB(110, 245, 195),
+        btnColor  = Color3.fromRGB(50,  198, 142),
+        btnStroke = Color3.fromRGB(110, 245, 195),
+        btnDark   = true,
+    },
+}
+
+local PANEL_W, PANEL_H = 360, 316
+
+-- TweenInfo
+local TI_BACK35 = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local TI_QUAD20 = TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 -- ============================================================================
 -- UTILITAIRES
@@ -39,35 +71,36 @@ local function addCorner(parent, r)
     c.Parent = parent
 end
 
-local function addStroke(parent)
+local function addStrokeColor(parent, color, thick)
     local s = Instance.new("UIStroke")
-    s.Color     = C.Bordure
-    s.Thickness = 1
-    s.Parent    = parent
+    s.Color = color; s.Thickness = thick or 1; s.Parent = parent
     return s
 end
 
-local function addHover(btn, normalColor)
+local function addGradient(parent, c0, c1, rotation)
+    local g = Instance.new("UIGradient")
+    g.Color    = ColorSequence.new(c0, c1)
+    g.Rotation = rotation or 90
+    g.Parent   = parent
+    return g
+end
+
+local function addHover(btn, normalColor, strokeColor)
     local hoverColor = Color3.new(
-        math.min(1, normalColor.R + 0.08),
-        math.min(1, normalColor.G + 0.08),
-        math.min(1, normalColor.B + 0.08)
-    )
+        math.min(1, normalColor.R + 0.1),
+        math.min(1, normalColor.G + 0.1),
+        math.min(1, normalColor.B + 0.1))
     local stroke = btn:FindFirstChildWhichIsA("UIStroke")
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.08), { BackgroundColor3 = hoverColor }):Play()
-        if stroke then TweenService:Create(stroke, TweenInfo.new(0.08), { Color = C.OrangeStroke }):Play() end
     end)
     btn.MouseLeave:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.08), { BackgroundColor3 = normalColor }):Play()
-        if stroke then TweenService:Create(stroke, TweenInfo.new(0.08), { Color = C.Bordure }):Play() end
     end)
 end
 
 -- ============================================================================
--- BOUTON TP — bord gauche, juste au-dessus du shop (0.5, -110)
--- Shop : AnchorPoint (0, 0.5), Position (0, 0, 0.5, 0), Size 100x100
--- TP   : centre à (0, 0, 0.5, -110) → gap de 10px entre les deux
+-- BOUTON TP (bord gauche)
 -- ============================================================================
 local hudGui = newInst("ScreenGui", {
     Name           = "TeleportHudGui",
@@ -77,7 +110,6 @@ local hudGui = newInst("ScreenGui", {
     Parent         = playerGui,
 })
 
--- Structure identique au bouton shop : TextButton transparent + ImageLabel
 local tpOpenBtn = newInst("TextButton", {
     Name                   = "TeleportBtn",
     Size                   = UDim2.new(0, 100, 0, 100),
@@ -99,12 +131,10 @@ local tpIcon = newInst("ImageLabel", {
     ZIndex                 = 11,
     Parent                 = tpOpenBtn,
 })
-
 local _tpCorner = Instance.new("UICorner")
 _tpCorner.CornerRadius = UDim.new(0, 16)
 _tpCorner.Parent = tpIcon
 
--- Hover identique au shop : assombrit l'icône au survol
 tpOpenBtn.MouseEnter:Connect(function()
     TweenService:Create(tpIcon, TweenInfo.new(0.1), { ImageTransparency = 0.35 }):Play()
 end)
@@ -124,19 +154,17 @@ local menuGui = newInst("ScreenGui", {
 })
 
 local mainFrame = newInst("Frame", {
-    Size                   = UDim2.new(0, 360, 0, 316),
-    AnchorPoint            = Vector2.new(0.5, 0.5),
-    Position               = UDim2.new(0.5, 0, 1.6, 0),
-    BackgroundColor3       = C.PanelBg,
-    BackgroundTransparency = 0.05,
-    BorderSizePixel        = 0,
-    ZIndex                 = 2,
-    Parent                 = menuGui,
+    Size            = UDim2.new(0, PANEL_W, 0, PANEL_H),
+    AnchorPoint     = Vector2.new(0.5, 0.5),
+    Position        = UDim2.new(0.5, 0, 0.5, 0),
+    BackgroundColor3= C.PanelBg,
+    BorderSizePixel = 0,
+    ZIndex          = 2,
+    Parent          = menuGui,
 })
-addCorner(mainFrame, 2)
-addStroke(mainFrame)
+addCorner(mainFrame, 4)
+addStrokeColor(mainFrame, C.PanelStroke, 2)
 
--- Scale adaptatif (même logique que le shop)
 local uiScale = Instance.new("UIScale")
 uiScale.Parent = mainFrame
 local function ajusterScale()
@@ -146,17 +174,21 @@ end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
 ajusterScale()
 
--- ── En-tête ──────────────────────────────────────────────────────────────────
+-- ── En-tête avec gradient orange ─────────────────────────────────────────────
 local titleBar = newInst("Frame", {
-    Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1,
+    Size = UDim2.new(1, 0, 0, 52), BackgroundColor3 = C.AccentHdr,
     BorderSizePixel = 0, ZIndex = 3, Parent = mainFrame,
 })
+addCorner(titleBar, 4)
+addGradient(titleBar, Color3.fromRGB(80, 165, 255), Color3.fromRGB(30, 90, 215), 0)
 
 newInst("TextLabel", {
     Size = UDim2.new(1, -60, 1, 0), Position = UDim2.new(0, 16, 0, 0),
     BackgroundTransparency = 1, Text = "TELEPORT",
     Font = Enum.Font.GothamBold, TextSize = 18, TextScaled = false,
-    TextColor3 = C.TextPrim, TextXAlignment = Enum.TextXAlignment.Left,
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextStrokeColor3 = Color3.fromRGB(80, 30, 0), TextStrokeTransparency = 0.5,
+    TextXAlignment = Enum.TextXAlignment.Left,
     ZIndex = 4, Parent = titleBar,
 })
 
@@ -167,7 +199,7 @@ local closeBtn = newInst("TextButton", {
     TextColor3 = C.TextSec, BorderSizePixel = 0, ZIndex = 5, Parent = titleBar,
 })
 addCorner(closeBtn, 2)
-addStroke(closeBtn)
+addStrokeColor(closeBtn, C.Bordure, 1)
 addHover(closeBtn, C.Disabled)
 
 -- Séparateur
@@ -193,52 +225,56 @@ newInst("UIListLayout", {
 -- CARTES DESTINATIONS
 -- ============================================================================
 local DESTINATIONS = {
-    { key = "TOUR_VITE",    label = "VIP Tower"    },
+    { key = "TOUR_VITE",    label = "VIP Tower"       },
     { key = "TOUR_COMMUNE", label = "Community Tower" },
-    { key = "BASE",         label = "My Base"      },
+    { key = "BASE",         label = "My Base"         },
 }
 
-local fermerMenu  -- déclaration anticipée pour les closures des boutons
+local cardFrames = {}  -- pour stagger à l'ouverture
+local fermerMenu       -- déclaration anticipée
 
 for i, dest in ipairs(DESTINATIONS) do
+    local style = DEST_STYLES[dest.key]
+
     local card = newInst("Frame", {
         Size             = UDim2.new(1, 0, 0, 72),
-        BackgroundColor3 = C.CardBg,
+        BackgroundColor3 = style.cardBot,
         BorderSizePixel  = 0,
         LayoutOrder      = i,
         ZIndex           = 4,
         Parent           = contentFrame,
     })
-    addCorner(card, 2)
-    addStroke(card)
+    addCorner(card, 4)
+    addStrokeColor(card, style.cardStr, 1.5)
+    addGradient(card, style.cardTop, style.cardBot, 90)
+    cardFrames[i] = card
 
-    -- Nom
     newInst("TextLabel", {
         Size = UDim2.new(1, -110, 1, 0), Position = UDim2.new(0, 16, 0, 0),
         BackgroundTransparency = 1, Text = dest.label,
         Font = Enum.Font.GothamBold, TextSize = 15, TextScaled = false,
-        TextColor3 = C.TextPrim, TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Color3.fromRGB(240, 240, 240),
+        TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 5, Parent = card,
     })
 
-    -- Bouton Aller
     local tpBtn = newInst("TextButton", {
-        Size             = UDim2.new(0, 88, 0, 42),
+        Size             = UDim2.new(0, 88, 0, 44),
         AnchorPoint      = Vector2.new(1, 0.5),
         Position         = UDim2.new(1, -10, 0.5, 0),
-        BackgroundColor3 = C.Accent,
+        BackgroundColor3 = style.btnColor,
         Text             = "Go",
         Font             = Enum.Font.GothamBold,
-        TextSize         = 13,
+        TextSize         = 14,
         TextScaled       = false,
-        TextColor3       = C.TextPrim,
+        TextColor3       = style.btnDark and Color3.fromRGB(10, 10, 10) or Color3.fromRGB(255, 255, 255),
         BorderSizePixel  = 0,
         ZIndex           = 5,
         Parent           = card,
     })
-    addCorner(tpBtn, 2)
-    addStroke(tpBtn)
-    addHover(tpBtn, C.Accent)
+    addCorner(tpBtn, 6)
+    addStrokeColor(tpBtn, style.btnStroke, 2)
+    addHover(tpBtn, style.btnColor)
 
     local destKey = dest.key
     tpBtn.MouseButton1Click:Connect(function()
@@ -264,19 +300,27 @@ end
 
 local function ouvrirMenu()
     fermerMenusSignal:Fire("TP")
-    menuGui.Enabled    = true
-    mainFrame.Position = UDim2.new(0.5, 0, 1.6, 0)
-    TweenService:Create(mainFrame,
-        TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        { Position = UDim2.new(0.5, 0, 0.5, 0) }):Play()
+    menuGui.Enabled  = true
+    mainFrame.Size   = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(mainFrame, TI_BACK35, { Size = UDim2.new(0, PANEL_W, 0, PANEL_H) }):Play()
+    -- Stagger des cartes : fade in décalé
+    for i, card in ipairs(cardFrames) do
+        card.BackgroundTransparency = 1
+        task.delay(0.25 + (i - 1) * 0.08, function()
+            TweenService:Create(card, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {
+                BackgroundTransparency = 0
+            }):Play()
+        end)
+    end
 end
 
 fermerMenu = function()
-    local tw = TweenService:Create(mainFrame,
-        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-        { Position = UDim2.new(0.5, 0, 1.6, 0) })
+    local tw = TweenService:Create(mainFrame, TI_QUAD20, { Size = UDim2.new(0, 0, 0, 0) })
     tw:Play()
-    tw.Completed:Connect(function() menuGui.Enabled = false end)
+    tw.Completed:Connect(function()
+        menuGui.Enabled = false
+        mainFrame.Size  = UDim2.new(0, PANEL_W, 0, PANEL_H)
+    end)
 end
 
 fermerMenusSignal.Event:Connect(function(source)
@@ -289,16 +333,12 @@ end)
 -- CONNEXIONS
 -- ============================================================================
 tpOpenBtn.MouseButton1Click:Connect(function()
-    if menuGui.Enabled then
-        fermerMenu()
-    else
-        ouvrirMenu()
-    end
+    if menuGui.Enabled then fermerMenu() else ouvrirMenu() end
 end)
 
 closeBtn.MouseButton1Click:Connect(fermerMenu)
 
--- ── Masquer bouton + fermer menu en tour ─────────────────────────────────────
+-- Masquer bouton + fermer menu en tour
 task.spawn(function()
     local TowerEntered = ReplicatedStorage:WaitForChild("TowerEntered", 30)
     local TowerExited  = ReplicatedStorage:WaitForChild("TowerExited",  30)
@@ -316,4 +356,3 @@ task.spawn(function()
         if player:GetAttribute("InTower") then masquer() else afficher() end
     end)
 end)
--- ─────────────────────────────────────────────────────────────────────────────

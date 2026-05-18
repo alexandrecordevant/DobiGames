@@ -122,7 +122,9 @@ end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterPanel)
 _ajusterPanel()
 local _panelStroke = Instance.new("UIStroke", panel)
-_panelStroke.Color = Color3.fromRGB(60, 60, 60) ; _panelStroke.Thickness = 1
+_panelStroke.Color           = Color3.fromRGB(255, 180, 30)
+_panelStroke.Thickness       = 5
+_panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 -- ── Titre ──
 local titre = Instance.new("TextLabel", panel)
@@ -135,22 +137,24 @@ titre.Font                   = Enum.Font.GothamBold
 titre.TextSize               = 15
 titre.TextXAlignment         = Enum.TextXAlignment.Left
 titre.ZIndex                 = 21
+titre.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
+titre.TextStrokeTransparency = 0
 
 -- ── Bouton fermer ──
 local btnFermer = Instance.new("TextButton", panel)
 btnFermer.Size             = UDim2.new(0, 44, 0, 44)
 btnFermer.Position         = UDim2.new(1, -50, 0, 4)
-btnFermer.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+btnFermer.BackgroundColor3 = Color3.fromRGB(230, 50, 50)
 btnFermer.BorderSizePixel  = 0
 btnFermer.Text             = "X"
-btnFermer.TextColor3       = Color3.fromRGB(180, 180, 180)
+btnFermer.TextColor3       = Color3.fromRGB(255, 255, 255)
 btnFermer.Font             = Enum.Font.GothamBold
 btnFermer.TextSize         = 16
 btnFermer.TextScaled       = true
 btnFermer.ZIndex           = 22
-Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", btnFermer).CornerRadius = UDim.new(0, 6)
 local _fermerStroke = Instance.new("UIStroke", btnFermer)
-_fermerStroke.Color = Color3.fromRGB(60, 60, 60) ; _fermerStroke.Thickness = 1
+_fermerStroke.Color = Color3.fromRGB(255, 255, 255) ; _fermerStroke.Thickness = 3
 
 local function makeSep(parent, yPos)
     local s = Instance.new("Frame", parent)
@@ -169,10 +173,12 @@ makeSep(panel, 48)
 local stockSection = Instance.new("Frame", panel)
 stockSection.Size             = UDim2.new(1, -24, 0, 52)
 stockSection.Position         = UDim2.new(0, 12, 0, 54)
-stockSection.BackgroundColor3 = C.fondCarte
+stockSection.BackgroundColor3 = Color3.fromRGB(80, 180, 255)
 stockSection.BorderSizePixel  = 0
 stockSection.ZIndex           = 21
 Instance.new("UICorner", stockSection).CornerRadius = UDim.new(0, 8)
+local _stockStroke = Instance.new("UIStroke", stockSection)
+_stockStroke.Color = Color3.fromRGB(255, 255, 255) ; _stockStroke.Thickness = 2 ; _stockStroke.Transparency = 0.5
 
 local function makeLabel(parent, name, size, pos, text, color, fontSize, bold)
     local l = Instance.new("TextLabel", parent)
@@ -256,10 +262,12 @@ makeSep(panel, 216)
 local arbreSection = Instance.new("Frame", panel)
 arbreSection.Size             = UDim2.new(1, -24, 0, 48)
 arbreSection.Position         = UDim2.new(0, 12, 0, 222)
-arbreSection.BackgroundColor3 = C.fondCarte
+arbreSection.BackgroundColor3 = Color3.fromRGB(190, 100, 230)
 arbreSection.BorderSizePixel  = 0
 arbreSection.ZIndex           = 21
 Instance.new("UICorner", arbreSection).CornerRadius = UDim.new(0, 8)
+local _arbreStroke = Instance.new("UIStroke", arbreSection)
+_arbreStroke.Color = Color3.fromRGB(255, 255, 255) ; _arbreStroke.Thickness = 2 ; _arbreStroke.Transparency = 0.5
 
 makeLabel(arbreSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,3),
     "Next seed", C.texteDim, 10, false)
@@ -276,10 +284,12 @@ makeSep(panel, 276)
 local calSection = Instance.new("Frame", panel)
 calSection.Size             = UDim2.new(1, -24, 0, 170)
 calSection.Position         = UDim2.new(0, 12, 0, 282)
-calSection.BackgroundColor3 = C.fondCarte
+calSection.BackgroundColor3 = Color3.fromRGB(120, 220, 90)
 calSection.BorderSizePixel  = 0
 calSection.ZIndex           = 21
 Instance.new("UICorner", calSection).CornerRadius = UDim.new(0, 8)
+local _calStroke = Instance.new("UIStroke", calSection)
+_calStroke.Color = Color3.fromRGB(255, 255, 255) ; _calStroke.Thickness = 2 ; _calStroke.Transparency = 0.5
 
 makeLabel(calSection, "Titre", UDim2.new(1,-8,0,18), UDim2.new(0,8,0,4),
     "Daily Seed — 7-day cycle", C.texteDim, 10, false)

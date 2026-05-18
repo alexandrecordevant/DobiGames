@@ -20,20 +20,43 @@ if not ShopOpen or not ShopPurchase or not ShopRefresh then
     return
 end
 
--- Palette revisee : noir dominant, orange fonce en accent
+-- Palette : thème LavaTower avec couleurs vives par catégorie
 local C = {
-    PanelBg  = Color3.fromRGB(10,  10,  10),
-    CardBg   = Color3.fromRGB(20,  20,  20),
+    PanelBg  = Color3.fromRGB(12,  10,  8),
+    CardBg   = Color3.fromRGB(22,  20,  18),
     Bordure  = Color3.fromRGB(60,  60,  60),
     Accent   = Color3.fromRGB(220, 110, 15),
-    Succes   = Color3.fromRGB(80,  140, 80),
+    AccentStr= Color3.fromRGB(255, 150, 40),
+    Succes   = Color3.fromRGB(60,  140, 70),
     Danger   = Color3.fromRGB(140, 70,  70),
-    TextPrim = Color3.fromRGB(220, 220, 220),
+    TextPrim = Color3.fromRGB(230, 230, 230),
     TextSec  = Color3.fromRGB(130, 130, 130),
     Fermer   = Color3.fromRGB(50,  50,  50),
     Gold     = Color3.fromRGB(255, 200, 50),
     OrangeStroke = Color3.fromRGB(200, 90, 10),
 }
+
+-- Couleurs par item et upgrade — top = highlight subtil, bot = base (gradient propre)
+-- Palette cohérente : bleu, violet, ambre, vert, orange
+local ITEM_STYLES = {
+    SpeedCoil   = { top = Color3.fromRGB(90,  155, 255), bot = Color3.fromRGB(55,  115, 230), str = Color3.fromRGB(140, 195, 255) },
+    GravityCoil = { top = Color3.fromRGB(175, 110, 255), bot = Color3.fromRGB(135, 68,  220), str = Color3.fromRGB(215, 160, 255) },
+    VoidCape    = { top = Color3.fromRGB(130, 68,  230), bot = Color3.fromRGB(95,  35,  190), str = Color3.fromRGB(170, 115, 255) },
+    Rocket      = { top = Color3.fromRGB(255, 120, 55),  bot = Color3.fromRGB(225, 80,  18),  str = Color3.fromRGB(255, 165, 95)  },
+}
+local UPGRADE_STYLES = {
+    Carry = { top = Color3.fromRGB(255, 190, 65),  bot = Color3.fromRGB(220, 150, 22), str = Color3.fromRGB(255, 218, 105) },
+    Speed = { top = Color3.fromRGB(90,  155, 255), bot = Color3.fromRGB(55,  115, 230), str = Color3.fromRGB(140, 195, 255) },
+    Jump  = { top = Color3.fromRGB(75,  225, 125), bot = Color3.fromRGB(42,  190, 88),  str = Color3.fromRGB(115, 255, 165) },
+}
+
+local function addGradientV(parent, c0, c1)
+    local g = Instance.new("UIGradient")
+    g.Color    = ColorSequence.new(c0, c1)
+    g.Rotation = 90
+    g.Parent   = parent
+    return g
+end
 
 local currentData = nil
 local activeTab   = "Upgrades"
@@ -132,13 +155,16 @@ local mainFrame = newInst("Frame", {
     AnchorPoint            = Vector2.new(0.5, 0.5),
     Position               = UDim2.new(0.5, 0, 1.5, 0),
     BackgroundColor3       = C.PanelBg,
-    BackgroundTransparency = 0.05,
+    BackgroundTransparency = 0,
     BorderSizePixel        = 0,
     ZIndex                 = 2,
     Parent                 = screenGui,
 })
-addCorner(mainFrame, 0)
-addStroke(mainFrame)
+addCorner(mainFrame, 4)
+do
+    local s = Instance.new("UIStroke")
+    s.Name = "Stroke"; s.Color = C.AccentStr; s.Thickness = 2; s.Parent = mainFrame
+end
 
 -- UIScale sur mainFrame uniquement (le backdrop reste plein ecran)
 local uiScale = Instance.new("UIScale")
@@ -152,15 +178,17 @@ end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
 ajusterScale()
 
--- Header
+-- Header avec gradient orange lava
 local titleBar = newInst("Frame", {
-    Name                   = "TitleBar",
-    Size                   = UDim2.new(1, 0, 0, 52),
-    BackgroundTransparency = 1,
-    BorderSizePixel        = 0,
-    ZIndex                 = 3,
-    Parent                 = mainFrame,
+    Name            = "TitleBar",
+    Size            = UDim2.new(1, 0, 0, 52),
+    BackgroundColor3= C.Accent,
+    BorderSizePixel = 0,
+    ZIndex          = 3,
+    Parent          = mainFrame,
 })
+addCorner(titleBar, 4)
+addGradientV(titleBar, Color3.fromRGB(220, 110, 15), Color3.fromRGB(150, 65, 5))
 
 newInst("TextLabel", {
     Size                   = UDim2.new(1, -60, 1, 0),
@@ -170,7 +198,9 @@ newInst("TextLabel", {
     Font                   = Enum.Font.GothamBold,
     TextSize               = 18,
     TextScaled             = false,
-    TextColor3             = C.TextPrim,
+    TextColor3             = Color3.fromRGB(255, 255, 255),
+    TextStrokeColor3       = Color3.fromRGB(80, 30, 0),
+    TextStrokeTransparency = 0.5,
     TextXAlignment         = Enum.TextXAlignment.Left,
     ZIndex                 = 4,
     Parent                 = titleBar,
@@ -237,7 +267,7 @@ local function creerOnglet(lbl, order)
         ZIndex           = 4,
         Parent           = tabBar,
     })
-    addCorner(btn, 2)
+    addCorner(btn, 4)
     addStroke(btn)
     return btn
 end
@@ -296,34 +326,39 @@ newInst("UIListLayout", {
     Parent    = objetsScroll,
 })
 
-local function creerRowObjet(layoutOrder)
+-- creerRowObjet : stylise avec gradient et stroke colorés selon l'item
+local function creerRowObjet(layoutOrder, style)
+    local s = style or { top = C.CardBg, bot = C.CardBg, str = C.Bordure }
     local row = newInst("Frame", {
-        Size                   = UDim2.new(1, 0, 0, 100),
-        BackgroundColor3       = C.CardBg,
-        BackgroundTransparency = 0,
-        BorderSizePixel        = 0,
-        LayoutOrder            = layoutOrder,
-        ZIndex                 = 6,
-        Parent                 = objetsScroll,
+        Size            = UDim2.new(1, 0, 0, 100),
+        BackgroundColor3= s.bot,
+        BorderSizePixel = 0,
+        LayoutOrder     = layoutOrder,
+        ZIndex          = 6,
+        Parent          = objetsScroll,
     })
-    addCorner(row, 0)
-    addStroke(row)
+    addCorner(row, 4)
+    do
+        local sk = Instance.new("UIStroke")
+        sk.Name = "Stroke"; sk.Color = s.str; sk.Thickness = 1.5; sk.Parent = row
+    end
+    addGradientV(row, s.top, s.bot)
     addPadding(row, 10)
     return row
 end
 
-local function creerIconeRow(parent)
-    local img = newInst("ImageLabel", {
-        Size             = UDim2.new(0, 80, 0, 80),
-        Position         = UDim2.new(0, 0, 0.5, -40),
-        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-        Image            = "",
+-- creerIconeRow : carré coloré (sans emoji)
+local function creerIconeRow(parent, _unused, bgColor)
+    local frame = newInst("Frame", {
+        Size             = UDim2.new(0, 72, 0, 72),
+        Position         = UDim2.new(0, 0, 0.5, -36),
+        BackgroundColor3 = bgColor or Color3.fromRGB(35, 35, 35),
         BorderSizePixel  = 0,
         ZIndex           = 7,
         Parent           = parent,
     })
-    addCorner(img, 4)
-    return img
+    addCorner(frame, 10)
+    return frame
 end
 
 local function creerNomRow(parent, texte)
@@ -363,9 +398,9 @@ local function creerBoutonRow(parent, texte, couleur, offsetX)
 end
 
 -- ROW SPEEDCOIL
-local speedCoilRow = creerRowObjet(1)
+local speedCoilRow = creerRowObjet(1, ITEM_STYLES.SpeedCoil)
 speedCoilRow.Name  = "SpeedCoilRow"
-creerIconeRow(speedCoilRow)
+creerIconeRow(speedCoilRow, ITEM_STYLES.SpeedCoil.icon, ITEM_STYLES.SpeedCoil.top)
 creerNomRow(speedCoilRow, "SpeedCoil")
 
 local speedCoilPriceBtn   = creerBoutonRow(speedCoilRow, ShopConfig.FormatNumber(ShopConfig.SpeedCoil.Price), C.Succes, -94)
@@ -388,9 +423,9 @@ speedCoilEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer
 speedCoilUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("SpeedCoil_Unequip") end)
 
 -- ROW GRAVITYCOIL
-local gravityCoilRow = creerRowObjet(2)
+local gravityCoilRow = creerRowObjet(2, ITEM_STYLES.GravityCoil)
 gravityCoilRow.Name  = "GravityCoilRow"
-creerIconeRow(gravityCoilRow)
+creerIconeRow(gravityCoilRow, ITEM_STYLES.GravityCoil.icon, ITEM_STYLES.GravityCoil.top)
 creerNomRow(gravityCoilRow, "GravityCoil")
 
 local gravityCoilPriceBtn   = creerBoutonRow(gravityCoilRow, ShopConfig.FormatNumber(ShopConfig.GravityCoil.Price), C.Succes, -94)
@@ -413,44 +448,10 @@ gravityCoilEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServ
 gravityCoilUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("GravityCoil_Unequip") end)
 
 -- ROW VOID CAPE
-local capeRow = newInst("Frame", {
-    Name                   = "VoidCapeRow",
-    Size                   = UDim2.new(1, 0, 0, 100),
-    BackgroundColor3       = C.CardBg,
-    BackgroundTransparency = 0,
-    BorderSizePixel        = 0,
-    LayoutOrder            = 3,
-    ZIndex                 = 6,
-    Parent                 = objetsScroll,
-})
-addCorner(capeRow, 0)
-addStroke(capeRow)
-addPadding(capeRow, 10)
-
-local capeThumbnail = newInst("ImageLabel", {
-    Size             = UDim2.new(0, 80, 0, 80),
-    Position         = UDim2.new(0, 0, 0.5, -40),
-    BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-    Image            = "",
-    BorderSizePixel  = 0,
-    ZIndex           = 7,
-    Parent           = capeRow,
-})
-addCorner(capeThumbnail, 4)
-
-newInst("TextLabel", {
-    Size                   = UDim2.new(0, 160, 0, 28),
-    Position               = UDim2.new(0, 90, 0.5, -14),
-    BackgroundTransparency = 1,
-    Text                   = "The Void Cape",
-    Font                   = Enum.Font.GothamBold,
-    TextSize               = 15,
-    TextScaled             = false,
-    TextXAlignment         = Enum.TextXAlignment.Left,
-    TextColor3             = C.TextPrim,
-    ZIndex                 = 7,
-    Parent                 = capeRow,
-})
+local capeRow = creerRowObjet(3, ITEM_STYLES.VoidCape)
+capeRow.Name = "VoidCapeRow"
+creerIconeRow(capeRow, ITEM_STYLES.VoidCape.icon, ITEM_STYLES.VoidCape.top)
+creerNomRow(capeRow, "The Void Cape")
 
 local capePriceBtn   = creerBoutonRow(capeRow, ShopConfig.FormatNumber(ShopConfig.Cape.Price), C.Succes,  -94)
 local capeEquipBtn   = creerBoutonRow(capeRow, "Equiper",    C.Accent,  -94)
@@ -472,9 +473,9 @@ capeEquipBtn.MouseButton1Click:Connect(function()   ShopPurchase:FireServer("Cap
 capeUnequipBtn.MouseButton1Click:Connect(function() ShopPurchase:FireServer("Cape_Unequip") end)
 
 -- ROW ROCKET
-local rocketRow = creerRowObjet(4)
+local rocketRow = creerRowObjet(4, ITEM_STYLES.Rocket)
 rocketRow.Name  = "RocketRow"
-creerIconeRow(rocketRow)
+creerIconeRow(rocketRow, ITEM_STYLES.Rocket.icon, ITEM_STYLES.Rocket.top)
 creerNomRow(rocketRow, "Rocket")
 
 local rocketPriceBtn   = creerBoutonRow(rocketRow, ShopConfig.FormatNumber(ShopConfig.Rocket.Price), C.Succes,  -94)
@@ -552,19 +553,29 @@ end
 
 -- Ligne Carry
 local function creerRowCarry()
+    local s = UPGRADE_STYLES.Carry
     local row = newInst("Frame", {
-        Name                   = "RowCarry",
-        Size                   = UDim2.new(1, 0, 0, 72),
-        BackgroundColor3       = C.CardBg,
-        BackgroundTransparency = 0,
-        BorderSizePixel        = 0,
-        LayoutOrder            = 1,
-        ZIndex                 = 6,
-        Parent                 = upgradeScroll,
+        Name            = "RowCarry",
+        Size            = UDim2.new(1, 0, 0, 80),
+        BackgroundColor3= s.bot,
+        BorderSizePixel = 0,
+        LayoutOrder     = 1,
+        ZIndex          = 6,
+        Parent          = upgradeScroll,
     })
-    addCorner(row, 0)
-    addStroke(row)
+    addCorner(row, 4)
+    do
+        local sk = Instance.new("UIStroke")
+        sk.Name = "Stroke"; sk.Color = s.str; sk.Thickness = 1.5; sk.Parent = row
+    end
+    addGradientV(row, s.top, s.bot)
     addPadding(row, 10)
+    -- Bande colorée décorative en haut de la carte
+    local topBand = newInst("Frame", {
+        Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = s.str,
+        BorderSizePixel = 0, ZIndex = 5, Parent = row,
+    })
+    addCorner(topBand, 4)
 
     local title = newInst("TextLabel", {
         Size                   = UDim2.new(1, -100, 0, 22),
@@ -630,21 +641,30 @@ end
 
 -- Ligne Speed / Jump (x1 x10 MAX)
 local function creerRowStatMulti(cfg, upgradeType, layoutOrder)
-    local isJump = upgradeType == "Jump"
+    local s = UPGRADE_STYLES[upgradeType] or { top = C.CardBg, bot = C.CardBg, str = C.Bordure, icon = "⬜" }
 
     local row = newInst("Frame", {
-        Name                   = "Row" .. upgradeType,
-        Size                   = UDim2.new(1, 0, 0, 96),
-        BackgroundColor3       = C.CardBg,
-        BackgroundTransparency = 0,
-        BorderSizePixel        = 0,
-        LayoutOrder            = layoutOrder,
-        ZIndex                 = 6,
-        Parent                 = upgradeScroll,
+        Name            = "Row" .. upgradeType,
+        Size            = UDim2.new(1, 0, 0, 104),
+        BackgroundColor3= s.bot,
+        BorderSizePixel = 0,
+        LayoutOrder     = layoutOrder,
+        ZIndex          = 6,
+        Parent          = upgradeScroll,
     })
-    addCorner(row, 0)
-    addStroke(row)
+    addCorner(row, 4)
+    do
+        local sk = Instance.new("UIStroke")
+        sk.Name = "Stroke"; sk.Color = s.str; sk.Thickness = 1.5; sk.Parent = row
+    end
+    addGradientV(row, s.top, s.bot)
     addPadding(row, 10)
+    -- Bande colorée décorative en haut de la carte
+    local topBand = newInst("Frame", {
+        Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = s.str,
+        BorderSizePixel = 0, ZIndex = 5, Parent = row,
+    })
+    addCorner(topBand, 4)
 
     local title = newInst("TextLabel", {
         Size                   = UDim2.new(1, 0, 0, 22),
@@ -731,15 +751,25 @@ local function refreshUI(data)
     refreshRocket(data)
 end
 
--- Gestion des onglets
+-- Gestion des onglets (onglet actif = gradient orange, inactif = gris)
 local function setTab(tab)
     activeTab = tab
     objetsFrame.Visible   = (tab == "Objets")
     upgradesFrame.Visible = (tab == "Upgrades")
-    tabObjets.BackgroundColor3   = (tab == "Objets")   and C.Accent or C.Bordure
-    tabUpgrades.BackgroundColor3 = (tab == "Upgrades") and C.Accent or C.Bordure
-    tabObjets.TextColor3   = (tab == "Objets")   and C.TextPrim or C.TextSec
-    tabUpgrades.TextColor3 = (tab == "Upgrades") and C.TextPrim or C.TextSec
+
+    local function styleTab(btn, isActive)
+        btn.BackgroundColor3 = isActive and C.Accent or C.Bordure
+        btn.TextColor3       = isActive and Color3.fromRGB(255,255,255) or C.TextSec
+        local g = btn:FindFirstChildWhichIsA("UIGradient")
+        if g then g:Destroy() end
+        if isActive then
+            addGradientV(btn, Color3.fromRGB(240, 130, 20), Color3.fromRGB(160, 70, 5))
+        end
+        local sk = btn:FindFirstChild("Stroke")
+        if sk then sk.Color = isActive and C.AccentStr or C.Bordure end
+    end
+    styleTab(tabObjets,   tab == "Objets")
+    styleTab(tabUpgrades, tab == "Upgrades")
 end
 
 setTab("Upgrades")

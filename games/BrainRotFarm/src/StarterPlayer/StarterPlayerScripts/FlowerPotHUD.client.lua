@@ -91,22 +91,27 @@ workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(functio
 end)
 
 local uiStroke = Instance.new("UIStroke", mainFrame)
-uiStroke.Color     = UI.Colors.ModalBorder
-uiStroke.Thickness = 1
+uiStroke.Color           = Color3.fromRGB(255, 180, 30)
+uiStroke.Thickness       = 5
+uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+mainFrame.ClipsDescendants = true
 
 -- Titre
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name                   = "Title"
-titleLabel.Size                   = UDim2.new(1, -44, 0, 44)
-titleLabel.Position               = UDim2.new(0, 12, 0, 6)
-titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3             = UI.Colors.TextOnDark
+titleLabel.Size                   = UDim2.new(1, 0, 0, 50)
+titleLabel.Position               = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+titleLabel.BackgroundTransparency = 0
+titleLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
+titleLabel.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
+titleLabel.TextStrokeTransparency = 0
 titleLabel.Font                   = UI.Fonts.Title
 titleLabel.TextSize               = UI.TextSizes.H1
 titleLabel.TextScaled             = false
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.RichText               = true
-titleLabel.Text                   = "Flower Pot"
+titleLabel.Text                   = "  Flower Pot"
 titleLabel.ZIndex                 = 12
 titleLabel.Parent                 = mainFrame
 
@@ -123,18 +128,18 @@ sep.Parent           = mainFrame
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size              = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize)
 closeBtn.Position          = UDim2.new(1, -50, 0, 4)
-closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
+closeBtn.BackgroundColor3  = Color3.fromRGB(230, 50, 50)
 closeBtn.Text              = "X"
-closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
+closeBtn.TextColor3        = Color3.fromRGB(255, 255, 255)
 closeBtn.Font              = UI.Fonts.Title
 closeBtn.TextSize          = UI.TextSizes.H2
 closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 12
 closeBtn.Parent            = mainFrame
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 local _closeBtnStroke = Instance.new("UIStroke", closeBtn)
-_closeBtnStroke.Color = Color3.fromRGB(60, 60, 60) ; _closeBtnStroke.Thickness = 1
+_closeBtnStroke.Color = Color3.fromRGB(255, 255, 255) ; _closeBtnStroke.Thickness = 3
 
 -- Zone de contenu scrollable
 local scrollFrame = Instance.new("ScrollingFrame")
@@ -786,9 +791,11 @@ local function OuvrirDailySeedPanel()
     panel.BorderSizePixel        = 0
     panel.ZIndex                 = 20
     Instance.new("UICorner", panel).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+    panel.ClipsDescendants = true
     local _panelStroke = Instance.new("UIStroke", panel)
-    _panelStroke.Color     = UI.Colors.ModalBorder
-    _panelStroke.Thickness = 1
+    _panelStroke.Color           = Color3.fromRGB(255, 180, 30)
+    _panelStroke.Thickness       = 5
+    _panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
     -- UIScale : adapte le panel 320×480 à la taille réelle du viewport
     local _dsScale = Instance.new("UIScale", panel)
@@ -802,11 +809,14 @@ local function OuvrirDailySeedPanel()
 
     -- Titre
     local titre = Instance.new("TextLabel", panel)
-    titre.Size                   = UDim2.new(1, -60, 0, 40)
-    titre.Position               = UDim2.new(0, 16, 0, 6)
-    titre.BackgroundTransparency = 1
-    titre.Text                   = "DAILY SEEDS"
-    titre.TextColor3             = UI.Colors.TextOnDark
+    titre.Size                   = UDim2.new(1, 0, 0, 46)
+    titre.Position               = UDim2.new(0, 0, 0, 0)
+    titre.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+    titre.BackgroundTransparency = 0
+    titre.Text                   = "  DAILY SEEDS"
+    titre.TextColor3             = Color3.fromRGB(255, 255, 255)
+    titre.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
+    titre.TextStrokeTransparency = 0
     titre.Font                   = UI.Fonts.Title
     titre.TextSize               = UI.TextSizes.H1
     titre.TextScaled             = false
@@ -817,17 +827,17 @@ local function OuvrirDailySeedPanel()
     local btnClose = Instance.new("TextButton", panel)
     btnClose.Size                   = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize)
     btnClose.Position               = UDim2.new(1, -50, 0, 4)
-    btnClose.BackgroundColor3       = Color3.fromRGB(50, 50, 50)
+    btnClose.BackgroundColor3       = Color3.fromRGB(230, 50, 50)
     btnClose.Text                   = "X"
-    btnClose.TextColor3             = Color3.fromRGB(180, 180, 180)
+    btnClose.TextColor3             = Color3.fromRGB(255, 255, 255)
     btnClose.Font                   = UI.Fonts.Title
     btnClose.TextSize               = UI.TextSizes.H2
     btnClose.TextScaled             = false
     btnClose.BorderSizePixel        = 0
     btnClose.ZIndex                 = 21
-    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+    Instance.new("UICorner", btnClose).CornerRadius = UDim.new(0, 6)
     local _bcs = Instance.new("UIStroke", btnClose)
-    _bcs.Color = UI.Colors.ModalBorder ; _bcs.Thickness = 1
+    _bcs.Color = Color3.fromRGB(255, 255, 255) ; _bcs.Thickness = 3
     btnClose.MouseButton1Click:Connect(function()
         ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
         panel:Destroy()
@@ -953,15 +963,17 @@ local function OuvrirDailySeedPanel()
     local btnSkip = Instance.new("TextButton", panel)
     btnSkip.Size                   = UDim2.new(0, 135, 0, UI.ButtonSizes.Large.Height)
     btnSkip.Position               = UDim2.new(0, 10, 1, -(UI.ButtonSizes.Large.Height + 10))
-    btnSkip.BackgroundColor3       = UI.Colors.OrangeNormal
-    btnSkip.TextColor3             = UI.Colors.TextOnDark
+    btnSkip.BackgroundColor3       = Color3.fromRGB(140, 220, 70)
+    btnSkip.TextColor3             = Color3.fromRGB(255, 255, 255)
     btnSkip.Font                   = UI.Fonts.Title
     btnSkip.TextSize               = UI.ButtonSizes.Large.TextSize
     btnSkip.TextScaled             = false
     btnSkip.Text                   = "Skip — 25 R$"
     btnSkip.BorderSizePixel        = 0
     btnSkip.ZIndex                 = 21
-    Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+    Instance.new("UICorner", btnSkip).CornerRadius = UDim.new(0, 20)
+    local _skipStroke = Instance.new("UIStroke", btnSkip)
+    _skipStroke.Color = Color3.fromRGB(60, 120, 30) ; _skipStroke.Thickness = 2
     btnSkip.MouseButton1Click:Connect(function()
         RequestSkipDailySeed:FireServer()
     end)
@@ -969,15 +981,17 @@ local function OuvrirDailySeedPanel()
     local btnPack = Instance.new("TextButton", panel)
     btnPack.Size                   = UDim2.new(0, 145, 0, UI.ButtonSizes.Large.Height)
     btnPack.Position               = UDim2.new(1, -155, 1, -(UI.ButtonSizes.Large.Height + 10))
-    btnPack.BackgroundColor3       = UI.Colors.OrangeNormal
-    btnPack.TextColor3             = UI.Colors.TextOnDark
+    btnPack.BackgroundColor3       = Color3.fromRGB(140, 220, 70)
+    btnPack.TextColor3             = Color3.fromRGB(255, 255, 255)
     btnPack.Font                   = UI.Fonts.Title
     btnPack.TextSize               = UI.ButtonSizes.Large.TextSize
     btnPack.TextScaled             = false
     btnPack.Text                   = "Pack x3 — 99 R$"
     btnPack.BorderSizePixel        = 0
     btnPack.ZIndex                 = 21
-    Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+    Instance.new("UICorner", btnPack).CornerRadius = UDim.new(0, 20)
+    local _packStroke = Instance.new("UIStroke", btnPack)
+    _packStroke.Color = Color3.fromRGB(60, 120, 30) ; _packStroke.Thickness = 2
     local _dpDevP = Config.DevProductIds or {}
     btnPack.MouseButton1Click:Connect(function()
         if _dpDevP.SeedPackx3 and _dpDevP.SeedPackx3 > 0 then
@@ -1016,7 +1030,8 @@ fpPanel.Visible                = false
 fpPanel.ZIndex                 = 20
 Instance.new("UICorner", fpPanel).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local _fpStroke = Instance.new("UIStroke", fpPanel)
-_fpStroke.Color = UI.Colors.ModalBorder ; _fpStroke.Thickness = 1
+_fpStroke.Color = Color3.fromRGB(255, 180, 30) ; _fpStroke.Thickness = 5 ; _fpStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+fpPanel.ClipsDescendants = true
 local _fpScale = Instance.new("UIScale", fpPanel)
 local function _ajusterFpPanel()
     local vp = workspace.CurrentCamera.ViewportSize
@@ -1027,21 +1042,23 @@ workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajuste
 _ajusterFpPanel()
 
 local fpTitre = Instance.new("TextLabel", fpPanel)
-fpTitre.Size = UDim2.new(1,-50,0,28) ; fpTitre.Position = UDim2.new(0,12,0,6)
-fpTitre.BackgroundTransparency = 1 ; fpTitre.TextColor3 = UI.Colors.TextOnDark
+fpTitre.Size = UDim2.new(1, 0, 0, 36) ; fpTitre.Position = UDim2.new(0, 0, 0, 0)
+fpTitre.BackgroundColor3 = Color3.fromRGB(255, 200, 50) ; fpTitre.BackgroundTransparency = 0
+fpTitre.TextColor3 = Color3.fromRGB(255, 255, 255)
+fpTitre.TextStrokeColor3 = Color3.fromRGB(80, 40, 0) ; fpTitre.TextStrokeTransparency = 0
 fpTitre.Font = UI.Fonts.Title ; fpTitre.TextSize = UI.TextSizes.H2
 fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
-fpTitre.Text = "FlowerPot Status" ; fpTitre.ZIndex = 21
+fpTitre.Text = "  FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
 fpClose.Size = UDim2.new(0,44,0,44) ; fpClose.Position = UDim2.new(1,-50,0,4)
-fpClose.BackgroundColor3 = Color3.fromRGB(50,50,50) ; fpClose.Text = "X"
-fpClose.TextColor3 = Color3.fromRGB(180,180,180) ; fpClose.Font = UI.Fonts.Title
+fpClose.BackgroundColor3 = Color3.fromRGB(230,50,50) ; fpClose.Text = "X"
+fpClose.TextColor3 = Color3.fromRGB(255,255,255) ; fpClose.Font = UI.Fonts.Title
 fpClose.TextSize = UI.TextSizes.H2 ; fpClose.TextScaled = false
 fpClose.BorderSizePixel = 0 ; fpClose.ZIndex = 21
 Instance.new("UICorner", fpClose).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local _fpcs = Instance.new("UIStroke", fpClose)
-_fpcs.Color = Color3.fromRGB(60,60,60) ; _fpcs.Thickness = 1
+_fpcs.Color = Color3.fromRGB(255,255,255) ; _fpcs.Thickness = 3
 fpClose.MouseButton1Click:Connect(function()
     ModalManager.Close(ModalManager.Modals.FLOWER_POT_PANEL)
     fpPanel.Visible = false

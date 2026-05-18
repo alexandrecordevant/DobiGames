@@ -89,16 +89,21 @@ panel.Visible                = false
 panel.ZIndex                 = 21
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 local panelStroke = Instance.new("UIStroke", panel)
-panelStroke.Color     = UI.Colors.ModalBorder
-panelStroke.Thickness = 1
+panelStroke.Color           = Color3.fromRGB(255, 180, 30)
+panelStroke.Thickness       = 5
+panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+panel.ClipsDescendants      = true
 
 -- Barre de titre
 local titleLbl = Instance.new("TextLabel", panel)
-titleLbl.Size                   = UDim2.new(1, -50, 0, 44)
-titleLbl.Position               = UDim2.new(0, 14, 0, 6)
-titleLbl.BackgroundTransparency = 1
-titleLbl.Text                   = "HOW TO PLAY"
-titleLbl.TextColor3             = UI.Colors.TextOnDark
+titleLbl.Size                   = UDim2.new(1, 0, 0, 54)
+titleLbl.Position               = UDim2.new(0, 0, 0, 0)
+titleLbl.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+titleLbl.BackgroundTransparency = 0
+titleLbl.Text                   = "  HOW TO PLAY"
+titleLbl.TextColor3             = Color3.fromRGB(255, 255, 255)
+titleLbl.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
+titleLbl.TextStrokeTransparency = 0
 titleLbl.Font                   = UI.Fonts.Title
 titleLbl.TextSize               = UI.TextSizes.H1
 titleLbl.TextScaled             = false
@@ -108,17 +113,17 @@ titleLbl.ZIndex                 = 22
 local closeBtn = Instance.new("TextButton", panel)
 closeBtn.Size              = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize)
 closeBtn.Position          = UDim2.new(1, -50, 0, 4)
-closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
+closeBtn.BackgroundColor3  = Color3.fromRGB(230, 50, 50)
 closeBtn.Text              = "X"
-closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
+closeBtn.TextColor3        = Color3.fromRGB(255, 255, 255)
 closeBtn.Font              = UI.Fonts.Title
 closeBtn.TextSize          = UI.TextSizes.H2
 closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
-closeBtn.ZIndex            = 22
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+closeBtn.ZIndex            = 23
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 local _cbs = Instance.new("UIStroke", closeBtn)
-_cbs.Color = UI.Colors.ModalBorder ; _cbs.Thickness = 1
+_cbs.Color = Color3.fromRGB(255, 255, 255) ; _cbs.Thickness = 3
 
 local sep = Instance.new("Frame", panel)
 sep.Size             = UDim2.new(1, -24, 0, 1)
@@ -161,8 +166,8 @@ local function makeCard(icon, title, body, order, accentColor)
     card.ZIndex           = 23
     Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
     local cs = Instance.new("UIStroke", card)
-    cs.Color     = accentColor or UI.Colors.ModalBorder  -- couleur de section intentionnelle
-    cs.Thickness = 1.5
+    cs.Color     = accentColor or UI.Colors.ModalBorder
+    cs.Thickness = 2.5
 
     local cp = Instance.new("UIPadding", card)
     cp.PaddingTop    = UDim.new(0, UI.Spacing.SM)

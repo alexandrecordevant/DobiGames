@@ -68,8 +68,8 @@ burgerBtn.ZIndex                 = 20
 burgerBtn.Parent                 = gui
 Instance.new("UICorner", burgerBtn).CornerRadius = UDim.new(0, 8)
 local burgerStroke = Instance.new("UIStroke", burgerBtn)
-burgerStroke.Color     = Color3.fromRGB(60, 60, 60)
-burgerStroke.Thickness = 1
+burgerStroke.Color     = Color3.fromRGB(255, 180, 30)
+burgerStroke.Thickness = 3
 
 -- 3 barres horizontales (☰ n'est pas dans la police Roblox)
 do
@@ -105,8 +105,9 @@ menuPanel.ZIndex                 = 15
 menuPanel.Parent                 = gui
 Instance.new("UICorner", menuPanel).CornerRadius = UDim.new(0, 8)
 local panelStroke = Instance.new("UIStroke", menuPanel)
-panelStroke.Color     = Color3.fromRGB(50, 50, 50)
-panelStroke.Thickness = 1
+panelStroke.Color           = Color3.fromRGB(255, 180, 30)
+panelStroke.Thickness       = 4
+panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 -- Grille 2 colonnes
 local gridLayout = Instance.new("UIGridLayout", menuPanel)
@@ -367,7 +368,7 @@ task.spawn(function()
     proxyBtn.Parent                 = menuPanel
     Instance.new("UICorner", proxyBtn).CornerRadius = UDim.new(0, RAYON)
     local s = Instance.new("UIStroke", proxyBtn)
-    s.Color = Color3.fromRGB(60, 60, 60) ; s.Thickness = 1
+    s.Color = Color3.fromRGB(255, 180, 30) ; s.Thickness = 3 ; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
     local enCooldown = false
     proxyBtn.MouseButton1Click:Connect(function()

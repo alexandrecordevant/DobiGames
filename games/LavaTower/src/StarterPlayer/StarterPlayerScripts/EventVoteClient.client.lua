@@ -1,10 +1,9 @@
 -- StarterPlayerScripts/EventVoteClient.client.lua
--- Menu de vote Toxic vs Nebula — style Tower (coins carrés, deux noirs, orange)
+-- Menu de vote Toxic vs Nebula — duel visuel avec couleurs de camp et animations
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
-local Workspace         = game:GetService("Workspace")
 
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -26,26 +25,41 @@ local function tr(key)
 	return (LANG[lang] or LANG["en"])[key] or LANG["en"][key]
 end
 
--- ── Palette style Tower ───────────────────────────────────────────────────────
+-- ── Palette ───────────────────────────────────────────────────────────────────
 local C = {
-	BgDark     = Color3.fromRGB(8,   8,   8),    -- fond principal
-	BgMid      = Color3.fromRGB(22,  22,  22),   -- fond cartes
-	Bordure    = Color3.fromRGB(55,  55,  55),
-	Accent     = Color3.fromRGB(220, 110, 15),   -- orange Tower (titre)
-	TextPrim   = Color3.fromRGB(220, 220, 220),
-	TextSec    = Color3.fromRGB(130, 130, 130),
-	Fermer     = Color3.fromRGB(45,  45,  45),
-	VoteToxic  = Color3.fromRGB(0,   230, 80),   -- vert fluo
-	VoteNebula = Color3.fromRGB(255, 60,  200),  -- rose fluo
-	-- barre : même couleur que les boutons (cohérence)
-	BarToxic   = Color3.fromRGB(0,   230, 80),
-	BarNebula  = Color3.fromRGB(255, 60,  200),  -- rose (pas violet)
+	BgDark      = Color3.fromRGB(8,   8,   8),
+	Bordure     = Color3.fromRGB(55,  55,  55),
+	Accent      = Color3.fromRGB(220, 110, 15),
+	TextPrim    = Color3.fromRGB(220, 220, 220),
+	TextSec     = Color3.fromRGB(130, 130, 130),
+	Fermer      = Color3.fromRGB(45,  45,  45),
+	-- Toxic — vert de la palette (même famille que Jump/Base)
+	ToxicBgTop  = Color3.fromRGB(75,  225, 125),  -- highlight
+	ToxicBgBot  = Color3.fromRGB(42,  190, 88),   -- base
+	ToxicStroke = Color3.fromRGB(115, 255, 165),
+	ToxicBtn    = Color3.fromRGB(55,  205, 100),
+	ToxicBtnStr = Color3.fromRGB(115, 255, 165),
+	BarToxic    = Color3.fromRGB(75,  225, 125),
+	-- Nebula — violet de la palette (même famille que GravityCoil/2h)
+	NebulaBgTop = Color3.fromRGB(175, 110, 255),  -- highlight
+	NebulaBgBot = Color3.fromRGB(135, 68,  220),  -- base
+	NebulaStroke= Color3.fromRGB(215, 160, 255),
+	NebulaBtn   = Color3.fromRGB(155, 85,  240),
+	NebulaBtnStr= Color3.fromRGB(215, 160, 255),
+	BarNebula   = Color3.fromRGB(175, 110, 255),
 }
-local CORNER = UDim.new(0, 3)   -- très légèrement arrondi, style Tower
 
 -- IDs des images (remplace par tes rbxassetid dans Studio)
 local IMAGE_TOXIC  = "rbxassetid://0"
 local IMAGE_NEBULA = "rbxassetid://0"
+
+local PANEL_W, PANEL_H = 440, 330
+
+-- TweenInfo réutilisables
+local TI_BACK35 = TweenInfo.new(0.35, Enum.EasingStyle.Back,   Enum.EasingDirection.Out)
+local TI_QUAD15 = TweenInfo.new(0.15, Enum.EasingStyle.Quad,   Enum.EasingDirection.In)
+local TI_PULSE  = TweenInfo.new(1.2,  Enum.EasingStyle.Sine,   Enum.EasingDirection.InOut, -1, true)
+local TI_ROT    = TweenInfo.new(2.5,  Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
 
 -- ── Utilitaires ───────────────────────────────────────────────────────────────
 local function addCorner(parent, r)
@@ -53,9 +67,16 @@ local function addCorner(parent, r)
 	c.CornerRadius = UDim.new(0, r or 3)
 	c.Parent = parent
 end
-local function addStroke(parent)
+local function addStrokeColor(parent, color, thick)
 	local s = Instance.new("UIStroke")
-	s.Color = C.Bordure; s.Thickness = 1; s.Parent = parent
+	s.Color = color; s.Thickness = thick or 1; s.Parent = parent
+	return s
+end
+local function addGradient(parent, keypoints)
+	local g = Instance.new("UIGradient")
+	g.Color  = ColorSequence.new(keypoints)
+	g.Parent = parent
+	return g
 end
 local function formatTimer(secs)
 	secs = math.max(0, math.floor(secs))
@@ -80,23 +101,31 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Enabled        = false
 screenGui.Parent         = playerGui
 
-
--- Panel principal (440 × 330)
+-- Panel principal
 local panel = Instance.new("Frame")
-panel.Size                   = UDim2.new(0, 440, 0, 330)
-panel.Position               = UDim2.new(0.5, -220, 0.5, -165)
-panel.BackgroundColor3       = C.BgDark
-panel.BorderSizePixel        = 0
-panel.ZIndex                 = 2
-panel.Parent                 = screenGui
-addCorner(panel, 3); addStroke(panel)
+panel.Size             = UDim2.new(0, PANEL_W, 0, PANEL_H)
+panel.AnchorPoint      = Vector2.new(0.5, 0.5)
+panel.Position         = UDim2.new(0.5, 0, 0.5, 0)
+panel.BackgroundColor3 = C.BgDark
+panel.BorderSizePixel  = 0
+panel.ZIndex           = 2
+panel.Parent           = screenGui
+addCorner(panel, 5)
+addStrokeColor(panel, C.Bordure, 1)
 
--- Guard (empêche les clics de traverser au backdrop)
+-- Gradient fond panel (aura vert-gauche → noir-centre → violet-droite)
+addGradient(panel, {
+	ColorSequenceKeypoint.new(0,   Color3.fromRGB(12, 28, 15)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(8,  8,  8)),
+	ColorSequenceKeypoint.new(1,   Color3.fromRGB(22, 8,  42)),
+})
+
+-- Guard
 local guard = Instance.new("TextButton")
 guard.Size = UDim2.fromScale(1, 1); guard.BackgroundTransparency = 1
 guard.BorderSizePixel = 0; guard.Text = ""; guard.ZIndex = 2; guard.Parent = panel
 
--- Titre orange
+-- Titre
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size                   = UDim2.new(1, -50, 0, 38)
 titleLabel.Position               = UDim2.new(0, 10, 0, 4)
@@ -111,29 +140,29 @@ titleLabel.Parent                 = panel
 
 -- Bouton fermer
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size                   = UDim2.new(0, 32, 0, 32)
-closeBtn.Position               = UDim2.new(1, -38, 0, 4)
-closeBtn.BackgroundColor3       = C.Fermer
-closeBtn.BorderSizePixel        = 0
-closeBtn.TextColor3             = C.TextPrim
-closeBtn.TextScaled             = false
-closeBtn.TextSize               = 14
-closeBtn.Font                   = Enum.Font.GothamBold
-closeBtn.Text                   = "X"
-closeBtn.ZIndex                 = 4
-closeBtn.Parent                 = panel
+closeBtn.Size             = UDim2.new(0, 32, 0, 32)
+closeBtn.Position         = UDim2.new(1, -38, 0, 4)
+closeBtn.BackgroundColor3 = C.Fermer
+closeBtn.BorderSizePixel  = 0
+closeBtn.TextColor3       = C.TextPrim
+closeBtn.TextScaled       = false
+closeBtn.TextSize         = 14
+closeBtn.Font             = Enum.Font.GothamBold
+closeBtn.Text             = "X"
+closeBtn.ZIndex           = 4
+closeBtn.Parent           = panel
 addCorner(closeBtn, 2)
 
--- Séparateur
+-- Séparateur titre/contenu
 local sep = Instance.new("Frame")
-sep.Size                   = UDim2.new(1, -16, 0, 1)
-sep.Position               = UDim2.new(0, 8, 0, 44)
-sep.BackgroundColor3       = C.Bordure
-sep.BorderSizePixel        = 0
-sep.ZIndex                 = 3
-sep.Parent                 = panel
+sep.Size             = UDim2.new(1, -16, 0, 1)
+sep.Position         = UDim2.new(0, 8, 0, 44)
+sep.BackgroundColor3 = C.Bordure
+sep.BorderSizePixel  = 0
+sep.ZIndex           = 3
+sep.Parent           = panel
 
--- Timer du cycle (sous le titre)
+-- Timer (sous le titre)
 local timerLabel = Instance.new("TextLabel")
 timerLabel.Size                   = UDim2.new(1, 0, 0, 26)
 timerLabel.Position               = UDim2.new(0, 0, 0, 47)
@@ -146,27 +175,34 @@ timerLabel.TextXAlignment         = Enum.TextXAlignment.Center
 timerLabel.ZIndex                 = 3
 timerLabel.Parent                 = panel
 
--- ── Camp (gauche ou droite) ───────────────────────────────────────────────────
-local function creerCamp(xOffset, imageId, btnColor)
+-- ── Camps ─────────────────────────────────────────────────────────────────────
+-- Retourne : btn (bouton VOTER)
+local function creerCamp(xOffset, imageId, bgTop, bgBot, strokeColor, btnColor, btnStrokeColor, btnTextDark)
 	local frame = Instance.new("Frame")
-	frame.Size                   = UDim2.new(0, 196, 0, 208)
-	frame.Position               = UDim2.new(0, xOffset, 0, 76)
-	frame.BackgroundColor3       = C.BgMid
-	frame.BorderSizePixel        = 0
-	frame.ZIndex                 = 3
-	frame.Parent                 = panel
-	addCorner(frame, 3); addStroke(frame)
+	frame.Size             = UDim2.new(0, 196, 0, 208)
+	frame.Position         = UDim2.new(0, xOffset, 0, 76)
+	frame.BackgroundColor3 = bgBot
+	frame.BorderSizePixel  = 0
+	frame.ZIndex           = 3
+	frame.Parent           = panel
+	addCorner(frame, 5)
+	addStrokeColor(frame, strokeColor, 2)
+	local g = addGradient(frame, {
+		ColorSequenceKeypoint.new(0, bgTop),
+		ColorSequenceKeypoint.new(1, bgBot),
+	})
+	g.Rotation = 90
 
 	local thumb = Instance.new("ImageLabel")
-	thumb.Size                   = UDim2.new(1, -10, 0, 135)
-	thumb.Position               = UDim2.new(0, 5, 0, 5)
-	thumb.BackgroundColor3       = Color3.fromRGB(14, 14, 14)
-	thumb.BorderSizePixel        = 0
-	thumb.Image                  = imageId
-	thumb.ScaleType              = Enum.ScaleType.Fit
-	thumb.ZIndex                 = 4
-	thumb.Parent                 = frame
-	addCorner(thumb, 2)
+	thumb.Size             = UDim2.new(1, -10, 0, 135)
+	thumb.Position         = UDim2.new(0, 5, 0, 5)
+	thumb.BackgroundColor3 = bgBot
+	thumb.BorderSizePixel  = 0
+	thumb.Image            = imageId
+	thumb.ScaleType        = Enum.ScaleType.Fit
+	thumb.ZIndex           = 4
+	thumb.Parent           = frame
+	addCorner(thumb, 3)
 
 	local btn = Instance.new("TextButton")
 	btn.Size                   = UDim2.new(1, -10, 0, 48)
@@ -174,43 +210,84 @@ local function creerCamp(xOffset, imageId, btnColor)
 	btn.BackgroundColor3       = btnColor
 	btn.BackgroundTransparency = 0.05
 	btn.BorderSizePixel        = 0
-	btn.TextColor3             = Color3.fromRGB(8, 8, 8)
+	btn.TextColor3             = btnTextDark and Color3.fromRGB(8, 8, 8) or Color3.fromRGB(255, 255, 255)
 	btn.TextScaled             = false
 	btn.TextSize               = 17
 	btn.Font                   = Enum.Font.GothamBold
 	btn.ZIndex                 = 4
 	btn.Parent                 = frame
-	addCorner(btn, 3)
+	addCorner(btn, 5)
+	addStrokeColor(btn, btnStrokeColor, 2)
 
 	return btn
 end
 
-local voteToxicBtn  = creerCamp(12,  IMAGE_TOXIC,  C.VoteToxic)
-local voteNebulaBtn = creerCamp(232, IMAGE_NEBULA, C.VoteNebula)
+local voteToxicBtn  = creerCamp(12,  IMAGE_TOXIC,
+	C.ToxicBgTop, C.ToxicBgBot, C.ToxicStroke, C.ToxicBtn, C.ToxicBtnStr, true)
+local voteNebulaBtn = creerCamp(232, IMAGE_NEBULA,
+	C.NebulaBgTop, C.NebulaBgBot, C.NebulaStroke, C.NebulaBtn, C.NebulaBtnStr, false)
+
+-- ── Séparateur central animé (flammes) ───────────────────────────────────────
+-- Positionné dans le gap de 24px entre les deux camps (208→232)
+local sepCentral = Instance.new("Frame")
+sepCentral.Size             = UDim2.new(0, 20, 0, 208)
+sepCentral.Position         = UDim2.new(0, 210, 0, 76)
+sepCentral.BackgroundColor3 = Color3.fromRGB(0, 200, 70)
+sepCentral.BorderSizePixel  = 0
+sepCentral.ZIndex           = 4
+sepCentral.Parent           = panel
+
+local sepGrad = addGradient(sepCentral, {
+	ColorSequenceKeypoint.new(0,   Color3.fromRGB(0,   220, 70)),
+	ColorSequenceKeypoint.new(1,   Color3.fromRGB(120, 30,  200)),
+})
+TweenService:Create(sepGrad, TI_ROT, { Rotation = 360 }):Play()
 
 -- ── Barre de progression ──────────────────────────────────────────────────────
 local barBg = Instance.new("Frame")
-barBg.Size                   = UDim2.new(1, -20, 0, 20)
-barBg.Position               = UDim2.new(0, 10, 0, 294)
-barBg.BackgroundColor3       = C.BarNebula   -- rose (côté Nebula = partie droite)
-barBg.BorderSizePixel        = 0
-barBg.ZIndex                 = 3
-barBg.Parent                 = panel
-addCorner(barBg, 3)
+barBg.Size             = UDim2.new(1, -20, 0, 28)
+barBg.Position         = UDim2.new(0, 10, 0, 292)
+barBg.BackgroundColor3 = C.BarNebula
+barBg.BorderSizePixel  = 0
+barBg.ZIndex           = 3
+barBg.Parent           = panel
+addCorner(barBg, 6)
+addStrokeColor(barBg, C.Bordure, 1)
 
 local barToxic = Instance.new("Frame")
-barToxic.Size                   = UDim2.new(0.5, 0, 1, 0)
-barToxic.BackgroundColor3       = C.BarToxic  -- vert (côté Toxic = partie gauche)
-barToxic.BorderSizePixel        = 0
-barToxic.ZIndex                 = 4
-barToxic.Parent                 = barBg
-addCorner(barToxic, 3)
+barToxic.Size             = UDim2.new(0.5, 0, 1, 0)
+barToxic.BackgroundColor3 = C.BarToxic
+barToxic.BorderSizePixel  = 0
+barToxic.ZIndex           = 4
+barToxic.Parent           = barBg
+addCorner(barToxic, 6)
 
 -- ── État ──────────────────────────────────────────────────────────────────────
 local hasVoted        = false
 local curToxic        = 0
 local curNebula       = 0
-local currentCycleEnd = os.time() + 30  -- valeur par défaut visible immédiatement
+local currentCycleEnd = os.time() + 30
+
+local pulseToxicTween  = nil
+local pulseNebulaTween = nil
+
+local function startPulses()
+	if pulseToxicTween  then pulseToxicTween:Cancel()  end
+	if pulseNebulaTween then pulseNebulaTween:Cancel() end
+	voteToxicBtn.BackgroundTransparency  = 0.05
+	voteNebulaBtn.BackgroundTransparency = 0.05
+	pulseToxicTween  = TweenService:Create(voteToxicBtn,  TI_PULSE, { BackgroundTransparency = 0.28 })
+	pulseNebulaTween = TweenService:Create(voteNebulaBtn, TI_PULSE, { BackgroundTransparency = 0.28 })
+	pulseToxicTween:Play()
+	pulseNebulaTween:Play()
+end
+
+local function stopPulses()
+	if pulseToxicTween  then pulseToxicTween:Cancel()  end
+	if pulseNebulaTween then pulseNebulaTween:Cancel() end
+	pulseToxicTween  = nil
+	pulseNebulaTween = nil
+end
 
 local function updateBar(tv, nv)
 	local total = tv + nv
@@ -230,17 +307,26 @@ local function openMenu()
 	if shopGui  then shopGui.Enabled  = false end
 	local fuseGui  = playerGui:FindFirstChild("FuseSystemUI")
 	if fuseGui  then fuseGui.Enabled  = false end
-	titleLabel.Text = tr("title")
+
+	titleLabel.Text    = tr("title")
 	voteToxicBtn.Text  = tr("vote")
 	voteNebulaBtn.Text = tr("vote")
-	voteToxicBtn.BackgroundTransparency  = hasVoted and 0.5 or 0.05
-	voteNebulaBtn.BackgroundTransparency = hasVoted and 0.5 or 0.05
 	updateBar(curToxic, curNebula)
+
+	panel.Size        = UDim2.new(0, 0, 0, 0)
 	screenGui.Enabled = true
+	TweenService:Create(panel, TI_BACK35, { Size = UDim2.new(0, PANEL_W, 0, PANEL_H) }):Play()
+
+	if not hasVoted then startPulses() end
 end
 
 local function closeMenu()
-	screenGui.Enabled = false
+	stopPulses()
+	TweenService:Create(panel, TI_QUAD15, { Size = UDim2.new(0, 0, 0, 0) }):Play()
+	task.delay(0.16, function()
+		screenGui.Enabled = false
+		panel.Size        = UDim2.new(0, PANEL_W, 0, PANEL_H)
+	end)
 end
 
 closeBtn.Activated:Connect(closeMenu)
@@ -249,6 +335,7 @@ closeBtn.Activated:Connect(closeMenu)
 local function soumettre(choix)
 	if hasVoted then return end
 	hasVoted = true
+	stopPulses()
 	voteToxicBtn.BackgroundTransparency  = 0.5
 	voteNebulaBtn.BackgroundTransparency = 0.5
 	EventVoteSubmit:FireServer(choix)
@@ -261,7 +348,7 @@ end
 voteToxicBtn.Activated:Connect(function()  soumettre("toxic")  end)
 voteNebulaBtn.Activated:Connect(function() soumettre("nebula") end)
 
--- ── Mise à jour barre ─────────────────────────────────────────────────────────
+-- ── Mises à jour depuis le serveur ────────────────────────────────────────────
 EventVoteUpdate.OnClientEvent:Connect(function(tv, nv, cycleEnd)
 	curToxic        = tv or 0
 	curNebula       = nv or 0
@@ -269,7 +356,6 @@ EventVoteUpdate.OnClientEvent:Connect(function(tv, nv, cycleEnd)
 	if screenGui.Enabled then updateBar(tv, nv) end
 end)
 
--- ── Reset à chaque nouveau cycle ─────────────────────────────────────────────
 if EventVoteResult then
 	EventVoteResult.OnClientEvent:Connect(function(_winner)
 		hasVoted  = false
@@ -277,11 +363,13 @@ if EventVoteResult then
 		curNebula = 0
 		voteToxicBtn.BackgroundTransparency  = 0.05
 		voteNebulaBtn.BackgroundTransparency = 0.05
-		if screenGui.Enabled then updateBar(0, 0) end
+		if screenGui.Enabled then
+			updateBar(0, 0)
+			startPulses()
+		end
 	end)
 end
 
--- ── Ouverture depuis le serveur ───────────────────────────────────────────────
 OpenVoteMenu.OnClientEvent:Connect(function(tv, nv, cycleEnd)
 	curToxic        = tv       or 0
 	curNebula       = nv       or 0
@@ -289,14 +377,12 @@ OpenVoteMenu.OnClientEvent:Connect(function(tv, nv, cycleEnd)
 	openMenu()
 end)
 
--- ── Timer dans le menu (mise à jour chaque seconde) ───────────────────────────
+-- ── Timer ─────────────────────────────────────────────────────────────────────
 task.spawn(function()
 	while true do
 		task.wait(1)
 		if currentCycleEnd > 0 then
-			local remaining = currentCycleEnd - os.time()
-			timerLabel.Text = tr("closes") .. "  " .. formatTimer(remaining)
+			timerLabel.Text = tr("closes") .. "  " .. formatTimer(currentCycleEnd - os.time())
 		end
 	end
 end)
-

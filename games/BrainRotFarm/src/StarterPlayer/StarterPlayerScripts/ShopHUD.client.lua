@@ -34,7 +34,7 @@ local C_GREEN_BG = UI.Colors.GreenNormal
 local C_GREEN_TXT = UI.Colors.TextOnDark
 local C_GREY_BG  = UI.Colors.GrayLocked
 local C_GREY_TXT = UI.Colors.TextLocked
-local C_GOLD_BG  = UI.Colors.OrangeNormal
+local C_GOLD_BG  = Color3.fromRGB(140, 220, 70)
 local C_GOLD_TXT = UI.Colors.TextOnDark
 local C_MAX_BG   = UI.Colors.GrayOwned
 local C_MAX_TXT  = UI.Colors.TextDim
@@ -107,9 +107,12 @@ local panelCorner = Instance.new("UICorner", panel)
 panelCorner.CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
 
 local panelStroke = Instance.new("UIStroke")
-panelStroke.Color     = C_BORDER
-panelStroke.Thickness = 1
-panelStroke.Parent    = panel
+panelStroke.Color           = Color3.fromRGB(255, 180, 30)
+panelStroke.Thickness       = 5
+panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+panelStroke.Parent          = panel
+
+panel.ClipsDescendants = true
 
 -- UIScale pour mobile
 local uiScale = Instance.new("UIScale")
@@ -126,7 +129,8 @@ ajusterScale()
 local headerBar = Instance.new("Frame")
 headerBar.Name                   = "Header"
 headerBar.Size                   = UDim2.new(1, 0, 0, HEADER_H)
-headerBar.BackgroundTransparency = 1
+headerBar.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+headerBar.BackgroundTransparency = 0
 headerBar.BorderSizePixel        = 0
 headerBar.ZIndex                 = 3
 headerBar.Parent                 = panel
@@ -141,25 +145,27 @@ titreLbl.Font                = UI.Fonts.Title
 titreLbl.TextSize            = UI.TextSizes.H1
 titreLbl.TextScaled          = false
 titreLbl.TextXAlignment      = Enum.TextXAlignment.Left
-titreLbl.ZIndex              = 4
-titreLbl.Parent              = headerBar
+titreLbl.ZIndex                  = 4
+titreLbl.TextStrokeColor3        = Color3.fromRGB(80, 40, 0)
+titreLbl.TextStrokeTransparency  = 0
+titreLbl.Parent                  = headerBar
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name              = "Close"
 closeBtn.Size              = UDim2.new(0, 44, 0, 44)
 closeBtn.Position          = UDim2.new(1, -50, 0, 4)
-closeBtn.BackgroundColor3  = Color3.fromRGB(50, 50, 50)
+closeBtn.BackgroundColor3  = Color3.fromRGB(230, 50, 50)
 closeBtn.Text              = "X"
-closeBtn.TextColor3        = Color3.fromRGB(180, 180, 180)
+closeBtn.TextColor3        = Color3.fromRGB(255, 255, 255)
 closeBtn.Font              = UI.Fonts.Title
 closeBtn.TextSize          = UI.TextSizes.H2
 closeBtn.TextScaled        = false
 closeBtn.BorderSizePixel   = 0
 closeBtn.ZIndex            = 4
 closeBtn.Parent            = headerBar
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 local closeBtnStroke = Instance.new("UIStroke", closeBtn)
-closeBtnStroke.Color = C_BORDER ; closeBtnStroke.Thickness = 1
+closeBtnStroke.Color = Color3.fromRGB(255, 255, 255) ; closeBtnStroke.Thickness = 3
 
 -- ── Séparateur titre ─────────────────────────────────────────
 local headerSep = Instance.new("Frame")
@@ -295,6 +301,13 @@ local AchatUpgrade         = nil
 local DemandeAchatRobux    = nil
 local ChangerSeuilTracteur = nil
 
+local SECTION_COLORS = {
+    Color3.fromRGB(80,  180, 255),
+    Color3.fromRGB(190, 100, 230),
+    Color3.fromRGB(120, 220, 90),
+}
+local _sectionIdx = 0
+
 local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, cliquable, etat)
     local btn = Instance.new(cliquable and "TextButton" or "TextLabel")
     btn.Size             = UDim2.new(0, largeur, 0, BTN_H)
@@ -307,7 +320,7 @@ local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, 
     btn.TextScaled       = false
     btn.BorderSizePixel  = 0
     btn.Parent           = parent
-    Instance.new("UICorner", btn).CornerRadius = BTN_CORNER
+    Instance.new("UICorner", btn).CornerRadius = (etat == "robux") and UDim.new(0, 20) or BTN_CORNER
     local pad = Instance.new("UIPadding", btn)
     pad.PaddingLeft   = UDim.new(0, 4)
     pad.PaddingRight  = UDim.new(0, 4)
@@ -318,28 +331,34 @@ local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, 
         local s = Instance.new("UIStroke", btn)
         s.Color     = CS_STROKE_DISP
         s.Thickness = UI_SHOP.StrokeAvailable or 1.5
-    elseif etat == "owned" or etat == "robux" then
+    elseif etat == "owned" then
         local s = Instance.new("UIStroke", btn)
         s.Color     = C_BORDER
         s.Thickness = 1
+    elseif etat == "robux" then
+        local s = Instance.new("UIStroke", btn)
+        s.Color     = Color3.fromRGB(60, 120, 30)
+        s.Thickness = 2
     end
     return btn
 end
 
 local function construireUpgradeFrame(nomUpgrade, upgradeConfig, yPos)
+    _sectionIdx = _sectionIdx + 1
     local frame = Instance.new("Frame")
     frame.Name             = "Upgrade_" .. nomUpgrade
     frame.Size             = UDim2.new(1, -10, 0, UPGRADE_H)
     frame.Position         = UDim2.new(0, 5, 0, yPos)
-    frame.BackgroundColor3 = C_BG_ALT
+    frame.BackgroundColor3 = SECTION_COLORS[(_sectionIdx - 1) % 3 + 1]
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color     = C_SEP
-    stroke.Thickness = 1
-    stroke.Parent    = frame
+    stroke.Color        = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness    = 2
+    stroke.Transparency = 0.5
+    stroke.Parent       = frame
 
     -- Nom
     local nomLbl = Instance.new("TextLabel")
@@ -683,6 +702,7 @@ end
 -- Construction complète du shop depuis les données reçues
 -- ============================================================
 local function construireShop(donnes)
+    _sectionIdx = 0
     -- Vider les anciens blocs
     for _, child in ipairs(scrollFrame:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
