@@ -46,6 +46,13 @@ local function BoucleAuto()
     local earlyBird  = Config.EarlyBirdBonusMinutes * 60
     local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
 
+    -- Premier event après 20 min (au lieu d'attendre le cycle complet)
+    prochainEventTimestamp = os.time() + 1200
+    task.wait(1200)
+    prochainEventTimestamp = nil
+    DemarrerEvent(types[math.random(1, #types)])
+    task.wait((Config.EventDureeMinutes * 60) + 5)
+
     while true do
         prochainEventTimestamp = os.time() + intervalle
         -- Early bird uniquement si l'intervalle est assez long
