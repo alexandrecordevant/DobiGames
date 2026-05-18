@@ -69,10 +69,10 @@ GameConfig.CoutUpgradeMultiplier  = 2.5
 GameConfig.PrestigeMultiplier     = 2.0
 
 -- === EVENTS AUTOMATIQUES ===
-GameConfig.EventIntervalleMinutes = 120
+GameConfig.EventIntervalleMinutes = 60
 GameConfig.EventDureeMinutes      = 5
 GameConfig.EventSpawnMultiplier   = 10
-GameConfig.EarlyBirdBonusMinutes  = 60
+GameConfig.EarlyBirdBonusMinutes  = 10
 GameConfig.AdminAbuseHebdo = {
     jourSemaine     = 7,
     heureUTC        = 20,
@@ -338,7 +338,7 @@ GameConfig.BadgePremierPrestige = 0
 GameConfig.EventsVisuels = {
 
     NightMode = {
-        duree                = 90,
+        duree                = 300,
         -- Lighting nuit
         brightnessMin        = 0.7,
         clockTimeNuit        = 0,    -- 0 = minuit, 14 = 14h00
@@ -359,7 +359,7 @@ GameConfig.EventsVisuels = {
     },
 
     MeteorDrop = {
-        duree           = 60,
+        duree           = 180,
         nbMeteores      = 5,
         hauteurSpawn    = 400,
         vitesseTombee   = 80,
@@ -372,7 +372,7 @@ GameConfig.EventsVisuels = {
     },
 
     Rain = {
-        duree           = 90,
+        duree           = 300,
         nbNuages        = 6,   -- nuages répartis aléatoirement dans la ChampCommunZone
         hauteurNuages   = 18,
         tailleNuage     = Vector3.new(20, 5, 20),
@@ -404,7 +404,7 @@ GameConfig.EventsVisuels = {
     },
 
     Golden = {
-        duree          = 60,
+        duree          = 180,
         multiplicateur = 5,
         couleurGolden  = Color3.fromRGB(255, 215, 0),
         ambientGolden  = Color3.fromRGB(255, 200, 50),
@@ -413,7 +413,7 @@ GameConfig.EventsVisuels = {
     },
 
     LuckyHour = {
-        duree           = 60,
+        duree           = 180,
         rarityPool      = { RARE = 60, EPIC = 35, LEGENDARY = 5 },
         spawnInterval   = 10,
         couleurAmbiance = Color3.fromRGB(255, 180, 220),

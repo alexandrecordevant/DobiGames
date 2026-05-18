@@ -55,6 +55,16 @@ else
 end
 
 
+-- Chargement différé d'EventVisuals (dépendance circulaire au boot)
+local _EventVisualsMain = nil
+local function getEventVisualsMain()
+    if not _EventVisualsMain then
+        local ok, m = pcall(require, ServerScriptService.EventVisuals)
+        if ok then _EventVisualsMain = m end
+    end
+    return _EventVisualsMain
+end
+
 -- ═══════════════════════════════════════════════
 -- 2. CRÉATION DES REMOTEEVENTS (côté serveur, toujours ici)
 -- ═══════════════════════════════════════════════
@@ -591,6 +601,18 @@ local function OnPlayerAdded(player)
     task.wait(1)  -- laisser le client charger
     EnvoyerHUD(player, data)
     IndexRecevoir:FireClient(player, data.indexObtenu)
+
+    -- Sync event en cours pour les joueurs qui rejoignent mid-event
+    local EV = getEventVisualsMain()
+    if EV then
+        local infoEvent = EV.GetTempsRestantEvent()
+        if infoEvent.actif and infoEvent.tempsRestant > 0 then
+            local evStarted = game.ReplicatedStorage:FindFirstChild("EventStarted")
+            if evStarted then
+                evStarted:FireClient(player, infoEvent.nom, infoEvent.tempsRestant)
+            end
+        end
+    end
 
     -- Assigner une base (AssignationSystem remplace SpawnManager.AssignerBase)
     local baseIndex = AssignationSystem.AssignerJoueur(player)
