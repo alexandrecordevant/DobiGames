@@ -632,7 +632,7 @@ GameConfig.FlowerPotConfig = {
         intervalleSecondes = 1800,  -- 30 min entre chaque graine
         chanceMYTHIC       = 70,    -- 70% MYTHIC
         chanceSECRET       = 30,    -- 30% SECRET
-        timeoutSecondes    = 300,   -- 5 min avant reset si non collectée
+        timeoutSecondes    = 600,   -- 10 min avant reset si non collectée
     },
 
     -- Couleur dorée appliquée au spot quand un Mutant y est déposé
