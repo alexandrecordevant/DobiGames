@@ -813,26 +813,26 @@ GameConfig.CarryPrices = {
 
 -- === VALEUR PAR RARETÉ ===
 GameConfig.ValeurParRarete = {
-    COMMON       = 1,
-    OG           = 3,
-    RARE         = 8,
-    EPIC         = 20,
-    LEGENDARY    = 60,
-    MYTHIC       = 200,
-    SECRET       = 500,
-    GOD          = 2000,
+    COMMON    = 5,
+    OG        = 500000000,
+    RARE      = 100,
+    EPIC      = 500,
+    LEGENDARY = 3000,
+    MYTHIC    = 30000,
+    SECRET    = 1000000,   -- T1 (plancher safe — T2-T5 ont CashParSeconde sur le modèle)
+    GOD       = 300000,    -- moyenne T1-T2
 }
 
 -- === INCOME PAR RARETÉ ===
 GameConfig.IncomeParRarete = {
-    COMMON       = 1,
-    OG           = 3,
-    RARE         = 8,
-    EPIC         = 20,
-    LEGENDARY    = 60,
-    MYTHIC       = 200,
-    SECRET       = 500,
-    GOD          = 2000,
+    COMMON    = 5,
+    OG        = 500000000,
+    RARE      = 100,
+    EPIC      = 500,
+    LEGENDARY = 3000,
+    MYTHIC    = 30000,
+    SECRET    = 1000000,   -- T1 (plancher safe — T2-T5 ont CashParSeconde sur le modèle)
+    GOD       = 300000,    -- moyenne T1-T2
 }
 
 -- === MAX BASES ===
