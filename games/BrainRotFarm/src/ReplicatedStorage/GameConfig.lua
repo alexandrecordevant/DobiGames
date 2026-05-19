@@ -843,10 +843,10 @@ GameConfig.SpawnableItems = {
     dossier = "Brainrots",
     rarites = {
         { nom="COMMON",    poids=55,  valeur=1  },
-        { nom="OG",        poids=22,  valeur=3  },
         { nom="RARE",      poids=13,  valeur=8  },
         { nom="EPIC",      poids=7,   valeur=20 },
         { nom="LEGENDARY", poids=0.3, valeur=60 },
+        -- OG retiré : spawn exclusivement via Admin Abuse (spawnPool dédié)
         -- BRAINROT_GOD retiré du spawn normal — admin abuse uniquement (rareteForce)
     },
     raretesCommunOnly = { "MYTHIC", "SECRET" },
