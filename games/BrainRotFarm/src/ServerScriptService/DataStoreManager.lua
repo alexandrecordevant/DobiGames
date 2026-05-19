@@ -8,7 +8,6 @@ local Logger           = require(game:GetService("ServerScriptService").SharedLi
 local function DefaultData()
     return {
         coins=35000, tier=0, prestige=0, coinsParMinute=1,
-        hasVIP=false, hasOfflineVault=false, hasAutoCollect=false,
         derniereConnexion=os.time(), totalCollecte=0,
         totalCoinsGagnes=0,
         stats={ sessionsCount=0, totalHeuresJeu=0 },

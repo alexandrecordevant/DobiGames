@@ -65,10 +65,6 @@ function MonetizationHandler.CheckGamePasses(player, data)
         end
     end
 
-    -- Game Passes système (VIP, OfflineVault, AutoCollect)
-    check(Config.GamePassVIP.Id,          "hasVIP")
-    check(Config.GamePassOfflineVault.Id, "hasOfflineVault")
-    check(Config.GamePassAutoCollect.Id,  "hasAutoCollect")
     -- Seed Doubler : donne 2 graines quotidiennes au lieu de 1
     check(Config.GamePassIds and Config.GamePassIds.SeedDoubler or 0, "hasSeedDoubler")
 
@@ -94,9 +90,7 @@ function MonetizationHandler.CheckGamePasses(player, data)
     end
 end
 
-function MonetizationHandler.CheckPromptRules(data)
-    if data.tier == 2 and not data.hasVIP           then return "VIP"         end
-    if data.tier == 5 and not data.hasOfflineVault  then return "OfflineVault" end
+function MonetizationHandler.CheckPromptRules(_data)
     return nil
 end
 

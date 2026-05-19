@@ -13,20 +13,14 @@ GameConfig.CollectibleName   = "Brain Rot"
 GameConfig.BaseNom           = "Base"
 
 -- === IDs MONÉTISATION (remplir après création sur Roblox) ===
-GameConfig.GamePassVIP            = { Id = 0, Prix = 149 }
-GameConfig.GamePassOfflineVault   = { Id = 0, Prix = 199 }
-GameConfig.GamePassAutoCollect    = { Id = 0, Prix = 299 }
 GameConfig.ProduitLuckyHour       = { Id = 0, Prix = 35  }
 GameConfig.ProduitSecretReveal    = { Id = 0, Prix = 25  }
 GameConfig.ProduitSkipTier        = { Id = 0, Prix = 50  }
 
 -- === GAME PASS IDs (table structurée — remplir après création sur Roblox) ===
 GameConfig.GamePassIds = {
-    VIP          = 0,           -- Accès VIP (features premium)
     Tracteur     = 1817529557,  -- Tracteur auto-collect
-    AutoCollect  = 0,           -- Auto-collecte dans le champ
     Protection   = 1819604298,  -- Protection offline (pas de perte)
-    OfflineVault = 0,           -- Revenus offline x1 (vault)
     ArroseurMAX  = 1814153843,  -- Arroseur niveau MAX (×5 spawn rate)
     SpeedMAX     = 1818373456,  -- Speed niveau MAX (walkspeed 40)
     CarryMAX     = 1816561688,  -- Carry niveau MAX (5 BR)
