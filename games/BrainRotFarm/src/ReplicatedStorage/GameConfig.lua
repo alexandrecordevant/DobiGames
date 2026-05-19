@@ -34,7 +34,7 @@ GameConfig.SeedDoublerPassId = GameConfig.GamePassIds.SeedDoubler
 
 -- === DEV PRODUCT IDs (table structurée — remplir après création sur Roblox) ===
 GameConfig.DevProductIds = {
-    LuckyHour     = 3583048107,  -- 30 min × 5 income  (35 R$)
+    LuckyHour     = 3583048107,  -- Server Boost ×5 — 30 min income ×5 server-wide  (99 R$)
     SkipSeedTimer = 3583048518,  -- Skip timer daily seed (25 R$)
     SeedPackx3    = 3583048753,  -- +3 graines MYTHIC   (99 R$)
     SecretSeed    = 3583048915,  -- +1 graine SECRET    (149 R$)

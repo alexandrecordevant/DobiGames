@@ -692,7 +692,7 @@ local function construireBoostsFrame(yPos)
     sep.BackgroundColor3 = C_BORDER
     sep.BorderSizePixel  = 0
 
-    local btn = creerBouton(frame, "Lucky Hour  35 R$", C_GOLD_BG, C_GOLD_TXT, 8, PANEL_W - 16 - 10 - 16, true, "robux")
+    local btn = creerBouton(frame, "Server Boost ×5  99 R$", C_GOLD_BG, C_GOLD_TXT, 8, PANEL_W - 16 - 10 - 16, true, "robux")
     btn.Size     = UDim2.new(1, -16, 0, BTN_H)
     btn.Position = UDim2.new(0, 8, 0, 68)
     btn.MouseButton1Click:Connect(function()
