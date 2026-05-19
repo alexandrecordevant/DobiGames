@@ -53,28 +53,37 @@ GameConfig.IncomeParRarete = {
 
 ## B. TABLEAU COURBE COMPLÈTE
 
-> Temps farming = temps pour obtenir **1 BR** de ce tier en solo (estimation théorique, sans event).
-> Champ perso : spawn toutes les 4s. ZoneCommune : partagée server (1 joueur seul pour simplifier).
+> Champ perso : 1 BR spawn toutes les 4s (COMMON→LEGENDARY uniquement).
+> ZoneCommune : **1 MYTHIC actif à la fois** (cycle 8 min) + **1 SECRET actif à la fois** (cycle 20 min), server-wide, max 6 joueurs.
+> Formule ZoneCommune : `intervalle × N joueurs × (1 / P(tier))`. Poids SECRET : T1=88.89% · T2=10% · T3=1% · T4=0.1% · T5=0.01%.
 
-| Rareté/Tier | $/s moyen | Ratio vs précédent | Source de spawn | Temps pour 1 BR (solo) | Verdict |
-|---|---|---|---|---|---|
-| COMMON | 5 | — | Champ perso (70.7%*) | ~5.6s actif | FLOOD — 70% du pool |
-| RARE | 100 | **20×** | Champ perso (16.7%) | ~24s actif | Ratio brutal mais rapide |
-| EPIC | 500 | **5×** | Champ perso (9.0%) | ~44s actif | ✅ Bon ratio |
-| LEGENDARY | 3,000 | **6×** | Champ perso (3.6%) | ~111s actif | ✅ Bon checkpoint |
-| MYTHIC | 30,000 | **10×** | ZoneCommune (8 min) | ~8 min | ✅ Gate forte mais visible |
-| GOD T1 | 100,000 | **3.3×** | Fuse Machine (?) | inconnu† | ⚠️ Plat — source opaque |
-| GOD T2 | 500,000 | **5×** | Fuse Machine (?) | inconnu† | ⚠️ Fuse-only = progression cachée |
-| SECRET T1 | 1,000,000 | **2×** vs GOD T2 | ZoneCommune (20 min) | ~22 min | ⚠️ Trop plat vs GOD T2 |
-| SECRET T2 | 10,000,000 | **10×** | ZoneCommune (tier pondéré) | ~200 min | ⚠️ Saut brutal |
-| SECRET T3 | 25,000,000 | **2.5×** | ZoneCommune | ~33 heures | ❌ Quasi-inaccessible normal |
-| SECRET T4 | 100,000,000 | **4×** | ZoneCommune | **~333 heures** | ❌ BLOQUANT retention |
-| SECRET T5 | 250,000,000 | **2.5×** | ZoneCommune | **~139 jours** | ❌ LOTTERY pur |
-| OG | 500,000,000 | **2×** vs SECRET T5 | Admin Abuse uniquement | ~45 min event | ⚠️ Dépasse SECRET T5 |
+| Rareté/Tier | $/s moyen | Ratio vs précédent | Source | Solo (1P) | Session (3P) | Serveur plein (6P) | Verdict |
+|---|---|---|---|---|---|---|---|
+| COMMON | 5 | — | Champ perso (70.7%*) | ~5.6s | ~5.6s | ~5.6s | FLOOD — 70% du pool |
+| RARE | 100 | **20×** | Champ perso (16.7%) | ~24s | ~24s | ~24s | Ratio brutal mais rapide |
+| EPIC | 500 | **5×** | Champ perso (9.0%) | ~44s | ~44s | ~44s | ✅ Bon ratio |
+| LEGENDARY | 3,000 | **6×** | Champ perso (3.6%) | ~111s | ~111s | ~111s | ✅ Bon checkpoint |
+| MYTHIC | 30,000 | **10×** | ZoneCommune | 8 min | 24 min | **48 min** | ✅ Gate saine à 6P |
+| GOD T1 | 100,000 | **3.3×** | Fuse Machine (?) | inconnu† | inconnu† | inconnu† | ⚠️ Source opaque |
+| GOD T2 | 500,000 | **5×** | Fuse Machine (?) | inconnu† | inconnu† | inconnu† | ⚠️ Fuse-only |
+| SECRET T1 | 1,000,000 | **2×** vs GOD T2 | ZoneCommune | 22 min | 1h07 | **2h15** | ✅ Bon milestone end-game |
+| SECRET T2 | 10,000,000 | **10×** | ZoneCommune | 3h20 | 10h | **20h** | ⚠️ Long, barrière naturelle |
+| SECRET T3 | 25,000,000 | **2.5×** | ZoneCommune | 33h | 4.2 jours | **8.3 jours** | ❌ Prestige uniquement |
+| SECRET T4 | 100,000,000 | **4×** | ZoneCommune | 13.9 jours | 41.7 jours | **83 jours** | ❌ Hors portée sans Tracteur |
+| SECRET T5 | 250,000,000 | **2.5×** | ZoneCommune | 139 jours | 417 jours | **833 jours** | ❌ LOTTERY sans GP |
+| OG | 500,000,000 | **2×** vs SECRET T5 | Admin Abuse uniquement | ~45 min event | ~45 min event | ~45 min event | ⚠️ Trophée event |
 
 *Probabilités effectives après exclusion OG : COMMON 70.7% / RARE 16.7% / EPIC 9.0% / LEGENDARY 3.6%
 
 †GOD n'apparaît pas dans SpawnManager.lua ni CommunSpawner.lua. Source probable : Fuse Machine output (données dans Studio uniquement).
+
+**Tracteur (299 R$) — contournement ZoneCommune :**
+
+| Type | Serveur plein (6P) sans Tracteur | Avec Tracteur (champ perso) |
+|---|---|---|
+| MYTHIC | 48 min | **~1-2 min** (4% × 900 spawns/h = 36/h) |
+| SECRET (tout tier) | 2h15 pour T1 | **~7 min pour T1** (1% × 900 = 9/h × 88.89%) |
+| SECRET T5 | 833 jours | **~46 jours** (9/h × 0.01%) |
 
 ### Analyse des 4 anomalies
 
@@ -85,10 +94,10 @@ OG est dans `SpawnableItems` avec poids=22 **mais** figure dans `RaretesExcluesS
 Confirmé volontaire par le dev. GOD = legacy tier (obtenu via Fuse), SECRET = nouveau top tier (ZoneCommune + Tracteur). La confusion vient de l'absence de documentation in-game sur la source de GOD.
 
 **c) MYTHIC→SECRET T1 = 33× via le même système de spawn**
-Le ratio (33×) est acceptable pour un "tier wall". Le problème : les deux passent par la ZoneCommune (compétition server), donc le joueur ne peut pas "farmer" activement pour grimper — il attend. Pas de treadmill entre MYTHIC et SECRET T1.
+Le ratio (33×) est acceptable pour un "tier wall". À 6 joueurs, attendre 2h15 pour un SECRET T1 est une gate saine. Le problème : sans Tracteur, le joueur ne peut qu'attendre — pas de farm actif possible entre MYTHIC et SECRET T1.
 
 **d) GOD T2 (500k) → SECRET T1 (1M) = 2× seulement**
-Couplé au fait que GOD vient de la Fuse (1h30 d'attente + sacrifice BRs), trouver un SECRET T1 en ZoneCommune (20 min) est objectivement **meilleur** que fuser vers GOD. La Fuse Machine est un piège économique pour les joueurs MYTHIC/GOD.
+Couplé au fait que GOD vient de la Fuse (1h30 d'attente + sacrifice BRs), trouver un SECRET T1 en ZoneCommune (2h15 à 6P) est souvent plus rapide que fuser vers GOD. La Fuse Machine est un piège économique pour les joueurs MYTHIC/GOD.
 
 ---
 
