@@ -245,7 +245,7 @@ GameConfig.ShopUpgrades = {
         description = "+25% chance to get a higher rarity",
         ordre       = 6,
         niveaux = {
-            [1] = { type="robux", prix=99, gamePassId=1819652284, label="Activate", effet={ luckyBonus=1.25 }, isMax=true },
+            [1] = { type="robux", prix=149, gamePassId=1819652284, label="Activate", effet={ luckyBonus=1.25 }, isMax=true },
         },
         maxNiveau        = 1,
         isGamePass       = true,

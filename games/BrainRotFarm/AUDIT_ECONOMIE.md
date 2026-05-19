@@ -167,7 +167,7 @@ La Fuse Machine donne des mutants beaucoup plus puissants — intentionnel (Fuse
 
 | Upgrade / GP | Prix R$ | Statut | Bénéfice quantifié | Verdict |
 |---|---|---|---|---|
-| Lucky Charm | 99 R$ | ✅ Live | Élimine COMMON + reroll 25% | ❌ **SOUS-ÉVALUÉ** → 149-199 R$ |
+| Lucky Charm | 149 R$ | ✅ Live | Élimine COMMON + reroll 25% | ✅ Aligné CarryMAX/ArroseurMAX |
 | Seed Doubler | 99 R$ | ✅ Live | 2 graines/jour | ✅ OK |
 | SpeedMAX | 99 R$ | ✅ Live | WalkSpeed 40 | ✅ OK |
 | ArroseurMAX | 149 R$ | ✅ Live | 5× spawn rate | ✅ BON |
@@ -189,7 +189,7 @@ La Fuse Machine donne des mutants beaucoup plus puissants — intentionnel (Fuse
 | Skip Seed | 25 R$ | ~$0.31 | Skip 24h | QoL | ✅ OK |
 | Seed Pack x3 | 99 R$ | ~$1.25 | 3× MYTHIC Mutant (60-240k $/s/slot) | Quelques secondes | ✅ BON |
 | Secret Seed | 149 R$ | ~$1.88 | 1× SECRET Mutant (~3-8M $/s) | <1s | ✅ EXCELLENT |
-| Lucky Charm | 99 R$ | ~$1.25 | +~300% income personal field | Immédiat | ❌ Raise to 149-199 R$ |
+| Lucky Charm | 149 R$ | ~$1.88 | +~300% income personal field | Immédiat | ✅ Aligné (était 99 R$) |
 | Tracteur | 299 R$ | ~$3.75 | ~21,500 $/s EV par spawn (MYTHIC/SECRET) | 14s | ✅ Juste (pourrait être 499 R$) |
 | CarryMAX | 149 R$ | ~$1.88 | 8× collection capacity | 3s | ✅ BON |
 | ArroseurMAX | 149 R$ | ~$1.88 | 5× spawn rate → ~4× income | 3s | ✅ BON |
