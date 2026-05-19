@@ -21,6 +21,15 @@ local function getShopSystem()
     return _ShopSystem
 end
 
+local _IncomeSystem = nil
+local function getIncomeSystem()
+    if not _IncomeSystem then
+        local ok, m = pcall(require, game:GetService("ServerScriptService").SharedLib.Server.IncomeSystem)
+        if ok and m then _IncomeSystem = m end
+    end
+    return _IncomeSystem
+end
+
 -- Handlers produits injectés depuis Main.server.lua (pattern callback)
 -- Permet à chaque jeu d'enregistrer ses propres produits sans coupler shared-lib
 local _productHandlers = {}
@@ -36,10 +45,16 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
     local devP = Config.DevProductIds or {}
     local data = _GetData and _GetData(player)
 
-    -- Lucky Hour : ×5 income pendant 30 min
+    -- Lucky Hour : ×5 income pendant 30 min (server-wide — 6 joueurs max)
     if pid == Config.ProduitLuckyHour.Id or pid == devP.LuckyHour then
         CollectSystem.SetEventMultiplier(5)
-        task.delay(1800, function() CollectSystem.SetEventMultiplier(1) end)
+        local IS = getIncomeSystem()
+        if IS then IS.SetEventMultiplier(5) end
+        task.delay(1800, function()
+            CollectSystem.SetEventMultiplier(1)
+            local IS2 = getIncomeSystem()
+            if IS2 then IS2.SetEventMultiplier(1) end
+        end)
 
     -- Skip Tier : avancer d'un tier (réservé pour usage futur, tier non utilisé actuellement)
     elseif pid == Config.ProduitSkipTier.Id then
