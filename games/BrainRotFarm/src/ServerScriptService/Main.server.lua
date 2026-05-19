@@ -1505,8 +1505,9 @@ EventManager.Init()
 do
     -- Injecter les dépendances dans EventAdminAbuse (même pattern que LeaderboardSystem)
     if EventAdminAbuse then
-        EventAdminAbuse.GetPlayerData = GetData
-        EventAdminAbuse.FireUpdateHUD = function(p, d) UpdateHUD:FireClient(p, d) end
+        EventAdminAbuse.GetPlayerData    = GetData
+        EventAdminAbuse.FireUpdateHUD    = function(p, d) UpdateHUD:FireClient(p, d) end
+        EventAdminAbuse.NotifySeedClient = function(p, d) SeedInventory.NotifyClient(p, d) end
     end
 
     -- Chargement différé d'EventVisuals (évite dépendance circulaire au boot)

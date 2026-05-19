@@ -17,7 +17,7 @@ local Logger = require(ServerScriptService.SharedLib.Server.Logger)
 -- ============================================================
 -- Modules chargés à la demande (évite les dépendances circulaires)
 -- ============================================================
-local _CollectSystem, _IncomeSystem, _SpawnManager = nil, nil, nil
+local _CollectSystem, _IncomeSystem, _SpawnManager, _SeedInventory = nil, nil, nil, nil
 
 local function getCollectSystem()
     if not _CollectSystem then
@@ -33,6 +33,14 @@ local function getIncomeSystem()
         if ok then _IncomeSystem = m end
     end
     return _IncomeSystem
+end
+
+local function getSeedInventory()
+    if not _SeedInventory then
+        local ok, m = pcall(require, ServerScriptService.SeedInventory)
+        if ok then _SeedInventory = m end
+    end
+    return _SeedInventory
 end
 
 local function getSpawnManager()
@@ -51,8 +59,9 @@ end
 -- Dépendances injectées depuis Main.server.lua
 -- (même pattern que LeaderboardSystem.GetPlayerData)
 -- ============================================================
-EventAdminAbuse.GetPlayerData = nil
-EventAdminAbuse.FireUpdateHUD = nil
+EventAdminAbuse.GetPlayerData    = nil
+EventAdminAbuse.FireUpdateHUD    = nil
+EventAdminAbuse.NotifySeedClient = nil  -- fn(player, data)
 
 -- ============================================================
 -- État interne
@@ -83,24 +92,26 @@ function EventAdminAbuse.OnCollect(player)
         if compteurs[uid] >= q.seuil and not (questAcomplis[uid] and questAcomplis[uid][i]) then
             questAcomplis[uid]    = questAcomplis[uid] or {}
             questAcomplis[uid][i] = true
-            -- Créditer la récompense
-            if EventAdminAbuse.GetPlayerData then
+            -- Créditer la graine
+            local SI = getSeedInventory()
+            if SI and EventAdminAbuse.GetPlayerData then
                 local data = EventAdminAbuse.GetPlayerData(player)
                 if data then
-                    data.coins = (data.coins or 0) + q.reward
-                    if EventAdminAbuse.FireUpdateHUD then
-                        EventAdminAbuse.FireUpdateHUD(player, data)
+                    SI.Add(data, q.seed, q.qty or 1)
+                    if EventAdminAbuse.NotifySeedClient then
+                        EventAdminAbuse.NotifySeedClient(player, data)
                     end
                 end
             end
+            local label = (q.qty and q.qty > 1) and (q.qty .. "x " .. q.seed) or q.seed
             local ev = ReplicatedStorage:FindFirstChild("NotifEvent")
             if ev then
                 pcall(function()
                     ev:FireClient(player, "SUCCESS",
-                        string.format("QUEST %d BRs collectés! +$%d reward!", q.seuil, q.reward))
+                        string.format("QUEST! %d BRs collected! +%s Seed!", q.seuil, label))
                 end)
             end
-            Logger.info("Event", "AdminAbuse quête %d accomplie par %s (+%d coins)", q.seuil, player.Name, q.reward)
+            Logger.info("Event", "AdminAbuse quête %d accomplie par %s (+%dx %s seed)", q.seuil, player.Name, q.qty or 1, q.seed)
         end
     end
 end
@@ -231,6 +242,18 @@ function EventAdminAbuse.Demarrer(config)
     notifierTous(config.message or "ADMIN ABUSE!")
     local es = ReplicatedStorage:FindFirstChild("EventStarted")
     if es then pcall(function() es:FireAllClients("AdminAbuse", config.duree or 2700) end) end
+
+    -- Annoncer les quêtes flash avec un délai pour ne pas noyer la notif principale
+    task.delay(4, function()
+        if not actif then return end
+        notifierTous("QUESTS: 10 BRs=1 MYTHIC · 25=2 MYTHIC · 50=3 MYTHIC · 100=1 SECRET seed!")
+    end)
+
+    -- Annoncer la chance OG
+    task.delay(8, function()
+        if not actif then return end
+        notifierTous("OG Brain Rots can appear during Admin Abuse! Extremely rare — good luck!")
+    end)
 
     -- Multiplicateurs spawn + income
     local CS = getCollectSystem()
