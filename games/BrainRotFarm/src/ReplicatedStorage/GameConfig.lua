@@ -421,12 +421,12 @@ GameConfig.EventsVisuels = {
         incomeMultiplier    = 5,
         autoCollectInterval = 20,
         questSeuils = {
-            { seuil = 10,  reward = 1000  },
-            { seuil = 25,  reward = 3000  },
-            { seuil = 50,  reward = 7500  },
-            { seuil = 100, reward = 20000 },
+            { seuil = 10,  seed = "MYTHIC", qty = 1 },
+            { seuil = 25,  seed = "MYTHIC", qty = 2 },
+            { seuil = 50,  seed = "MYTHIC", qty = 3 },
+            { seuil = 100, seed = "SECRET", qty = 1 },
         },
-        earlyBirdRarity = "MYTHIC",
+        earlyBirdRarity = "SECRET",
         message    = "ADMIN ABUSE! Spawn x50 · Gains x5 · 45 min!",
         messageFin = "Admin Abuse ended. See you next Saturday!",
 
@@ -437,7 +437,7 @@ GameConfig.EventsVisuels = {
             { nom="LEGENDARY", poids=20, dossier="LEGENDARY" },
             { nom="MYTHIC",    poids=10, dossier="MYTHIC"    },
             { nom="SECRET",    poids=5,  dossier="SECRET"    },
-            { nom="OG",        poids=0.15, dossier="OG"      },  -- ~1 apparition sur 45 min d'event
+            { nom="OG",        poids=0.03, dossier="OG"      },  -- ~1 apparition par mois (5 sessions hebdo)
             -- BRAINROT_GOD retiré : dossier Brainrots/BRAINROT_GOD absent
         },
         -- Mutations champ désactivées — on utilise uniquement les mutations élément (style FlowerPot)
@@ -846,7 +846,7 @@ GameConfig.SpawnableItems = {
         { nom="OG",        poids=22,  valeur=3  },
         { nom="RARE",      poids=13,  valeur=8  },
         { nom="EPIC",      poids=7,   valeur=20 },
-        { nom="LEGENDARY", poids=2.8, valeur=60 },
+        { nom="LEGENDARY", poids=0.3, valeur=60 },
         -- BRAINROT_GOD retiré du spawn normal — admin abuse uniquement (rareteForce)
     },
     raretesCommunOnly = { "MYTHIC", "SECRET" },
