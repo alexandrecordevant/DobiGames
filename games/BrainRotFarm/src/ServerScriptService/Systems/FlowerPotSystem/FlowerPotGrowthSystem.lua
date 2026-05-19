@@ -529,6 +529,10 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
                         onHarvest   = onHarvest,
                     })
                 end
+            else
+                -- Échec spawn mutant au rejoin (assets manquants, erreur) → reset auto du pot
+                Logger.warn("Pot", "Échec spawn mutant (etape>=5) pour %s — reset auto", potModel.Name)
+                if onHarvest then pcall(onHarvest, player, elementType, multiplier) end
             end
             _threads[potId] = nil
             return
@@ -688,7 +692,8 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         -- CHUTE : BR Mutant tombe sur le pot
         -- ────────────────────────────────────────────────
         if not mutantClone or not mutantClone.Parent then
-            Logger.warn("Pot", "BR Mutant introuvable à la fin de croissance : %s", potId)
+            Logger.warn("Pot", "BR Mutant introuvable à la fin de croissance : %s — reset auto", potId)
+            if onHarvest then pcall(onHarvest, player, elementType, multiplier) end
             _threads[potId] = nil
             return
         end

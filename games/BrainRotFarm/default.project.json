@@ -55,7 +55,8 @@
                 "RainWeatherClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/RainWeatherClient.client.lua" },
                 "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" },
                 "SpeedTrailClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/SpeedTrailClient.client.lua" },
-                "CodeRedeemGUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua" }
+                "CodeRedeemGUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua" },
+                "CodeRedeemAnimations": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemAnimations.lua" }
             }
         }
     }

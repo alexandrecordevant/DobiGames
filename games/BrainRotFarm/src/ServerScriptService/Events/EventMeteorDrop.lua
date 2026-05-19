@@ -41,7 +41,7 @@ local meteorActifsCount = 0
 local meteorsParts      = {}  -- liste des Parts météores en vol (pour nettoyage)
 local materiauOriginel  = {}  -- { [Part] = Enum.Material } pour restauration
 local savedLighting     = {}  -- snapshot Lighting avant l'event
-local savedChampignons  = {}  -- { [BasePart] = { saColor, material } }
+local savedChampignons  = {}  -- { [BasePart] = { color, material } }
 local _meteorFolder     = nil -- Folder Workspace contenant les météores en vol
 
 -- ============================================================
@@ -210,23 +210,25 @@ local function appliquerChampignons()
     savedChampignons = {}
     local deco = Workspace:FindFirstChild("Deco")
     if not deco then return end
-    for _, obj in ipairs(deco:GetChildren()) do
-        if obj.Name == "Meshes/Mushroom" and obj:IsA("BasePart") then
-            local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
-            savedChampignons[obj] = { saColor = sa and sa.Color or nil, material = obj.Material }
-            obj.Material = Enum.Material.SmoothPlastic
-            if sa then sa.Color = Color3.fromRGB(10, 10, 10) end
+    local folder = deco:FindFirstChild("Champignons")
+    if not folder then return end
+    for _, model in ipairs(folder:GetChildren()) do
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                savedChampignons[part] = { color = part.Color, material = part.Material }
+                part.Material = Enum.Material.SmoothPlastic
+                part.Color    = Color3.fromRGB(10, 10, 10)
+            end
         end
     end
 end
 
 local function restaurerChampignons()
-    for obj, saved in pairs(savedChampignons) do
-        if obj and obj.Parent then
+    for part, saved in pairs(savedChampignons) do
+        if part and part.Parent then
             pcall(function()
-                obj.Material = saved.material
-                local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
-                if sa and saved.saColor then sa.Color = saved.saColor end
+                part.Material = saved.material
+                part.Color    = saved.color
             end)
         end
     end

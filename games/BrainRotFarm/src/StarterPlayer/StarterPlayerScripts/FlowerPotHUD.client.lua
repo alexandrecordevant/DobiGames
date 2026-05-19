@@ -872,6 +872,15 @@ local function OuvrirDailySeedPanel()
     end
 
     local icones = { MYTHIC = "M", SECRET = "S" }
+    local DS_COLORS = {
+        Color3.fromRGB(80,  180, 255),
+        Color3.fromRGB(190, 100, 230),
+        Color3.fromRGB(120, 220, 90),
+        Color3.fromRGB(255, 140, 60),
+        Color3.fromRGB(60,  200, 180),
+        Color3.fromRGB(230, 80,  140),
+        Color3.fromRGB(140, 210, 80),
+    }
 
     for i = 1, 7 do
         local rarete = cycle[i] or "MYTHIC"
@@ -889,14 +898,12 @@ local function OuvrirDailySeedPanel()
         ligne.Size                   = UDim2.new(1, -20, 0, 42)
         ligne.Position               = UDim2.new(0, 10, 0, yPos)
         ligne.BackgroundTransparency = 0
-        ligne.BackgroundColor3       = statut == "dispo"
-            and Color3.fromRGB(25, 35, 20) or Color3.fromRGB(20, 20, 20)
+        ligne.BackgroundColor3       = DS_COLORS[i]
         ligne.BorderSizePixel        = 0
         ligne.ZIndex                 = 21
-        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+        Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 8)
         local _ls = Instance.new("UIStroke", ligne)
-        _ls.Color = statut == "dispo" and Color3.fromRGB(80, 140, 80) or Color3.fromRGB(60, 60, 60)
-        _ls.Thickness = 1
+        _ls.Color = Color3.fromRGB(255, 255, 255) ; _ls.Thickness = 2 ; _ls.Transparency = 0.5
 
         local function lbl(text, x, w, color, bold, size)
             local l = Instance.new("TextLabel", ligne)
@@ -904,16 +911,18 @@ local function OuvrirDailySeedPanel()
             l.Position               = UDim2.new(0, x, 0, 0)
             l.BackgroundTransparency = 1
             l.Text                   = text
-            l.TextColor3             = color or Color3.fromRGB(200, 200, 200)
+            l.TextColor3             = color or Color3.fromRGB(255, 255, 255)
             l.Font                   = bold and UI.Fonts.Title or UI.Fonts.Body
             l.TextSize               = size or UI.TextSizes.Body
             l.TextScaled             = false
             l.TextXAlignment         = Enum.TextXAlignment.Left
+            l.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+            l.TextStrokeTransparency = 0
             l.ZIndex                 = 22
             return l
         end
 
-        lbl("Day " .. i, 8, 44, Color3.fromRGB(150, 150, 150), false, UI.TextSizes.Body)
+        lbl("Day " .. i, 8, 44, Color3.fromRGB(255, 255, 255), true, UI.TextSizes.Body)
         local iconeLbl = lbl(icones[rarete] or "M", 52, 24, nil, false, 18)
         applyRariteStyle(iconeLbl, rarete, 0)
         local rareLbl = lbl(rarete, 78, 80,
@@ -922,7 +931,7 @@ local function OuvrirDailySeedPanel()
         applyRariteStyle(rareLbl, rarete, 1.5)
 
         if statut == "claimed" then
-            lbl("Claimed", 160, 100, Color3.fromRGB(100, 200, 100), false, UI.TextSizes.Body)
+            lbl("Claimed", 160, 100, Color3.fromRGB(255, 255, 255), true, UI.TextSizes.Body)
         elseif statut == "dispo" then
             lbl("Ready!", 160, 80, Color3.fromRGB(255, 255, 100), true, UI.TextSizes.Body)
             local btnClaim = Instance.new("TextButton", ligne)
@@ -945,9 +954,9 @@ local function OuvrirDailySeedPanel()
             end)
         elseif statut == "timer" then
             lbl(FormatTempsLocal(tempsRestant), 160, 130,
-                Color3.fromRGB(150, 150, 150), false, UI.TextSizes.Body)
+                Color3.fromRGB(255, 255, 255), false, UI.TextSizes.Body)
         else
-            lbl("Locked", 160, 100, Color3.fromRGB(100, 100, 100), false, UI.TextSizes.Body)
+            lbl("Locked", 160, 100, Color3.fromRGB(255, 255, 255), true, UI.TextSizes.Body)
         end
     end
 
@@ -1021,7 +1030,7 @@ dailySeedButton.MouseButton1Click:Connect(OuvrirDailySeedPanel)
 local fpPanel = Instance.new("Frame", screenGui)
 fpPanel.Name                   = "FlowerPotPanel"
 fpPanel.AnchorPoint            = Vector2.new(0.5, 0.5)
-fpPanel.Size                   = UDim2.new(0, 280, 0, 180)
+fpPanel.Size                   = UDim2.new(0, 320, 0, 210)
 fpPanel.Position               = UDim2.new(0.5, 0, 0.5, 0)
 fpPanel.BackgroundColor3       = UI.Colors.ModalBackground
 fpPanel.BackgroundTransparency = 0.05
@@ -1035,7 +1044,7 @@ fpPanel.ClipsDescendants = true
 local _fpScale = Instance.new("UIScale", fpPanel)
 local function _ajusterFpPanel()
     local vp = workspace.CurrentCamera.ViewportSize
-    local s = math.max(0.6, math.min(vp.X / 320, vp.Y / 200, 1))
+    local s = math.max(0.55, math.min(vp.X / 360, vp.Y / 250, 1))
     _fpScale.Scale = s
 end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterFpPanel)
@@ -1051,7 +1060,7 @@ fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
 fpTitre.Text = "  FlowerPot Status" ; fpTitre.ZIndex = 21
 
 local fpClose = Instance.new("TextButton", fpPanel)
-fpClose.Size = UDim2.new(0,44,0,44) ; fpClose.Position = UDim2.new(1,-50,0,4)
+fpClose.Size = UDim2.new(0,28,0,28) ; fpClose.Position = UDim2.new(1,-34,0,4)
 fpClose.BackgroundColor3 = Color3.fromRGB(230,50,50) ; fpClose.Text = "X"
 fpClose.TextColor3 = Color3.fromRGB(255,255,255) ; fpClose.Font = UI.Fonts.Title
 fpClose.TextSize = UI.TextSizes.H2 ; fpClose.TextScaled = false
@@ -1074,20 +1083,22 @@ end)
 
 -- Inventaire graines
 local fpInv = Instance.new("Frame", fpPanel)
-fpInv.Size = UDim2.new(1,-20,0,26) ; fpInv.Position = UDim2.new(0,10,0,40)
-fpInv.BackgroundColor3 = UI.Colors.SectionBackground ; fpInv.BorderSizePixel = 0 ; fpInv.ZIndex = 21
+fpInv.Size = UDim2.new(1,-20,0,32) ; fpInv.Position = UDim2.new(0,10,0,42)
+fpInv.BackgroundColor3 = Color3.fromRGB(80, 180, 255) ; fpInv.BorderSizePixel = 0 ; fpInv.ZIndex = 21
 Instance.new("UICorner", fpInv).CornerRadius = UDim.new(0, 8)
+local _fpInvS = Instance.new("UIStroke", fpInv)
+_fpInvS.Color = Color3.fromRGB(255,255,255) ; _fpInvS.Thickness = 2 ; _fpInvS.Transparency = 0.5
 local fpMythicLbl = Instance.new("TextLabel", fpInv)
 fpMythicLbl.Size = UDim2.new(0.5,0,1,0) ; fpMythicLbl.BackgroundTransparency = 1
 fpMythicLbl.Text = "MYTHIC: 0" ; fpMythicLbl.TextColor3 = Color3.fromRGB(180,0,255)
-fpMythicLbl.Font = Enum.Font.GothamBold ; fpMythicLbl.TextSize = 11
+fpMythicLbl.Font = Enum.Font.GothamBold ; fpMythicLbl.TextSize = 13
 fpMythicLbl.TextScaled = false
 fpMythicLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpMythicLbl.ZIndex = 22
 local fpSecretLbl = Instance.new("TextLabel", fpInv)
 fpSecretLbl.Size = UDim2.new(0.5,0,1,0) ; fpSecretLbl.Position = UDim2.new(0.5,0,0,0)
 fpSecretLbl.BackgroundTransparency = 1
 fpSecretLbl.Text = "SECRET: 0" ; fpSecretLbl.TextColor3 = Color3.fromRGB(255,80,80)
-fpSecretLbl.Font = Enum.Font.GothamBold ; fpSecretLbl.TextSize = 11
+fpSecretLbl.Font = Enum.Font.GothamBold ; fpSecretLbl.TextSize = 13
 fpSecretLbl.TextScaled = false
 fpSecretLbl.TextXAlignment = Enum.TextXAlignment.Center ; fpSecretLbl.ZIndex = 22
 applyRariteStyle(fpMythicLbl, "MYTHIC", 1.5)
@@ -1096,28 +1107,36 @@ applyRariteStyle(fpSecretLbl, "SECRET", 1.5)
 -- 4 cellules pots
 local FP_ELEM = { water="Eau", fire="Feu", earth="Terre", wind="Vent" }
 local FP_RARCOL = { MYTHIC=Color3.fromRGB(180,0,255), SECRET=Color3.fromRGB(255,80,80) }
+local FP_CELL_COLORS = {
+    Color3.fromRGB(80,  180, 255),
+    Color3.fromRGB(190, 100, 230),
+    Color3.fromRGB(120, 220, 90),
+    Color3.fromRGB(255, 140, 60),
+}
 local fpCells = {}
 for i = 1, 4 do
-    local cw, ch = 58, 82
+    local cw, ch = 68, 96
     local cell = Instance.new("Frame", fpPanel)
     cell.Size = UDim2.new(0,cw,0,ch)
-    cell.Position = UDim2.new(0, 10+(i-1)*(cw+6), 0, 74)
-    cell.BackgroundColor3 = UI.Colors.SectionBackground ; cell.BorderSizePixel = 0 ; cell.ZIndex = 21
+    cell.Position = UDim2.new(0, 10+(i-1)*(cw+6), 0, 82)
+    cell.BackgroundColor3 = FP_CELL_COLORS[i] ; cell.BorderSizePixel = 0 ; cell.ZIndex = 21
     Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 8)
     local _cs = Instance.new("UIStroke", cell)
-    _cs.Color = Color3.fromRGB(60, 60, 60) ; _cs.Thickness = 1
+    _cs.Color = Color3.fromRGB(255, 255, 255) ; _cs.Thickness = 2 ; _cs.Transparency = 0.5
     local function cl(txt, sz, pos, ts, bold)
         local l = Instance.new("TextLabel", cell)
         l.Size=sz ; l.Position=pos ; l.BackgroundTransparency=1
-        l.Text=txt ; l.TextColor3=UI.Colors.TextOnDark
+        l.Text=txt ; l.TextColor3=Color3.fromRGB(255, 255, 255)
         l.Font = bold and UI.Fonts.Title or UI.Fonts.Body
-        l.TextSize=ts ; l.TextScaled=false ; l.ZIndex=22 ; return l
+        l.TextSize=ts ; l.TextScaled=false
+        l.TextStrokeColor3=Color3.fromRGB(0,0,0) ; l.TextStrokeTransparency=0
+        l.ZIndex=22 ; return l
     end
-    cl("Pot "..i, UDim2.new(1,0,0,14), UDim2.new(0,0,0,2),  8,  false)
-    local ic = cl("",    UDim2.new(1,0,0,28), UDim2.new(0,0,0,16), 20, true)
-    local ra = cl("",    UDim2.new(1,-4,0,14),UDim2.new(0,2,0,44),  8,  true)
-    local el = cl("",    UDim2.new(1,0,0,14), UDim2.new(0,0,0,60), 10,  false)
-    table.insert(fpCells, {cell=cell, ic=ic, ra=ra, el=el})
+    cl("Pot "..i, UDim2.new(1,0,0,16), UDim2.new(0,0,0,3),  11, true)
+    local ic = cl("",    UDim2.new(1,0,0,32), UDim2.new(0,0,0,19), 24, true)
+    local ra = cl("",    UDim2.new(1,-4,0,18),UDim2.new(0,2,0,52), 11, true)
+    local el = cl("",    UDim2.new(1,0,0,16), UDim2.new(0,0,0,72), 12, false)
+    table.insert(fpCells, {cell=cell, ic=ic, ra=ra, el=el, baseColor=FP_CELL_COLORS[i]})
 end
 
 local function fpMajAffichage(pots, graines)
@@ -1126,11 +1145,11 @@ local function fpMajAffichage(pots, graines)
         local p = pots and pots[i]
         if not p then f.ic.Text="?"; f.ra.Text=""; f.el.Text=""
         elseif not p.debloque then
-            f.ic.Text="X"; f.ic.TextColor3=UI.Colors.TextOnDark; f.ra.Text="Lock."; f.el.Text=""
-            f.cell.BackgroundColor3=UI.Colors.SectionBackground
+            f.ic.Text="X"; f.ic.TextColor3=Color3.fromRGB(255,255,255); f.ra.Text="Lock."; f.el.Text=""
+            f.cell.BackgroundColor3 = f.baseColor or UI.Colors.SectionBackground
         elseif p.statut == nil then
-            f.ic.Text="-"; f.ic.TextColor3=UI.Colors.TextOnDark; f.ra.Text="Empty"; f.el.Text=""
-            f.cell.BackgroundColor3=UI.Colors.SectionBackground
+            f.ic.Text="-"; f.ic.TextColor3=Color3.fromRGB(255,255,255); f.ra.Text="Empty"; f.el.Text=""
+            f.cell.BackgroundColor3 = f.baseColor or UI.Colors.SectionBackground
         elseif p.statut.statut == "growing" then
             local s=p.statut
             f.ic.Text=tostring(math.max(0,s.stage or 0)); f.ic.TextColor3=Color3.fromRGB(100,180,255)

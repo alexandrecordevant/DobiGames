@@ -62,7 +62,7 @@ end
 local movingClouds     = nil
 local rainEffects      = {}   -- grille de tuiles Rain
 local floodLevel       = nil
-local savedChampignons = {}   -- { [BasePart] = { saColor, material } }
+local savedChampignons = {}  -- { [BasePart] = { color, material } }
 
 -- ============================================================
 -- Utilitaires
@@ -213,23 +213,25 @@ local function appliquerChampignons()
     savedChampignons = {}
     local deco = Workspace:FindFirstChild("Deco")
     if not deco then return end
-    for _, obj in ipairs(deco:GetChildren()) do
-        if obj.Name == "Meshes/Mushroom" and obj:IsA("BasePart") then
-            local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
-            savedChampignons[obj] = { saColor = sa and sa.Color or nil, material = obj.Material }
-            obj.Material = Enum.Material.Neon
-            if sa then sa.Color = Color3.fromRGB(0, 220, 255) end
+    local folder = deco:FindFirstChild("Champignons")
+    if not folder then return end
+    for _, model in ipairs(folder:GetChildren()) do
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                savedChampignons[part] = { color = part.Color, material = part.Material }
+                part.Material = Enum.Material.Neon
+                part.Color    = Color3.fromRGB(0, 220, 255)
+            end
         end
     end
 end
 
 local function restaurerChampignons()
-    for obj, saved in pairs(savedChampignons) do
-        if obj and obj.Parent then
+    for part, saved in pairs(savedChampignons) do
+        if part and part.Parent then
             pcall(function()
-                obj.Material = saved.material
-                local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
-                if sa and saved.saColor then sa.Color = saved.saColor end
+                part.Material = saved.material
+                part.Color    = saved.color
             end)
         end
     end

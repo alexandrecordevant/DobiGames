@@ -29,7 +29,7 @@ local C_BORDER   = UI.Colors.ModalBorder
 local C_SEP      = UI.Colors.ModalBorder
 local C_TITLE    = UI.Colors.TextOnDark
 local C_TEXT     = UI.Colors.TextOnDark
-local C_DIM      = UI.Colors.TextDim
+local C_DIM      = Color3.fromRGB(255, 255, 255)
 local C_GREEN_BG = UI.Colors.GreenNormal
 local C_GREEN_TXT = UI.Colors.TextOnDark
 local C_GREY_BG  = UI.Colors.GrayLocked
@@ -46,11 +46,11 @@ local CS_OWNED_BG    = UI_SHOP.ColAchete        or Color3.fromRGB(27,  94,  32)
 local CS_OWNED_TXT   = UI_SHOP.ColAcheteTxt     or Color3.fromRGB(255, 255, 255)
 local CS_AVAIL_BG    = UI_SHOP.ColDisponible    or Color3.fromRGB(76,  175,  80)
 local CS_AVAIL_TXT   = UI_SHOP.ColDisponibleTxt or Color3.fromRGB(255, 255, 255)
-local CS_LOCK_BG     = UI_SHOP.ColVerrouille    or Color3.fromRGB(66,   66,  66)
-local CS_LOCK_TXT    = UI_SHOP.ColVerrouilleTxt or Color3.fromRGB(180, 180, 180)
+local CS_LOCK_BG     = UI_SHOP.ColVerrouille    or Color3.fromRGB(30,   30,  30)
+local CS_LOCK_TXT    = UI_SHOP.ColVerrouilleTxt or Color3.fromRGB(255, 255, 255)
 local CS_MAX_BG      = UI_SHOP.ColMax           or Color3.fromRGB(255, 179,   0)
 local CS_MAX_TXT     = UI_SHOP.ColMaxTxt        or Color3.fromRGB(0,     0,   0)
-local CS_FUTURE_TXT  = UI_SHOP.ColFutureTxt     or Color3.fromRGB(70,   70,  80)
+local CS_FUTURE_TXT  = UI_SHOP.ColFutureTxt     or Color3.fromRGB(255, 255, 255)
 local CS_STROKE_DISP = UI_SHOP.ColStrokeDisp    or Color3.fromRGB(180, 255, 180)
 
 -- ============================================================
@@ -319,6 +319,10 @@ local function creerBouton(parent, texte, couleurBg, couleurTxt, xPos, largeur, 
     btn.TextSize         = UI.ButtonSizes.Medium.TextSize
     btn.TextScaled       = false
     btn.BorderSizePixel  = 0
+    if etat == "locked" or etat == "future" then
+        btn.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+        btn.TextStrokeTransparency = 0.4
+    end
     btn.Parent           = parent
     Instance.new("UICorner", btn).CornerRadius = (etat == "robux") and UDim.new(0, 20) or BTN_CORNER
     local pad = Instance.new("UIPadding", btn)
@@ -505,7 +509,8 @@ local function mettreAJourBoutons(nomUpgrade, upgradeConfig, donnes)
             end
 
         elseif etat == "future" then
-            texte    = niveauConfig.label
+            local px = niveauConfig.prix or 0
+            texte    = px > 0 and (niveauConfig.label .. "  " .. FormatCoins(px)) or niveauConfig.label
             bgCol    = CS_LOCK_BG
             txtCol   = CS_FUTURE_TXT
             cliquable = false
@@ -652,12 +657,12 @@ local function construireBoostsFrame(yPos)
     frame.Name             = "Boosts"
     frame.Size             = UDim2.new(1, -10, 0, BOOST_H)
     frame.Position         = UDim2.new(0, 5, 0, yPos)
-    frame.BackgroundColor3 = C_BG_ALT
+    frame.BackgroundColor3 = Color3.fromRGB(255, 80, 140)
     frame.BorderSizePixel  = 0
     frame.Parent           = scrollFrame
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, UI.Modal.CornerRadius)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
     local stroke = Instance.new("UIStroke", frame)
-    stroke.Color = C_BORDER ; stroke.Thickness = 1
+    stroke.Color = Color3.fromRGB(255, 255, 255) ; stroke.Thickness = 2 ; stroke.Transparency = 0.5
 
     local titre = Instance.new("TextLabel", frame)
     titre.Size                = UDim2.new(1, -12, 0, 22)

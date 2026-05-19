@@ -505,6 +505,13 @@ local function creerShopRobuxPanel()
     -- Hauteur d'une ligne item (bouton Medium + marge)
     local ligneH = UI and (UI.ButtonSizes.Medium.Height + 20) or 60
 
+    local SECTION_COLORS_ROBUX = {
+        Color3.fromRGB(80,  180, 255),
+        Color3.fromRGB(190, 100, 230),
+        Color3.fromRGB(120, 220, 90),
+    }
+    local _robuxLigneIdx = 0
+
     local layoutOrder = 0
     local totalHeight = 0
 
@@ -531,28 +538,34 @@ local function creerShopRobuxPanel()
             totalHeight = totalHeight + 28 + 8  -- hauteur label + padding layout
 
             for _, item in ipairs(sectionItems) do
-                layoutOrder = layoutOrder + 1
+                layoutOrder    = layoutOrder + 1
+                _robuxLigneIdx = _robuxLigneIdx + 1
+                local _robuxColor = SECTION_COLORS_ROBUX[(_robuxLigneIdx - 1) % 3 + 1]
 
                 local ligne = Instance.new("Frame", scroll)
                 ligne.Name                   = "Item_" .. item.nomUpgrade .. "_" .. item.niveauIdx
                 ligne.Size                   = UDim2.new(1, -10, 0, ligneH)
-                ligne.BackgroundColor3       = UI and UI.Colors.SectionBackground or T.fondSecondaire
-                ligne.BackgroundTransparency = 0.1
+                ligne.BackgroundColor3       = _robuxColor
+                ligne.BackgroundTransparency = 0
                 ligne.BorderSizePixel        = 0
                 ligne.LayoutOrder            = layoutOrder
                 ligne.ZIndex                 = 12
-                Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, UI and UI.Modal.CornerRadius or 8)
+                Instance.new("UICorner", ligne).CornerRadius = UDim.new(0, 8)
+                local _ls = Instance.new("UIStroke", ligne)
+                _ls.Color = Color3.fromRGB(255, 255, 255) ; _ls.Thickness = 2 ; _ls.Transparency = 0.5
 
                 local lblNom = Instance.new("TextLabel", ligne)
                 lblNom.Size                   = UDim2.new(0.6, 0, 1, 0)
                 lblNom.Position               = UDim2.new(0, 10, 0, 0)
                 lblNom.BackgroundTransparency = 1
-                lblNom.TextColor3             = T.texte
-                lblNom.Font                   = UI and UI.Fonts.Body or Enum.Font.GothamBold
+                lblNom.TextColor3             = Color3.fromRGB(255, 255, 255)
+                lblNom.Font                   = UI and UI.Fonts.Title or Enum.Font.GothamBold
                 lblNom.TextSize               = UI and UI.TextSizes.H2 or 13
                 lblNom.TextScaled             = false
                 lblNom.TextXAlignment         = Enum.TextXAlignment.Left
                 lblNom.TextWrapped            = true
+                lblNom.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+                lblNom.TextStrokeTransparency = 0.5
                 lblNom.ZIndex                 = 13
                 lblNom.Text                   = item.nom
 

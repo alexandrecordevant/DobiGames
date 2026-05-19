@@ -42,7 +42,8 @@ local spawnThread     = nil
 local colorCorrection = nil
 local savedLighting   = {}
 local savedMap        = {}   -- { [BasePart] = { Material, Color } }
-local savedDeco       = {}   -- { [BasePart] = { saColor, material, light } }
+local savedDeco       = {}   -- { [BasePart] = { color, material } }
+local savedDecoLights = {}   -- { PointLight, ... }
 
 -- ============================================================
 -- Utilitaires
@@ -139,35 +140,42 @@ end
 -- Champignons roses
 -- ============================================================
 local function appliquerChampignons()
-    savedDeco = {}
+    savedDeco       = {}
+    savedDecoLights = {}
     local deco = Workspace:FindFirstChild("Deco")
     if not deco then return end
-    for _, obj in ipairs(deco:GetChildren()) do
-        if obj.Name == "Meshes/Mushroom" and obj:IsA("BasePart") then
-            local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
-            local light = Instance.new("PointLight")
-            light.Brightness = 4
-            light.Range      = 20
-            light.Color      = Color3.fromRGB(255, 0, 180)
-            light.Parent     = obj
-            savedDeco[obj] = { saColor = sa and sa.Color or nil, material = obj.Material, light = light }
-            obj.Material = Enum.Material.Neon
-            if sa then sa.Color = Color3.fromRGB(255, 0, 200) end
+    local folder = deco:FindFirstChild("Champignons")
+    if not folder then return end
+    for _, model in ipairs(folder:GetChildren()) do
+        local light = Instance.new("PointLight")
+        light.Brightness = 4
+        light.Range      = 20
+        light.Color      = Color3.fromRGB(255, 0, 180)
+        light.Parent     = model
+        table.insert(savedDecoLights, light)
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                savedDeco[part] = { color = part.Color, material = part.Material }
+                part.Material = Enum.Material.Neon
+                part.Color    = Color3.fromRGB(255, 0, 200)
+            end
         end
     end
 end
 
 local function restaurerChampignons()
-    for obj, saved in pairs(savedDeco) do
-        if obj and obj.Parent then
-            pcall(function()
-                obj.Material = saved.material
-                local sa = obj:FindFirstChildOfClass("SurfaceAppearance")
-                if sa and saved.saColor then sa.Color = saved.saColor end
-            end)
+    for _, light in ipairs(savedDecoLights) do
+        if light and light.Parent then
+            pcall(function() light:Destroy() end)
         end
-        if saved.light and saved.light.Parent then
-            pcall(function() saved.light:Destroy() end)
+    end
+    savedDecoLights = {}
+    for part, saved in pairs(savedDeco) do
+        if part and part.Parent then
+            pcall(function()
+                part.Material = saved.material
+                part.Color    = saved.color
+            end)
         end
     end
     savedDeco = {}

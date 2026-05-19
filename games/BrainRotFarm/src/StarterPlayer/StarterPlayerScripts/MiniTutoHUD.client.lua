@@ -140,7 +140,8 @@ scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel        = 0
 scroll.ScrollBarThickness     = UI.Modal.ScrollBarThickness
 scroll.ScrollBarImageColor3   = UI.Colors.ModalBorder
-scroll.AutomaticCanvasSize    = Enum.AutomaticSize.Y
+scroll.AutomaticCanvasSize    = Enum.AutomaticSize.None
+scroll.CanvasSize             = UDim2.new(0, 0, 0, 0)
 scroll.ZIndex                 = 22
 
 local layout = Instance.new("UIListLayout", scroll)
@@ -275,9 +276,13 @@ makeCard(
     Color3.fromRGB(255, 140, 30)
 )
 
--- Recalcul du CanvasSize apres generation du contenu
+-- Recalcul du CanvasSize apres generation du contenu (et à chaque changement)
+local function majCanvasSize()
+    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+end
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(majCanvasSize)
 task.wait(0)
-scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+majCanvasSize()
 
 -- ============================================================
 -- Fermeture des autres menus (1 seul ouvert a la fois)

@@ -94,6 +94,8 @@ DropSystem.OnSpotChange  = nil
 DropSystem.OnMutantDepose = nil
 -- Appelé quand un Mutant est retiré d'un spot (touchPart)
 DropSystem.OnMutantRetire = nil
+-- Appelé après tout dépôt BR (player, touchPart, modeleSlot, rarete)
+DropSystem.OnBRDepose = nil
 -- Confirmation avant vente (optionnel) : function(player, rarete) -> bool
 -- Si nil, la vente s'effectue directement. Injecté par Main.server.lua pour LavaTower.
 DropSystem.SellConfirmCallback = nil
@@ -1217,6 +1219,7 @@ function DropSystem.DeposerBrainRots(player, touchPart)
 
     -- Notifier les systèmes externes (ex : RebirthSystem pour détecter le BR requis)
     if DropSystem.OnSpotChange then pcall(DropSystem.OnSpotChange, player) end
+    if DropSystem.OnBRDepose   then pcall(DropSystem.OnBRDepose, player, touchPart, modeleSlot, rarete) end
 
     Logger.info("Drop", "%s a déposé %s sur spot %s", player.Name, rarete, spotKey)
 end
@@ -1406,10 +1409,11 @@ function DropSystem.GetSpotsOccupes(player)
     if not spotsData[uid] then return result end
     for touchPart, entry in pairs(spotsData[uid]) do
         table.insert(result, {
-            touchPart = touchPart,
-            spotKey   = entry.spotKey,
-            rarete    = entry.rarete,
-            valeurSec = entry.valeurSec,
+            touchPart  = touchPart,
+            spotKey    = entry.spotKey,
+            rarete     = entry.rarete,
+            valeurSec  = entry.valeurSec,
+            modeleSlot = entry.modeleSlot,
         })
     end
     return result

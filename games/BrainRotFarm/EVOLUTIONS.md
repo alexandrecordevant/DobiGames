@@ -1,4 +1,4 @@
-# 🚀 EVOLUTIONS — BrainRotFarm
+# 🚀 EVOLUTIONS — Brainrot Farm Empire
 > DobiGames — Fonctionnalités futures planifiées
 > Dernière mise à jour : Mai 2026
 
@@ -12,93 +12,7 @@
 
 ---
 
-## 1. EFFET WAOUH — Indicateur de progression visuel
-
-**Concept :** Un champignon Brain Rot pousse dans chaque champ individuel,
-proportionnellement au % de remplissage de la base du joueur.
-Visible par tous les joueurs depuis toute la map.
-
-**Stages visuels :**
-
-| Stage | % Base | Visuel | Effet |
-|---|---|---|---|
-| 1 | 0-20% | Spore au sol | Quasi invisible |
-| 2 | 20-40% | Petit champignon | Couleur terne |
-| 3 | 40-60% | Champignon moyen | Commence à briller |
-| 4 | 60-80% | Grand champignon | Aura légère |
-| 5 | 80-99% | Champignon géant | Lumière pulsante |
-| 6 | 100% | COLOSSAL | Visible map entière + particules + son |
-
-**Notification à 100% :** `"🍄 Player3's field is FULL!"` → tous les joueurs
-
-**Statut :** 💡 À implémenter
-**Complexité :** 🟢 Faible — scale progressif sur modèle existant
-**Impact waouh :** ⭐⭐⭐⭐⭐
-**Cible :** Update Semaine 1
-
----
-
-## 2. EFFET WAOUH — Le Trône du Roi BR
-
-**Concept :** Le joueur en tête du leaderboard reçoit un trône doré
-dans sa base, visible par tous. Si quelqu'un le dépasse, le trône se
-déplace vers la nouvelle base du leader.
-
-**Mécanique :**
-```
-1er du leaderboard depuis 5 min
-→ Trône doré apparaît dans sa base
-→ Personnage s'assoit automatiquement
-→ Couronne flotte au-dessus de sa tête
-→ BR rares orbitent autour de lui
-→ Leaderboard : "👑 KING : Player3"
-→ Si dépassé → trône se brise + se déplace
-```
-
-**Statut :** 💡 À implémenter
-**Complexité :** 🟢 Faible — modèle + logique leaderboard existante
-**Impact waouh :** ⭐⭐⭐⭐
-**Impact rétention :** ⭐⭐⭐⭐⭐
-**Cible :** Update Semaine 3
-
----
-
-## 3. FLOWERPOT — Plante Carnivore
-
-**Concept :** Suite au système FlowerPot existant, faire évoluer la plante
-qui pousse dans le pot vers une **plante carnivore animée**, plus crédible
-visuellement et thématique avec l'univers Brainrot.
-
-**Stages visuels :**
-```
-Stage 1 (0%-25%) : Bourgeon mauve au sol, légers spasmes
-Stage 2 (25%-50%) : Tige noire qui sort, feuilles dentelées
-Stage 3 (50%-75%) : Bouche carnivore se forme + dents
-Stage 4 (75%-99%) : Plante complète qui claque les mâchoires
-Stage 5 (100%) : La plante CRACHE le BR muté avec animation
-```
-
-**Variantes par mutation :**
-
-| Mutation | Couleur plante | Effet spécifique |
-|---|---|---|
-| ✨ GALAXY | Violet + sparkles galaxy | Étoiles tournent autour |
-| ☠️ TOXIC | Vert toxique + bave | Gouttes acide qui tombent |
-| 🌈 RAINBOW | Multicolore changeante | Arc-en-ciel qui pulse |
-| 🕳️ VOID | Noir + portail | Aspire les particules autour |
-
-**Bonus interactif :** quand le joueur s'approche, la plante claque les
-mâchoires (animation idle) → effet "vivant".
-
-**Statut :** 💡 À implémenter
-**Complexité :** 🟡 Moyenne — modèles 4 stages + animations + variantes mutation
-**Impact waouh :** ⭐⭐⭐⭐⭐
-**Viral TikTok :** ⭐⭐⭐⭐⭐
-**Cible :** Update Semaine 4-5
-
----
-
-## 4. MUTATION MASTER — Système de badges progressifs
+## 1. MUTATION MASTER — Système de badges progressifs ⭐ GROS UPDATE
 
 **Concept :** 4 badges à débloquer en remplissant la base avec un type de
 mutation unique, plus 1 badge ultime pour les complétionnistes.
@@ -153,7 +67,132 @@ Seuls les BRs en carry peuvent être volés.
 **Impact rétention :** ⭐⭐⭐⭐⭐
 **Impact game pass sales :** ⭐⭐⭐⭐ (joueurs voudront boost drops)
 **Viral TikTok :** ⭐⭐⭐⭐ (premier BRAINROT GOD = clip)
-**Cible :** Update Semaine 2 (premier gros update post-launch)
+**Cible :** Update Semaine 1 (premier gros update post-launch)
+
+---
+
+## 2. FLOWERPOT — Plante Carnivore
+
+**Concept :** Suite au système FlowerPot existant, faire évoluer la plante
+qui pousse dans le pot vers une **plante carnivore animée**, plus crédible
+visuellement et thématique avec l'univers Brainrot.
+
+**Stages visuels :**
+```
+Stage 1 (0%-25%) : Bourgeon mauve au sol, légers spasmes
+Stage 2 (25%-50%) : Tige noire qui sort, feuilles dentelées
+Stage 3 (50%-75%) : Bouche carnivore se forme + dents
+Stage 4 (75%-99%) : Plante complète qui claque les mâchoires
+Stage 5 (100%) : La plante CRACHE le BR muté avec animation
+```
+
+**Variantes par mutation :**
+
+| Mutation | Couleur plante | Effet spécifique |
+|---|---|---|
+| ✨ GALAXY | Violet + sparkles galaxy | Étoiles tournent autour |
+| ☠️ TOXIC | Vert toxique + bave | Gouttes acide qui tombent |
+| 🌈 RAINBOW | Multicolore changeante | Arc-en-ciel qui pulse |
+| 🕳️ VOID | Noir + portail | Aspire les particules autour |
+
+**Bonus interactif :** quand le joueur s'approche, la plante claque les
+mâchoires (animation idle) → effet "vivant".
+
+**Statut :** 💡 À implémenter
+**Complexité :** 🟡 Moyenne — modèles 4 stages + animations + variantes mutation
+**Impact waouh :** ⭐⭐⭐⭐⭐
+**Viral TikTok :** ⭐⭐⭐⭐⭐
+**Cible :** Update Semaine 2-3
+
+---
+
+## 3. LUCKI BLOCK — Inspiré du jeu Arnold
+
+**Concept :** Système de blocs surprises interactifs disséminés dans la map.
+Quand le joueur clique/touche un Lucki Block, il reçoit une récompense aléatoire.
+
+**Mécanique probable (à confirmer avec source Arnold) :**
+```
+- Spawn aléatoire toutes X minutes dans des zones définies
+- Visuel : bloc coloré pulsant + sparkles
+- Interaction : ProximityPrompt "Ouvrir le Lucki Block"
+- Récompenses possibles :
+  → Coins bonus (×100 à ×10000)
+  → BR rare instantané
+  → Boost income temporaire
+  → Mutation gratuite
+  → Multiplicateur Luck temporaire
+```
+
+**Anti-camp :** un joueur ne peut ouvrir que X Lucki Blocks par heure.
+
+**Statut :** 💡 À implémenter (copy from Arnold)
+**Complexité :** 🟡 Moyenne — spawn system + UI + récompenses
+**Impact rétention :** ⭐⭐⭐⭐ (FOMO + récompenses random)
+**Cible :** Update Semaine 3-4
+
+---
+
+## 4. LUCK ACHETABLE AVEC TIMER — Inspiré du jeu Arnold
+
+**Concept :** Le joueur peut acheter un boost de "Luck" personnel
+avec un timer visible, qui augmente les chances de spawn rare,
+mutation, ou drop pendant une durée définie.
+
+**Mécanique probable :**
+```
+- Bouton "Buy Luck" dans le shop (Robux ou coins)
+- 3 paliers possibles :
+  → Luck x2 pendant 15 min (50 R$ ou 100k coins)
+  → Luck x3 pendant 30 min (149 R$ ou 500k coins)
+  → Luck x5 pendant 1h (299 R$ ou 2M coins)
+
+- Timer visible en HUD :
+  → "⚡ Luck x3 : 14:32 restant"
+  → Pulsation visuelle du HUD pendant actif
+
+- Effet pendant la durée :
+  → Spawn rate des rares augmenté
+  → Drop chance mutation augmenté
+  → ChampCommun trigger pour le joueur uniquement
+```
+
+**Différenciation vs Lucky Hour event :**
+- Lucky Hour = event serveur automatique (toutes 2h)
+- Luck achetable = personnel + à la demande
+
+**Statut :** 💡 À implémenter (copy from Arnold)
+**Complexité :** 🟡 Moyenne — Game Pass / Dev Product + timer client + boost logic
+**Impact monétisation :** ⭐⭐⭐⭐⭐ (revenus directs Robux)
+**Cible :** Update Semaine 3-4
+
+---
+
+## 5. ENRICHISSEMENT AUDIO — Plus de sons partout
+
+**Concept :** Ajouter du feedback sonore dans tout le jeu pour
+améliorer l'immersion et le "game feel".
+
+**Zones à enrichir :**
+
+| Zone | Sons à ajouter |
+|---|---|
+| **Pickup BR** | Son satisfaisant par rareté (différent COMMON vs SECRET) |
+| **Deposit BR** | Son "cling" + accumulation coins |
+| **Menus** | Clic ouverture/fermeture, hover boutons |
+| **Shop achat** | Son d'achat réussi (différent Robux vs coins) |
+| **Mutation success** | Son magique par type (Galaxy, Toxic, Rainbow, Void) |
+| **Capture rare** | Son "wow" différencié par rareté |
+| **Base** | Ambiance discrète (champignons qui poussent, vent doux) |
+| **Tracteur** | Son moteur quand on conduit |
+| **FuseMachine** | Son de fusion + ding fin |
+| **FlowerPot** | Son de croissance + son final récolte |
+| **Notification** | Son spécifique pour events, badges, levels |
+
+**Statut :** 💡 À implémenter
+**Complexité :** 🟢 Faible — ajout de Sound instances + triggers
+**Impact game feel :** ⭐⭐⭐⭐⭐
+**Cible :** Update Semaine 1-2 (peut être progressif)
 
 ---
 
@@ -161,21 +200,21 @@ Seuls les BRs en carry peuvent être volés.
 
 ```
 DAY 1 (LANCEMENT)
-→ Publish BrainRotFarm tel quel
+→ Publish Brainrot Farm Empire
 → Post Discord + premiers TikTok
 → Suivi Analytics
 
-UPDATE SEMAINE 1 (J+7)
-→ Champignon progression visuel (#1)
+UPDATE SEMAINE 1 ⭐ GROS UPDATE
+→ Mutation Master Badges + BRAINROT GOD (#1)
+→ Enrichissement audio (partie 1) (#5)
 
-UPDATE SEMAINE 2 (J+14) ⭐ GROS UPDATE
-→ Mutation Master Badges + BRAINROT GOD (#4)
+UPDATE SEMAINE 2-3
+→ FlowerPot Plante Carnivore (#2)
+→ Enrichissement audio (partie 2) (#5)
 
-UPDATE SEMAINE 3 (J+21)
-→ Trône du Roi BR (#2)
-
-UPDATE SEMAINE 4-5 (J+28 à J+35)
-→ FlowerPot Plante Carnivore (#3)
+UPDATE SEMAINE 3-4
+→ Lucki Block (#3)
+→ Luck achetable avec timer (#4)
 ```
 
 ---
@@ -184,17 +223,24 @@ UPDATE SEMAINE 4-5 (J+28 à J+35)
 
 | Update | KPI à atteindre |
 |---|---|
-| **Semaine 1** | Maintenir retention >10 min, like ratio >70% |
-| **Semaine 2** | Boost retention à >15 min, +30% Game Pass sales |
-| **Semaine 3** | Top farmer competitif visible (10+ joueurs en lutte leaderboard) |
-| **Semaine 4-5** | TikTok viral si plante carnivore filmée par 3+ créateurs |
+| **Semaine 1** | Maintenir retention >10 min, like ratio >70%, premier BRAINROT GOD débloqué |
+| **Semaine 2-3** | Boost retention à >15 min, viral TikTok plante carnivore |
+| **Semaine 3-4** | +30% Game Pass sales (Luck achetable), FOMO Lucki Block actif |
 
 ---
 
 ## Notes
 
 - Toutes ces évolutions sont **conditionnées au succès du lancement**.
-- Si BrainRotFarm <500 visites/semaine après J+14 → STOP les updates,
+- Si Brainrot Farm Empire <500 visites/semaine après J+14 → STOP les updates,
   pivot ou abandon (cf STRATEGY.md règle d'abandon).
-- Si BrainRotFarm >5k visites/mois → ces updates sont prioritaires
+- Si Brainrot Farm Empire >5k visites/mois → ces updates sont prioritaires
   pour scaler ce qui marche.
+- Les fonctionnalités #3 et #4 (Lucki Block + Luck achetable) sont inspirées
+  du jeu d'Arnold. **Copier le concept, pas le code.** Réécrire dans le style
+  Brainrot Farm Empire.
+
+---
+
+**Version:** 2.0 — Mai 2026
+**Usage:** @EVOLUTIONS.md dans Claude Code pour les prompts d'update

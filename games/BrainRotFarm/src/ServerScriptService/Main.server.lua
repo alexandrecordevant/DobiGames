@@ -212,6 +212,7 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
         end
 
         local potPart = potModel:IsA("BasePart") and potModel
+            or (potModel:IsA("Model") and potModel.PrimaryPart)
             or potModel:FindFirstChildWhichIsA("BasePart", true)
         if not potPart then
             Logger.warn("Main", "[InitialiserPots] Aucun BasePart trouvé dans %s — pot ignoré", potModel.Name)
@@ -312,6 +313,9 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
                 local etape       = math.min(5, math.floor(elapsed / dureeStage))
                 local premAttente = math.max(1, dureeStage - (elapsed % dureeStage))
                 Logger.debug("Main", "[DEBUG FlowerPot] Pot%d rejoin | rarete=%s | plantedAt=%s | elapsed=%ds | etape=%d | premAttente=%ds", potIndex, tostring(potData.rarete), tostring(plantedAt), elapsed, etape, premAttente)
+                local _potModelRef  = potModel
+                local _potIndexRef  = potIndex
+                local _baseIndexRef = baseIndex
                 task.spawn(function()
                     FlowerPotGrowthSystem.PlantSeed(potModel, potData.rarete, player,
                         function(tp, elem, mult)
@@ -338,16 +342,35 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
                             onBRNomChosen   = makeOnBRNomChosen(player, potIndex),
                         })
                 end)
+
+                -- Garde-fou : si PlantSeed se termine immédiatement sans mutant ni croissance
+                -- (rareté invalide, assets manquants…), reset le pot après 3s
+                task.delay(3, function()
+                    if not player.Parent then return end
+                    if FlowerPotGrowthSystem.EstEnCroissance(_potModelRef) then return end
+                    local s = FlowerPotGrowthSystem.GetStatut(_potModelRef)
+                    if s and s.statut == "ready" then return end
+                    local d = GetData(player)
+                    if not d or not d.pots or not d.pots[_potIndexRef] then return end
+                    if not d.pots[_potIndexRef].rarete then return end
+                    Logger.warn("Main", "[SafetyReset] Pot%d toujours bloqué après 3s — reset forcé", _potIndexRef)
+                    d.pots[_potIndexRef].rarete      = nil
+                    d.pots[_potIndexRef].stage       = 0
+                    d.pots[_potIndexRef].plantedAt   = nil
+                    d.pots[_potIndexRef].elementType = nil
+                    d.pots[_potIndexRef].brNom       = nil
+                    local latest = GetData(player)
+                    if latest then InitialiserPots(player, _baseIndexRef, latest, _potIndexRef) end
+                end)
             end
 
-            -- Prompt discret pour ouvrir le panel infos (pas de texte visible — le billboard suffit)
+            -- Prompt pour ouvrir le panel infos pendant la croissance
             local promptInfos = Instance.new("ProximityPrompt")
-            promptInfos.ActionText            = ""
-            promptInfos.ObjectText            = ""
+            promptInfos.ActionText            = "Status"
+            promptInfos.ObjectText            = "🌱 FlowerPot " .. potIndex
             promptInfos.HoldDuration          = 0
             promptInfos.MaxActivationDistance = 8
             promptInfos.RequiresLineOfSight   = false
-            promptInfos.Style                 = Enum.ProximityPromptStyle.Custom
             promptInfos.Parent                = potPart
 
             -- Envoyer les données au client pour la BillboardGui 3D
@@ -490,6 +513,12 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
                     dureeStage = dureeStage,
                     rarete     = bestRarity,
                 })
+
+                -- Notifier le joueur que la graine a été plantée
+                local dureeMinutes = math.ceil(((FPCfg and FPCfg.GrowthDuration) or 120) * 5 / 60)
+                NotifEvent:FireClient(player, "SUCCESS",
+                    "🌱 " .. bestRarity .. " Seed planted in Pot " .. potIndex
+                    .. "! Ready in ~" .. dureeMinutes .. " min.")
 
                 -- Détruire le prompt "Plant" avant de lancer la croissance
                 if cnx then cnx:Disconnect() cnx = nil end
