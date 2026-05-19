@@ -40,12 +40,14 @@ local Logger = require(script.Parent.Parent.Logger)
 -- ============================================================
 -- État interne
 -- ============================================================
-local savedAmbient     = nil
-local savedColorShift  = nil
-local bloomEffect      = nil
-local highlights       = {}    -- Highlight instances créées sur les BR
-local connDescendant   = nil   -- connexion DescendantAdded pour les nouveaux BR
-local couleurActive    = nil   -- couleur golden en cours
+local savedAmbient          = nil
+local savedColorShift       = nil
+local bloomEffect           = nil
+local highlights            = {}   -- Highlight instances créées sur les BR
+local connDescendant        = nil  -- connexion DescendantAdded pour les nouveaux BR
+local couleurActive         = nil  -- couleur golden en cours
+local savedChampignons      = {}   -- { [BasePart] = { color, material } }
+local savedChampignonLights = {}   -- { PointLight, ... }
 
 -- ============================================================
 -- Utilitaires
@@ -111,6 +113,52 @@ local function supprimerHighlights()
 end
 
 -- ============================================================
+-- Champignons : Neon doré pendant Golden Event
+-- ============================================================
+local function appliquerChampignons()
+    savedChampignons      = {}
+    savedChampignonLights = {}
+    local folder = Workspace:FindFirstChild("Deco")
+    if folder then folder = folder:FindFirstChild("Champignons") end
+    if not folder then return end
+    for _, model in ipairs(folder:GetChildren()) do
+        local lightAdded = false
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local r, g, b = part.Color.R * 255, part.Color.G * 255, part.Color.B * 255
+                if g > 150 and b > 100 then  -- tiges beiges + points blancs, exclut rouge
+                    savedChampignons[part] = { color = part.Color, material = part.Material }
+                    part.Material = Enum.Material.Neon
+                    part.Color    = Color3.fromRGB(255, 215, 0)
+                    if not lightAdded then
+                        local pl = Instance.new("PointLight")
+                        pl.Brightness = 2 ; pl.Range = 16
+                        pl.Color      = Color3.fromRGB(255, 200, 50)
+                        pl.Parent     = part
+                        table.insert(savedChampignonLights, pl)
+                        lightAdded = true
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function restaurerChampignons()
+    for _, light in ipairs(savedChampignonLights) do
+        if light and light.Parent then light:Destroy() end
+    end
+    savedChampignonLights = {}
+    for part, saved in pairs(savedChampignons) do
+        if part and part.Parent then
+            part.Material = saved.material
+            part.Color    = saved.color
+        end
+    end
+    savedChampignons = {}
+end
+
+-- ============================================================
 -- API
 -- ============================================================
 
@@ -159,10 +207,11 @@ function EventGolden.Demarrer(config)
     end)
     if ok and bloom then bloomEffect = bloom end
 
-    -- Highlights sur les BR actifs (après un court délai pour laisser le tween démarrer)
+    -- Highlights sur les BR actifs + champignons dorés
     task.delay(0.5, function()
         appliquerHighlightsBR(config.couleurGolden)
     end)
+    task.delay(1, appliquerChampignons)
 
     -- Booster les multiplicateurs de gains
     local IS = getIncomeSystem()
@@ -203,6 +252,7 @@ function EventGolden.Terminer()
         connDescendant = nil
     end
     couleurActive = nil
+    restaurerChampignons()
 
     -- Supprimer les Highlights
     supprimerHighlights()

@@ -44,13 +44,12 @@ local prochainEventTimestamp = nil
 local function BoucleAuto()
     local intervalle = Config.EventIntervalleMinutes * 60
     local earlyBird  = Config.EarlyBirdBonusMinutes * 60
-    --local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
-    local types      = { "Rain"}
+    local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
 
 
     -- Premier event après 6s (test) — remettre 1200 en prod
-    prochainEventTimestamp = os.time() + 6
-    task.wait(6)
+    prochainEventTimestamp = os.time() + 1200
+    task.wait(1200)
     prochainEventTimestamp = nil
     DemarrerEvent(types[math.random(1, #types)])
     task.wait((Config.EventDureeMinutes * 60) + 5)

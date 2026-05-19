@@ -107,6 +107,7 @@ local panelStroke = Instance.new("UIStroke", menuPanel)
 panelStroke.Color           = Color3.fromRGB(255, 180, 30)
 panelStroke.Thickness       = 4
 panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+menuPanel.Visible = false
 
 -- Grille 2 colonnes
 local gridLayout = Instance.new("UIGridLayout", menuPanel)

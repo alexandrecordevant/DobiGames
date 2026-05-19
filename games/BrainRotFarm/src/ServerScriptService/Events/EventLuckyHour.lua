@@ -150,7 +150,7 @@ local function appliquerChampignons()
         for _, part in ipairs(model:GetDescendants()) do
             if part:IsA("BasePart") then
                 local r, g, b = part.Color.R * 255, part.Color.G * 255, part.Color.B * 255
-                if r > 220 and g > 220 and b > 220 then  -- parties blanches uniquement
+                if g > 150 and b > 100 then  -- tiges beiges (241,231,199) + points blancs (248,248,248)
                     savedDeco[part] = { color = part.Color, material = part.Material }
                     part.Material = Enum.Material.Neon
                     part.Color    = Color3.fromRGB(255, 0, 200)
