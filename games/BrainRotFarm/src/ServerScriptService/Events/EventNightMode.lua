@@ -58,9 +58,8 @@ local pulseTasks       = {}
 local savedLights      = {}
 local createdLights    = {}
 local materiauOriginel = {}   -- { [BasePart] = Enum.Material } pour restauration Map
-local savedChampignons          = {}   -- { [BasePart] = { color, material } }
-local savedChampignonLights     = {}   -- { PointLight, ... } créés par appliquerChampignons
-local champignonLightsOriginals = {}   -- { [light] = { brightness, range } } pour restauration
+local savedChampignons      = {}   -- { [BasePart] = { color, material } }
+local savedChampignonLights = {}   -- { light, ... } créés pendant NightMode
 local nightGlowLights           = {}   -- { [modeleSlot] = PointLight } NightGlow sur BR slottés
 local nightModeActif            = false
 local _ancienOnBRDepose         = nil
@@ -217,127 +216,51 @@ local function restaurerMateriauMap()
 end
 
 -- ============================================================
--- Champignons-lampes
+-- Champignons : Neon doré + PointLight pendant NightMode
 -- ============================================================
 local function appliquerChampignons()
     savedChampignons      = {}
     savedChampignonLights = {}
-
-    -- Étape 1 : trouver les modèles champignons
-    local modeles = {}
-
-    -- Diagnostic : dump des enfants de Deco pour identifier la structure réelle
-    local deco = Workspace:FindFirstChild("Deco")
-    if deco then
-        Logger.warn("Event", "Deco trouvé (%s), %d enfants :", deco.ClassName, #deco:GetChildren())
-        for _, ch in ipairs(deco:GetChildren()) do
-            Logger.warn("Event", "  Deco > %s (%s)", ch.Name, ch.ClassName)
-        end
-    else
-        Logger.warn("Event", "DECO INTROUVABLE dans Workspace")
-    end
-
-    -- Stratégie 1 : dossier/modèle nommé "Champignons" (insensible à la casse)
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj.Name:lower() == "champignons" then
-            Logger.warn("Event", "Dossier Champignons trouvé : %s", obj:GetFullName())
-            for _, child in ipairs(obj:GetChildren()) do
-                table.insert(modeles, child)
-            end
-            break
-        end
-    end
-
-    -- Stratégie 2 : modèles dont le nom commence par "champignon" (insensible à la casse)
-    if #modeles == 0 then
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if (obj:IsA("Model") or obj:IsA("BasePart")) and obj.Name:lower():match("^champignon") then
-                table.insert(modeles, obj)
-            end
-        end
-    end
-
-    -- Stratégie 3 (nucléaire) : BaseParts sous Deco avec la couleur rouge caractéristique (196,40,28 ±15)
-    if #modeles == 0 and deco then
-        Logger.warn("Event", "Fallback couleur : scan des parts rouges sous Deco")
-        local dejaVus = {}
-        for _, part in ipairs(deco:GetDescendants()) do
+    local folder = Workspace:FindFirstChild("Deco")
+    if folder then folder = folder:FindFirstChild("Champignons") end
+    if not folder then return end
+    local count = 0
+    for _, model in ipairs(folder:GetChildren()) do
+        local lightAdded = false
+        for _, part in ipairs(model:GetDescendants()) do
             if part:IsA("BasePart") then
                 local r, g, b = part.Color.R * 255, part.Color.G * 255, part.Color.B * 255
-                if math.abs(r - 196) < 15 and math.abs(g - 40) < 15 and math.abs(b - 28) < 15 then
-                    -- Part rouge champignon → remonter au Model parent
-                    local parentModel = part.Parent
-                    while parentModel and not parentModel:IsA("Model") do
-                        parentModel = parentModel.Parent
-                    end
-                    if parentModel and parentModel ~= Workspace and not dejaVus[parentModel] then
-                        dejaVus[parentModel] = true
-                        table.insert(modeles, parentModel)
+                local isWhite = r > 220 and g > 220 and b > 220
+                if isWhite then
+                    savedChampignons[part] = { color = part.Color, material = part.Material }
+                    part.Material = Enum.Material.Neon
+                    part.Color    = Color3.fromRGB(255, 230, 160)
+                    count         = count + 1
+                    -- Un PointLight par modèle, attaché à la première part blanche
+                    if not lightAdded then
+                        local pl = Instance.new("PointLight")
+                        pl.Brightness = 2 ; pl.Range = 18
+                        pl.Color      = Color3.fromRGB(255, 200, 120)
+                        pl.Parent     = part
+                        table.insert(savedChampignonLights, pl)
+                        lightAdded = true
                     end
                 end
             end
         end
     end
-
-    -- Diagnostic : compter les BaseParts visibles dans le premier modèle
-    if #modeles > 0 then
-        local m0 = modeles[1]
-        local partCount = 0
-        for _, d in ipairs(m0:GetDescendants()) do
-            if d:IsA("BasePart") then partCount += 1 end
-        end
-        Logger.warn("Event", "1er modèle '%s' (%s) → %d BaseParts côté serveur", m0.Name, m0.ClassName, partCount)
-    end
-    Logger.warn("Event", "NightMode champignons : %d modèles à colorier", #modeles)
-
-    -- Étape 2 : colorier et ajouter les lights
-    for _, model in ipairs(modeles) do
-        local rootPart = trouverRootPart(model)
-        if rootPart then
-            local point = Instance.new("PointLight")
-            point.Brightness = 2
-            point.Range      = 18
-            point.Color      = Color3.fromRGB(255, 200, 120)
-            point.Parent     = rootPart
-            table.insert(savedChampignonLights, point)
-            local spot = Instance.new("SpotLight")
-            spot.Brightness = 3
-            spot.Range      = 14
-            spot.Angle      = 60
-            spot.Color      = Color3.fromRGB(255, 180, 80)
-            spot.Face       = Enum.NormalId.Bottom
-            spot.Shadows    = false
-            spot.Parent     = rootPart
-            table.insert(savedChampignonLights, spot)
-        end
-        for _, part in ipairs(model:GetDescendants()) do
-            if part:IsA("BasePart") then
-                savedChampignons[part] = { color = part.Color, material = part.Material }
-                part.Material = Enum.Material.Neon
-                part.Color    = Color3.fromRGB(255, 230, 160)
-            end
-        end
-        if model:IsA("BasePart") then
-            savedChampignons[model] = { color = model.Color, material = model.Material }
-            model.Material = Enum.Material.Neon
-            model.Color    = Color3.fromRGB(255, 230, 160)
-        end
-    end
+    Logger.warn("Event", "[Champignons] %d parts colorées Neon", count)
 end
 
 local function restaurerChampignons()
     for _, light in ipairs(savedChampignonLights) do
-        if light and light.Parent then
-            pcall(function() light:Destroy() end)
-        end
+        if light and light.Parent then light:Destroy() end
     end
     savedChampignonLights = {}
     for part, saved in pairs(savedChampignons) do
         if part and part.Parent then
-            pcall(function()
-                part.Material = saved.material
-                part.Color    = saved.color
-            end)
+            part.Material = saved.material
+            part.Color    = saved.color
         end
     end
     savedChampignons = {}
@@ -347,7 +270,7 @@ end
 -- Couleur de rareté (lookup depuis GameConfig.Brainrots)
 -- ============================================================
 local _couleurParRarete = nil
-local COULEUR_FALLBACK = {  -- rarités absentes de GameConfig.Brainrots
+local COULEUR_FALLBACK = {
     GOD      = Color3.fromRGB(255, 255, 100),
     OG       = Color3.fromRGB(200, 200, 200),
     UNCOMMON = Color3.fromRGB(100, 200, 100),
@@ -365,55 +288,14 @@ local function getCouleurRarete(rarete)
     return _couleurParRarete[key] or COULEUR_FALLBACK[key] or Color3.fromRGB(200, 200, 200)
 end
 
--- Trouve la première BasePart visible d'un modèle (PrimaryPart → descendants)
 local function trouverRootPart(modele)
     if modele:IsA("BasePart") then return modele end
     if not modele:IsA("Model") then return nil end
     if modele.PrimaryPart then return modele.PrimaryPart end
     for _, v in ipairs(modele:GetDescendants()) do
-        if v:IsA("BasePart") and v.Transparency < 0.9 then
-            return v
-        end
+        if v:IsA("BasePart") and v.Transparency < 0.9 then return v end
     end
     return nil
-end
-
--- ============================================================
--- Atténuation des lumières des champignons (trop lumineuses)
--- Appelé APRÈS appliquerChampignons pour capturer les PointLights créés
--- ============================================================
-local function attenuerChampignonLights()
-    champignonLightsOriginals = {}
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if not (obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight")) then continue end
-        -- N'atténuer que les lights sous un modèle nommé Champignon (Studio-placed)
-        local parent = obj.Parent
-        local inChampignon = false
-        while parent and parent ~= Workspace do
-            if parent:IsA("Model") and parent.Name:match("^[Cc]hampignon") then
-                inChampignon = true break
-            end
-            parent = parent.Parent
-        end
-        if not inChampignon then continue end
-        champignonLightsOriginals[obj] = { brightness = obj.Brightness, range = obj.Range }
-        pcall(function()
-            obj.Brightness = obj.Brightness * 0.35
-            obj.Range      = math.min(obj.Range, 12)
-        end)
-    end
-end
-
-local function restaurerChampignonLights()
-    for light, saved in pairs(champignonLightsOriginals) do
-        if light and light.Parent then
-            pcall(function()
-                light.Brightness = saved.brightness
-                light.Range      = saved.range
-            end)
-        end
-    end
-    champignonLightsOriginals = {}
 end
 
 -- ============================================================
@@ -695,12 +577,12 @@ function EventNightMode.Demarrer(config)
     end)
     activerEcouteBR()                    -- BRs spawnnés pendant tout l'event
 
-    -- Matériau Map + lucioles + champignons
-    -- Ordre : attenuerChampignonLights AVANT appliquerChampignons → seules les lights Studio sont atténuées
     appliquerMateriauMap()
-    attenuerChampignonLights()
-    appliquerChampignons()
     appliquerLucioles()
+    -- Champignons après 1s : évite tout race condition avec les scripts d'init
+    task.delay(1, function()
+        if nightModeActif then appliquerChampignons() end
+    end)
 
     -- Hook : BR déposés pendant l'event
     local DS = getDropSystem()
@@ -735,7 +617,6 @@ function EventNightMode.Terminer()
     nettoyerLucioles()
     restaurerEtoiles()
     restaurerMateriauMap()
-    restaurerChampignonLights()  -- restaurer brightness des lights Studio avant destruction
     restaurerChampignons()
     restaurerLighting()
 

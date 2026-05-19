@@ -142,22 +142,28 @@ end
 local function appliquerChampignons()
     savedDeco       = {}
     savedDecoLights = {}
-    local deco = Workspace:FindFirstChild("Deco")
-    if not deco then return end
-    local folder = deco:FindFirstChild("Champignons")
+    local folder = Workspace:FindFirstChild("Deco")
+    if folder then folder = folder:FindFirstChild("Champignons") end
     if not folder then return end
     for _, model in ipairs(folder:GetChildren()) do
-        local light = Instance.new("PointLight")
-        light.Brightness = 4
-        light.Range      = 20
-        light.Color      = Color3.fromRGB(255, 0, 180)
-        light.Parent     = model
-        table.insert(savedDecoLights, light)
+        local lightAdded = false
         for _, part in ipairs(model:GetDescendants()) do
             if part:IsA("BasePart") then
-                savedDeco[part] = { color = part.Color, material = part.Material }
-                part.Material = Enum.Material.Neon
-                part.Color    = Color3.fromRGB(255, 0, 200)
+                local r, g, b = part.Color.R * 255, part.Color.G * 255, part.Color.B * 255
+                if r > 220 and g > 220 and b > 220 then  -- parties blanches uniquement
+                    savedDeco[part] = { color = part.Color, material = part.Material }
+                    part.Material = Enum.Material.Neon
+                    part.Color    = Color3.fromRGB(255, 0, 200)
+                    if not lightAdded then
+                        local light = Instance.new("PointLight")
+                        light.Brightness = 4
+                        light.Range      = 20
+                        light.Color      = Color3.fromRGB(255, 0, 180)
+                        light.Parent     = part  -- BasePart, pas Model
+                        table.insert(savedDecoLights, light)
+                        lightAdded = true
+                    end
+                end
             end
         end
     end
@@ -280,7 +286,7 @@ function EventLuckyHour.Demarrer(config)
     -- Sol + ciel + ambiance + champignons
     appliquerSol()
     appliquerCiel()
-    appliquerChampignons()
+    task.delay(1, appliquerChampignons)
     activerAmbiance(config.couleurAmbiance or Color3.fromRGB(180, 0, 255))
 
     -- Lancer la boucle de spawn

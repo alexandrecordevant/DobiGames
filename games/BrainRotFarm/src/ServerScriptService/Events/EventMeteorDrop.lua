@@ -41,7 +41,8 @@ local meteorActifsCount = 0
 local meteorsParts      = {}  -- liste des Parts météores en vol (pour nettoyage)
 local materiauOriginel  = {}  -- { [Part] = Enum.Material } pour restauration
 local savedLighting     = {}  -- snapshot Lighting avant l'event
-local savedChampignons  = {}  -- { [BasePart] = { color, material } }
+local savedChampignons      = {}  -- { [BasePart] = { color, material } }
+local savedChampignonLights = {}  -- { PointLight, ... } braises
 local _meteorFolder     = nil -- Folder Workspace contenant les météores en vol
 
 -- ============================================================
@@ -135,8 +136,8 @@ local function assombrirCiel()
             Brightness        = 1.8,
             Ambient           = Color3.fromRGB(140, 70, 45),
             OutdoorAmbient    = Color3.fromRGB(120, 60, 35),
-            FogEnd            = 1800,
-            FogColor          = Color3.fromRGB(160, 80, 50),
+            FogEnd            = 900,
+            FogColor          = Color3.fromRGB(180, 60, 30),
             ColorShift_Top    = Color3.fromRGB(180, 70, 40),
             ColorShift_Bottom = Color3.fromRGB(150, 55, 25),
         }):Play()
@@ -147,10 +148,10 @@ local function assombrirCiel()
     if cc then cc:Destroy() end
     local correction = Instance.new("ColorCorrectionEffect")
     correction.Name       = "MeteorColorCorrection"
-    correction.TintColor  = Color3.fromRGB(255, 170, 140)
-    correction.Brightness = 0.02
-    correction.Contrast   = 0.03
-    correction.Saturation = -0.05
+    correction.TintColor  = Color3.fromRGB(255, 140, 100)
+    correction.Brightness = 0.03
+    correction.Contrast   = 0.12
+    correction.Saturation = 0.15
     correction.Parent     = Lighting
 end
 
@@ -207,29 +208,50 @@ end
 -- Champignons : neon orange-rouge (météore)
 -- ============================================================
 local function appliquerChampignons()
-    savedChampignons = {}
-    local deco = Workspace:FindFirstChild("Deco")
-    if not deco then return end
-    local folder = deco:FindFirstChild("Champignons")
+    savedChampignons      = {}
+    savedChampignonLights = {}
+    local folder = Workspace:FindFirstChild("Deco")
+    if folder then folder = folder:FindFirstChild("Champignons") end
     if not folder then return end
     for _, model in ipairs(folder:GetChildren()) do
+        -- Détecter tige (241,231,199) ET points blancs (248,248,248) : g>150 et b>100 exclut le rouge (g=40)
+        local lowestPart = nil
         for _, part in ipairs(model:GetDescendants()) do
             if part:IsA("BasePart") then
-                savedChampignons[part] = { color = part.Color, material = part.Material }
-                part.Material = Enum.Material.SmoothPlastic
-                part.Color    = Color3.fromRGB(10, 10, 10)
+                local r, g, b = part.Color.R * 255, part.Color.G * 255, part.Color.B * 255
+                if g > 150 and b > 100 then  -- tiges beiges + points blancs, exclut rouge (g=40)
+                    savedChampignons[part] = { color = part.Color, material = part.Material }
+                    part.Material = Enum.Material.Neon
+                    part.Color    = Color3.fromRGB(255, 150, 30)
+                    -- Trouver la part la plus basse pour la braise (tige au sol)
+                    if not lowestPart or part.Position.Y < lowestPart.Position.Y then
+                        lowestPart = part
+                    end
+                end
             end
+        end
+        -- Braise sur la tige (part la plus basse du modèle)
+        if lowestPart then
+            local pl = Instance.new("PointLight")
+            pl.Brightness = 4
+            pl.Range      = 16
+            pl.Color      = Color3.fromRGB(255, 80, 10)
+            pl.Shadows    = false
+            pl.Parent     = lowestPart
+            table.insert(savedChampignonLights, pl)
         end
     end
 end
 
 local function restaurerChampignons()
+    for _, light in ipairs(savedChampignonLights) do
+        if light and light.Parent then light:Destroy() end
+    end
+    savedChampignonLights = {}
     for part, saved in pairs(savedChampignons) do
         if part and part.Parent then
-            pcall(function()
-                part.Material = saved.material
-                part.Color    = saved.color
-            end)
+            part.Material = saved.material
+            part.Color    = saved.color
         end
     end
     savedChampignons = {}
@@ -584,7 +606,7 @@ function EventMeteorDrop.Demarrer(config)
 
     assombrirCiel()
     appliquerMateriauMap()
-    appliquerChampignons()
+    task.delay(1, appliquerChampignons)
 
     -- Notifier + EventStarted
     local ev = ReplicatedStorage:FindFirstChild("NotifEvent")

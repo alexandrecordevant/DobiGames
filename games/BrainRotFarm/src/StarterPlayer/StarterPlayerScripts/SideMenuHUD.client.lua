@@ -41,12 +41,11 @@ gui.IgnoreGuiInset = false
 gui.DisplayOrder   = 15
 gui.Parent         = playerGui
 
--- Overlay transparent : clic en dehors ferme le menu
-local overlay = Instance.new("TextButton")
+-- Overlay (conservé comme placeholder, non utilisé pour fermer le menu)
+local overlay = Instance.new("Frame")
 overlay.Name                   = "CloseOverlay"
-overlay.Size                   = UDim2.new(1, 0, 1, 0)
+overlay.Size                   = UDim2.new(0, 0, 0, 0)
 overlay.BackgroundTransparency = 1
-overlay.Text                   = ""
 overlay.BorderSizePixel        = 0
 overlay.ZIndex                 = 14
 overlay.Visible                = false
@@ -179,7 +178,6 @@ local function ouvrirMenu()
     if menuOuvert then return end
     fermerAutresMenus()
     menuOuvert         = true
-    overlay.Visible    = true
     menuPanel.Visible  = true   -- révéler avant l'animation
     TweenService:Create(menuPanel,
         TweenInfo.new(DUREE, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -191,7 +189,6 @@ end
 local function fermerMenu()
     if not menuOuvert then return end
     menuOuvert      = false
-    overlay.Visible = false
     local tween = TweenService:Create(menuPanel,
         TweenInfo.new(DUREE, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
         { Size = UDim2.new(0, panelW, 0, 0) })
@@ -208,78 +205,10 @@ end
 burgerBtn.MouseButton1Click:Connect(function()
     if menuOuvert then fermerMenu() else ouvrirMenu() end
 end)
-overlay.MouseButton1Click:Connect(fermerMenu)
 
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.Escape and menuOuvert then fermerMenu() end
-end)
-
--- Ferme le grid quand un autre panneau s'ouvre (surveillance des Visible/Enabled)
-task.spawn(function()
-    -- ShopGui (ouvert par le serveur via OuvrirShop)
-    local shopGui = playerGui:WaitForChild("ShopGui", 30)
-    if shopGui then
-        shopGui:GetPropertyChangedSignal("Enabled"):Connect(function()
-            if shopGui.Enabled and menuOuvert then fermerMenu() end
-        end)
-    end
-    -- ShopRobuxPanel
-    local hud = playerGui:WaitForChild("HUD", 30)
-    if hud then
-        local rp = hud:WaitForChild("ShopRobuxPanel", 10)
-        if rp then
-            rp:GetPropertyChangedSignal("Visible"):Connect(function()
-                if rp.Visible and menuOuvert then fermerMenu() end
-            end)
-        end
-    end
-    -- IndexPanel
-    local indexGui = playerGui:WaitForChild("IndexGui", 30)
-    if indexGui then
-        local p = indexGui:WaitForChild("IndexPanel", 10)
-        if p then
-            p:GetPropertyChangedSignal("Visible"):Connect(function()
-                if p.Visible and menuOuvert then fermerMenu() end
-            end)
-        end
-    end
-    -- FlowerPotHUD — MainFrame
-    local fpGui = playerGui:WaitForChild("FlowerPotHUD", 30)
-    if fpGui then
-        local mf = fpGui:WaitForChild("MainFrame", 10)
-        if mf then
-            mf:GetPropertyChangedSignal("Visible"):Connect(function()
-                if mf.Visible and menuOuvert then fermerMenu() end
-            end)
-        end
-        local fp = fpGui:WaitForChild("FlowerPotPanel", 10)
-        if fp then
-            fp:GetPropertyChangedSignal("Visible"):Connect(function()
-                if fp.Visible and menuOuvert then fermerMenu() end
-            end)
-        end
-    end
-    -- TutoPanel
-    local tutoGui = playerGui:WaitForChild("MiniTutoHUD", 30)
-    if tutoGui then
-        local p = tutoGui:WaitForChild("TutoPanel", 10)
-        if p then
-            p:GetPropertyChangedSignal("Visible"):Connect(function()
-                if p.Visible and menuOuvert then fermerMenu() end
-            end)
-        end
-    end
-    -- CodePanel
-    local codeRedeemGui = playerGui:WaitForChild("CodeRedeemGUI", 30)
-    if codeRedeemGui then
-        local p = codeRedeemGui:WaitForChild("CodePanel", 10)
-        if p then
-            p:GetPropertyChangedSignal("Visible"):Connect(function()
-                if p.Visible and menuOuvert then fermerMenu() end
-            end)
-        end
-    end
 end)
 
 -- ============================================================
@@ -292,7 +221,6 @@ local function preparerBouton(btn, layoutOrder)
     btn.ZIndex      = 16
     btn.TextWrapped = true
     btn.LayoutOrder = layoutOrder
-    btn.MouseButton1Click:Connect(fermerMenu)
     btn.Parent = menuPanel
 end
 
@@ -374,7 +302,6 @@ task.spawn(function()
     proxyBtn.MouseButton1Click:Connect(function()
         if enCooldown then return end
         enCooldown = true
-        fermerMenu()
         collectAllEvent:FireServer()
         proxyBtn.BackgroundColor3 = Color3.fromRGB(80, 140, 80)
         local son = SoundService:FindFirstChild("SonUpgrade")

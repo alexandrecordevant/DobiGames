@@ -211,16 +211,18 @@ end
 -- ============================================================
 local function appliquerChampignons()
     savedChampignons = {}
-    local deco = Workspace:FindFirstChild("Deco")
-    if not deco then return end
-    local folder = deco:FindFirstChild("Champignons")
+    local folder = Workspace:FindFirstChild("Deco")
+    if folder then folder = folder:FindFirstChild("Champignons") end
     if not folder then return end
     for _, model in ipairs(folder:GetChildren()) do
         for _, part in ipairs(model:GetDescendants()) do
             if part:IsA("BasePart") then
-                savedChampignons[part] = { color = part.Color, material = part.Material }
-                part.Material = Enum.Material.Neon
-                part.Color    = Color3.fromRGB(0, 220, 255)
+                local r, g, b = part.Color.R * 255, part.Color.G * 255, part.Color.B * 255
+                if r > 220 and g > 220 and b > 220 then  -- parties blanches uniquement
+                    savedChampignons[part] = { color = part.Color, material = part.Material }
+                    part.Material = Enum.Material.Neon
+                    part.Color    = Color3.fromRGB(0, 220, 255)
+                end
             end
         end
     end
@@ -251,7 +253,7 @@ function EventRain.Demarrer(config)
     activerMovingClouds()
     activerRainEffect()
     activerFloodLevel()
-    appliquerChampignons()
+    task.delay(1, appliquerChampignons)
 
     -- Booster le spawn du ChampCommun
     local CCS = getCCS()

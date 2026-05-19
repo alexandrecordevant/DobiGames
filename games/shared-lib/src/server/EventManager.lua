@@ -45,7 +45,7 @@ local function BoucleAuto()
     local intervalle = Config.EventIntervalleMinutes * 60
     local earlyBird  = Config.EarlyBirdBonusMinutes * 60
     --local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
-    local types      = { "NightMode"}
+    local types      = { "Rain"}
 
 
     -- Premier event après 6s (test) — remettre 1200 en prod
