@@ -91,7 +91,7 @@ GameConfig.IncomeParRarete = {
 OG est dans `SpawnableItems` avec poids=22 **mais** figure dans `RaretesExcluesSpawn`. Il ne spawn que pendant Admin Abuse (poids 0.15 sur ~100). Son CPS de 500M $/s (2× SECRET T5) le place au-dessus du top tier normal. **Verdict : intentionnel comme "trophée d'event"** — mais le poids=22 dans SpawnableItems est du dead code qui waste 22% des calculs de tirage (le code reroll jusqu'à 20 fois à chaque OG tiré).
 
 **b) SECRET > GOD**
-Confirmé volontaire par le dev. GOD = legacy tier (obtenu via Fuse), SECRET = nouveau top tier (ZoneCommune + Tracteur). La confusion vient de l'absence de documentation in-game sur la source de GOD.
+Confirmé volontaire par le dev. GOD = tier exclusif Admin Abuse event (samedi 20h UTC), SECRET = nouveau top tier (ZoneCommune + Tracteur). La source de GOD est documentée via les notifications event et les leaderboards infos — P1.4 fermé.
 
 **c) MYTHIC→SECRET T1 = 33× via le même système de spawn**
 Le ratio (33×) est acceptable pour un "tier wall". À 6 joueurs, attendre 2h15 pour un SECRET T1 est une gate saine. Le problème : sans Tracteur, le joueur ne peut qu'attendre — pas de farm actif possible entre MYTHIC et SECRET T1.
