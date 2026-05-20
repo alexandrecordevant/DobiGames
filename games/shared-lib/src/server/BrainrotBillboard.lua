@@ -172,7 +172,11 @@ end
 function BrainrotBillboard.SetupField(brainrot, duration, studsY, showPrice)
 	if showPrice == nil then showPrice = true end
 	local root = GetRootPart(brainrot)
-	if not root then return end
+	if not root then
+		warn(("[BrainrotBillboard] SetupField : aucun BasePart sur %s (class=%s)"):format(
+			tostring(brainrot and brainrot.Name), tostring(brainrot and brainrot.ClassName)))
+		return
+	end
 
 	local rarete     = brainrot:GetAttribute("Rarete")         or "COMMON"
 	local nomAff     = brainrot:GetAttribute("OriginalName")   or brainrot.Name

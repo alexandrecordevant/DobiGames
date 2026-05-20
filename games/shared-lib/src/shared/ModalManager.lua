@@ -21,10 +21,15 @@ ModalManager.Modals = {
 -- Set des modales ouvertes { nomModale = true }
 local openModals = {}
 
-local stateEvent = Instance.new("BindableEvent")
+local stateEvent      = Instance.new("BindableEvent")
+local beforeOpenEvent = Instance.new("BindableEvent")
 
 -- Émis quand l'état "au moins une modale ouverte" bascule (bool)
 ModalManager.OnModalStateChanged = stateEvent.Event
+
+-- Émis AVANT l'enregistrement d'une nouvelle modale — chaque menu écoute
+-- et se ferme si openingModal ~= son propre nom
+ModalManager.BeforeOpen = beforeOpenEvent.Event
 
 local function compterOuverts()
     local n = 0
@@ -45,6 +50,7 @@ end
 -- Fire(true) uniquement si c'est la première modale ouverte
 function ModalManager.Open(modalName)
     if not modalName then return end
+    beforeOpenEvent:Fire(modalName)
     local etaitVide = not anyOpen()
     openModals[modalName] = true
     Logger.debug("Modal", "Open [" .. modalName .. "] — actives: " .. compterOuverts())

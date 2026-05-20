@@ -11,6 +11,13 @@ local TextService       = game:GetService("TextService")
 local player = Players.LocalPlayer
 local pg     = player:WaitForChild("PlayerGui")
 
+local function _getCloseEvent()
+    local e = pg:FindFirstChild("__CloseMenuEvent")
+    if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = pg end
+    return e
+end
+local closeMenuEvent = _getCloseEvent()
+
 -- Import UIConfig
 local UI           = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("UIConfig"))
 local ModalManager = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("ModalManager"))
@@ -190,6 +197,14 @@ local btnIndex = newInst("TextButton", {
 addCorner(btnIndex, UDim.new(0, 8))
 local _idxStroke = Instance.new("UIStroke", btnIndex)
 _idxStroke.Color = Color3.fromRGB(255, 180, 30) ; _idxStroke.Thickness = 3
+btnIndex.Text = ""
+local _idxIcon = Instance.new("ImageLabel", btnIndex)
+_idxIcon.Size                   = UDim2.new(1, -4, 1, -4)
+_idxIcon.Position               = UDim2.new(0, 2, 0, 2)
+_idxIcon.BackgroundTransparency = 1
+_idxIcon.Image                  = "rbxassetid://73676422676626"
+_idxIcon.ScaleType              = Enum.ScaleType.Fit
+_idxIcon.ZIndex                 = 11
 
 -- ================================================================
 -- Panneau principal (centre a l'ecran) -- dimensions depuis UIConfig
@@ -320,7 +335,32 @@ local TWEEN_INFO = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirectio
 local POS_OUVERT = UDim2.new(0.5, 0, 0.5, 0)
 local POS_FERME  = UDim2.new(0.5, 0, 1.5, 0)
 
+local function fermerAutresMenus()
+    local shopGui = pg:FindFirstChild("ShopGui")
+    if shopGui and shopGui.Enabled then shopGui.Enabled = false end
+    local hud = pg:FindFirstChild("HUD")
+    if hud then
+        local rp = hud:FindFirstChild("ShopRobuxPanel")
+        if rp and rp.Visible then rp.Visible = false end
+    end
+    local tutoGui = pg:FindFirstChild("MiniTutoHUD")
+    if tutoGui then
+        local p = tutoGui:FindFirstChild("TutoPanel")
+        if p and p.Visible then p.Visible = false end
+    end
+    local fpGui = pg:FindFirstChild("FlowerPotHUD")
+    if fpGui then
+        local mf = fpGui:FindFirstChild("MainFrame")
+        if mf and mf.Visible then mf.Visible = false end
+        local ds = fpGui:FindFirstChild("DailySeedPanel")
+        if ds then ds:Destroy() end
+        local fp = fpGui:FindFirstChild("FlowerPotPanel")
+        if fp and fp.Visible then fp.Visible = false end
+    end
+end
+
 local function ouvrirPanel()
+    closeMenuEvent:Fire("INDEX")
     ModalManager.Open(ModalManager.Modals.INDEX)
     -- Recalculer la taille au moment de l'ouverture (gère portrait/paysage)
     local w, h = calcDimensions()
@@ -349,6 +389,10 @@ local function fermerPanel()
         end
     end)
 end
+
+closeMenuEvent.Event:Connect(function(exceptName)
+    if exceptName ~= "INDEX" and panelOuvert then fermerPanel() end
+end)
 
 -- Sécurité auto-close si le panel est masqué par un script externe (ex: SideMenuHUD)
 panel:GetPropertyChangedSignal("Visible"):Connect(function()

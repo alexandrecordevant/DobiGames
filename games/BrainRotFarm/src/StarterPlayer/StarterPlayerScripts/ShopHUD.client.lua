@@ -12,6 +12,14 @@ local SoundService        = game:GetService("SoundService")
 local localPlayer = Players.LocalPlayer
 local playerGui   = localPlayer:WaitForChild("PlayerGui")
 
+-- Un seul menu ouvert à la fois
+local function _getCloseEvent()
+    local e = playerGui:FindFirstChild("__CloseMenuEvent")
+    if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = playerGui end
+    return e
+end
+local closeMenuEvent = _getCloseEvent()
+
 -- GameConfig
 local Config       = require(ReplicatedStorage.GameConfig)
 local UI           = require(ReplicatedStorage.SharedLib.UIConfig)
@@ -775,6 +783,11 @@ end
 -- Fermeture des autres menus (1 seul ouvert a la fois)
 -- ============================================================
 local function fermerAutresMenus()
+    local indexGui = playerGui:FindFirstChild("IndexGui")
+    if indexGui then
+        local p = indexGui:FindFirstChild("IndexPanel")
+        if p and p.Visible then p.Visible = false end
+    end
     local tutoGui = playerGui:FindFirstChild("MiniTutoHUD")
     if tutoGui then
         local p = tutoGui:FindFirstChild("TutoPanel")
@@ -803,6 +816,7 @@ end
 -- Ouverture / Fermeture (slide depuis le bas)
 -- ============================================================
 local function ouvrirShop(donnes)
+    closeMenuEvent:Fire("SHOP")
     ModalManager.Open(ModalManager.Modals.SHOP)
     fermerAutresMenus()
     donneesShop = donnes
@@ -825,6 +839,10 @@ local function fermerShop()
         screenGui.Enabled = false
     end)
 end
+
+closeMenuEvent.Event:Connect(function(exceptName)
+    if exceptName ~= "SHOP" and screenGui.Enabled then fermerShop() end
+end)
 
 -- Reinitialiser position si ferme par un autre menu (sécurité auto-close)
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()

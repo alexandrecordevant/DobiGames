@@ -14,13 +14,22 @@ local UI = _uiConfigModule and require(_uiConfigModule) or nil
 local estMobile = UserInputService.TouchEnabled
 local UI_SHOP   = (Config.UI and Config.UI.Shop) or {}
 local Logger       = require(game:GetService("ReplicatedStorage").SharedLib.Logger)
-local FormatNumber = require(ReplicatedStorage.SharedLib.Shared.FormatNumber)
-local ModalManager = require(ReplicatedStorage.SharedLib.ModalManager)
+local FormatNumber    = require(ReplicatedStorage.SharedLib.Shared.FormatNumber)
+local ModalManager    = require(ReplicatedStorage.SharedLib.ModalManager)
+local StudsBackground = require(ReplicatedStorage.SharedLib.StudsBackground)
 
 local gui = Instance.new("ScreenGui")
 gui.Name          = "HUD"
 gui.ResetOnSpawn  = false
 gui.Parent        = player.PlayerGui
+
+local function _getCloseEvent()
+    local pg = player.PlayerGui
+    local e = pg:FindFirstChild("__CloseMenuEvent")
+    if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = pg end
+    return e
+end
+local closeMenuEvent = _getCloseEvent()
 
 local function NouveauLabel(parent, size, pos, bgColor, textColor, text)
     local f = Instance.new("Frame", parent)
@@ -316,10 +325,10 @@ Instance.new("UICorner", btnShop).CornerRadius = UDim.new(0, 8)
 -- Icône Shop (Decal personnel)
 local shopIcon = Instance.new("ImageLabel", btnShop)
 shopIcon.Name                   = "ShopIcon"
-shopIcon.Size                   = UDim2.new(1, -16, 1, -16)   -- padding 8 px de chaque côté
-shopIcon.Position               = UDim2.new(0, 8, 0, 8)
+shopIcon.Size                   = UDim2.new(1, -4, 1, -4)
+shopIcon.Position               = UDim2.new(0, 2, 0, 2)
 shopIcon.BackgroundTransparency = 1
-shopIcon.Image                  = "rbxassetid://108897847737947"
+shopIcon.Image                  = "rbxassetid://122718813632593"
 shopIcon.ScaleType              = Enum.ScaleType.Fit
 shopIcon.ZIndex                 = 6
 local _btnShopStroke = Instance.new("UIStroke", btnShop)
@@ -329,6 +338,11 @@ _btnShopStroke.Color = Color3.fromRGB(255, 180, 30) ; _btnShopStroke.Thickness =
 local function fermerAutresMenusRobux()
     local shopGui = player.PlayerGui:FindFirstChild("ShopGui")
     if shopGui and shopGui.Enabled then shopGui.Enabled = false end
+    local indexGui = player.PlayerGui:FindFirstChild("IndexGui")
+    if indexGui then
+        local p = indexGui:FindFirstChild("IndexPanel")
+        if p and p.Visible then p.Visible = false end
+    end
     local tutoGui = player.PlayerGui:FindFirstChild("MiniTutoHUD")
     if tutoGui then
         local p = tutoGui:FindFirstChild("TutoPanel")
@@ -343,6 +357,8 @@ local function fermerAutresMenusRobux()
             ModalManager.Close(ModalManager.Modals.DAILY_SEEDS)
             ds:Destroy()
         end
+        local fp = fpGui:FindFirstChild("FlowerPotPanel")
+        if fp then fp.Visible = false end
     end
 end
 
@@ -351,6 +367,7 @@ local robuxPanelOpen = false
 local function ouvrirRobuxPanel()
     local panel = gui:FindFirstChild("ShopRobuxPanel")
     if not panel then return end
+    closeMenuEvent:Fire("ROBUX_SHOP")
     ModalManager.Open(ModalManager.Modals.ROBUX_SHOP)
     fermerAutresMenusRobux()
     robuxPanelOpen = true
@@ -371,6 +388,10 @@ local function fermerRobuxPanel()
         if panel.Parent then panel.Visible = false end
     end)
 end
+
+closeMenuEvent.Event:Connect(function(exceptName)
+    if exceptName ~= "ROBUX_SHOP" and robuxPanelOpen then fermerRobuxPanel() end
+end)
 
 btnShop.MouseButton1Click:Connect(function()
     if robuxPanelOpen then fermerRobuxPanel() else ouvrirRobuxPanel() end
@@ -414,6 +435,8 @@ local function creerShopRobuxPanel()
     end
     workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScale)
     ajusterScale()
+
+    StudsBackground.create(panel, { tileSize = 50, transparency = 0.5 })
 
     local stroke = Instance.new("UIStroke", panel)
     stroke.Color           = Color3.fromRGB(255, 180, 30)

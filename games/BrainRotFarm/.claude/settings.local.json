@@ -63,7 +63,11 @@
       "Bash(git -C \"C:/Users/Admin/Documents/Developpement/DobiGames\" diff \"games/BrainRotFarm/src/ServerScriptService/Main.server.lua\")",
       "Bash(git -C \"C:/Users/Admin/Documents/Developpement/DobiGames\" diff \"games/shared-lib/src/server/FuseSystem/FuseSystem.lua\")",
       "Bash(git -C \"C:/Users/Admin/Documents/Developpement/DobiGames\" add \"games/BrainRotFarm/src/ServerScriptService/Main.server.lua\" \"games/shared-lib/src/server/FuseSystem/FuseSystem.lua\" \"games/BrainRotFarm/src/StarterPlayer/StarterPlayerScripts/SpeedTrailClient.client.lua\")",
-      "PowerShell(head -30)"
+      "PowerShell(head -30)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\\\\src\\\\ReplicatedStorage\\\\Modules\" -Recurse | ForEach-Object { $_.FullName })",
+      "PowerShell(\\(Get-Item -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\\\\src\\\\ReplicatedStorage\\\\Modules\" | Measure-Object\\).Count; ls -Force \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\\\\src\\\\ReplicatedStorage\\\\Modules\")",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" -Recurse -Directory | ForEach-Object { $_.FullName } | Sort-Object)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\\\\src\\\\ServerStorage\\\\Modules\" -Recurse | ForEach-Object { $_.FullName })"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

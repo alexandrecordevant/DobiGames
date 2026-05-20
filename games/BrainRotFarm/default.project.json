@@ -11,8 +11,9 @@
             "SharedLib": {
                 "$className": "Folder",
                 "Logger":      { "$path": "../shared-lib/src/server/Logger.lua" },
-                "UIConfig":    { "$path": "../shared-lib/src/shared/UIConfig.lua" },
-                "ModalManager":{ "$path": "../shared-lib/src/shared/ModalManager.lua" },
+                "UIConfig":        { "$path": "../shared-lib/src/shared/UIConfig.lua" },
+                "ModalManager":    { "$path": "../shared-lib/src/shared/ModalManager.lua" },
+                "StudsBackground": { "$path": "../shared-lib/src/shared/StudsBackground.lua" },
                 "Shared": {
                     "$className": "Folder",
                     "UITheme":      { "$path": "../shared-lib/src/shared/UITheme.lua" },

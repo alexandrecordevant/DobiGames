@@ -18,6 +18,13 @@ end
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function _getCloseEvent()
+    local e = playerGui:FindFirstChild("__CloseMenuEvent")
+    if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = playerGui end
+    return e
+end
+local closeMenuEvent = _getCloseEvent()
+
 -- ============================================================
 -- RemoteEvents
 -- ============================================================
@@ -246,6 +253,11 @@ end
 
 -- Fermeture des autres menus (1 seul ouvert a la fois)
 local function fermerAutresMenus()
+    local indexGui = playerGui:FindFirstChild("IndexGui")
+    if indexGui then
+        local p = indexGui:FindFirstChild("IndexPanel")
+        if p and p.Visible then p.Visible = false end
+    end
     local shopGui = playerGui:FindFirstChild("ShopGui")
     if shopGui and shopGui.Enabled then shopGui.Enabled = false end
     local tutoGui = playerGui:FindFirstChild("MiniTutoHUD")
@@ -267,6 +279,7 @@ local function fermerAutresMenus()
 end
 
 local function ouvrirPanel()
+    closeMenuEvent:Fire("FLOWER_POT")
     ModalManager.Open(ModalManager.Modals.FLOWER_POT)
     fermerAutresMenus()
     local targetSize = _calcMainFrameSize()
@@ -293,6 +306,17 @@ mainFrame:GetPropertyChangedSignal("Visible"):Connect(function()
         overlay.Visible = false
         currentPotIndex = nil
         ModalManager.Close(ModalManager.Modals.FLOWER_POT)
+    end
+end)
+
+closeMenuEvent.Event:Connect(function(exceptName)
+    if exceptName ~= "FLOWER_POT" and mainFrame.Visible then fermer() end
+    if exceptName ~= "FLOWER_POT_PANEL" and fpPanel.Visible then
+        fpPanel.Visible = false
+    end
+    if exceptName ~= "DAILY_SEEDS" then
+        local ds = screenGui:FindFirstChild("DailySeedPanel")
+        if ds then ds:Destroy() end
     end
 end)
 
@@ -773,10 +797,10 @@ local function FormatTempsLocal(secondes)
 end
 
 local function OuvrirDailySeedPanel()
-    -- Détruire l'ancienne instance avant d'enregistrer la nouvelle ouverture
     local existing = screenGui:FindFirstChild("DailySeedPanel")
     if existing then existing:Destroy() end
 
+    closeMenuEvent:Fire("DAILY_SEEDS")
     ModalManager.Open(ModalManager.Modals.DAILY_SEEDS)
     fermerAutresMenus()
 
@@ -1173,15 +1197,15 @@ local function fpMajAffichage(pots, graines)
     -- Texte bouton
     local btnFlowerPot = screenGui:FindFirstChild("FlowerPotButton")
     if btnFlowerPot then
-        if nbReady > 0 then
-            btnFlowerPot.Text = "FlowerPot\n"..nbReady.." ready"
-            btnFlowerPot.TextColor3 = Color3.fromRGB(220, 110, 15)
-        elseif nbGrow > 0 then
-            btnFlowerPot.Text = "FlowerPot\n"..nbGrow.." growing"
-            btnFlowerPot.TextColor3 = Color3.fromRGB(100, 180, 255)
-        else
-            btnFlowerPot.Text = "FlowerPot"
-            btnFlowerPot.TextColor3 = Color3.fromRGB(220, 220, 220)
+        local icon = btnFlowerPot:FindFirstChildOfClass("ImageLabel")
+        if icon then
+            if nbReady > 0 then
+                icon.ImageColor3 = Color3.fromRGB(220, 110, 15)
+            elseif nbGrow > 0 then
+                icon.ImageColor3 = Color3.fromRGB(100, 180, 255)
+            else
+                icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            end
         end
     end
 end
@@ -1213,13 +1237,20 @@ btnFlowerPot.BackgroundTransparency = 0.05
 btnFlowerPot.TextColor3             = Color3.fromRGB(220, 220, 220)
 btnFlowerPot.Font                   = Enum.Font.GothamBold
 btnFlowerPot.TextSize               = 12
-btnFlowerPot.Text                   = "FlowerPot"
+btnFlowerPot.Text                   = ""
 btnFlowerPot.TextWrapped            = true
 btnFlowerPot.BorderSizePixel        = 0
 btnFlowerPot.ZIndex                 = 10
 Instance.new("UICorner", btnFlowerPot).CornerRadius = UDim.new(0, 8)
 local _bfpS = Instance.new("UIStroke", btnFlowerPot)
 _bfpS.Color = Color3.fromRGB(60, 60, 60) ; _bfpS.Thickness = 1
+local _bfpIcon = Instance.new("ImageLabel", btnFlowerPot)
+_bfpIcon.Size                   = UDim2.new(1, -4, 1, -4)
+_bfpIcon.Position               = UDim2.new(0, 2, 0, 2)
+_bfpIcon.BackgroundTransparency = 1
+_bfpIcon.Image                  = "rbxassetid://88201033886141"
+_bfpIcon.ScaleType              = Enum.ScaleType.Fit
+_bfpIcon.ZIndex                 = 11
 local _fpConstraint = Instance.new("UISizeConstraint", btnFlowerPot)
 _fpConstraint.MinSize = Vector2.new(80, 80)
 _fpConstraint.MaxSize = Vector2.new(80, 80)
@@ -1230,6 +1261,7 @@ btnFlowerPot.MouseButton1Click:Connect(function()
         fpPanel.Visible = false
         overlay.Visible = false
     else
+        closeMenuEvent:Fire("FLOWER_POT_PANEL")
         ModalManager.Open(ModalManager.Modals.FLOWER_POT_PANEL)
         fermerAutresMenus()
         overlay.Visible = true

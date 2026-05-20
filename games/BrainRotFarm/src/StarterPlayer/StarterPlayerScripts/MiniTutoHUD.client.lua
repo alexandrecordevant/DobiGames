@@ -9,6 +9,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function _getCloseEvent()
+    local e = playerGui:FindFirstChild("__CloseMenuEvent")
+    if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = playerGui end
+    return e
+end
+local closeMenuEvent = _getCloseEvent()
+
 local UI           = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("UIConfig"))
 local ModalManager = require(ReplicatedStorage:WaitForChild("SharedLib"):WaitForChild("ModalManager"))
 
@@ -50,6 +57,14 @@ Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 local btnStroke = Instance.new("UIStroke", btn)
 btnStroke.Color     = Color3.fromRGB(60, 60, 60)
 btnStroke.Thickness = 1
+btn.Text = ""
+local _tutoIcon = Instance.new("ImageLabel", btn)
+_tutoIcon.Size                   = UDim2.new(1, -4, 1, -4)
+_tutoIcon.Position               = UDim2.new(0, 2, 0, 2)
+_tutoIcon.BackgroundTransparency = 1
+_tutoIcon.Image                  = "rbxassetid://127251872068787"
+_tutoIcon.ScaleType              = Enum.ScaleType.Fit
+_tutoIcon.ZIndex                 = 11
 local _tutoConstraint = Instance.new("UISizeConstraint", btn)
 _tutoConstraint.MinSize = Vector2.new(80, 80)
 _tutoConstraint.MaxSize = Vector2.new(80, 80)
@@ -288,6 +303,11 @@ majCanvasSize()
 -- Fermeture des autres menus (1 seul ouvert a la fois)
 -- ============================================================
 local function fermerAutresMenus()
+    local indexGui = playerGui:FindFirstChild("IndexGui")
+    if indexGui then
+        local p = indexGui:FindFirstChild("IndexPanel")
+        if p and p.Visible then p.Visible = false end
+    end
     -- Fermer le ShopGui (coin shop)
     local shopGui = playerGui:FindFirstChild("ShopGui")
     if shopGui and shopGui.Enabled then shopGui.Enabled = false end
@@ -318,6 +338,7 @@ end
 local panelOpen = false
 
 local function openPanel()
+    closeMenuEvent:Fire("HOW_TO_PLAY")
     ModalManager.Open(ModalManager.Modals.HOW_TO_PLAY)
     fermerAutresMenus()
     -- Recalcul au moment de l'ouverture (vp.X peut être 0 au boot)
@@ -362,6 +383,10 @@ local function ajusterScaleTuto()
 end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterScaleTuto)
 ajusterScaleTuto()
+
+closeMenuEvent.Event:Connect(function(exceptName)
+    if exceptName ~= "HOW_TO_PLAY" and panelOpen then closePanel() end
+end)
 
 btn.MouseButton1Click:Connect(function()
     if panelOpen then closePanel() else openPanel() end

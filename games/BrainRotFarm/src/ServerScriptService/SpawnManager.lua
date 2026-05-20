@@ -229,15 +229,13 @@ end
 
 -- Obtenir le PrimaryPart ou le premier BasePart trouvé
 local function obtenirRacine(modele)
-	if modele.PrimaryPart then
-		return modele.PrimaryPart
+	if modele:IsA("Model") then
+		return modele.PrimaryPart or modele:FindFirstChildWhichIsA("BasePart", true)
+	elseif modele:IsA("BasePart") then
+		return modele
 	end
-	for _, v in ipairs(modele:GetDescendants()) do
-		if v:IsA("BasePart") then
-			return v
-		end
-	end
-	return nil
+	-- Folder ou autre container
+	return modele:FindFirstChildWhichIsA("BasePart", true)
 end
 
 -- Récupérer tous les BaseParts d'un modèle
@@ -1157,19 +1155,24 @@ end
 
 -- Spawne un BR d'une rareté précise à une position précise (utilisé par MeteorDrop)
 function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
-    local dossier = brainrotsFolder:FindFirstChild(rareteNom)
-    if not dossier then
-        dossier = brainrotsFolder:FindFirstChild("LEGENDARY")
+    -- choisirModele gère les sous-niveaux numérotés (SECRET, GOD) — évite de
+    -- sélectionner un dossier au lieu d'un modèle ce qui crashait obtenirRacine
+    local source = choisirModele(rareteNom)
+    -- Garantir que source est bien un Model (choisirModele peut retourner un Folder
+    -- si la rareté a des sous-dossiers non gérés par choisirModele)
+    if source and not source:IsA("Model") then
+        Logger.warn("Spawn", "SpawnerBRSpecifique : source n'est pas un Model (%s : %s)", rareteNom, source.ClassName)
+        source = nil
     end
-    if not dossier then
-        Logger.warn("Spawn", "SpawnerBRSpecifique : dossier introuvable (%s)", tostring(rareteNom))
+    if not source then
+        source = choisirModele("LEGENDARY")
+        if source and not source:IsA("Model") then source = nil end
+    end
+    if not source then
+        Logger.warn("Spawn", "SpawnerBRSpecifique : modèle introuvable (%s)", tostring(rareteNom))
         return
     end
 
-    local modeles = dossier:GetChildren()
-    if #modeles == 0 then return end
-
-    local source = modeles[math.random(1, #modeles)]
     local clone
     local ok, err = pcall(function() clone = source:Clone() end)
     if not ok or not clone then
@@ -1202,17 +1205,22 @@ function SpawnManager.SpawnerBRSpecifique(position, rareteNom)
         part.Anchored   = true
     end
 
-    -- Positionner
+    -- Positionner — base du modèle au niveau du sol (évite le modèle semi-enterré)
     pcall(function()
         if clone:IsA("Model") then
-            clone:PivotTo(CFrame.new(position))
+            clone:ScaleTo(1)
+            -- Calculer le décalage pivot→bas du bounding box pour poser la base au sol
+            local bbCF, bbSz = clone:GetBoundingBox()
+            local pivotCF    = clone:GetPivot()
+            local pivotAboveBase = pivotCF.Position.Y - (bbCF.Position.Y - bbSz.Y * 0.5)
+            clone:PivotTo(CFrame.new(position.X, position.Y + pivotAboveBase, position.Z))
         else
-            racine.CFrame = CFrame.new(position)
+            racine.CFrame = CFrame.new(position + Vector3.new(0, CONFIG.Y_OFFSET, 0))
         end
     end)
 
     -- Billboard
-    BrainrotBillboard.SetupField(clone, CONFIG.DUREE_DESPAWN)
+    pcall(BrainrotBillboard.SetupField, clone, CONFIG.DUREE_DESPAWN)
     pcall(lancerCountdownBillboard, clone, CONFIG.DUREE_DESPAWN)
 
     -- ProximityPrompt via hook OnBRSpawned (baseIndex = nil → tout le monde peut capturer)

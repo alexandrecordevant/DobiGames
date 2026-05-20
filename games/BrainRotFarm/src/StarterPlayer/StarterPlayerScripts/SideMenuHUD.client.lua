@@ -286,8 +286,7 @@ task.spawn(function()
     proxyBtn.Name                   = "CollectAllProxy"
     proxyBtn.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
     proxyBtn.BackgroundTransparency = 0.05
-    proxyBtn.Text                   = "Collect\nAll"
-    proxyBtn.TextColor3             = Color3.fromRGB(220, 220, 220)
+    proxyBtn.Text                   = ""
     proxyBtn.Font                   = Enum.Font.GothamBold
     proxyBtn.TextSize               = 11
     proxyBtn.TextWrapped            = true
@@ -296,8 +295,15 @@ task.spawn(function()
     proxyBtn.LayoutOrder            = 6
     proxyBtn.Parent                 = menuPanel
     Instance.new("UICorner", proxyBtn).CornerRadius = UDim.new(0, RAYON)
-    local s = Instance.new("UIStroke", proxyBtn)
-    s.Color = Color3.fromRGB(255, 180, 30) ; s.Thickness = 3 ; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    local _s = Instance.new("UIStroke", proxyBtn)
+    _s.Color = Color3.fromRGB(60, 60, 60) ; _s.Thickness = 1
+    local _caIcon = Instance.new("ImageLabel", proxyBtn)
+    _caIcon.Size                   = UDim2.new(1, -4, 1, -4)
+    _caIcon.Position               = UDim2.new(0, 2, 0, 2)
+    _caIcon.BackgroundTransparency = 1
+    _caIcon.Image                  = "rbxassetid://79352018655308"
+    _caIcon.ScaleType              = Enum.ScaleType.Fit
+    _caIcon.ZIndex                 = 17
 
     local enCooldown = false
     proxyBtn.MouseButton1Click:Connect(function()
