@@ -406,7 +406,7 @@ GameConfig.EventsVisuels = {
         messageFin     = "The Golden Event is over. See you soon!",
     },
 
-    RareSpawn = {
+    LuckyHour = {
         duree           = 180,
         rarityPool      = { RARE = 60, EPIC = 35, LEGENDARY = 5 },
         spawnInterval   = 10,

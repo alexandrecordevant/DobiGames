@@ -211,15 +211,21 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
             continue
         end
 
+        -- Cherche le meilleur BasePart : PrimaryPart en priorité,
+        -- puis enfant DIRECT (évite les parts internes profondes),
+        -- puis fallback récursif.
         local potPart = potModel:IsA("BasePart") and potModel
-            or (potModel:IsA("Model") and potModel.PrimaryPart)
+            or (potModel:IsA("Model") and (
+                potModel.PrimaryPart
+                or potModel:FindFirstChildWhichIsA("BasePart", false)
+            ))
             or potModel:FindFirstChildWhichIsA("BasePart", true)
         if not potPart then
             Logger.warn("Main", "[InitialiserPots] Aucun BasePart trouvé dans %s — pot ignoré", potModel.Name)
             continue
         end
 
-        Logger.debug("Main", "[InitialiserPots] Pot%d | part=%s | debloque=%s | rarete=%s", potIndex, potPart.Name, tostring(potData.debloque), tostring(potData.rarete))
+        Logger.info("Main", "[InitialiserPots] Pot%d | part=%s | debloque=%s | rarete=%s", potIndex, potPart.Name, tostring(potData.debloque), tostring(potData.rarete))
 
         -- Nettoyer ProximityPrompts ET BillboardGuis sur tout le modèle
         for _, desc in ipairs(potModel:GetDescendants()) do
@@ -289,7 +295,7 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
             prompt.ActionText            = "Unlock"
             prompt.ObjectText            = "FlowerPot " .. potIndex
             prompt.HoldDuration          = 0
-            prompt.MaxActivationDistance = 8
+            prompt.MaxActivationDistance = 12
             prompt.RequiresLineOfSight   = false
             prompt.Parent                = potPart
 
@@ -369,7 +375,7 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
             promptInfos.ActionText            = "Status"
             promptInfos.ObjectText            = "🌱 FlowerPot " .. potIndex
             promptInfos.HoldDuration          = 0
-            promptInfos.MaxActivationDistance = 8
+            promptInfos.MaxActivationDistance = 12
             promptInfos.RequiresLineOfSight   = false
             promptInfos.Parent                = potPart
 
@@ -432,7 +438,7 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
             prompt.ActionText            = "Plant"
             prompt.ObjectText            = "🌱 FlowerPot " .. potIndex
             prompt.HoldDuration          = 0
-            prompt.MaxActivationDistance = 8
+            prompt.MaxActivationDistance = 12
             prompt.RequiresLineOfSight   = false
             prompt.Parent                = potPart
 
