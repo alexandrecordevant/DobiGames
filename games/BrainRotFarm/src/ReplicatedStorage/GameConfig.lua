@@ -53,7 +53,7 @@ GameConfig.DiscordInvite = "https://discord.gg/JfPHVBpQXS"
 -- === ÉCONOMIE ===
 GameConfig.BaseSpawnRate          = 3
 GameConfig.BaseSpawnCount         = 1
-GameConfig.OfflineIncomeMultiplier = 0.1
+GameConfig.OfflineIncomeMultiplier = 0.2
 GameConfig.MaxOfflineHeures       = 8
 
 -- === PROGRESSION ===
@@ -75,7 +75,7 @@ GameConfig.AdminAbuseHebdo = {
 }
 -- Types d'events aléatoires déclenchés par EventManager.
 -- Modifier cette liste pour ajouter/retirer des events selon le jeu.
-GameConfig.EventTypes = {"NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
+GameConfig.EventTypes = {"NightMode", "MeteorDrop", "Rain", "Golden", "RareSpawn"}
 
 
 -- === RARETÉS ===
@@ -406,7 +406,7 @@ GameConfig.EventsVisuels = {
         messageFin     = "The Golden Event is over. See you soon!",
     },
 
-    LuckyHour = {
+    RareSpawn = {
         duree           = 180,
         rarityPool      = { RARE = 60, EPIC = 35, LEGENDARY = 5 },
         spawnInterval   = 10,
@@ -954,10 +954,10 @@ GameConfig.Fuse = {
 	},
 	-- Multiplicateurs CPS par slot de mutation (calqués sur LavaTower)
 	MutationCPS = {
-		GOLD    = 2,   -- GALAXY  (rebirth 0, income ×2)
-		TOXIC   = 5,   -- TOXIC   (rebirth 0, income ×4)
-		RAINBOW = 10,  -- RAINBOW (rebirth 3, income ×6)
-		DIAMANT = 15,  -- VOID    (rebirth 5, income ×8)
+		GOLD    = 2,  -- GALAXY  (rebirth 0, income ×2)
+		TOXIC   = 4,  -- TOXIC   (rebirth 0, income ×4) — aligné FlowerPot
+		RAINBOW = 6,  -- RAINBOW (rebirth 3, income ×6) — aligné FlowerPot
+		DIAMANT = 8,  -- VOID    (rebirth 5, income ×8) — aligné FlowerPot
 	},
 	-- Mapping MutantType FlowerPot → slot interne FuseSystem
 	MutantTypeToSlot = {

@@ -3,7 +3,7 @@
 -- Des BR RARE/EPIC/LEGENDARY spawnnent directement sur les bases occupées des joueurs
 
 local EventLuckyHour = {}
-EventLuckyHour.NOM          = "LuckyHour"
+EventLuckyHour.NOM          = "RareSpawn"
 EventLuckyHour.DUREE_DEFAUT = 60
 
 -- ============================================================

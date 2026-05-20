@@ -690,7 +690,7 @@ local NOMS_EVENTS = {
     MeteorDrop  = "☄️ Meteor Drop",
     Rain        = "🌧️ Rain Event",
     Golden      = "✨ Golden Event",
-    LuckyHour   = "⭐ Lucky Hour",
+    RareSpawn   = "⭐ Lucky Hour",
     SecretSpawn = "🔴 Secret Spawn",
     AdminAbuse  = "⚡ Admin Abuse",
 }
