@@ -1021,8 +1021,8 @@ GameConfig.SECRET_LEVEL_WEIGHTS = {
     [1] = 88.89,
     [2] = 10,
     [3] = 1,
-    [4] = 0.1,
-    [5] = 0.01,
+    [4] = 0.5,   -- était 0.1 → ~17 jours à 6P (était 83j)
+    [5] = 0.1,   -- était 0.01 → ~83 jours à 6P (était 833j)
 }
 
 -- === POIDS DES SOUS-NIVEAUX GOD ===
