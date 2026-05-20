@@ -459,6 +459,11 @@ local function creerShopRobuxPanel()
     titre.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
     titre.TextStrokeTransparency = 0
     titre.ZIndex                 = 11
+    local _hdrStuds = Instance.new("ImageLabel", titre)
+    _hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
+    _hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
+    _hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency = 0.3
+    _hdrStuds.ZIndex = 12
 
     -- Bouton fermer
     local closeSize = UI and UI.Modal.CloseButtonSize or 44

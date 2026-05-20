@@ -594,6 +594,12 @@ local function creerUI()
 		g.Parent   = titreBar
 	end
 
+	local _hdrStuds = Instance.new("ImageLabel", titreBar)
+	_hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
+	_hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
+	_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency = 0.3
+	_hdrStuds.ZIndex = 1
+
 	local lTitre = Instance.new("TextLabel")
 	lTitre.Size                   = UDim2.new(1, -60, 0, 28)
 	lTitre.Position               = UDim2.new(0, 16, 0, 8)

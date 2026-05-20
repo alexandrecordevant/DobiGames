@@ -121,6 +121,11 @@ titleLabel.RichText               = true
 titleLabel.Text                   = "  Flower Pot"
 titleLabel.ZIndex                 = 12
 titleLabel.Parent                 = mainFrame
+local _hdrStuds = Instance.new("ImageLabel", titleLabel)
+_hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
+_hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
+_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency = 0.3
+_hdrStuds.ZIndex = 13
 
 -- Séparateur
 local sep = Instance.new("Frame")
@@ -846,6 +851,11 @@ local function OuvrirDailySeedPanel()
     titre.TextScaled             = false
     titre.TextXAlignment         = Enum.TextXAlignment.Left
     titre.ZIndex                 = 21
+    local _dsStuds = Instance.new("ImageLabel", titre)
+    _dsStuds.Size = UDim2.new(1,0,1,0) ; _dsStuds.BackgroundTransparency = 1
+    _dsStuds.Image = "rbxassetid://6927295847" ; _dsStuds.ScaleType = Enum.ScaleType.Tile
+    _dsStuds.TileSize = UDim2.fromOffset(30,30) ; _dsStuds.ImageTransparency = 0.3
+    _dsStuds.ZIndex = 22
 
     -- Bouton fermer
     local btnClose = Instance.new("TextButton", panel)
@@ -1082,6 +1092,11 @@ fpTitre.TextStrokeColor3 = Color3.fromRGB(80, 40, 0) ; fpTitre.TextStrokeTranspa
 fpTitre.Font = UI.Fonts.Title ; fpTitre.TextSize = UI.TextSizes.H2
 fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
 fpTitre.Text = "  FlowerPot Status" ; fpTitre.ZIndex = 21
+local _fpStuds = Instance.new("ImageLabel", fpTitre)
+_fpStuds.Size = UDim2.new(1,0,1,0) ; _fpStuds.BackgroundTransparency = 1
+_fpStuds.Image = "rbxassetid://6927295847" ; _fpStuds.ScaleType = Enum.ScaleType.Tile
+_fpStuds.TileSize = UDim2.fromOffset(30,30) ; _fpStuds.ImageTransparency = 0.3
+_fpStuds.ZIndex = 22
 
 local fpClose = Instance.new("TextButton", fpPanel)
 fpClose.Size = UDim2.new(0,28,0,28) ; fpClose.Position = UDim2.new(1,-34,0,4)

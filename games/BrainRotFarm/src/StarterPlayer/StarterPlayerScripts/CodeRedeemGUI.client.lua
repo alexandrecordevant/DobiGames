@@ -8,6 +8,13 @@ local TweenService      = game:GetService("TweenService")
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function _getCloseEvent()
+    local e = playerGui:FindFirstChild("__CloseMenuEvent")
+    if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = playerGui end
+    return e
+end
+local closeMenuEvent = _getCloseEvent()
+
 local Logger               = require(ReplicatedStorage.SharedLib.Logger)
 local ModalManager         = require(ReplicatedStorage.SharedLib.ModalManager)
 local CodeRedeemAnimations = require(script.Parent:WaitForChild("CodeRedeemAnimations"))
@@ -79,38 +86,50 @@ panel.Visible                = false
 panel.Parent                 = gui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
 local panelStroke = Instance.new("UIStroke", panel)
-panelStroke.Color     = Color3.fromRGB(140, 80, 220)
-panelStroke.Thickness = 2
+panelStroke.Color           = Color3.fromRGB(255, 180, 30)
+panelStroke.Thickness       = 5
+panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+panel.ClipsDescendants      = true
 
 -- Titre
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name                   = "Title"
-titleLabel.Size                   = UDim2.new(1, -56, 0, 40)
-titleLabel.Position               = UDim2.new(0, 16, 0, 14)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text                   = "🎟️  PROMO CODES"
-titleLabel.TextColor3             = Color3.fromRGB(220, 180, 255)
+titleLabel.Size                   = UDim2.new(1, 0, 0, 54)
+titleLabel.Position               = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+titleLabel.BackgroundTransparency = 0
+titleLabel.Text                   = "  PROMO CODES"
+titleLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
+titleLabel.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
+titleLabel.TextStrokeTransparency = 0
 titleLabel.Font                   = Enum.Font.GothamBold
 titleLabel.TextSize               = 20
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.ZIndex                 = 27
 titleLabel.Parent                 = panel
+local _codeStuds = Instance.new("ImageLabel", titleLabel)
+_codeStuds.Size = UDim2.new(1,0,1,0) ; _codeStuds.BackgroundTransparency = 1
+_codeStuds.Image = "rbxassetid://6927295847" ; _codeStuds.ScaleType = Enum.ScaleType.Tile
+_codeStuds.TileSize = UDim2.fromOffset(30,30) ; _codeStuds.ImageTransparency = 0.3
+_codeStuds.ZIndex = 28
 
 -- Bouton X
 local closeBtn = Instance.new("TextButton")
 closeBtn.Name                   = "CloseBtn"
 closeBtn.Size                   = UDim2.new(0, 32, 0, 32)
 closeBtn.Position               = UDim2.new(1, -44, 0, 12)
-closeBtn.BackgroundColor3       = Color3.fromRGB(80, 30, 30)
-closeBtn.BackgroundTransparency = 0.2
-closeBtn.Text                   = "✕"
-closeBtn.TextColor3             = Color3.fromRGB(255, 120, 120)
+closeBtn.BackgroundColor3       = Color3.fromRGB(230, 50, 50)
+closeBtn.BackgroundTransparency = 0
+closeBtn.Text                   = "X"
+closeBtn.TextColor3             = Color3.fromRGB(255, 255, 255)
 closeBtn.Font                   = Enum.Font.GothamBold
 closeBtn.TextSize               = 16
 closeBtn.BorderSizePixel        = 0
-closeBtn.ZIndex                 = 27
+closeBtn.ZIndex                 = 28
 closeBtn.Parent                 = panel
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+local _cbs = Instance.new("UIStroke", closeBtn)
+_cbs.Color = Color3.fromRGB(255,255,255) ; _cbs.Thickness = 3
 
 -- Séparateur
 local sep = Instance.new("Frame")
@@ -163,16 +182,20 @@ local redeemBtn = Instance.new("TextButton")
 redeemBtn.Name                   = "RedeemBtn"
 redeemBtn.Size                   = UDim2.new(1, -32, 0, 50)
 redeemBtn.Position               = UDim2.new(0, 16, 0, 158)
-redeemBtn.BackgroundColor3       = Color3.fromRGB(90, 40, 160)
+redeemBtn.BackgroundColor3       = Color3.fromRGB(140, 220, 70)
 redeemBtn.BackgroundTransparency = 0
 redeemBtn.Text                   = "REDEEM"
 redeemBtn.TextColor3             = Color3.fromRGB(255, 255, 255)
+redeemBtn.TextStrokeColor3       = Color3.fromRGB(40, 80, 10)
+redeemBtn.TextStrokeTransparency = 0
 redeemBtn.Font                   = Enum.Font.GothamBold
 redeemBtn.TextSize               = 18
 redeemBtn.BorderSizePixel        = 0
 redeemBtn.ZIndex                 = 27
 redeemBtn.Parent                 = panel
-Instance.new("UICorner", redeemBtn).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", redeemBtn).CornerRadius = UDim.new(0, 20)
+local _rds = Instance.new("UIStroke", redeemBtn)
+_rds.Color = Color3.fromRGB(60,120,30) ; _rds.Thickness = 2
 
 -- Zone de feedback
 local feedbackLabel = Instance.new("TextLabel")
@@ -191,7 +214,12 @@ feedbackLabel.Parent                 = panel
 -- ============================================================
 -- Logique open / close
 -- ============================================================
+closeMenuEvent.Event:Connect(function(exceptName)
+    if exceptName ~= "CODE_REDEEM" and panel.Visible then fermerModal() end
+end)
+
 local function ouvrirModal()
+    closeMenuEvent:Fire("CODE_REDEEM")
     ModalManager.Open(MODAL_NAME)
     overlay.Visible = true
     panel.Visible   = true
@@ -224,7 +252,7 @@ local enRequete  = false
 local COULEUR_SUCCES = Color3.fromRGB(100, 255, 140)
 local COULEUR_ERREUR = Color3.fromRGB(255, 100, 100)
 local COULEUR_INFO   = Color3.fromRGB(255, 200, 50)
-local COULEUR_BTN    = Color3.fromRGB(90, 40, 160)
+local COULEUR_BTN    = Color3.fromRGB(140, 220, 70)
 
 local function setFeedback(texte, couleur, dureeAuto)
     feedbackLabel.Text       = texte
