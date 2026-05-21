@@ -196,6 +196,110 @@ améliorer l'immersion et le "game feel".
 
 ---
 
+## 6. PLANTE CARNIVORE INTERACTIVE — Nourrir pour muter ⭐
+
+**Concept :** Une graine plantée dans le FlowerPot peut évoluer en **plante carnivore vivante**.
+Le joueur peut alors lui **donner un BR** — la plante l'avale et le transforme en un **mutant
+d'un nouveau genre**, impossible à obtenir autrement.
+
+**Deux phases :**
+
+**Phase 1 — La graine devient une plante carnivore**
+```
+Chance lors de la plantation d'une graine MYTHIC/SECRET :
+→ MYTHIC seed  : 20% de chance de devenir une plante carnivore
+→ SECRET seed  : 50% de chance de devenir une plante carnivore
+→ Sinon        : comportement normal (mutant GALAXY/TOXIC/RAINBOW/VOID)
+
+Visuel différencié dès le Stage 1 :
+→ Couleur noire + bouche qui se forme progressivement
+→ Animation "affamée" à Stage 4 (la plante réclame à manger)
+```
+
+**Phase 2 — Nourrir la plante carnivore**
+```
+ProximityPrompt "Nourrir" apparaît quand la plante est à Stage 4
+→ Le joueur doit avoir un BR en carry
+→ Il donne le BR : la plante l'avale (animation crunch)
+→ Résultat après 5-10 min de digestion :
+   BR COMMON/UNCOMMON donné  → mutant CORRUPTED  (×5 income)
+   BR RARE/EPIC donné        → mutant ANCIENT    (×12 income)
+   BR LEGENDARY donné        → mutant COSMIC     (×25 income)
+   BR MYTHIC donné           → mutant DIVINE     (×50 income)
+   BR SECRET donné           → mutant ABYSSAL    (×100 income)
+```
+
+**Nouveaux genres de mutants (exclusifs plante carnivore) :**
+
+| Mutant | Source | Income mult. | Visuel |
+|---|---|---|---|
+| 💀 CORRUPTED | BR COMMON/UNCOMMON | ×5 | Noir craquelé, yeux rouges |
+| 🏛️ ANCIENT | BR RARE/EPIC | ×12 | Pierre dorée, runes flottantes |
+| 🌌 COSMIC | BR LEGENDARY | ×25 | Espace en miniature dans le corps |
+| ✨ DIVINE | BR MYTHIC | ×50 | Blanc lumineux, ailes translucides |
+| 🕳️ ABYSSAL | BR SECRET | ×100 | Portail noir absolu, distorsion espace |
+
+**Équilibre :**
+- La plante carnivore **consomme** le BR donné (sacrifice réel)
+- Si le joueur ne nourrit pas la plante dans les 30 min → elle meurt (graine perdue)
+- Un seul nourrissage par plante
+- Aucun autre moyen d'obtenir ces 5 nouveaux genres → exclusivité forte
+
+**Interaction avec Mutation Master (#1) :**
+- 5 nouveaux badges possibles : CORRUPTED MASTER, ANCIENT MASTER...
+- Ou un méga-badge "CARNIVORE GOD" pour les 5 genres en base simultanément
+
+**Statut :** 💡 À implémenter
+**Complexité :** 🟠 Haute — nouveau système de nourissage + 5 modèles mutants + balancement
+**Impact rétention :** ⭐⭐⭐⭐⭐ (nouveaux objectifs, sacrifice stratégique)
+**Impact monétisation :** ⭐⭐⭐⭐⭐ (Tracteur + LuckyCharm + SecretSeed = plus de SECRET à sacrifier)
+**Viral TikTok :** ⭐⭐⭐⭐⭐ (premier ABYSSAL = clip garanti)
+**Cible :** Update Semaine 2-3 (avec Plante Carnivore visuelle)
+
+---
+
+## 7. COSMÉTIQUES — Shop de skins & accessoires
+
+**Concept :** Système de cosmétiques achetables en Robux — purement visuels,
+sans impact sur le gameplay. Driver de rétention long terme et de revenus
+récurrents indépendants de la progression.
+
+**Catégories possibles :**
+
+| Catégorie | Exemples | Prix estimé |
+|---|---|---|
+| **Trails** | Traînée derrière le joueur (galaxy, toxic, rainbow, void, fire...) | 49-99 R$ |
+| **Auras** | Halo autour du personnage (identité visuelle) | 99-149 R$ |
+| **Hat / accessoire** | Chapeau, couronne, casque de tracteur | 49-99 R$ |
+| **Base skin** | Couleur/texture des spots de la base | 149 R$ |
+| **Chemin skin** | Texture du sol de la ferme | 99 R$ |
+
+**Pourquoi c'est important :**
+- Les cosmétiques ne créent pas de pay-to-win → communauté tolérante
+- Revenus Robux **après** que le joueur a fini les game passes fonctionnels
+- Identité visuelle → viral (joueurs se montrent dans les clips TikTok)
+- Grow a Garden a explosé en partie grâce aux watering can skins + auras
+
+**Ce qui existe déjà :**
+- Trails visuels déjà implémentés pour le Speed upgrade (`SpeedTrailClient.lua`)
+- Aura BRAINROT GOD déjà prévue dans Mutation Master (#1)
+- Mutation Master prévoit des "skin chemin" par mutation — mêmes assets réutilisables
+
+**Ce qui manque :**
+- Shop UI cosmétiques (onglet dédié ou section dans ShopHUD)
+- DataStore : `playerData.cosmetics = { trail = nil, aura = nil, hat = nil }`
+- Système d'équipement / preview en temps réel
+- Assets 3D / textures (à créer en Studio)
+
+**Statut :** 💡 À implémenter
+**Complexité :** 🟡 Moyenne — UI shop + DataStore équipement + assets Studio
+**Impact monétisation :** ⭐⭐⭐⭐⭐ (revenus long terme post-launch)
+**Impact rétention :** ⭐⭐⭐⭐ (identité joueur, flex social)
+**Viral TikTok :** ⭐⭐⭐⭐ (les auras/trails se voient dans les clips)
+**Cible :** Update Semaine 4-6
+
+---
+
 ## Roadmap synthétique
 
 ```
@@ -209,12 +313,16 @@ UPDATE SEMAINE 1 ⭐ GROS UPDATE
 → Enrichissement audio (partie 1) (#5)
 
 UPDATE SEMAINE 2-3
-→ FlowerPot Plante Carnivore (#2)
+→ FlowerPot Plante Carnivore visuelle (#2)
+→ Plante Carnivore Interactive — nourrir pour muter (#6)
 → Enrichissement audio (partie 2) (#5)
 
 UPDATE SEMAINE 3-4
 → Lucki Block (#3)
 → Luck achetable avec timer (#4)
+
+UPDATE SEMAINE 4-6
+→ Shop Cosmétiques — trails, auras, hats (#7)
 ```
 
 ---
