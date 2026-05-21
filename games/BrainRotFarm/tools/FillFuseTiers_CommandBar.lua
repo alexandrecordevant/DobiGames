@@ -10,18 +10,18 @@ local SS = game:GetService("ServerStorage")
 -- CONFIG — ajuster ici selon la progression souhaitée
 -- ================================================================
 
--- Rareté → numéro de tier de SORTIE (1-8)
+-- Rareté → numéro de tier de SORTIE (1-6)
 -- Le tier est déterminé côté entrée par le CPS combiné des 4 inputs.
 -- Ces brainrots sont ce que le joueur peut OBTENIR depuis ce tier.
+-- Tier 7 = copie automatique de Tier 6 (fallback SECRET pour CPS > 5M).
 local TIER_PAR_RARETE = {
-	RARE         = 1,  -- fuse 4× Common  → reçoit un Rare/Epic
+	RARE         = 1,  -- fuse 4× Common  → reçoit un Rare
 	EPIC         = 2,  -- fuse 4× Rare    → reçoit un Epic
 	LEGENDARY    = 3,  -- fuse 4× Epic    → reçoit un Legendary
 	MYTHIC       = 4,  -- fuse 4× Leg.    → reçoit un Mythic
 	GOD          = 5,  -- fuse 4× Mythic  → reçoit un God
 	BRAINROT_GOD = 5,  -- alias utilisé dans le jeu pour GOD
 	SECRET       = 6,  -- fuse 4× God     → reçoit un Secret
-	OG           = 7,  -- fuse 4× Secret  → reçoit un OG
 }
 
 -- Ces raretés ne sont pas mises en sortie de fuse
@@ -131,9 +131,9 @@ dest = Instance.new("Folder")
 dest.Name = "FuseBrainrots"
 dest.Parent = SS
 
--- Structure Tier_1..Tier_8 / "50" / "30" / "18" / "2"
+-- Structure Tier_1..Tier_7 / "50" / "30" / "18" / "2"
 local tierFolders = {}
-for t = 1, 8 do
+for t = 1, 7 do
 	local tf = Instance.new("Folder")
 	tf.Name = "Tier_" .. t
 	tf.Parent = dest
@@ -148,7 +148,7 @@ end
 
 -- Regrouper les brainrots par tier
 local byTier = {}
-for t = 1, 8 do byTier[t] = {} end
+for t = 1, 7 do byTier[t] = {} end
 local skipped = {}
 
 for _, inst in ipairs(collectAll(source)) do
@@ -166,7 +166,7 @@ end
 -- Remplir chaque tier et afficher le bilan
 local totalPlaced = 0
 print("[FillFuseTiers] Remplissage en cours...")
-for t = 1, 8 do
+for t = 1, 7 do
 	local list = byTier[t]
 	local n = distribuer(list, tierFolders[t])
 	totalPlaced += n
@@ -175,7 +175,23 @@ for t = 1, 8 do
 	end
 end
 
-print(string.format("[FillFuseTiers] ✓ %d clones placés dans SS.FuseBrainrots", totalPlaced))
+-- Tier 7 = copie de Tier 6 (fallback SECRET — empêche output nil si CPS > 5M)
+local nbFallback = 0
+for _, p in ipairs(POIDS) do
+	local src = tierFolders[6] and tierFolders[6][p.key]
+	local dst = tierFolders[7] and tierFolders[7][p.key]
+	if src and dst then
+		for _, child in ipairs(src:GetChildren()) do
+			child:Clone().Parent = dst
+			nbFallback += 1
+		end
+	end
+end
+if nbFallback > 0 then
+	print(string.format("  Tier_7 (fallback SECRET) : %d clones copiés de Tier_6", nbFallback))
+end
+
+print(string.format("[FillFuseTiers] ✓ %d clones placés dans SS.FuseBrainrots", totalPlaced + nbFallback))
 
 if #skipped > 0 then
 	warn(string.format("[FillFuseTiers] ⚠ %d ignorés (rareté non mappée) :", #skipped))

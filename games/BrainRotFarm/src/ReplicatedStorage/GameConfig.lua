@@ -935,16 +935,15 @@ GameConfig.Fuse = {
 	FuseBrainrotsFolder = game:GetService("ServerStorage"):FindFirstChild("FuseBrainrots"),
 	FuseDuration        = 5400,  -- 1h30 en secondes
 	DataStoreName       = "BrainRotIdleV1",
-	DataStoreKeyPrefix  = "fusetest_",
+	DataStoreKeyPrefix  = "fuse_",
 	Tiers = {
-		{ maxTotal = 1000                },  -- Tier 1
-		{ maxTotal = 100000              },  -- Tier 2
-		{ maxTotal = 1000000             },  -- Tier 3
-		{ maxTotal = 1000000000          },  -- Tier 4
-		{ maxTotal = 1000000000000       },  -- Tier 5
-		{ maxTotal = 1000000000000000    },  -- Tier 6
-		{ maxTotal = 1e18                },  -- Tier 7
-		{ maxTotal = math.huge           },  -- Tier 8
+		{ maxTotal = 100       },  -- Tier 1 → RARE
+		{ maxTotal = 800       },  -- Tier 2 → EPIC
+		{ maxTotal = 5000      },  -- Tier 3 → LEGENDARY
+		{ maxTotal = 30000     },  -- Tier 4 → MYTHIC
+		{ maxTotal = 300000    },  -- Tier 5 → BRAINROT_GOD
+		{ maxTotal = 5000000   },  -- Tier 6 → SECRET
+		{ maxTotal = math.huge },  -- Tier 7 → SECRET (fallback pour CPS > 5M)
 	},
 	Weights = {
 		{ folder = "50", weight = 50 },
