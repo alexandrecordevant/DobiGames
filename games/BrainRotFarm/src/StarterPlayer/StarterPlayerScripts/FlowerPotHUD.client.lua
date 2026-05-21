@@ -749,7 +749,7 @@ dailySeedButton.Font                   = Enum.Font.GothamBold
 dailySeedButton.TextSize               = 11
 dailySeedButton.TextWrapped            = true
 dailySeedButton.RichText               = false
-dailySeedButton.Text                   = "Day 1/7"
+dailySeedButton.Text                   = ""
 dailySeedButton.BorderSizePixel        = 0
 dailySeedButton.ZIndex                 = 10
 local _dsCorner = Instance.new("UICorner", dailySeedButton)
@@ -760,6 +760,28 @@ local _dsConstraint = Instance.new("UISizeConstraint", dailySeedButton)
 _dsConstraint.MinSize = Vector2.new(80, 80)
 _dsConstraint.MaxSize = Vector2.new(80, 80)
 
+local _dsIcon = Instance.new("ImageLabel", dailySeedButton)
+_dsIcon.Size                   = UDim2.new(1, 0, 1, 0)
+_dsIcon.Position               = UDim2.new(0, 0, 0, 0)
+_dsIcon.BackgroundTransparency = 1
+_dsIcon.Image                  = "rbxassetid://86024613409795"
+_dsIcon.ScaleType              = Enum.ScaleType.Fit
+_dsIcon.ZIndex                 = 11
+
+local _dsTextLbl = Instance.new("TextLabel", dailySeedButton)
+_dsTextLbl.Size                   = UDim2.new(1, 0, 0, 22)
+_dsTextLbl.Position               = UDim2.new(0, 0, 1, -22)
+_dsTextLbl.BackgroundTransparency = 1
+_dsTextLbl.Text                   = "Day 1/7"
+_dsTextLbl.TextColor3             = Color3.fromRGB(220, 220, 220)
+_dsTextLbl.Font                   = Enum.Font.GothamBold
+_dsTextLbl.TextSize               = 11
+_dsTextLbl.TextScaled             = false
+_dsTextLbl.TextWrapped            = true
+_dsTextLbl.TextXAlignment         = Enum.TextXAlignment.Center
+_dsTextLbl.BorderSizePixel        = 0
+_dsTextLbl.ZIndex                 = 12
+
 local _pulseTween = nil
 
 local function SetSeedReady(ready)
@@ -767,10 +789,10 @@ local function SetSeedReady(ready)
     if ready then
         dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
         dailySeedButton.BackgroundTransparency = 0.05
-        dailySeedButton.TextColor3             = Color3.fromRGB(220, 110, 15)
-        dailySeedButton.TextSize               = 13
+        _dsTextLbl.TextColor3 = Color3.fromRGB(220, 110, 15)
+        _dsTextLbl.TextSize   = 13
         _pulseTween = TweenService:Create(
-            dailySeedButton,
+            _dsTextLbl,
             TweenInfo.new(0.7, Enum.EasingStyle.Sine,
                 Enum.EasingDirection.InOut, -1, true),
             { TextSize = 17 }
@@ -779,8 +801,8 @@ local function SetSeedReady(ready)
     else
         dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
         dailySeedButton.BackgroundTransparency = 0.05
-        dailySeedButton.TextColor3             = Color3.fromRGB(220, 220, 220)
-        dailySeedButton.TextSize               = 13
+        _dsTextLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+        _dsTextLbl.TextSize   = 13
     end
 end
 
@@ -1332,15 +1354,15 @@ if LeaderboardUpdate then
         if dailySeedInfo then
             _dailySeedData = dailySeedInfo
             if dailySeedInfo.graineDispo then
-                dailySeedButton.Text = "Seed Ready!"
+                _dsTextLbl.Text = "Seed Ready!"
                 SetSeedReady(true)
             else
                 local j         = dailySeedInfo.jourActuel or 1
                 local remaining = dailySeedInfo.tempsRestant or 0
                 if remaining > 0 then
-                    dailySeedButton.Text = "Day " .. j .. "/7 " .. FormatTempsLocal(remaining)
+                    _dsTextLbl.Text = "Day " .. j .. "/7 " .. FormatTempsLocal(remaining)
                 else
-                    dailySeedButton.Text = "Day " .. j .. "/7"
+                    _dsTextLbl.Text = "Day " .. j .. "/7"
                 end
                 SetSeedReady(false)
             end
