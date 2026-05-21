@@ -45,12 +45,18 @@ local function BoucleAuto()
     local intervalle = Config.EventIntervalleMinutes * 60
     local earlyBird  = Config.EarlyBirdBonusMinutes * 60
     local types      = { "NightMode", "MeteorDrop", "Rain", "Golden", "LuckyHour"}
-    
-    -- Premier event après 6s (test) — remettre 1200 en prod
-    prochainEventTimestamp = os.time() + 1200
-    task.wait(1200)
+
+    -- Premier event : délai et type lus depuis GameConfig (rétrocompatible si clé absente)
+    local premierDelai = (Config.EventFirstSpawnMinutes or 20) * 60
+    local premierType  = Config.ForceFirstEventType  -- nil = aléatoire
+    prochainEventTimestamp = os.time() + premierDelai
+    task.wait(premierDelai)
     prochainEventTimestamp = nil
-    DemarrerEvent(types[math.random(1, #types)])
+    local choixPremier = premierType or types[math.random(1, #types)]
+    if premierType then
+        Logger.info("Event", "Premier event forcé : %s", premierType)
+    end
+    DemarrerEvent(choixPremier)
     task.wait((Config.EventDureeMinutes * 60) + 5)
 
     while true do

@@ -227,11 +227,26 @@ local _ps = addStroke(panel, Color3.fromRGB(255, 180, 30), 5)
 _ps.ApplyStrokeMode    = Enum.ApplyStrokeMode.Border
 panel.ClipsDescendants = true
 
+local _idxHeaderBar = Instance.new("Frame", panel)
+_idxHeaderBar.Size                   = UDim2.new(1, 0, 0, 40)
+_idxHeaderBar.Position               = UDim2.new(0, 0, 0, 0)
+_idxHeaderBar.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+_idxHeaderBar.BackgroundTransparency = 0
+_idxHeaderBar.BorderSizePixel        = 0
+_idxHeaderBar.ZIndex                 = 20
+
+local _hdrStuds = Instance.new("ImageLabel", _idxHeaderBar)
+_hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
+_hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
+_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency =  0.15
+_hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
+_hdrStuds.ZIndex = 3
+
 local _idxTitle = newInst("TextLabel", {
     Size                   = UDim2.new(1, 0, 0, 40),
     Position               = UDim2.new(0, 0, 0, 0),
     BackgroundColor3       = Color3.fromRGB(255, 200, 50),
-    BackgroundTransparency = 0,
+    BackgroundTransparency = 1,
     Text                   = "  INDEX",
     TextColor3             = Color3.fromRGB(255, 255, 255),
     TextStrokeColor3       = Color3.fromRGB(80, 40, 0),
@@ -244,11 +259,6 @@ local _idxTitle = newInst("TextLabel", {
     ZIndex                 = 21,
     Parent                 = panel,
 })
-local _hdrStuds = Instance.new("ImageLabel", _idxTitle)
-_hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
-_hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
-_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency = 0.3
-_hdrStuds.ZIndex = 22
 
 local btnFermer = newInst("TextButton", {
     Size                   = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize),

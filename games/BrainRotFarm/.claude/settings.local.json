@@ -69,7 +69,19 @@
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" -Recurse -Directory | ForEach-Object { $_.FullName } | Sort-Object)",
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\\\\src\\\\ServerStorage\\\\Modules\" -Recurse | ForEach-Object { $_.FullName })",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" -Force)",
-      "Bash(Select-Object Name, PSIsContainer)"
+      "Bash(Select-Object Name, PSIsContainer)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" -Recurse -Directory | Select-Object -First 30 | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\\\\src\\\\StarterPlayer\" -Recurse | Where-Object { $_.Extension -eq '.lua' -or $_.PSIsContainer } | Select-Object -ExpandProperty FullName | head -30)",
+      "Bash(grep -n \"^end$\\\\|^end --\\\\|OuvrirUI\\\\|FermerUI\\\\|screenGui.Enabled\\\\|closeMenuEvent\\\\|ToxicEventState\" \"C:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\shared-lib\\\\src\\\\client\\\\FuseSystemClient.client.lua\")",
+      "Bash(sed -i 's/rbxassetid:\\\\/\\\\/6927295847/rbxassetid:\\\\/\\\\/1088500/g' src/StarterPlayer/StarterPlayerScripts/MiniTutoHUD.client.lua src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua)",
+      "Bash(sed -i 's/rbxassetid:\\\\/\\\\/6927295847/rbxassetid:\\\\/\\\\/1088500/g' ../shared-lib/src/client/FuseSystemClient.client.lua ../shared-lib/src/client/HUDController.client.lua)",
+      "Bash(sed -i 's/rbxassetid:\\\\/\\\\/1088500/rbxassetid:\\\\/\\\\/6927295847/g' src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua src/StarterPlayer/StarterPlayerScripts/IndexClient.client.lua src/StarterPlayer/StarterPlayerScripts/MiniTutoHUD.client.lua src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua)",
+      "Bash(sed -i 's/rbxassetid:\\\\/\\\\/1088500/rbxassetid:\\\\/\\\\/6927295847/g' ../shared-lib/src/client/FuseSystemClient.client.lua ../shared-lib/src/client/HUDController.client.lua ../shared-lib/src/shared/StudsBackground.lua)",
+      "Bash(python3 -c ' *)",
+      "Bash(sed -i 's/_dsTextLbl\\\\.Position               = UDim2\\\\.new\\(0, 0, 1, -22\\)/_dsTextLbl.Position               = UDim2.new\\(0, 0, 1, -28\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
+      "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3             = Color3\\\\.fromRGB\\(220, 220, 220\\)/_dsTextLbl.TextColor3             = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
+      "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3 = Color3\\\\.fromRGB\\(220, 110, 15\\)/_dsTextLbl.TextColor3 = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
+      "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3 = Color3\\\\.fromRGB\\(220, 220, 220\\)/_dsTextLbl.TextColor3 = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

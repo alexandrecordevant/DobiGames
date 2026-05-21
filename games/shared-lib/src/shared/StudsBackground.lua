@@ -6,7 +6,7 @@
 local StudsBackground = {}
 
 -- 6927295847 = texture studs uploadée
--- Fallback : texture officielle Roblox studs = rbxassetid://1088500
+-- Fallback : texture officielle Roblox studs = rbxassetid://6927295847
 local DEFAULT_ASSET_ID = "rbxassetid://6927295847"
 
 --[[

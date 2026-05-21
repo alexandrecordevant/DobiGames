@@ -52,6 +52,9 @@ local function DefaultData()
         indexObtenu = {},
         -- Codes promo utilisés
         RedeemedCodes = {},
+        -- Onboarding (première session)
+        hasFirstDeposit        = false,
+        hasCompletedOnboarding = false,
     }
 end
 
@@ -86,6 +89,8 @@ function DataStoreManager.Load(player)
     end
     if not data.carryPortes    then data.carryPortes    = {} end
     if not data.RedeemedCodes  then data.RedeemedCodes  = {} end
+    if data.hasFirstDeposit        == nil then data.hasFirstDeposit        = false end
+    if data.hasCompletedOnboarding == nil then data.hasCompletedOnboarding = false end
 
     -- Migration one-shot : bonus de démarrage 35 000 coins pour les joueurs existants
     if not data.welcomeBonusV1 then

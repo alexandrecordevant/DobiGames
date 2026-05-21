@@ -14,6 +14,13 @@ local Config       = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local Logger       = require(ReplicatedStorage.SharedLib.Logger)
 local ModalManager = require(ReplicatedStorage.SharedLib.ModalManager)
 
+local function _getCloseEvent()
+    local e = playerGui:FindFirstChild("__CloseMenuEvent")
+    if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = playerGui end
+    return e
+end
+local closeMenuEvent = _getCloseEvent()
+
 local MenuCfg = Config.MenuHUD or {}
 
 -- Valeurs avec fallback
@@ -177,6 +184,7 @@ end
 
 local function ouvrirMenu()
     if menuOuvert then return end
+    closeMenuEvent:Fire("SIDE_MENU")
     fermerAutresMenus()
     menuOuvert         = true
     menuPanel.Visible  = true   -- révéler avant l'animation
@@ -320,6 +328,10 @@ task.spawn(function()
     end)
 
     Logger.info("Menu", "Proxy CollectAll créé")
+end)
+
+closeMenuEvent.Event:Connect(function(exceptName)
+    if exceptName ~= "SIDE_MENU" and menuOuvert then fermerMenu() end
 end)
 
 Logger.info("Menu", "SideMenuHUD initialisé")

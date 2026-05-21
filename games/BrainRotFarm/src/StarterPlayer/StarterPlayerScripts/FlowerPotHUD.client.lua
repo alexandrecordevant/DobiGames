@@ -124,7 +124,8 @@ titleLabel.Parent                 = mainFrame
 local _hdrStuds = Instance.new("ImageLabel", titleLabel)
 _hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
 _hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
-_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency = 0.3
+_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency =  0.15
+_hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
 _hdrStuds.ZIndex = 13
 
 -- Séparateur
@@ -764,16 +765,16 @@ local _dsIcon = Instance.new("ImageLabel", dailySeedButton)
 _dsIcon.Size                   = UDim2.new(1, 0, 1, 0)
 _dsIcon.Position               = UDim2.new(0, 0, 0, 0)
 _dsIcon.BackgroundTransparency = 1
-_dsIcon.Image                  = "rbxassetid://86024613409795"
+_dsIcon.Image                  = "rbxassetid://104265639828886"
 _dsIcon.ScaleType              = Enum.ScaleType.Fit
 _dsIcon.ZIndex                 = 11
 
 local _dsTextLbl = Instance.new("TextLabel", dailySeedButton)
 _dsTextLbl.Size                   = UDim2.new(1, 0, 0, 22)
-_dsTextLbl.Position               = UDim2.new(0, 0, 1, -22)
+_dsTextLbl.Position               = UDim2.new(0, 0, 1, -28)
 _dsTextLbl.BackgroundTransparency = 1
 _dsTextLbl.Text                   = "Day 1/7"
-_dsTextLbl.TextColor3             = Color3.fromRGB(220, 220, 220)
+_dsTextLbl.TextColor3             = Color3.fromRGB(255, 255, 255)
 _dsTextLbl.Font                   = Enum.Font.GothamBold
 _dsTextLbl.TextSize               = 11
 _dsTextLbl.TextScaled             = false
@@ -789,7 +790,7 @@ local function SetSeedReady(ready)
     if ready then
         dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
         dailySeedButton.BackgroundTransparency = 0.05
-        _dsTextLbl.TextColor3 = Color3.fromRGB(220, 110, 15)
+        _dsTextLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
         _dsTextLbl.TextSize   = 13
         _pulseTween = TweenService:Create(
             _dsTextLbl,
@@ -801,7 +802,7 @@ local function SetSeedReady(ready)
     else
         dailySeedButton.BackgroundColor3       = Color3.fromRGB(10, 10, 10)
         dailySeedButton.BackgroundTransparency = 0.05
-        _dsTextLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+        _dsTextLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
         _dsTextLbl.TextSize   = 13
     end
 end

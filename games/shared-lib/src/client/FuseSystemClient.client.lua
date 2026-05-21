@@ -11,6 +11,13 @@ local UserInputService  = game:GetService("UserInputService")
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function _getCloseEvent()
+	local e = playerGui:FindFirstChild("__CloseMenuEvent")
+	if not e then e = Instance.new("BindableEvent") ; e.Name = "__CloseMenuEvent" ; e.Parent = playerGui end
+	return e
+end
+local closeMenuEvent = _getCloseEvent()
+
 local Logger
 do
 	local ok, m = pcall(function()
@@ -480,6 +487,7 @@ local function ouvrirUI(machine)
 	rafraichirCarry()
 
 	screenGui.Enabled  = true
+	closeMenuEvent:Fire("FUSE")
 	cadre.Position     = UDim2.new(0.5, 0, 1.5, 0)
 	TweenService:Create(cadre,
 		TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -597,7 +605,8 @@ local function creerUI()
 	local _hdrStuds = Instance.new("ImageLabel", titreBar)
 	_hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
 	_hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
-	_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency = 0.3
+	_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency =  0.15
+_hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
 	_hdrStuds.ZIndex = 1
 
 	local lTitre = Instance.new("TextLabel")
@@ -931,6 +940,10 @@ end)
 FermerUI.OnClientEvent:Connect(function()
 	Logger.debug("Fuse", "FermerUI recu")
 	if screenGui and screenGui.Enabled then fermerUI() end
+end)
+
+closeMenuEvent.Event:Connect(function(exceptName)
+	if exceptName ~= "FUSE" and screenGui and screenGui.Enabled then fermerUI() end
 end)
 
 -- Etat de l'événement Toxic (ToxicEventSystem.server.lua)

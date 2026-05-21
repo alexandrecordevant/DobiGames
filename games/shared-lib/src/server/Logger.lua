@@ -52,6 +52,7 @@ local PREFIXES = {
     Modal       = "[MODAL]",
     Code        = "[CODE]",
     Sound       = "[SOUND]",
+    Onboard     = "[ONBOARD]",
 }
 
 -- Appeler une seule fois au boot du jeu

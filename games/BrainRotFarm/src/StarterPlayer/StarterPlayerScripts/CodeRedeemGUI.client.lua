@@ -110,7 +110,8 @@ titleLabel.Parent                 = panel
 local _codeStuds = Instance.new("ImageLabel", titleLabel)
 _codeStuds.Size = UDim2.new(1,0,1,0) ; _codeStuds.BackgroundTransparency = 1
 _codeStuds.Image = "rbxassetid://6927295847" ; _codeStuds.ScaleType = Enum.ScaleType.Tile
-_codeStuds.TileSize = UDim2.fromOffset(30,30) ; _codeStuds.ImageTransparency = 0.3
+_codeStuds.TileSize = UDim2.fromOffset(30,30) ; _codeStuds.ImageTransparency =  0.15
+_codeStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
 _codeStuds.ZIndex = 28
 
 -- Bouton X

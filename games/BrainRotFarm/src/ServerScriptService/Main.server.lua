@@ -102,6 +102,7 @@ local UpdateGraines      = CreerRemoteEvent("UpdateGraines")
 local OuvrirPot          = CreerRemoteEvent("OuvrirPot")
 local PotUpdate          = CreerRemoteEvent("PotUpdate")
 local PotBillboardUpdate = CreerRemoteEvent("PotBillboardUpdate")
+local OnboardingEvent    = CreerRemoteEvent("OnboardingEvent")
 
 -- Events client → serveur (actions joueur)
 local DemandeUpgrade        = CreerRemoteEvent("DemandeUpgrade")
@@ -1324,6 +1325,17 @@ DropSystem.OnSpotChange = function(player)
     IndexSystem.OnSpotChange(player)
 end
 
+-- Hook premier dépôt BR (onboarding) : +100 coins one-time + notif client
+DropSystem.OnBRDepose = function(player, _touchPart, _modeleSlot, _rarete)
+    local data = GetData(player)
+    if not data or data.hasFirstDeposit then return end
+    data.hasFirstDeposit = true
+    data.coins = (data.coins or 0) + 100
+    Logger.debug("Onboard", "Premier dépôt : %s — +100 coins, hasFirstDeposit=true", player.Name)
+    pcall(function() OnboardingEvent:FireClient(player, "firstDeposit", 100) end)
+    EnvoyerHUD(player, data)
+end
+
 -- Visuels spot Mutant (doré + particules) — spécifique BRF, absent de LavaTower
 DropSystem.OnMutantDepose = function(touchPart, modeleSlot, _elementType)
     local spotColor = (Config.FlowerPotConfig and Config.FlowerPotConfig.spotMutantCouleur)
@@ -1397,7 +1409,17 @@ end
 
 -- Collecte Touched (COMMON/OG/RARE) → ramassage carry avec le modèle monde
 SpawnManager.OnCollecte = function(player, baseIndex, rarete, brModel)
-    return CarrySystem.AjouterAuCarry(player, brModel, rarete)
+    local ok = CarrySystem.AjouterAuCarry(player, brModel, rarete)
+    -- Détection premier pickup (onboarding)
+    if ok then
+        local data = GetData(player)
+        if data and not data.hasCompletedOnboarding then
+            data.hasCompletedOnboarding = true
+            Logger.debug("Onboard", "Premier pickup : %s — hasCompletedOnboarding=true", player.Name)
+            pcall(function() OnboardingEvent:FireClient(player, "firstPickup") end)
+        end
+    end
+    return ok
 end
 
 -- CarrySystem utilise AssignationSystem comme source de vérité pour la base du joueur

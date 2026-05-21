@@ -146,7 +146,8 @@ headerBar.Parent                 = panel
 local _hdrStuds = Instance.new("ImageLabel", headerBar)
 _hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
 _hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
-_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency = 0.3
+_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency =  0.15
+_hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
 _hdrStuds.ZIndex = 3
 
 local titreLbl = Instance.new("TextLabel")

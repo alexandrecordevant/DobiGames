@@ -63,10 +63,12 @@ GameConfig.CoutUpgradeMultiplier  = 2.5
 GameConfig.PrestigeMultiplier     = 2.0
 
 -- === EVENTS AUTOMATIQUES ===
-GameConfig.EventIntervalleMinutes = 60
-GameConfig.EventDureeMinutes      = 5
-GameConfig.EventSpawnMultiplier   = 10
-GameConfig.EarlyBirdBonusMinutes  = 10
+GameConfig.EventFirstSpawnMinutes  = 6    -- délai avant le premier event (minutes)
+GameConfig.ForceFirstEventType     = "MeteorDrop"  -- type forcé pour le premier event (nil = aléatoire)
+GameConfig.EventIntervalleMinutes  = 12   -- intervalle entre events (minutes)
+GameConfig.EventDureeMinutes       = 5
+GameConfig.EventSpawnMultiplier    = 10
+GameConfig.EarlyBirdBonusMinutes   = 2    -- réduit à 2 min pour coller à l'intervalle 12 min
 GameConfig.AdminAbuseHebdo = {
     jourSemaine     = 7,
     heureUTC        = 20,
