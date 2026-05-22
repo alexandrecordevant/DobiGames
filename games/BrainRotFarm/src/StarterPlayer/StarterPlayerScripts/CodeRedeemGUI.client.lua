@@ -92,12 +92,25 @@ panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 panel.ClipsDescendants      = true
 
 -- Titre
+local _titleBg = Instance.new("Frame", panel)
+_titleBg.Size                   = UDim2.new(1, 0, 0, 54)
+_titleBg.Position               = UDim2.new(0, 0, 0, 0)
+_titleBg.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+_titleBg.BackgroundTransparency = 0
+_titleBg.BorderSizePixel        = 0
+_titleBg.ZIndex                 = 26
+local _codeStuds = Instance.new("ImageLabel", _titleBg)
+_codeStuds.Size               = UDim2.new(1,0,1,0) ; _codeStuds.BackgroundTransparency = 1
+_codeStuds.Image              = "rbxassetid://6927295847" ; _codeStuds.ScaleType = Enum.ScaleType.Tile
+_codeStuds.TileSize           = UDim2.fromOffset(30,30)
+_codeStuds.ImageTransparency  = 0.15 ; _codeStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
+_codeStuds.ZIndex             = 3
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name                   = "Title"
 titleLabel.Size                   = UDim2.new(1, 0, 0, 54)
 titleLabel.Position               = UDim2.new(0, 0, 0, 0)
 titleLabel.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
-titleLabel.BackgroundTransparency = 0
+titleLabel.BackgroundTransparency = 1
 titleLabel.Text                   = "  PROMO CODES"
 titleLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
 titleLabel.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
@@ -107,12 +120,6 @@ titleLabel.TextSize               = 20
 titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
 titleLabel.ZIndex                 = 27
 titleLabel.Parent                 = panel
-local _codeStuds = Instance.new("ImageLabel", titleLabel)
-_codeStuds.Size = UDim2.new(1,0,1,0) ; _codeStuds.BackgroundTransparency = 1
-_codeStuds.Image = "rbxassetid://6927295847" ; _codeStuds.ScaleType = Enum.ScaleType.Tile
-_codeStuds.TileSize = UDim2.fromOffset(30,30) ; _codeStuds.ImageTransparency =  0.15
-_codeStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
-_codeStuds.ZIndex = 28
 
 -- Bouton X
 local closeBtn = Instance.new("TextButton")

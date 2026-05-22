@@ -19,9 +19,10 @@ local ModalManager    = require(ReplicatedStorage.SharedLib.ModalManager)
 local StudsBackground = require(ReplicatedStorage.SharedLib.StudsBackground)
 
 local gui = Instance.new("ScreenGui")
-gui.Name          = "HUD"
-gui.ResetOnSpawn  = false
-gui.Parent        = player.PlayerGui
+gui.Name             = "HUD"
+gui.ResetOnSpawn     = false
+gui.ZIndexBehavior   = Enum.ZIndexBehavior.Sibling
+gui.Parent           = player.PlayerGui
 
 local function _getCloseEvent()
     local pg = player.PlayerGui
@@ -451,17 +452,16 @@ local function creerShopRobuxPanel()
     headerBar.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
     headerBar.BackgroundTransparency = 0
     headerBar.BorderSizePixel        = 0
-    headerBar.ZIndex                 = 10
+    headerBar.ZIndex                 = 3
     local _hdrStuds = Instance.new("ImageLabel", headerBar)
     _hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
     _hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
     _hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency =  0.15
 _hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
     _hdrStuds.ZIndex = 3
-    local titre = Instance.new("TextLabel", panel)
-    titre.Size                   = UDim2.new(1, 0, 0, 46)
+    local titre = Instance.new("TextLabel", headerBar)
+    titre.Size                   = UDim2.new(1, -50, 1, 0)
     titre.Position               = UDim2.new(0, 0, 0, 0)
-    titre.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
     titre.BackgroundTransparency = 1
     titre.TextColor3             = Color3.fromRGB(255, 255, 255)
     titre.Font                   = UI and UI.Fonts.Title or Enum.Font.GothamBold
@@ -471,7 +471,7 @@ _hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
     titre.Text                   = "  ROBUX SHOP"
     titre.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
     titre.TextStrokeTransparency = 0
-    titre.ZIndex                 = 11
+    titre.ZIndex                 = 4
 
     -- Bouton fermer
     local closeSize = UI and UI.Modal.CloseButtonSize or 44

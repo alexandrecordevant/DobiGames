@@ -104,12 +104,25 @@ uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 mainFrame.ClipsDescendants = true
 
 -- Titre
+local _titleBg = Instance.new("Frame", mainFrame)
+_titleBg.Size                   = UDim2.new(1, 0, 0, 50)
+_titleBg.Position               = UDim2.new(0, 0, 0, 0)
+_titleBg.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+_titleBg.BackgroundTransparency = 0
+_titleBg.BorderSizePixel        = 0
+_titleBg.ZIndex                 = 11
+local _hdrStuds = Instance.new("ImageLabel", _titleBg)
+_hdrStuds.Size               = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
+_hdrStuds.Image              = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
+_hdrStuds.TileSize           = UDim2.fromOffset(30,30)
+_hdrStuds.ImageTransparency  = 0.15 ; _hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
+_hdrStuds.ZIndex             = 3
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name                   = "Title"
 titleLabel.Size                   = UDim2.new(1, 0, 0, 50)
 titleLabel.Position               = UDim2.new(0, 0, 0, 0)
 titleLabel.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
-titleLabel.BackgroundTransparency = 0
+titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3             = Color3.fromRGB(255, 255, 255)
 titleLabel.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
 titleLabel.TextStrokeTransparency = 0
@@ -121,12 +134,6 @@ titleLabel.RichText               = true
 titleLabel.Text                   = "  Flower Pot"
 titleLabel.ZIndex                 = 12
 titleLabel.Parent                 = mainFrame
-local _hdrStuds = Instance.new("ImageLabel", titleLabel)
-_hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
-_hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
-_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency =  0.15
-_hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
-_hdrStuds.ZIndex = 13
 
 -- Séparateur
 local sep = Instance.new("Frame")
@@ -317,7 +324,7 @@ end)
 
 closeMenuEvent.Event:Connect(function(exceptName)
     if exceptName ~= "FLOWER_POT" and mainFrame.Visible then fermer() end
-    if exceptName ~= "FLOWER_POT_PANEL" and fpPanel.Visible then
+    if exceptName ~= "FLOWER_POT_PANEL" and fpPanel and fpPanel.Visible then
         fpPanel.Visible = false
     end
     if exceptName ~= "DAILY_SEEDS" then
@@ -860,11 +867,24 @@ local function OuvrirDailySeedPanel()
     _ajusterDS()
 
     -- Titre
+    local _titreBg = Instance.new("Frame", panel)
+    _titreBg.Size                   = UDim2.new(1, 0, 0, 46)
+    _titreBg.Position               = UDim2.new(0, 0, 0, 0)
+    _titreBg.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+    _titreBg.BackgroundTransparency = 0
+    _titreBg.BorderSizePixel        = 0
+    _titreBg.ZIndex                 = 20
+    local _dsStuds = Instance.new("ImageLabel", _titreBg)
+    _dsStuds.Size               = UDim2.new(1,0,1,0) ; _dsStuds.BackgroundTransparency = 1
+    _dsStuds.Image              = "rbxassetid://6927295847" ; _dsStuds.ScaleType = Enum.ScaleType.Tile
+    _dsStuds.TileSize           = UDim2.fromOffset(30,30)
+    _dsStuds.ImageTransparency  = 0.15 ; _dsStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
+    _dsStuds.ZIndex             = 3
     local titre = Instance.new("TextLabel", panel)
     titre.Size                   = UDim2.new(1, 0, 0, 46)
     titre.Position               = UDim2.new(0, 0, 0, 0)
     titre.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
-    titre.BackgroundTransparency = 0
+    titre.BackgroundTransparency = 1
     titre.Text                   = "  DAILY SEEDS"
     titre.TextColor3             = Color3.fromRGB(255, 255, 255)
     titre.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
@@ -874,11 +894,6 @@ local function OuvrirDailySeedPanel()
     titre.TextScaled             = false
     titre.TextXAlignment         = Enum.TextXAlignment.Left
     titre.ZIndex                 = 21
-    local _dsStuds = Instance.new("ImageLabel", titre)
-    _dsStuds.Size = UDim2.new(1,0,1,0) ; _dsStuds.BackgroundTransparency = 1
-    _dsStuds.Image = "rbxassetid://6927295847" ; _dsStuds.ScaleType = Enum.ScaleType.Tile
-    _dsStuds.TileSize = UDim2.fromOffset(30,30) ; _dsStuds.ImageTransparency = 0.3
-    _dsStuds.ZIndex = 22
 
     -- Bouton fermer
     local btnClose = Instance.new("TextButton", panel)
@@ -1107,19 +1122,27 @@ end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(_ajusterFpPanel)
 _ajusterFpPanel()
 
+local _fpTitreBg = Instance.new("Frame", fpPanel)
+_fpTitreBg.Size                   = UDim2.new(1, 0, 0, 36)
+_fpTitreBg.Position               = UDim2.new(0, 0, 0, 0)
+_fpTitreBg.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+_fpTitreBg.BackgroundTransparency = 0
+_fpTitreBg.BorderSizePixel        = 0
+_fpTitreBg.ZIndex                 = 20
+local _fpStuds = Instance.new("ImageLabel", _fpTitreBg)
+_fpStuds.Size               = UDim2.new(1,0,1,0) ; _fpStuds.BackgroundTransparency = 1
+_fpStuds.Image              = "rbxassetid://6927295847" ; _fpStuds.ScaleType = Enum.ScaleType.Tile
+_fpStuds.TileSize           = UDim2.fromOffset(30,30)
+_fpStuds.ImageTransparency  = 0.15 ; _fpStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
+_fpStuds.ZIndex             = 3
 local fpTitre = Instance.new("TextLabel", fpPanel)
 fpTitre.Size = UDim2.new(1, 0, 0, 36) ; fpTitre.Position = UDim2.new(0, 0, 0, 0)
-fpTitre.BackgroundColor3 = Color3.fromRGB(255, 200, 50) ; fpTitre.BackgroundTransparency = 0
+fpTitre.BackgroundColor3 = Color3.fromRGB(255, 200, 50) ; fpTitre.BackgroundTransparency = 1
 fpTitre.TextColor3 = Color3.fromRGB(255, 255, 255)
 fpTitre.TextStrokeColor3 = Color3.fromRGB(80, 40, 0) ; fpTitre.TextStrokeTransparency = 0
 fpTitre.Font = UI.Fonts.Title ; fpTitre.TextSize = UI.TextSizes.H2
 fpTitre.TextScaled = false ; fpTitre.TextXAlignment = Enum.TextXAlignment.Left
 fpTitre.Text = "  FlowerPot Status" ; fpTitre.ZIndex = 21
-local _fpStuds = Instance.new("ImageLabel", fpTitre)
-_fpStuds.Size = UDim2.new(1,0,1,0) ; _fpStuds.BackgroundTransparency = 1
-_fpStuds.Image = "rbxassetid://6927295847" ; _fpStuds.ScaleType = Enum.ScaleType.Tile
-_fpStuds.TileSize = UDim2.fromOffset(30,30) ; _fpStuds.ImageTransparency = 0.3
-_fpStuds.ZIndex = 22
 
 local fpClose = Instance.new("TextButton", fpPanel)
 fpClose.Size = UDim2.new(0,28,0,28) ; fpClose.Position = UDim2.new(1,-34,0,4)

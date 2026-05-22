@@ -110,11 +110,24 @@ panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 panel.ClipsDescendants      = true
 
 -- Barre de titre
+local _titleBg = Instance.new("Frame", panel)
+_titleBg.Size                   = UDim2.new(1, 0, 0, 54)
+_titleBg.Position               = UDim2.new(0, 0, 0, 0)
+_titleBg.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
+_titleBg.BackgroundTransparency = 0
+_titleBg.BorderSizePixel        = 0
+_titleBg.ZIndex                 = 21
+local _hdrStuds = Instance.new("ImageLabel", _titleBg)
+_hdrStuds.Size               = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
+_hdrStuds.Image              = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
+_hdrStuds.TileSize           = UDim2.fromOffset(30,30)
+_hdrStuds.ImageTransparency  = 0.15 ; _hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
+_hdrStuds.ZIndex             = 3
 local titleLbl = Instance.new("TextLabel", panel)
 titleLbl.Size                   = UDim2.new(1, 0, 0, 54)
 titleLbl.Position               = UDim2.new(0, 0, 0, 0)
 titleLbl.BackgroundColor3       = Color3.fromRGB(255, 200, 50)
-titleLbl.BackgroundTransparency = 0
+titleLbl.BackgroundTransparency = 1
 titleLbl.Text                   = "  HOW TO PLAY"
 titleLbl.TextColor3             = Color3.fromRGB(255, 255, 255)
 titleLbl.TextStrokeColor3       = Color3.fromRGB(80, 40, 0)
@@ -124,12 +137,6 @@ titleLbl.TextSize               = UI.TextSizes.H1
 titleLbl.TextScaled             = false
 titleLbl.TextXAlignment         = Enum.TextXAlignment.Left
 titleLbl.ZIndex                 = 22
-local _hdrStuds = Instance.new("ImageLabel", titleLbl)
-_hdrStuds.Size = UDim2.new(1,0,1,0) ; _hdrStuds.BackgroundTransparency = 1
-_hdrStuds.Image = "rbxassetid://6927295847" ; _hdrStuds.ScaleType = Enum.ScaleType.Tile
-_hdrStuds.TileSize = UDim2.fromOffset(30,30) ; _hdrStuds.ImageTransparency =  0.15
-_hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
-_hdrStuds.ZIndex = 23
 
 local closeBtn = Instance.new("TextButton", panel)
 closeBtn.Size              = UDim2.new(0, UI.Modal.CloseButtonSize, 0, UI.Modal.CloseButtonSize)
