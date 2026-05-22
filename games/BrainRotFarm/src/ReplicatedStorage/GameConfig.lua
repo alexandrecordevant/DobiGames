@@ -1078,6 +1078,18 @@ GameConfig.PromoCodes = {
         Active      = true,
     },
 
+    ["LAUNCH2026"] = {
+        Rewards = {
+            Coins     = 25000,
+            Seeds     = { { Rarity = "RARE", Quantity = 1 } },
+            BrainRots = {},
+        },
+        ExpiresAt   = 0,
+        MaxUses     = -1,
+        Description = "Code de lancement officiel TikTok",
+        Active      = true,
+    },
+
     ["TIKTOK1K"] = {
         Rewards = {
             Coins     = 25000,

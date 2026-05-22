@@ -81,7 +81,8 @@
       "Bash(sed -i 's/_dsTextLbl\\\\.Position               = UDim2\\\\.new\\(0, 0, 1, -22\\)/_dsTextLbl.Position               = UDim2.new\\(0, 0, 1, -28\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
       "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3             = Color3\\\\.fromRGB\\(220, 220, 220\\)/_dsTextLbl.TextColor3             = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
       "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3 = Color3\\\\.fromRGB\\(220, 110, 15\\)/_dsTextLbl.TextColor3 = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
-      "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3 = Color3\\\\.fromRGB\\(220, 220, 220\\)/_dsTextLbl.TextColor3 = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)"
+      "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3 = Color3\\\\.fromRGB\\(220, 220, 220\\)/_dsTextLbl.TextColor3 = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
+      "Bash(python3)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"
