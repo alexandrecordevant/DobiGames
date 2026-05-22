@@ -101,8 +101,9 @@ end
 -- ============================================================
 
 local couleurGraines = {
-    MYTHIC = Color3.fromRGB(180, 0, 255),
-    SECRET = Color3.fromRGB(255, 50, 50),
+    MYTHIC = Color3.fromRGB(180, 0,   255),
+    SECRET = Color3.fromRGB(255, 50,  50),
+    RARE   = Color3.fromRGB(0,   120, 255),
 }
 
 local function donnerGraines(player, data, seeds)

@@ -411,7 +411,7 @@ end
 -- ============================================================
 --[[
     @param potModel   (Instance) — Model FlowerPot dans Workspace
-    @param seedRarity (string)  — "MYTHIC" ou "SECRET"
+    @param seedRarity (string)  — "MYTHIC", "SECRET" ou "RARE"
     @param player     (Player)  — propriétaire du pot (validation carry)
     @param onHarvest  (function, optionnel) — callback après récolte réussie
                       signature: onHarvest(player, elementType, multiplier)
@@ -422,8 +422,8 @@ function FlowerPotGrowthSystem.PlantSeed(potModel, seedRarity, player, onHarvest
         Logger.warn("Pot", "potModel invalide")
         return
     end
-    if seedRarity ~= "MYTHIC" and seedRarity ~= "SECRET" then
-        Logger.warn("Pot", "seedRarity invalide (doit être MYTHIC ou SECRET) : %s", seedRarity)
+    if seedRarity ~= "MYTHIC" and seedRarity ~= "SECRET" and seedRarity ~= "RARE" then
+        Logger.warn("Pot", "seedRarity invalide (doit être MYTHIC, SECRET ou RARE) : %s", seedRarity)
         return
     end
 

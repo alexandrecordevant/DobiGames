@@ -52,7 +52,7 @@ local function buildDefaultData()
         hasLuckyCharm           = false,
         walkSpeedActuel         = 16,
         -- Graines portées
-        graines                 = { MYTHIC=0, SECRET=0 },
+        graines                 = { MYTHIC=0, SECRET=0, RARE=0 },
         grainesMigratedV2       = true,
         -- Flower Pots
         pots = {

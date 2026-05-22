@@ -1393,9 +1393,19 @@ ShopSystem._onTracteurActiver = function(player)
     pcall(TracteurSystem.Activer, player, baseIndex, onTracteurCollect)
 end
 
--- Hook CarrySystem → ProximityPrompt pour tous les BRs (onCapture forwarded pour RARE+)
+-- Hook CarrySystem → ProximityPrompt pour tous les BRs
+-- wrappedCapture : détecte le premier pickup onboarding pour COMMON/OG/RARE/EPIC/LEGENDARY/GOD
 SpawnManager.OnBRSpawned = function(brModel, baseIndex, rarete, onCapture)
-    CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, onCapture)
+    local wrappedCapture = function(player)
+        local data = GetData(player)
+        if data and not data.hasCompletedOnboarding then
+            data.hasCompletedOnboarding = true
+            Logger.debug("Onboard", "Premier pickup : %s — hasCompletedOnboarding=true", player.Name)
+            pcall(function() OnboardingEvent:FireClient(player, "firstPickup") end)
+        end
+        if onCapture then onCapture(player) end
+    end
+    CarrySystem.OnBRSpawned(brModel, baseIndex, rarete, wrappedCapture)
 end
 
 -- Hook LeaderboardSystem → notifié quand un joueur capture un RARE+ via ProximityPrompt
@@ -1471,6 +1481,11 @@ local CommunSpawner = require(ServerScriptService.CommunSpawner)
 CommunSpawner.OnCollecte = function(player, typeNom)
     local data = GetData(player)
     if not data then return end
+    if not data.hasCompletedOnboarding then
+        data.hasCompletedOnboarding = true
+        Logger.debug("Onboard", "Premier pickup MYTHIC/SECRET : %s — hasCompletedOnboarding=true", player.Name)
+        pcall(function() OnboardingEvent:FireClient(player, "firstPickup") end)
+    end
     local cfg = { MYTHIC = { valeur = 300 }, SECRET = { valeur = 1000 } }
     local valeur = cfg[typeNom] and cfg[typeNom].valeur or 100
     local multiplier  = CollectSystem.GetMultiplier(data)

@@ -14,10 +14,10 @@ local Logger            = require(game:GetService("ServerScriptService").SharedL
 -- ============================================================
 -- Valeurs par défaut
 -- ============================================================
-local RARITES_VALIDES = { "MYTHIC", "SECRET" }
+local RARITES_VALIDES = { "MYTHIC", "SECRET", "RARE" }
 
--- Priorité pour HasAny : SECRET > MYTHIC
-local PRIORITE = { SECRET = 2, MYTHIC = 1 }
+-- Priorité pour HasAny : SECRET > MYTHIC > RARE
+local PRIORITE = { SECRET = 2, MYTHIC = 1, RARE = 0 }
 
 -- ============================================================
 -- Utilitaire interne
@@ -44,6 +44,7 @@ function SeedInventory.Init(data)
         data.graines = {
             MYTHIC = 0,
             SECRET = 0,
+            RARE   = 0,
         }
         return
     end

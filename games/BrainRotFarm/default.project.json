@@ -57,7 +57,8 @@
                 "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" },
                 "SpeedTrailClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/SpeedTrailClient.client.lua" },
                 "CodeRedeemGUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua" },
-                "CodeRedeemAnimations": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemAnimations.lua" }
+                "CodeRedeemAnimations": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemAnimations.lua" },
+                "OnboardingArrow": { "$path": "src/StarterPlayer/StarterPlayerScripts/OnboardingArrow.client.lua" }
             }
         }
     }

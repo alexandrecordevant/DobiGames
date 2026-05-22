@@ -191,10 +191,8 @@ end)
 UpdateHUD.OnClientEvent:Connect(function(playerData)
     if arrowActive then return end
     if playerData.hasCompletedOnboarding then return end
-    local sessionsCount = playerData.stats and playerData.stats.sessionsCount or 0
-    if sessionsCount ~= 1 then return end
 
-    -- Première session non complétée → afficher flèche + message
+    -- Onboarding non complété → afficher flèche + message
     arrowActive = true
     afficherMessageHUD("🎯 Catch a BrainRot!")
     task.spawn(function()
