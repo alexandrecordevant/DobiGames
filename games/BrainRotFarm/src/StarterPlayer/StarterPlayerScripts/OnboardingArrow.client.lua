@@ -13,6 +13,7 @@ local UpdateHUD       = RS:WaitForChild("UpdateHUD")
 local OnboardingEvent = RS:WaitForChild("OnboardingEvent")
 
 local arrowActive = false
+local _fermerLienBase = nil  -- fermeture du lien étape 1 (joueur → base), fermé au 1er dépôt
 
 -- Message HUD top-center (3s puis fade)
 local function afficherMessageHUD(texte)
@@ -48,6 +49,282 @@ local function afficherMessageHUD(texte)
             if sg.Parent then sg:Destroy() end
         end)
     end)
+end
+
+-- ============================================================
+-- Helpers liens 3D (Beam joueur → part cible) — partagés étapes 1 & 3
+-- ============================================================
+-- BasePart la plus proche du joueur pour un objet nommé dans Base_*/Specific
+local function trouverPartProche(nomDansSpecific)
+    local bases = workspace:FindFirstChild("Bases")
+    local char  = player.Character
+    local hrp   = char and char:FindFirstChild("HumanoidRootPart")
+    if not bases or not hrp then return nil end
+    local meilleur, meilleureDist = nil, math.huge
+    for _, base in ipairs(bases:GetChildren()) do
+        local specific = base:FindFirstChild("Specific")
+        local obj      = specific and specific:FindFirstChild(nomDansSpecific)
+        local part     = obj and (obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart", true))
+        if part then
+            local d = (part.Position - hrp.Position).Magnitude
+            if d < meilleureDist then meilleureDist = d ; meilleur = part end
+        end
+    end
+    return meilleur
+end
+
+-- Crée un lien (Beam + flèche flottante "label") entre le joueur et targetPart.
+-- Se ferme à l'approche (<proximite studs), au timeout (dureeMax s), ou via la
+-- fonction de fermeture retournée (appelée par un déclencheur externe).
+local function creerLienVers(targetPart, labelTexte, proximite, dureeMax)
+    local char = player.Character
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp or not targetPart then return function() end end
+
+    local instances = {}
+    local fini = false
+    local function fermer()
+        if fini then return end
+        fini = true
+        for _, inst in ipairs(instances) do
+            if inst and inst.Parent then pcall(function() inst:Destroy() end) end
+        end
+        instances = {}
+    end
+
+    local a0 = Instance.new("Attachment")
+    a0.Name   = "OnboardLinkStart"
+    a0.Parent = hrp
+
+    local a1 = Instance.new("Attachment")
+    a1.Name     = "OnboardLinkEnd"
+    a1.Position = Vector3.new(0, targetPart.Size.Y / 2 + 2, 0)
+    a1.Parent   = targetPart
+
+    local beam = Instance.new("Beam")
+    beam.Name          = "OnboardingLinkBeam"
+    beam.Attachment0   = a0
+    beam.Attachment1   = a1
+    beam.Width0        = 1.4
+    beam.Width1        = 1.4
+    beam.FaceCamera    = true
+    beam.Color         = ColorSequence.new(Color3.fromRGB(255, 220, 50))
+    beam.Transparency  = NumberSequence.new(0.1)
+    beam.LightEmission = 1
+    beam.Texture       = "rbxassetid://446111271"  -- chevrons défilants (remplaçable)
+    beam.TextureMode   = Enum.TextureMode.Wrap
+    beam.TextureLength = 5
+    beam.TextureSpeed  = 1.5  -- défile du joueur vers la cible
+    beam.CurveSize0    = 6
+    beam.CurveSize1    = 6
+    beam.Parent        = hrp
+
+    -- Flèche flottante + label au-dessus de la cible
+    local bb = Instance.new("BillboardGui")
+    bb.Name        = "OnboardLinkArrow"
+    bb.Size        = UDim2.new(0, 130, 0, 95)
+    bb.StudsOffset = Vector3.new(0, targetPart.Size.Y / 2 + 5, 0)
+    bb.AlwaysOnTop = true
+    bb.MaxDistance = 200
+    bb.Parent      = targetPart
+
+    local fl = Instance.new("TextLabel", bb)
+    fl.Size                   = UDim2.new(1, 0, 0.55, 0)
+    fl.BackgroundTransparency = 1
+    fl.Text                   = "⬇"
+    fl.Font                   = Enum.Font.GothamBold
+    fl.TextColor3             = Color3.fromRGB(255, 220, 50)
+    fl.TextScaled             = true
+    fl.TextStrokeTransparency = 0
+    fl.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+    local txt = Instance.new("TextLabel", bb)
+    txt.Size                   = UDim2.new(1, 0, 0.45, 0)
+    txt.Position               = UDim2.new(0, 0, 0.55, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text                   = labelTexte
+    txt.Font                   = Enum.Font.GothamBold
+    txt.TextColor3             = Color3.fromRGB(255, 255, 255)
+    txt.TextScaled             = true
+    txt.TextStrokeTransparency = 0.2
+    txt.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+    TweenService:Create(bb,
+        TweenInfo.new(0.65, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+        { StudsOffset = Vector3.new(0, targetPart.Size.Y / 2 + 7, 0) }
+    ):Play()
+
+    instances = { beam, a0, a1, bb }
+
+    -- Fermeture auto : approche du joueur, ou timeout
+    task.spawn(function()
+        while not fini do
+            local h = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not h or not targetPart.Parent then break end
+            if (h.Position - targetPart.Position).Magnitude < proximite then break end
+            task.wait(0.5)
+        end
+        fermer()
+    end)
+    task.delay(dureeMax, fermer)
+
+    return fermer
+end
+
+-- ============================================================
+-- Étape 4 onboarding : message final d'ouverture au jeu
+-- Déclenché une fois la 1re graine plantée → invite à remplir sa base
+-- de Mutants et à récolter des graines sur les Arbres Sacrés.
+-- ============================================================
+local function messageFinalOuverture()
+    local sg = Instance.new("ScreenGui")
+    sg.Name           = "OnboardingFinalMsg"
+    sg.ResetOnSpawn   = false
+    sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    sg.DisplayOrder   = 30
+    sg.IgnoreGuiInset = true
+    sg.Parent         = playerGui
+
+    local lbl = Instance.new("TextLabel", sg)
+    lbl.Size                   = UDim2.new(0.6, 0, 0, 74)
+    lbl.Position               = UDim2.new(0.2, 0, 0.07, 0)
+    lbl.BackgroundColor3       = Color3.fromRGB(20, 20, 20)
+    lbl.BackgroundTransparency = 0.2
+    lbl.TextColor3             = Color3.fromRGB(255, 220, 50)
+    lbl.Font                   = Enum.Font.GothamBold
+    lbl.TextSize               = 18
+    lbl.RichText               = true
+    lbl.TextWrapped            = true
+    lbl.Text                   = "🎉 Your first <b>MUTANT</b> is growing! Now <b>fill your base with Mutants</b> and grab more seeds from the <b>Sacred Trees 🌳</b> out in the field!"
+    lbl.BorderSizePixel        = 0
+    lbl.ZIndex                 = 10
+    Instance.new("UICorner", lbl).CornerRadius = UDim.new(0, 10)
+
+    task.delay(6, function()
+        if not sg.Parent then return end
+        TweenService:Create(lbl, TweenInfo.new(0.8, Enum.EasingStyle.Quad), {
+            TextTransparency       = 1,
+            BackgroundTransparency = 1,
+        }):Play()
+        task.delay(0.9, function() if sg.Parent then sg:Destroy() end end)
+    end)
+end
+
+-- ============================================================
+-- Étape 3 onboarding : guider vers la Daily Seed (free Mutant à venir)
+-- Flèche 2D clignotante pointant sur le bouton DailySeedButton (HUD gauche)
+-- + bannière explicative. Disparaît au clic sur le bouton ou après timeout.
+-- ============================================================
+local function guiderVersDailySeed()
+    -- Localiser le bouton Daily Seed dans le FlowerPotHUD
+    local fpGui    = playerGui:WaitForChild("FlowerPotHUD", 10)
+    local dailyBtn = fpGui and fpGui:WaitForChild("DailySeedButton", 10)
+
+    local sg = Instance.new("ScreenGui")
+    sg.Name           = "OnboardingSeedGuide"
+    sg.ResetOnSpawn   = false
+    sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    sg.DisplayOrder   = 30
+    sg.IgnoreGuiInset = true
+    sg.Parent         = playerGui
+
+    -- Bannière haut-centre (persistante)
+    local banner = Instance.new("TextLabel", sg)
+    banner.Size                   = UDim2.new(0.6, 0, 0, 74)
+    banner.Position               = UDim2.new(0.2, 0, 0.07, 0)
+    banner.BackgroundColor3       = Color3.fromRGB(20, 20, 20)
+    banner.BackgroundTransparency = 0.2
+    banner.TextColor3             = Color3.fromRGB(255, 220, 50)
+    banner.Font                   = Enum.Font.GothamBold
+    banner.TextSize               = 18
+    banner.RichText               = true
+    banner.TextWrapped            = true
+    banner.Text                   = "🌱 Tap the SEED button on the LEFT to claim your <b>FREE seed</b>!\nPlant it → a <b>FREE MUTANT</b> brainrot grows in minutes, worth WAY more! 🤑"
+    banner.BorderSizePixel        = 0
+    banner.ZIndex                 = 10
+    Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 10)
+
+    -- Flèche 👈 ancrée juste à droite du bouton Seed (centrée verticalement dessus)
+    local ARROW_W, ARROW_H = 70, 60
+    local arrow = Instance.new("TextLabel", sg)
+    arrow.Size                   = UDim2.new(0, ARROW_W, 0, ARROW_H)
+    arrow.AnchorPoint            = Vector2.new(0, 0.5)
+    arrow.Position               = UDim2.new(0, 92, 0.5, 0)  -- fallback si bouton introuvable
+    arrow.BackgroundTransparency = 1
+    arrow.Text                   = "👈"
+    arrow.Font                   = Enum.Font.GothamBold
+    arrow.TextScaled             = true
+    arrow.TextColor3             = Color3.fromRGB(255, 220, 50)
+    arrow.TextStrokeTransparency = 0
+    arrow.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+    arrow.ZIndex                 = 10
+
+    -- Ancrage dynamique : flèche collée à droite du bouton, alignée sur son centre Y
+    local bobTween = nil
+    local function ancrerFleche()
+        if not (dailyBtn and dailyBtn.Parent) then return end
+        local bp, bs = dailyBtn.AbsolutePosition, dailyBtn.AbsoluteSize
+        if bs.X <= 0 then return end
+        local baseX = bp.X + bs.X + 6
+        local baseY = bp.Y + bs.Y / 2
+        arrow.Position = UDim2.fromOffset(baseX, baseY)
+        -- Bobbing horizontal (relance le tween à chaque ré-ancrage)
+        if bobTween then bobTween:Cancel() end
+        bobTween = TweenService:Create(arrow,
+            TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            { Position = UDim2.fromOffset(baseX + 16, baseY) })
+        bobTween:Play()
+    end
+
+    if dailyBtn then
+        -- Tenter d'ancrer dès que le bouton a une taille (peut être 0 au 1er frame)
+        for _ = 1, 30 do
+            ancrerFleche()
+            if dailyBtn.AbsoluteSize.X > 0 then break end
+            task.wait()
+        end
+        dailyBtn:GetPropertyChangedSignal("AbsolutePosition"):Connect(ancrerFleche)
+    else
+        -- Fallback : bobbing sur la position fixe
+        TweenService:Create(arrow,
+            TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+            { Position = UDim2.new(0, 108, 0.5, 0) }
+        ):Play()
+    end
+
+    -- Lien 3D vers le FlowerPot_1 (déclaré ici, créé en fin de fonction).
+    -- Survit au clic Seed et guide vers la plantation.
+    local fermerLienPot = function() end
+
+    -- Disparition de la bannière + flèche Seed : clic sur le bouton OU timeout 60s
+    -- (n'affecte PAS le lien vers le pot, qui guide après la récupération de la graine)
+    local fini = false
+    local function fermer()
+        if fini then return end
+        fini = true
+        if sg.Parent then sg:Destroy() end
+    end
+    if dailyBtn then
+        dailyBtn.MouseButton1Click:Connect(fermer)
+    end
+    task.delay(60, fermer)
+
+    -- Détection plantation : le serveur envoie PotBillboardUpdate(potModel, data)
+    -- avec data non-nul dès qu'une graine pousse → retire message ET lien, puis étape 4.
+    local PotBillboardUpdate = RS:FindFirstChild("PotBillboardUpdate")
+                            or RS:WaitForChild("PotBillboardUpdate", 5)
+    local plantConn
+    if PotBillboardUpdate then
+        plantConn = PotBillboardUpdate.OnClientEvent:Connect(function(_potModel, data)
+            if data then  -- pot planté (croissance en cours)
+                if plantConn then plantConn:Disconnect() ; plantConn = nil end
+                fermer()
+                fermerLienPot()
+                task.delay(0.4, messageFinalOuverture)  -- étape 4
+            end
+        end)
+    end
+
+    -- Lien vers le pot (approche 10 studs, timeout 120s)
+    fermerLienPot = creerLienVers(trouverPartProche("FlowerPot_1"), "Plant here!", 10, 120)
 end
 
 -- Flèche BillboardGui au-dessus du joueur avec bobbing
@@ -109,6 +386,9 @@ end
 
 -- Floating text "+X 🎉 FIRST CASH!" doré qui monte et s'efface
 local function celebrerPremierDepot(bonusCoins)
+    -- Étape 1 terminée : fermer le lien vers la base
+    if _fermerLienBase then _fermerLienBase() ; _fermerLienBase = nil end
+
     local character = player.Character
     if not character then return end
     local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -162,10 +442,11 @@ local function celebrerPremierDepot(bonusCoins)
     task.delay(0.5, function() if pe.Parent then pe.Rate = 0 end end)
     task.delay(2, function() if pe.Parent then pe:Destroy() end end)
 
-    afficherMessageHUD("Continue! Fill your base 🌾")
+    -- Étape 3 onboarding : après la 1re cash, guider vers la Daily Seed (free Mutant à venir)
+    task.delay(0.5, guiderVersDailySeed)
 end
 
--- Détruire la flèche au premier pickup
+-- Détruire la flèche au premier pickup + créer le lien vers la base (à déposer)
 local function surPremierPickup()
     local character = player.Character
     if character then
@@ -176,6 +457,11 @@ local function surPremierPickup()
         end
     end
     arrowActive = false
+
+    -- Étape 1 (suite) : BR attrapé → lien vers la base pour aller le déposer
+    -- (fermé au 1er dépôt via celebrerPremierDepot, ou à l'approche/timeout)
+    afficherMessageHUD("Carry it to your base to deposit! 🏠")
+    _fermerLienBase = creerLienVers(trouverPartProche("SpawnZone"), "Deposit here!", 14, 90)
 end
 
 -- Écoute des events onboarding depuis le serveur

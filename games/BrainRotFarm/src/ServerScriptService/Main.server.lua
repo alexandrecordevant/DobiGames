@@ -122,6 +122,7 @@ local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
 local GetUpgradeCost     = CreerRemoteFunction("GetUpgradeCost")
 local GetSeedInfo        = CreerRemoteFunction("GetSeedInfo")
 local CodeRedeem         = CreerRemoteFunction("CodeRedeem")
+local GetTimerData       = CreerRemoteFunction("GetTimerData")
 
 Logger.info("Main", "RemoteEvents créés ✓")
 
@@ -1303,6 +1304,42 @@ GetSeedInfo.OnServerInvoke = function(player)
         arbreTimerRestant = timerRestant,
         arbreGraineDispo  = graineDispo,
         pots              = potsStatus,
+    }
+end
+
+-- RemoteFunction : timers affichés dans le widget HUD bottom-right (TimerHUD)
+-- CommunSpawner est requis en bas du fichier (ligne ~1480) → require() en inline
+-- (le module est déjà chargé à ce stade, require() renvoie l'instance cached)
+GetTimerData.OnServerInvoke = function(_player)
+    local CS           = require(ServerScriptService.CommunSpawner)
+    local EV           = getEventVisualsMain()
+    local eventInfo    = EV and EV.GetTempsRestantEvent() or { actif = false, tempsRestant = 0 }
+    local prochainEv   = EventManager.GetProchainEvent()
+
+    local mythic          = CS.GetProchainSpawn("MYTHIC")
+    local secret          = CS.GetProchainSpawn("SECRET")
+    local arbreT, arbreD  = ArbreSystem.GetTimerRestant()
+    local arbreSecondes   = arbreD and 0 or (arbreT or -1)
+
+    local candidats = {
+        { type = "MYTHIC", secondes = mythic.tempsRestant },
+        { type = "SECRET", secondes = secret.tempsRestant },
+        { type = "ARBRE",  secondes = arbreSecondes       },
+    }
+    local meilleur = nil
+    for _, c in ipairs(candidats) do
+        if c.secondes >= 0 then
+            if not meilleur or c.secondes < meilleur.secondes then
+                meilleur = c
+            end
+        end
+    end
+
+    return {
+        eventActif        = eventInfo.actif,
+        eventNom          = eventInfo.nom,
+        eventTempsRestant = eventInfo.actif and eventInfo.tempsRestant or prochainEv,
+        prochainSpecial   = meilleur or { type = "MYTHIC", secondes = -1 },
     }
 end
 
