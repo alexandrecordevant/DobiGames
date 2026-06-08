@@ -1,33 +1,34 @@
--- ServerScriptService/Common/BaleSystem.lua
--- 4 balots de paille qui roulent dans le ChampCommun
--- Allers-retours désynchronisés sur axe Z
--- Mort au contact
+-- ServerScriptService/BaleSystem.lua
+-- 4 balots de paille qui roulent dans le ChampCommun (allers-retours sur axe Z).
+-- Mort au contact.
+--
+-- ⚠️ ARCHITECTURE (corrige le clignotement/téléportation multi-joueurs) :
+--   • Le mouvement VISUEL est calculé CÔTÉ CLIENT (BaleClient.client.lua), à 60 FPS,
+--     depuis la formule déterministe partagée BaleMotion → fluide pour tous, 0 réseau.
+--   • Le serveur NE BOUGE PLUS les parts (ancrées, immobiles côté serveur). Il garde
+--     l'AUTORITÉ sur le kill : il recalcule la position via la MÊME formule et teste
+--     la distance aux joueurs (anti-triche, indépendant du client).
+-- Les parts ancrées déplacées par réplication serveur ne s'interpolent pas côté
+-- client (Roblox les "snap" à fréquence throttlée) → c'était la cause du bug.
 
 local BaleSystem = {}
-local TweenService      = game:GetService("TweenService")
 local Players           = game:GetService("Players")
+local RunService        = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace         = game:GetService("Workspace")
 local Logger            = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
 
-local _GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
+local BaleMotion = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("BaleMotion"))
 
 -- ═══════════════════════════════════════
 -- CONFIG
 -- ═══════════════════════════════════════
 
-local Z_MIN   = -327.5 -- leaderboard 2 à Z=-347.5 + rayon ~20
-local Z_MAX   =  154   -- leaderboard 1 à Z=174.13 - rayon ~20
-local VITESSE = 75     -- studs/seconde (ajustable)
-
--- Délais de départ désynchronisés
-local DELAIS = { 0, 3.5, 7.0, 10.5 }
-
--- Pauses aléatoires au bord (secondes)
-local PAUSE_MIN = 0
-local PAUSE_MAX = 0.2
+local KILL_MARGIN = 5       -- studs ajoutés au rayon pour la zone de mort
+local KILL_HZ     = 0.05    -- intervalle de la boucle de détection (~20 Hz)
 
 -- ═══════════════════════════════════════
--- HELPER — Trouver la Part principale
+-- HELPERS
 -- ═══════════════════════════════════════
 
 local function TrouverPart(model)
@@ -37,10 +38,6 @@ local function TrouverPart(model)
     end
     return nil
 end
-
--- ═══════════════════════════════════════
--- TUER LE JOUEUR
--- ═══════════════════════════════════════
 
 local function TuerJoueur(character)
     local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -54,150 +51,94 @@ local function TuerJoueur(character)
 end
 
 -- ═══════════════════════════════════════
--- DÉMARRER UNE BALE
--- ═══════════════════════════════════════
-
-local function DemarrerBale(bale, delai)
-    task.spawn(function()
-        task.wait(delai)
-
-        -- Trouver la Part du cylindre
-        local part = TrouverPart(bale)
-        if not part then
-            Logger.warn("Bale", "Aucune BasePart dans %s", bale.Name)
-            return
-        end
-
-        -- Assigner PrimaryPart
-        local innerModel = bale:FindFirstChildOfClass("Model") or bale
-        if not innerModel.PrimaryPart then
-            innerModel.PrimaryPart = part
-        end
-        if not bale.PrimaryPart then
-            bale.PrimaryPart = part
-        end
-
-        -- Ancrer toutes les parts
-        for _, desc in ipairs(bale:GetDescendants()) do
-            if desc:IsA("BasePart") then
-                desc.Anchored   = true
-                desc.CanCollide = false
-            end
-        end
-
-        -- Son de roulement (looped, spatial 3D)
-        local sonId = _GameConfig.SonBale
-        if sonId and sonId ~= 0 then
-            local son = Instance.new("Sound")
-            son.SoundId            = "rbxassetid://" .. tostring(sonId)
-            son.Volume             = 0.4
-            son.Looped             = true
-            son.RollOffMaxDistance = 80
-            son.Parent             = part
-            son:Play()
-        end
-
-        -- Rayon du cylindre (déclaré ici pour être accessible dans le Touched)
-        local rayon = part.Size.X / 2  -- ~20 studs
-
-        -- Connecter mort sur toutes les parts
-        -- Vérification de distance réelle (évite les faux positifs de la bounding box rectangulaire)
-        local dejaConnecte = {}
-        for _, desc in ipairs(bale:GetDescendants()) do
-            if desc:IsA("BasePart") and not dejaConnecte[desc] then
-                dejaConnecte[desc] = true
-                desc.Touched:Connect(function(hit)
-                    local character = hit.Parent
-                    if character:FindFirstChildOfClass("Humanoid") then
-                        local root = character:FindFirstChild("HumanoidRootPart")
-                        if root then
-                            local distance = (root.Position - part.Position).Magnitude
-                            if distance <= rayon + 5 then -- rayon cylindre + petite marge
-                                TuerJoueur(character)
-                            end
-                        end
-                    end
-                end)
-            end
-        end
-
-        -- Sauvegarder CFrame original AVANT toute modification
-        -- (préserve l'orientation Studio : RX=180, RY=-1, RZ=-91 ou autre)
-        local cfOriginal        = part.CFrame
-        local rx0, ry0, rz0    = cfOriginal:ToEulerAnglesXYZ()
-
-        local direction = 1  -- 1 = vers Z_MAX, -1 = vers Z_MIN
-
-        -- Vitesse légèrement variée par balot pour désynchronisation naturelle (±15 %)
-        local vitesse = VITESSE * (0.75 + math.random() * 0.50)
-
-        Logger.debug("Bale", "%s démarre (délai %.1fs, vitesse %.1f)", bale.Name, delai, vitesse)
-
-        -- ═══ BOUCLE ALLERS-RETOURS ═══
-        while bale.Parent do
-            local posActuelle = part.Position
-            local targetZ     = direction == 1 and Z_MAX or Z_MIN
-            local distance    = math.abs(targetZ - posActuelle.Z)
-            local duree       = distance / vitesse
-            local steps       = math.max(1, math.floor(duree / 0.03))
-
-            -- Angle total de rotation (roulement dans le sens du déplacement)
-            local angleTotal = (distance / (2 * math.pi * rayon))
-                * 2 * math.pi * direction
-
-            for s = 1, steps do
-                if not bale.Parent then break end
-
-                local t     = s / steps
-                local newZ  = posActuelle.Z + (targetZ - posActuelle.Z) * t
-                local angle = angleTotal * t
-
-                -- Déplacer le Model en combinant :
-                --   1. roulement autour de l'axe X MONDE (appliqué en premier)
-                --   2. orientation originale préservée (rx0, ry0, rz0) appliquée après
-                -- Ordre critique : roulement avant orientation pour rester en espace monde
-                -- posActuelle.X et posActuelle.Y fixes — seul Z varie
-                bale:SetPrimaryPartCFrame(
-                    CFrame.new(posActuelle.X, posActuelle.Y, newZ)
-                    * CFrame.Angles(angle, 0, 0)
-                    * CFrame.Angles(rx0, ry0, rz0)
-                )
-
-                task.wait(0.03)
-            end
-
-            -- Inverser direction
-            direction = -direction
-
-            -- Pause aléatoire au bord
-            task.wait(PAUSE_MIN + math.random() * (PAUSE_MAX - PAUSE_MIN))
-        end
-    end)
-end
-
--- ═══════════════════════════════════════
 -- INIT
 -- ═══════════════════════════════════════
 
 function BaleSystem.Init()
-    local cc = workspace:FindFirstChild("ChampCommun")
+    local cc = Workspace:FindFirstChild("ChampCommun")
     if not cc then
         Logger.warn("Bale", "ChampCommun introuvable")
         return
     end
 
-    local count = 0
-    for i = 1, 4 do
+    -- Préparer chaque balot : ancrer + mémoriser sa position fixe (X, Y) et son rayon.
+    local bales = {}
+    for i = 1, BaleMotion.COUNT do
         local bale = cc:FindFirstChild("Bale_" .. i)
         if bale then
-            DemarrerBale(bale, DELAIS[i])
-            count = count + 1
+            local part = TrouverPart(bale)
+            if part then
+                -- Ancrer toutes les parts : le serveur ne les anime plus, c'est le
+                -- client qui déplace sa copie locale. CanCollide off (kill par distance).
+                for _, desc in ipairs(bale:GetDescendants()) do
+                    if desc:IsA("BasePart") then
+                        desc.Anchored   = true
+                        desc.CanCollide = false
+                    end
+                end
+                if part:IsA("BasePart") then
+                    part.Anchored   = true
+                    part.CanCollide = false
+                end
+
+                bales[#bales + 1] = {
+                    index  = i,
+                    x      = part.Position.X,   -- X/Y fixes (seul Z varie)
+                    y      = part.Position.Y,
+                    radius = part.Size.X / 2,   -- ~20 studs
+                }
+            else
+                Logger.warn("Bale", "Aucune BasePart dans %s", bale.Name)
+            end
         else
             Logger.warn("Bale", "Bale_%d introuvable dans ChampCommun", i)
         end
     end
 
-    Logger.info("Bale", "Init ✓ — %d/4 balots actifs", count)
+    if #bales == 0 then
+        Logger.warn("Bale", "Aucun balot actif")
+        return
+    end
+
+    -- ═══ BOUCLE DE DÉTECTION (autorité serveur) ═══
+    -- Recalcule la position de chaque bale via la formule partagée et teste la
+    -- distance réelle aux joueurs (évite les faux positifs de bounding box).
+    local accum = 0
+    RunService.Heartbeat:Connect(function(dt)
+        accum = accum + dt
+        if accum < KILL_HZ then return end
+        accum = 0
+
+        local now = Workspace:GetServerTimeNow()
+
+        -- Positions courantes des bales
+        local positions = {}
+        for _, b in ipairs(bales) do
+            local z = BaleMotion.Compute(b.index, now, b.radius)
+            positions[#positions + 1] = {
+                pos = Vector3.new(b.x, b.y, z),
+                kill = b.radius + KILL_MARGIN,
+            }
+        end
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            local char = player.Character
+            if char then
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                local root     = char:FindFirstChild("HumanoidRootPart")
+                if humanoid and root and humanoid.Health > 0 then
+                    for _, bp in ipairs(positions) do
+                        if (root.Position - bp.pos).Magnitude <= bp.kill then
+                            TuerJoueur(char)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    Logger.info("Bale", "Init ✓ — %d/4 balots actifs (anim client, kill serveur)", #bales)
 end
 
 return BaleSystem

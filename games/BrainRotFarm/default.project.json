@@ -58,7 +58,9 @@
                 "SpeedTrailClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/SpeedTrailClient.client.lua" },
                 "CodeRedeemGUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua" },
                 "CodeRedeemAnimations": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemAnimations.lua" },
-                "OnboardingArrow": { "$path": "src/StarterPlayer/StarterPlayerScripts/OnboardingArrow.client.lua" }
+                "OnboardingArrow": { "$path": "src/StarterPlayer/StarterPlayerScripts/OnboardingArrow.client.lua" },
+                "TimerHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/TimerHUD.client.lua" },
+                "BaleClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/BaleClient.client.lua" }
             }
         }
     }
