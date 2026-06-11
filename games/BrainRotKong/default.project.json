@@ -1,0 +1,61 @@
+{
+    "name": "BrainRot Kong",
+    "tree": {
+        "$className": "DataModel",
+        "ServerStorage": {
+            "$className": "ServerStorage",
+            "Modules": { "$path": "src/ServerStorage/Modules" }
+        },
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "SharedLib": {
+                "$className": "Folder",
+                "Logger":      { "$path": "../shared-lib/src/server/Logger.lua" },
+                "UIConfig":        { "$path": "../shared-lib/src/shared/UIConfig.lua" },
+                "ModalManager":    { "$path": "../shared-lib/src/shared/ModalManager.lua" },
+                "StudsBackground": { "$path": "../shared-lib/src/shared/StudsBackground.lua" },
+                "Shared": {
+                    "$className": "Folder",
+                    "UITheme":      { "$path": "../shared-lib/src/shared/UITheme.lua" },
+                    "AmelioConfig": { "$path": "../shared-lib/src/shared/AmelioConfig.lua" },
+                    "FormatNumber": { "$path": "../shared-lib/src/shared/FormatNumber.lua" }
+                }
+            },
+            "Modules": { "$path": "src/ReplicatedStorage/Modules" },
+            "GameConfig": { "$path": "src/ReplicatedStorage/GameConfig.lua" }
+        },
+        "ServerScriptService": {
+            "$className": "ServerScriptService",
+            "$path": "src/ServerScriptService",
+            "SharedLib": {
+                "$className": "Folder",
+                "Server": { "$path": "../shared-lib/src/server" },
+                "Shared": {
+                    "$className": "Folder",
+                    "CollectSystem":  { "$path": "../shared-lib/src/shared/CollectSystem.lua" },
+                    "UpgradeSystem":  { "$path": "../shared-lib/src/shared/UpgradeSystem.lua" }
+                }
+            }
+        },
+        "StarterPlayer": {
+            "$className": "StarterPlayer",
+            "StarterPlayerScripts": {
+                "$className": "StarterPlayerScripts",
+                "Shared": { "$path": "../shared-lib/src/client" },
+                "ShopHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/ShopHUD.client.lua" },
+                "SlotMenuHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SlotMenuHUD.client.lua" },
+                "CollectAllButton": { "$path": "src/StarterPlayer/StarterPlayerScripts/CollectAllButton.client.lua" },
+                "BrainrotCarryUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/BrainrotCarryUI.client.lua" },
+                "NightSkyClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/NightSkyClient.client.lua" },
+                "IndexClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/IndexClient.client.lua" },
+                "SideMenuHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/SideMenuHUD.client.lua" },
+                "RainWeatherClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/RainWeatherClient.client.lua" },
+                "SoundManager": { "$path": "src/StarterPlayer/StarterPlayerScripts/SoundManager.client.lua" },
+                "SpeedTrailClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/SpeedTrailClient.client.lua" },
+                "CodeRedeemGUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua" },
+                "CodeRedeemAnimations": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemAnimations.lua" },
+                "TimerHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/TimerHUD.client.lua" }
+            }
+        }
+    }
+}

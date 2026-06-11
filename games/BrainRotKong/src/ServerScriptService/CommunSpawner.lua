@@ -1,0 +1,685 @@
+-- ServerScriptService/Common/CommunSpawner.lua
+-- BrainRotKong — Spawn MYTHIC et SECRET dans la ZoneCommune
+-- COMMON/OG/RARE/EPIC/LEGENDARY/BRAINROT_GOD = réservés aux champs individuels
+-- Refactorisé depuis ChampCommunSpawner.lua — coordonnées lues depuis GameConfig.CommunPoints
+
+local CommunSpawner = {}
+
+-- ============================================================
+-- Services
+-- ============================================================
+local TweenService        = game:GetService("TweenService")
+local Players             = game:GetService("Players")
+local Workspace           = game:GetService("Workspace")
+local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local ServerStorage       = game:GetService("ServerStorage")
+
+-- BRFilterSystem retiré (dead code) — Kong : aucun filtre visuel centralisé
+local function getFilterManager()
+    return nil
+end
+
+-- ============================================================
+-- Config
+-- ============================================================
+local Logger = require(game:GetService("ServerScriptService").SharedLib.Server.Logger)
+local Config = require(game.ReplicatedStorage.GameConfig)
+
+-- Points de spawn lus depuis GameConfig.CommunPoints
+local SPAWN_POINTS = {}
+for _, pt in ipairs(Config.CommunPoints) do
+    table.insert(SPAWN_POINTS, Vector3.new(pt.x, pt.y, pt.z))
+end
+
+-- ============================================================
+-- Dépendances
+-- ============================================================
+local DiscordWebhook = require(ServerScriptService:WaitForChild("DiscordWebhook"))
+
+-- Chargement différé (évite les dépendances circulaires)
+local _LeaderboardSystem = nil
+local function getLeaderboardSystem()
+    if not _LeaderboardSystem then
+        local ok, m = pcall(require, ServerScriptService.LeaderboardSystem)
+        if ok and m then _LeaderboardSystem = m end
+    end
+    return _LeaderboardSystem
+end
+
+-- ============================================================
+-- Configuration des raretés
+-- ============================================================
+local CONFIG = {
+	MYTHIC = {
+		intervalleSecondes   = 8 * 60,
+		compteurVisibleAvant = 3 * 60,
+		valeur               = 300,
+		despawnSecondes      = 60,
+		couleur              = Color3.fromRGB(148, 0, 211),
+		couleurHex           = 9699539,  -- 0x9400D3
+		emoji                = "⚠️",
+		dossier              = "MYTHIC",
+	},
+	SECRET = {
+		intervalleSecondes   = 20 * 60,
+		compteurVisibleAvant = 5 * 60,
+		valeur               = 1000,
+		despawnSecondes      = 90,
+		couleur              = Color3.fromRGB(255, 30, 30),
+		couleurHex           = 16718878, -- 0xFF1E1E
+		emoji                = "🔴",
+		dossier              = "SECRET",
+	},
+}
+
+-- Raretés exclues du spawn — lues depuis GameConfig
+local _raretesExclues = Config.RaretesExcluesSpawn or {}
+local function EstExclue(typeNom)
+    for _, nom in ipairs(_raretesExclues) do
+        if nom == typeNom then return true end
+    end
+    return false
+end
+
+-- Effets permanents — valeurs par défaut (couleur MYTHIC)
+local COULEUR_DEFAUT       = Color3.fromRGB(148, 0, 211)
+local PARTICLE_RATE_BASE   = 8
+local PARTICLE_RATE_ALERTE = 40
+local LIGHT_RANGE_BASE     = 20
+local LIGHT_RANGE_ALERTE   = 40
+
+local BRAINROTS_FOLDER = ServerStorage:WaitForChild("Brainrots")
+
+-- Poids des sous-niveaux SECRET (lus depuis GameConfig)
+local _secretWeights = Config.SECRET_LEVEL_WEIGHTS or { [1] = 1 }
+
+-- Tirage pondéré dans une table { [index] = poids }
+local function tiragePondereNiveau(weights)
+    local total = 0
+    for _, p in pairs(weights) do total += p end
+    local r = math.random() * total
+    local cumul = 0
+    for niveau, p in pairs(weights) do
+        cumul += p
+        if r <= cumul then return niveau end
+    end
+    return next(weights)
+end
+
+-- ============================================================
+-- État interne
+-- ============================================================
+local actifMythic     = false
+local actifSecret     = false
+local idCounter       = 0
+local spawnMultiplier = 1  -- modifié par SetMultiplier (Rain Event)
+
+-- Timers pour Leaderboard2 (lus via GetProchainSpawn)
+local prochainSpawnTime  = {}  -- { [typeNom] = os.time() du prochain spawn }
+local prochainSpawnPoint = {}  -- { [typeNom] = index point A/B/C }
+
+-- Données permanentes par point de spawn
+-- { part, particle, light, bb, labelPermanent }
+local pointsData = {}
+
+-- ============================================================
+-- Utilitaires
+-- ============================================================
+
+local function getNotifEvent()
+	return ReplicatedStorage:FindFirstChild("NotifEvent")
+end
+
+local function notifierTous(typeNotif, message)
+	local ev = getNotifEvent()
+	if ev then
+		pcall(function() ev:FireAllClients(typeNotif, message) end)
+	end
+	Logger.info("Spawn", "%s", message)
+end
+
+-- Format MM:SS
+local function formatTemps(secondes)
+	local m = math.floor(secondes / 60)
+	local s = secondes % 60
+	return string.format("%d:%02d", m, s)
+end
+
+-- Retourne un modèle aléatoire depuis le dossier de rareté.
+-- Pour SECRET, effectue un tirage pondéré sur les sous-niveaux numérotés.
+local function choisirModele(nomDossier)
+    local dossier = BRAINROTS_FOLDER:FindFirstChild(nomDossier)
+    if not dossier then
+        Logger.warn("Spawn", "Dossier introuvable : %s", nomDossier)
+        return nil
+    end
+    if nomDossier == "SECRET" then
+        local niveau = tiragePondereNiveau(_secretWeights)
+        local sousDossier = dossier:FindFirstChild(tostring(niveau))
+        if sousDossier then dossier = sousDossier end
+    end
+    local modeles = dossier:GetChildren()
+    if #modeles == 0 then
+        Logger.warn("Spawn", "Dossier vide : %s", nomDossier)
+        return nil
+    end
+    return modeles[math.random(1, #modeles)]
+end
+
+local function obtenirRacine(modele)
+	if modele.PrimaryPart then return modele.PrimaryPart end
+	for _, v in ipairs(modele:GetDescendants()) do
+		if v:IsA("BasePart") then return v end
+	end
+	return nil
+end
+
+local function obtenirBaseParts(modele)
+	local parts = {}
+	for _, v in ipairs(modele:GetDescendants()) do
+		if v:IsA("BasePart") then table.insert(parts, v) end
+	end
+	if modele:IsA("BasePart") then table.insert(parts, modele) end
+	return parts
+end
+
+-- ============================================================
+-- Effets permanents sur les points de spawn de la ZoneCommune
+-- ============================================================
+
+-- Lance la pulsation infinie du PointLight
+local function lancerPulsationLight(light)
+	task.spawn(function()
+		local infoMonte   = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+		local infoDescend = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+		while light and light.Parent do
+			TweenService:Create(light, infoMonte,   { Brightness = 3.0 }):Play()
+			task.wait(1)
+			if not (light and light.Parent) then break end
+			TweenService:Create(light, infoDescend, { Brightness = 0.5 }):Play()
+			task.wait(1)
+		end
+	end)
+end
+
+
+-- Initialise les effets permanents sur tous les points dès Init()
+local function initialiserEffetsPermanents()
+	for i, position in ipairs(SPAWN_POINTS) do
+		-- Part invisible permanente (ancre pour les effets)
+		local part = Instance.new("Part")
+		part.Name         = "ZoneCommune_Point_" .. i
+		part.Size         = Vector3.new(1, 1, 1)
+		part.Position     = position
+		part.Anchored     = true
+		part.CanCollide   = false
+		part.Transparency = 1
+		part.Parent       = Workspace
+
+		-- ParticleEmitter énergie mystérieuse
+		local particle = Instance.new("ParticleEmitter")
+		particle.Texture     = "rbxasset://textures/particles/sparkles_main.dds"
+		particle.Rate        = PARTICLE_RATE_BASE
+		particle.Lifetime    = NumberRange.new(1.5, 2.5)
+		particle.Speed       = NumberRange.new(2, 4)
+		particle.SpreadAngle = Vector2.new(30, 30)
+		particle.Color       = ColorSequence.new(COULEUR_DEFAUT)
+		particle.Parent      = part
+
+		-- PointLight pulsante
+		local light = Instance.new("PointLight")
+		light.Brightness = 2
+		light.Range      = LIGHT_RANGE_BASE
+		light.Color      = COULEUR_DEFAUT
+		light.Parent     = part
+
+		lancerPulsationLight(light)
+
+		pointsData[i] = {
+			part     = part,
+			particle = particle,
+			light    = light,
+			bb       = nil,
+			label    = nil,
+		}
+
+		Logger.debug("Spawn", "Point %d initialisé (%.1f, %.1f, %.1f)", i, position.X, position.Y, position.Z)
+	end
+end
+
+-- Passe un point en mode alerte (compteur imminent)
+local function passerEnModeAlerte(pointIdx, couleur)
+	local pd = pointsData[pointIdx]
+	if not pd then return end
+
+	pd.particle.Color = ColorSequence.new(couleur)
+	pd.particle.Rate  = PARTICLE_RATE_ALERTE
+	pd.light.Color    = couleur
+	pd.light.Range    = LIGHT_RANGE_ALERTE
+
+	-- Supprimer le billboard permanent pour laisser place au compteur
+	if pd.bb and pd.bb.Parent then
+		pd.bb:Destroy()
+		pd.bb    = nil
+		pd.label = nil
+	end
+end
+
+-- Restaure un point à son état par défaut (après collecte/despawn)
+local function restaurerEtatsDefaut(pointIdx)
+	local pd = pointsData[pointIdx]
+	if not pd then return end
+
+	pd.particle.Color = ColorSequence.new(COULEUR_DEFAUT)
+	pd.particle.Rate  = PARTICLE_RATE_BASE
+	pd.light.Color    = COULEUR_DEFAUT
+	pd.light.Range    = LIGHT_RANGE_BASE
+	pd.bb    = nil
+	pd.label = nil
+end
+
+-- ============================================================
+-- Billboard de compteur (affiché pendant le décompte)
+-- ============================================================
+
+-- Crée le billboard countdown sur une Part dédiée en hauteur
+-- Retourne (billboard, labelCompteur, partCompteur)  — détruire les 3 après usage
+local function creerCompteurBillboard(spawnPos, typeConfig, typeNom)
+	-- Part invisible dédiée : positionnée au-dessus du sol pour que le billboard soit visible
+	-- Utiliser Config (GameConfig chargé en haut du fichier) — _GameConfig n'existe pas
+	local hauteur     = (Config.AnimationConfig and Config.AnimationConfig.timerHauteurY) or 8
+	local studsOffset = (Config.AnimationConfig and Config.AnimationConfig.timerStudsOffset) or 5
+
+	local partCompteur = Instance.new("Part")
+	partCompteur.Name         = "CompteurPart"
+	partCompteur.Size         = Vector3.new(1, 1, 1)
+	partCompteur.Position     = Vector3.new(spawnPos.X, spawnPos.Y + hauteur, spawnPos.Z)
+	partCompteur.Anchored     = true
+	partCompteur.CanCollide   = false
+	partCompteur.Transparency = 1
+	partCompteur.Parent       = Workspace
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name        = "CompteurBillboard"
+	bb.Size        = UDim2.new(0, 200, 0, 80)
+	bb.StudsOffset = Vector3.new(0, studsOffset, 0)
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 100
+	bb.Adornee     = partCompteur
+	bb.Parent      = partCompteur
+
+	local labelType = Instance.new("TextLabel")
+	labelType.Size                   = UDim2.new(1, 0, 0.5, 0)
+	labelType.Position               = UDim2.new(0, 0, 0, 0)
+	labelType.BackgroundTransparency = 1
+	labelType.Text                   = typeConfig.emoji .. " " .. typeNom
+	labelType.Font                   = Enum.Font.GothamBold
+	labelType.TextColor3             = typeConfig.couleur
+	labelType.TextScaled             = true
+	labelType.TextStrokeTransparency = 0
+	labelType.TextStrokeColor3       = Color3.new(0, 0, 0)
+	labelType.Parent                 = bb
+
+	local labelCompteur = Instance.new("TextLabel")
+	labelCompteur.Name                   = "Compteur"
+	labelCompteur.Size                   = UDim2.new(1, 0, 0.5, 0)
+	labelCompteur.Position               = UDim2.new(0, 0, 0.5, 0)
+	labelCompteur.BackgroundTransparency = 1
+	labelCompteur.Text                   = "..."
+	labelCompteur.Font                   = Enum.Font.GothamBold
+	labelCompteur.TextColor3             = Color3.new(1, 1, 0) -- jaune vif
+	labelCompteur.TextScaled             = true
+	labelCompteur.TextStrokeTransparency = 0
+	labelCompteur.TextStrokeColor3       = Color3.new(0, 0, 0)
+	labelCompteur.Parent                 = bb
+
+	return bb, labelCompteur, partCompteur
+end
+
+-- ============================================================
+-- Fade in / Fade out pour les Brain Rots de la ZoneCommune
+-- ============================================================
+
+local function fadeIn(parts, duree)
+	-- Mémoriser les transparences originales avant de tout cacher
+	local originales = {}
+	for _, part in ipairs(parts) do
+		originales[part] = part.Transparency
+		part.Transparency = 1
+		part.CanCollide   = false
+	end
+	task.delay(0.1, function()
+		local info = TweenInfo.new(duree or 0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		for _, part in ipairs(parts) do
+			if part and part.Parent then
+				-- Restaurer la transparence d'origine (pas forcer 0)
+				TweenService:Create(part, info, { Transparency = originales[part] or 0 }):Play()
+			end
+		end
+	end)
+end
+
+local function fadeOut(parts, duree, callback)
+	local info = TweenInfo.new(duree or 0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	for _, part in ipairs(parts) do
+		if part and part.Parent then
+			TweenService:Create(part, info, { Transparency = 1 }):Play()
+		end
+	end
+	if callback then
+		task.delay((duree or 0.4) + 0.1, callback)
+	end
+end
+
+-- ============================================================
+-- Spawn d'un Brain Rot au point de spawn donné
+-- onFin(player, collecte, nomModele)
+--   player    = Player si collecté, nil si despawn
+--   collecte  = true/false
+--   nomModele = nom du modèle (toujours fourni)
+-- ============================================================
+
+local function spawnerBrainRot(typeNom, typeConfig, pointIdx, modeleSource, onFin)
+	local spawnPos = SPAWN_POINTS[pointIdx]
+	local pd       = pointsData[pointIdx]
+	if not spawnPos or not pd then
+		onFin(nil, false, typeNom)
+		return
+	end
+
+	-- Cloner le modèle
+	local clone
+	local ok, err = pcall(function()
+		clone = modeleSource:Clone()
+	end)
+	if not ok or not clone then
+		Logger.warn("Spawn", "Erreur clonage : %s", tostring(err))
+		onFin(nil, false, modeleSource.Name)
+		return
+	end
+
+	idCounter  = idCounter + 1
+	clone.Name = string.format("CC_%s_%d", typeNom, idCounter)
+	pcall(function() clone:SetAttribute("OriginalName", modeleSource.Name) end)
+	pcall(function() clone:SetAttribute("Rarete", typeNom) end)
+	clone.Parent = Workspace
+
+	local racine = obtenirRacine(clone)
+	if not racine then
+		clone:Destroy()
+		onFin(nil, false, modeleSource.Name)
+		return
+	end
+
+	-- Positionner
+	pcall(function()
+		if clone.PrimaryPart then
+			clone:PivotTo(CFrame.new(spawnPos.X, spawnPos.Y, spawnPos.Z))
+		else
+			racine.CFrame = CFrame.new(spawnPos.X, spawnPos.Y, spawnPos.Z)
+		end
+	end)
+
+	local parts = obtenirBaseParts(clone)
+	fadeIn(parts, 0.6)
+
+	-- Valeur coins depuis GameConfig (fallback : typeConfig.valeur)
+	local valeurCoins = (Config.IncomeParRarete and Config.IncomeParRarete[typeNom])
+	                     or typeConfig.valeur or 0
+	-- CashParSeconde : copier depuis modèle source, fallback IncomeParRarete
+	local cpsCommunSrc = modeleSource:GetAttribute("CashParSeconde")
+	local cpsCommunVal = cpsCommunSrc or valeurCoins
+	pcall(function() clone:SetAttribute("CashParSeconde", cpsCommunVal) end)
+	local valeurTexte = cpsCommunVal > 0 and ("  " .. cpsCommunVal .. "/s") or ""
+
+	-- ── Filtres rareté + Billboard via FilterManager ────────────────
+	local FM = getFilterManager()
+	if FM then
+		FM.Apply(clone, {
+			-- Filtre rareté : glow + particules spécifiques à MYTHIC/SECRET
+			{ Name = "Rarity" .. typeNom },
+			-- Billboard flottant au-dessus du BR
+			{ Name = "Billboard", Params = {
+				Text    = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
+				          .. valeurTexte .. "  " .. typeConfig.despawnSecondes .. "s",
+				Color   = typeConfig.couleur,
+				OffsetY = 10,
+				Taille  = UDim2.new(0, 260, 0, 70),
+			}},
+		})
+	end
+
+	-- ── ProximityPrompt via CarrySystem ───────────────────────
+	local collected = false
+
+	-- Countdown "avant disparition" — mis à jour chaque seconde dans BRBillboard/Label
+	task.spawn(function()
+		local restant = typeConfig.despawnSecondes
+		while not collected and restant > 0 do
+			task.wait(1)
+			restant = restant - 1
+			if not racine or not racine.Parent then return end
+			local bb = racine:FindFirstChild("BRBillboard")
+			if not bb then return end
+			local labelBB = bb:FindFirstChild("Label")
+			if not labelBB then return end
+			-- Mise à jour texte + couleur urgence
+			labelBB.Text = typeConfig.emoji .. " " .. typeNom .. " · " .. modeleSource.Name
+			               .. valeurTexte .. "  " .. restant .. "s"
+			if restant <= 10 then
+				labelBB.TextColor3 = Color3.new(1, 0.2, 0.2) -- rouge urgent
+			end
+		end
+	end)
+
+	-- Appeler le hook OnBRSpawned pour créer le ProximityPrompt via CarrySystem
+	if CommunSpawner.OnBRSpawned then
+		pcall(CommunSpawner.OnBRSpawned, clone, typeNom, function(player)
+			if collected then return end
+			collected = true
+			onFin(player, true, modeleSource.Name)
+		end)
+	end
+
+	-- ── Despawn automatique ───────────────────────────────────
+	task.delay(typeConfig.despawnSecondes, function()
+		if collected then return end
+		if not clone or not clone.Parent then return end
+		collected = true
+		fadeOut(parts, 0.5, function()
+			if clone and clone.Parent then clone:Destroy() end
+		end)
+		onFin(nil, false, modeleSource.Name)
+	end)
+end
+
+-- ============================================================
+-- Scheduler générique (synchrone, 1 par type)
+-- ============================================================
+
+local function lancerScheduler(typeNom)
+	local cfg = CONFIG[typeNom]
+	if not cfg then return end
+    if EstExclue(typeNom) then
+        Logger.info("Spawn", "%s exclu du spawn (RaretesExcluesSpawn)", typeNom)
+        return
+    end
+
+	local function estActif()
+		return typeNom == "MYTHIC" and actifMythic or actifSecret
+	end
+	local function setActif(v)
+		if typeNom == "MYTHIC" then actifMythic = v else actifSecret = v end
+	end
+
+	task.spawn(function()
+		-- Décalage initial pour éviter que MYTHIC et SECRET spawnent en même temps
+		local decalage = typeNom == "SECRET" and 60 or 0
+		if decalage > 0 then task.wait(decalage) end
+
+		while true do
+			-- ── Phase 1 : attente silencieuse ──────────────────────
+			-- spawnMultiplier réduit l'intervalle (ex: Rain Event ×3 → 3× plus fréquent)
+			local intervalleEffectif = math.max(
+				cfg.compteurVisibleAvant + 30,
+				cfg.intervalleSecondes / math.max(1, spawnMultiplier)
+			)
+			-- Enregistrer le moment prévu du spawn (lu par GetProchainSpawn)
+			prochainSpawnTime[typeNom]  = os.time() + intervalleEffectif
+			prochainSpawnPoint[typeNom] = nil  -- point pas encore choisi
+
+			local attenteAvantCompteur = intervalleEffectif - cfg.compteurVisibleAvant
+			task.wait(math.max(1, attenteAvantCompteur))
+
+			-- Verrouiller le slot (garde-fou si latence)
+			if estActif() then task.wait(5) continue end
+			setActif(true)
+
+			-- Choisir un point de spawn aléatoire
+			local pointIdx = math.random(1, #SPAWN_POINTS)
+			prochainSpawnPoint[typeNom] = pointIdx
+
+			-- ── Phase 2 : alerte + compteur ───────────────────────
+			passerEnModeAlerte(pointIdx, cfg.couleur)
+
+			-- Notification joueurs (inutile si compteur = 0 car RARE arrive immédiatement après)
+			if cfg.compteurVisibleAvant > 0 then
+				notifierTous("ALERT", string.format(
+					"%s %s spawns in %s in the Common Field!",
+					cfg.emoji, typeNom, formatTemps(cfg.compteurVisibleAvant)
+				))
+			end
+
+			-- Pas de notification Discord au compteur (trop fréquent)
+
+			-- Créer le billboard de compteur (Part dédiée en hauteur pour visibilité)
+			local spawnPos = SPAWN_POINTS[pointIdx]
+			local compteurBB, labelCompteur, partCompteur = creerCompteurBillboard(spawnPos, cfg, typeNom)
+
+			-- Décompte synchrone — mis à jour chaque seconde
+			for restant = cfg.compteurVisibleAvant, 1, -1 do
+				if labelCompteur and labelCompteur.Parent then
+					labelCompteur.Text = formatTemps(restant)
+				end
+				task.wait(1)
+			end
+
+			-- Supprimer le billboard compteur ET la Part dédiée
+			if compteurBB and compteurBB.Parent then
+				compteurBB:Destroy()
+			end
+			if partCompteur and partCompteur.Parent then
+				partCompteur:Destroy()
+			end
+
+			-- ── Phase 3 : spawn du Brain Rot ──────────────────────
+			local modeleSource = choisirModele(cfg.dossier)
+			if not modeleSource then
+				-- Aucun modèle dispo → passer le cycle
+				Logger.warn("Spawn", "Aucun modèle pour %s, cycle ignoré", typeNom)
+				setActif(false)
+				restaurerEtatsDefaut(pointIdx)
+				continue
+			end
+
+			-- Notifier l'apparition
+			notifierTous("RARE", string.format(
+				"%s %s [%s] has appeared! Rush to the Common Field!",
+				cfg.emoji, typeNom, modeleSource.Name
+			))
+
+			-- Pas de notification Discord au spawn (envoi uniquement à la capture)
+
+			-- ── Phase 4 : attendre résolution (collecte ou despawn) ─
+			local resolu         = false
+			local playerCollecte = nil
+			local collecte       = false
+			local nomModele      = modeleSource.Name
+
+			spawnerBrainRot(typeNom, cfg, pointIdx, modeleSource, function(player, didCollect, nom)
+				playerCollecte = player
+				collecte       = didCollect
+				nomModele      = nom or nomModele
+				resolu         = true
+			end)
+
+			-- Polling (bloque le scheduler jusqu'à résolution)
+			while not resolu do
+				task.wait(1)
+			end
+
+			-- ── Phase 5 : post-résolution ──────────────────────────
+			setActif(false)
+			restaurerEtatsDefaut(pointIdx)
+
+			if collecte and playerCollecte then
+				-- Notif victoire
+				notifierTous("RARE", string.format(
+					"%s grabbed the %s [%s]!",
+					playerCollecte.Name, nomModele, typeNom
+				))
+
+				-- Discord : SECRET capturé (rate limited 30 min dans DiscordWebhook)
+				if typeNom == "SECRET" then
+					pcall(DiscordWebhook.SecretCapture, playerCollecte.Name)
+				end
+
+				-- Callback principal (gestion coins dans Main.server.lua)
+				if CommunSpawner.OnCollecte then
+					pcall(CommunSpawner.OnCollecte, playerCollecte, typeNom)
+				end
+
+				-- Notifier LeaderboardSystem (DernierRare affiché dans Leaderboard2)
+				local LBS = getLeaderboardSystem()
+				if LBS and LBS.EnregistrerRare then
+					pcall(LBS.EnregistrerRare, playerCollecte, typeNom)
+				end
+			end
+
+			-- La boucle repart : task.wait(attenteAvantCompteur) au prochain tour
+		end
+	end)
+end
+
+-- ============================================================
+-- API publique
+-- ============================================================
+
+-- Callback collecte — à assigner depuis Main.server.lua :
+-- CommunSpawner.OnCollecte = function(player, rarete) end
+CommunSpawner.OnCollecte = nil
+
+-- Hook ProximityPrompt — à assigner depuis Main.server.lua :
+-- CommunSpawner.OnBRSpawned = function(clone, typeNom, onCapture) end
+CommunSpawner.OnBRSpawned = nil
+
+-- Retourne le temps restant avant le prochain spawn d'un type donné
+-- typeNom = "MYTHIC" | "SECRET"
+-- Retourne { tempsRestant = secondes (0 si spawn imminent/passé), point = "A"|"B"|"C"|nil }
+function CommunSpawner.GetProchainSpawn(typeNom)
+    local t = prochainSpawnTime[typeNom]
+    if not t then
+        return { tempsRestant = -1, point = nil }
+    end
+    local restant = math.max(0, t - os.time())
+    local lettres = { "A", "B", "C" }
+    local pointLettre = prochainSpawnPoint[typeNom] and lettres[prochainSpawnPoint[typeNom]] or nil
+    return { tempsRestant = restant, point = pointLettre }
+end
+
+-- Modifie le multiplicateur de spawn (appelé par Rain Event)
+-- mult = 1 → vitesse normale, mult = 3 → 3× plus fréquent
+function CommunSpawner.SetMultiplier(mult)
+    spawnMultiplier = math.max(1, mult or 1)
+    Logger.info("Spawn", "Multiplicateur spawn : ×%d", spawnMultiplier)
+end
+
+function CommunSpawner.Init()
+	initialiserEffetsPermanents()
+	lancerScheduler("MYTHIC")
+	lancerScheduler("SECRET")
+	Logger.info("Spawn", "✓ Schedulers MYTHIC et SECRET démarrés")
+end
+
+return CommunSpawner
