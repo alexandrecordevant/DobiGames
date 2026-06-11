@@ -116,6 +116,8 @@ local RequestSkipDailySeed  = CreerRemoteEvent("RequestSkipDailySeed")
 local CollectAllEvent        = CreerRemoteEvent("CollectAllEvent")
 local IndexDemander          = CreerRemoteEvent("IndexDemander")
 local IndexRecevoir          = CreerRemoteEvent("IndexRecevoir")
+local DemandeLuckyBlock      = CreerRemoteEvent("DemandeLuckyBlock")  -- client → serveur : achat Lucky Block (tierIndex)
+local LuckyBlockOpened       = CreerRemoteEvent("LuckyBlockOpened")   -- LuckyBlockSystem → client : sons/VFX ouverture
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -714,6 +716,31 @@ local function OnPlayerAdded(player)
                         clone = modele:Clone()
                         -- Parent temporaire requis : effectuerRamassage vérifie source.Parent ~= nil
                         clone.Parent = game:GetService("ServerStorage")
+                    end
+                end
+                -- Fallback Lucky Blocks : modèle absent de ServerStorage.Brainrots.
+                --   (1) Lucky Block non ouvert (nom = "LuckyBlock_N") → cloner le visuel du tier
+                --       et re-poser IsLuckyBlock/Tier/OwnerUserId pour qu'il reste ouvrable.
+                --   (2) BR gagné via Lucky Block, présent uniquement dans ReplicatedStorage.LuckyBlocks.
+                if not clone then
+                    local lbRoot  = ReplicatedStorage:FindFirstChild("LuckyBlocks")
+                    local tierIdx = porteeData.nom and tonumber(tostring(porteeData.nom):match("LuckyBlock_(%d+)$"))
+                    if lbRoot and tierIdx then
+                        local tierFolder = lbRoot:FindFirstChild("Tier_" .. tierIdx)
+                        local lbSource   = tierFolder and tierFolder:FindFirstChild("Lucky Block")
+                        if lbSource then
+                            clone = lbSource:Clone()
+                            clone:SetAttribute("IsLuckyBlock", true)
+                            clone:SetAttribute("Tier",         tierIdx)
+                            clone:SetAttribute("OwnerUserId",  player.UserId)
+                            clone.Parent = game:GetService("ServerStorage")
+                        end
+                    elseif lbRoot and porteeData.brNom then
+                        local found = lbRoot:FindFirstChild(porteeData.brNom, true)
+                        if found and (found:IsA("Model") or found:IsA("BasePart")) then
+                            clone = found:Clone()
+                            clone.Parent = game:GetService("ServerStorage")
+                        end
                     end
                 end
                 pcall(CarrySystem.AjouterAuCarry, player, clone, rareteObj)
@@ -1931,5 +1958,131 @@ else
     Logger.warn("Main", "[FuseSystem] Init() ignoré — module non chargé")
 end
 
+
+-- ═══════════════════════════════════════════════
+-- LUCKY BLOCK SYSTEM (achat → carry → dépôt slot → ouverture animée → BR)
+-- ═══════════════════════════════════════════════
+
+local _lbOk, LuckyBlockSystem = pcall(require, ServerScriptService.LuckyBlockSystem)
+if not _lbOk then
+    Logger.error("Main", "[LuckyBlockSystem] ERREUR require : %s", tostring(LuckyBlockSystem))
+    LuckyBlockSystem = nil
+end
+
+if LuckyBlockSystem then
+    local BrainrotBillboard = require(ServerScriptService.SharedLib.Server.BrainrotBillboard)
+
+    -- Fallback de clonage : les modèles Lucky Block (visuel + BRs résultat) vivent dans
+    -- ReplicatedStorage.LuckyBlocks.*, pas dans ServerStorage.Brainrots.* — DropSystem
+    -- appelle ce fallback quand un brNom est introuvable dans le dossier standard.
+    DropSystem.FindModelFallback = function(brNom, rarete)
+        local lbRoot = ReplicatedStorage:FindFirstChild("LuckyBlocks")
+        if not lbRoot or not brNom then return nil end
+        -- Cas 1 : rarete = "LuckyBlock_N" → tier précis
+        local tierIdx = rarete and tonumber(tostring(rarete):match("LuckyBlock_(%d+)$"))
+        if tierIdx then
+            local tierFolder = lbRoot:FindFirstChild("Tier_" .. tierIdx)
+            if tierFolder then
+                local found = tierFolder:FindFirstChild(brNom, true)
+                if found and (found:IsA("Model") or found:IsA("BasePart")) then return found end
+            end
+        end
+        -- Cas 2 : recherche récursive tous tiers (BRs résultat)
+        local found = lbRoot:FindFirstChild(brNom, true)
+        if found and (found:IsA("Model") or found:IsA("BasePart")) then return found end
+        return nil
+    end
+
+    LuckyBlockSystem.GetData          = GetData
+    LuckyBlockSystem.DataStoreManager = DataStoreManager
+
+    -- Tous les touchParts du joueur (libres + occupés) pour localiser le slot du Lucky Block
+    LuckyBlockSystem.GetTousLesSpots = function(player)
+        local result = {}
+        for _, tp in ipairs(DropSystem.GetSpotsLibres(player)) do
+            table.insert(result, tp)
+        end
+        for _, entry in ipairs(DropSystem.GetSpotsOccupes(player)) do
+            table.insert(result, entry.touchPart)
+        end
+        return result
+    end
+
+    -- Retire le Lucky Block du slot sans le remettre dans le carry
+    LuckyBlockSystem.VendreBR = function(player, touchPart)
+        DropSystem.VendreBR(player, touchPart)
+    end
+
+    -- Donne le Brainrot résultat au joueur comme un vrai pickup, puis réactive les prompts
+    LuckyBlockSystem.DonnerAuCarry = function(player, clone, rareteObj)
+        clone.Parent = ReplicatedStorage
+        pcall(BrainrotBillboard.SetupBase, clone, nil, false)
+        pcall(CarrySystem.AjouterAuCarry, player, clone, rareteObj)
+        pcall(DropSystem.RecalculerPrompts, player)
+    end
+
+    local _lbInitOk, lbErr = pcall(LuckyBlockSystem.Init)
+    if not _lbInitOk then
+        Logger.error("Main", "[LuckyBlockSystem] ERREUR Init() : %s", tostring(lbErr))
+    end
+
+    -- ── Achat : place le modèle "Lucky Block" du tier dans le carry du joueur ──
+    -- (appelé depuis ProcessReceipt après validation de l'achat Robux)
+    local function grantLuckyBlock(player, tierIndex)
+        local lbRoot     = ReplicatedStorage:FindFirstChild("LuckyBlocks")
+        local tierFolder = lbRoot and lbRoot:FindFirstChild("Tier_" .. tierIndex)
+        local lbSource   = tierFolder and tierFolder:FindFirstChild("Lucky Block")
+        if not lbSource then
+            Logger.warn("LuckyBlock", "Modèle introuvable : LuckyBlocks/Tier_%d/Lucky Block", tierIndex)
+            NotifEvent:FireClient(player, "ERROR", "Lucky Block unavailable.")
+            return false
+        end
+        local clone = lbSource:Clone()
+        -- Attributs lus par LuckyBlockSystem une fois déposé sur un slot
+        clone:SetAttribute("IsLuckyBlock", true)
+        clone:SetAttribute("Tier",         tierIndex)
+        clone:SetAttribute("OwnerUserId",  player.UserId)
+        clone.Parent = ReplicatedStorage
+        -- "LuckyBlock_N" encode le tier dans la rareté → restauration précise au rejoin
+        local rareteObj = { nom = "LuckyBlock_" .. tierIndex, dossier = "LuckyBlock_" .. tierIndex, isMutant = false, valeur = 0 }
+        local ok, err = pcall(CarrySystem.AjouterAuCarry, player, clone, rareteObj)
+        if not ok then
+            pcall(function() clone:Destroy() end)
+            Logger.warn("LuckyBlock", "%s grant échec : %s", player.Name, tostring(err))
+            NotifEvent:FireClient(player, "ERROR", "Your bag is full!")
+            return false
+        end
+        Logger.info("LuckyBlock", "%s achat Lucky Block tier %d → carry", player.Name, tierIndex)
+        NotifEvent:FireClient(player, "INFO", "Lucky Block received — place it on a slot to open!")
+        return true
+    end
+
+    -- Enregistrer un handler ProcessReceipt par tier configuré (DevProduct → grant)
+    local lbList = Config.Shop and Config.Shop.LuckyBlocks or {}
+    for tierIndex, lbCfg in ipairs(lbList) do
+        local pid = lbCfg.devProduct and devP[lbCfg.devProduct] or 0
+        if pid > 0 then
+            MonetizationHandler.RegisterProductHandler(pid, function(player, _data)
+                grantLuckyBlock(player, tierIndex)
+            end)
+        end
+    end
+
+    -- Demande d'achat client → prompt MarketplaceService (un DevProduct par tier)
+    DemandeLuckyBlock.OnServerEvent:Connect(function(player, tierIndex)
+        tierIndex = tonumber(tierIndex)
+        if not tierIndex or not lbList[tierIndex] then return end
+        if CarrySystem.EstPlein(player) then
+            NotifEvent:FireClient(player, "ERROR", "Your bag is full!")
+            return
+        end
+        local pid = devP[lbList[tierIndex].devProduct or ""] or 0
+        if pid == 0 then
+            NotifEvent:FireClient(player, "ERROR", "Lucky Block not configured.")
+            return
+        end
+        game:GetService("MarketplaceService"):PromptProductPurchase(player, pid)
+    end)
+end
 
 Logger.info("Main", "Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))

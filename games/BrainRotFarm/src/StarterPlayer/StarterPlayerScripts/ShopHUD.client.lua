@@ -315,6 +315,7 @@ end
 local AchatUpgrade         = nil
 local DemandeAchatRobux    = nil
 local ChangerSeuilTracteur = nil
+local DemandeLuckyBlock    = nil
 
 local SECTION_COLORS = {
     Color3.fromRGB(80,  180, 255),
@@ -719,6 +720,77 @@ local function construireBoostsFrame(yPos)
 end
 
 -- ============================================================
+-- Bloc Lucky Blocks (1 bouton plein-largeur par tier — config client)
+-- ============================================================
+local LB_ROW_GAP   = 6
+local luckyFrame   = nil
+
+local function construireLuckyBlocksFrame(yPos)
+    if luckyFrame and luckyFrame.Parent then luckyFrame:Destroy() end
+    luckyFrame = nil
+
+    local lbList = (Config.Shop and Config.Shop.LuckyBlocks) or {}
+    if #lbList == 0 or not DemandeLuckyBlock then return yPos end
+
+    local headerH = 68
+    local frameH  = headerH + #lbList * BTN_H + (#lbList - 1) * LB_ROW_GAP + 10
+
+    local frame = Instance.new("Frame")
+    frame.Name             = "LuckyBlocks"
+    frame.Size             = UDim2.new(1, -10, 0, frameH)
+    frame.Position         = UDim2.new(0, 5, 0, yPos)
+    frame.BackgroundColor3 = Color3.fromRGB(150, 90, 230)  -- violet "lucky"
+    frame.BorderSizePixel  = 0
+    frame.Parent           = scrollFrame
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+    local stroke = Instance.new("UIStroke", frame)
+    stroke.Color = Color3.fromRGB(255, 255, 255) ; stroke.Thickness = 2 ; stroke.Transparency = 0.5
+
+    local titre = Instance.new("TextLabel", frame)
+    titre.Size                   = UDim2.new(1, -12, 0, 22)
+    titre.Position               = UDim2.new(0, 10, 0, 8)
+    titre.BackgroundTransparency = 1
+    titre.Text                   = "LUCKY BLOCKS"
+    titre.TextColor3             = C_TITLE
+    titre.Font                   = UI.Fonts.Title
+    titre.TextSize               = UI.TextSizes.H2
+    titre.TextScaled             = false
+    titre.TextXAlignment         = Enum.TextXAlignment.Left
+
+    local desc = Instance.new("TextLabel", frame)
+    desc.Size                   = UDim2.new(1, -12, 0, 16)
+    desc.Position               = UDim2.new(0, 10, 0, 32)
+    desc.BackgroundTransparency = 1
+    desc.Text                   = "Place on a slot & open for a random Brain Rot!"
+    desc.TextColor3             = C_DIM
+    desc.Font                   = UI.Fonts.Body
+    desc.TextSize               = UI.TextSizes.Caption
+    desc.TextScaled             = false
+    desc.TextXAlignment         = Enum.TextXAlignment.Left
+
+    local sep = Instance.new("Frame", frame)
+    sep.Size             = UDim2.new(1, -20, 0, 1)
+    sep.Position         = UDim2.new(0, 10, 0, 60)
+    sep.BackgroundColor3 = C_BORDER
+    sep.BorderSizePixel  = 0
+
+    for i, lbCfg in ipairs(lbList) do
+        local rowY  = headerH + (i - 1) * (BTN_H + LB_ROW_GAP)
+        local texte = (lbCfg.nom or ("Tier " .. i)) .. "   " .. tostring(lbCfg.prix or "?") .. " R$"
+        local btn   = creerBouton(frame, texte, C_GOLD_BG, C_GOLD_TXT, 8, PANEL_W - 16 - 10 - 16, true, "robux")
+        btn.Size     = UDim2.new(1, -16, 0, BTN_H)
+        btn.Position = UDim2.new(0, 8, 0, rowY)
+        local tierIndex = i  -- capture locale pour le Connect
+        btn.MouseButton1Click:Connect(function()
+            DemandeLuckyBlock:FireServer(tierIndex)
+        end)
+    end
+
+    luckyFrame = frame
+    return yPos + frameH + UPGRADE_PAD
+end
+
+-- ============================================================
 -- Construction complète du shop depuis les données reçues
 -- ============================================================
 local function construireShop(donnes)
@@ -749,6 +821,9 @@ local function construireShop(donnes)
 
     -- Bloc boosts (LuckyHour)
     y = construireBoostsFrame(y)
+
+    -- Bloc Lucky Blocks
+    y = construireLuckyBlocksFrame(y)
 
     -- Ajuster le canvas de scroll
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
@@ -782,6 +857,7 @@ local function mettreAJourShop(donnes)
     local y = 6 + #upgradeOrdre * (UPGRADE_H + UPGRADE_PAD)
     y = construireSeuilTracteur(donnes, y)
     y = construireBoostsFrame(y)
+    y = construireLuckyBlocksFrame(y)
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, y + 4)
     majScrollFade()
 end
@@ -883,8 +959,15 @@ task.spawn(function()
 
     AchatUpgrade         = ReplicatedStorage:WaitForChild("AchatUpgrade",      15)
     DemandeAchatRobux    = ReplicatedStorage:WaitForChild("DemandeAchatRobux", 15)
+    DemandeLuckyBlock    = ReplicatedStorage:WaitForChild("DemandeLuckyBlock", 15)
     -- ChangerSeuilTracteur supprimé côté serveur (7beec9d) — FindFirstChild sans timeout
     ChangerSeuilTracteur = ReplicatedStorage:FindFirstChild("ChangerSeuilTracteur")
+
+    -- Si le shop a été construit avant la résolution du remote, reconstruire pour afficher
+    -- le bloc Lucky Blocks (construireLuckyBlocksFrame court-circuite si DemandeLuckyBlock=nil)
+    if DemandeLuckyBlock and donneesShop and screenGui.Enabled then
+        mettreAJourShop(donneesShop)
+    end
 
     if OuvrirShopEvent then
         OuvrirShopEvent.OnClientEvent:Connect(function(donnes)
@@ -920,5 +1003,18 @@ task.spawn(function()
             local s = SoundService:FindFirstChild("SonUpgrade")
             if s then s:Play() end
         end
+    end)
+end)
+
+-- ============================================================
+-- Son d'ouverture Lucky Block (serveur → client)
+-- ============================================================
+task.spawn(function()
+    local lbOpened = ReplicatedStorage:WaitForChild("LuckyBlockOpened", 15)
+    if not lbOpened then return end
+    lbOpened.OnClientEvent:Connect(function()
+        local s = SoundService:FindFirstChild("SonLuckyBlock")
+                or SoundService:FindFirstChild("SonUpgrade")
+        if s then s:Play() end
     end)
 end)

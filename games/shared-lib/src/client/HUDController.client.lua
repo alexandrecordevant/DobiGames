@@ -486,13 +486,33 @@ _hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
     table.sort(items, function(a, b) return a.ordre < b.ordre end)
 
     -- Trier les items en deux sections : "BOOSTS" si Lucky Hour, sinon "MAX UPGRADES"
-    local sectionsOrdre = { "MAX UPGRADES", "BOOSTS" }
-    local sections = { ["MAX UPGRADES"] = {}, ["BOOSTS"] = {} }
+    local sectionsOrdre = { "MAX UPGRADES", "LUCKY BLOCKS", "BOOSTS" }
+    local sections = { ["MAX UPGRADES"] = {}, ["LUCKY BLOCKS"] = {}, ["BOOSTS"] = {} }
     for _, item in ipairs(items) do
         if string.find(item.nom, "Lucky Hour") then
             table.insert(sections["BOOSTS"], item)
         else
             table.insert(sections["MAX UPGRADES"], item)
+        end
+    end
+
+    -- Lucky Blocks (Developer Products) — achat via DemandeLuckyBlock:FireServer(tier).
+    -- Section affichée uniquement si un devProduct est configuré (>0) → propre à BrainRotFarm ;
+    -- la config Lucky Block de LavaTower n'a pas de clé `devProduct`, donc rien ne s'affiche là-bas.
+    local lbList = Config.Shop and Config.Shop.LuckyBlocks
+    local devP   = Config.DevProductIds or {}
+    if lbList then
+        for tierIndex, lbCfg in ipairs(lbList) do
+            local pid = lbCfg.devProduct and devP[lbCfg.devProduct] or 0
+            if pid > 0 then
+                table.insert(sections["LUCKY BLOCKS"], {
+                    nom        = "Lucky Block " .. (lbCfg.nom or ("Tier " .. tierIndex)),
+                    prix       = lbCfg.prix or 0,
+                    luckyTier  = tierIndex,
+                    nomUpgrade = "LuckyBlock_" .. tierIndex,  -- pour un Name d'item unique
+                    niveauIdx  = 1,
+                })
+            end
         end
     end
 
@@ -584,11 +604,19 @@ _hdrStuds.ImageColor3 = Color3.fromRGB(160, 90, 0)
 
                 local capturedItem = item
                 btnAcheter.MouseButton1Click:Connect(function()
-                    local achatEv = ReplicatedStorage:FindFirstChild("DemandeAchatRobux")
-                    if achatEv then
-                        pcall(function()
-                            achatEv:FireServer(capturedItem.nomUpgrade, capturedItem.niveauIdx)
-                        end)
+                    if capturedItem.luckyTier then
+                        -- Lucky Block : Developer Product (remote dédié)
+                        local lbEv = ReplicatedStorage:FindFirstChild("DemandeLuckyBlock")
+                        if lbEv then
+                            pcall(function() lbEv:FireServer(capturedItem.luckyTier) end)
+                        end
+                    else
+                        local achatEv = ReplicatedStorage:FindFirstChild("DemandeAchatRobux")
+                        if achatEv then
+                            pcall(function()
+                                achatEv:FireServer(capturedItem.nomUpgrade, capturedItem.niveauIdx)
+                            end)
+                        end
                     end
                 end)
 
