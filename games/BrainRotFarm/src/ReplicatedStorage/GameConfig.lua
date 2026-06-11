@@ -38,6 +38,10 @@ GameConfig.DevProductIds = {
     SkipSeedTimer = 3583048518,  -- Skip timer daily seed (25 R$)
     SeedPackx3    = 3583048753,  -- +3 graines MYTHIC   (99 R$)
     SecretSeed    = 3583048915,  -- +1 graine SECRET    (149 R$)
+    -- Lucky Blocks (consommables)
+    LuckyBlockMythic = 3603993100,  -- Lucky Block Mythic        (49 R$)
+    LuckyBlockGod    = 3603993169,  -- Lucky Block Brainrot God  (149 R$)
+    LuckyBlockSecret = 3603993225,  -- Lucky Block Secret        (399 R$)
 }
 
 -- === DISCORD WEBHOOK ===
@@ -200,10 +204,10 @@ GameConfig.ShopUpgrades = {
         description = "Increases your Brain Rot carry capacity",
         ordre       = 3,
         niveaux = {
-            [1] = { type="coins", prix=75000,    label="Lv.1", effet={ carryCapacite=2 } },
-            [2] = { type="coins", prix=600000,   label="Lv.2", effet={ carryCapacite=3 } },
-            [3] = { type="coins", prix=4000000,  label="Lv.3", effet={ carryCapacite=4 } },
-            [4] = { type="coins", prix=25000000, label="Lv.4", effet={ carryCapacite=5 } },
+            [1] = { type="coins", prix=75000,    label="Lv.1", effet={ carryCapacite=3 } },
+            [2] = { type="coins", prix=600000,   label="Lv.2", effet={ carryCapacite=4 } },
+            [3] = { type="coins", prix=4000000,  label="Lv.3", effet={ carryCapacite=5 } },
+            [4] = { type="coins", prix=25000000, label="Lv.4", effet={ carryCapacite=6 } },
             [5] = { type="robux", prix=149,    gamePassId=1816561688, label="MAX 🔥", effet={ carryCapacite=8 }, isMax=true },
         },
         maxNiveau        = 5,
@@ -272,7 +276,7 @@ GameConfig.ShopUpgrades = {
 
 -- Valeurs par défaut (utilisées par ShopSystem pour réinitialisation / defaults)
 GameConfig.WalkSpeedDefaut       = 16
-GameConfig.CarryCapaciteDefaut   = 1
+GameConfig.CarryCapaciteDefaut   = 2
 GameConfig.RayonCollecteDefaut   = 4
 
 -- === COULEURS THÈME ===
@@ -308,6 +312,62 @@ GameConfig.UI = {
         ColFutureTxt     = Color3.fromRGB(70,   70,  80),  -- très sombre — non débloqué
         ColStrokeDisp    = Color3.fromRGB(180, 255, 180),  -- bordure brillante bouton disponible
     }
+}
+
+-- === SHOP (données métier — lu par LuckyBlockSystem / HUDController / ShopHUD) ===
+-- ⚠️ NE PAS confondre avec GameConfig.UI.Shop (au-dessus) qui ne contient que le style.
+GameConfig.Shop = {
+    -- ── LUCKY BLOCKS ──────────────────────────────────────────────
+    -- Lu par LuckyBlockSystem : achat (DevProduct) → carry → dépôt slot → ouverture.
+    -- CONTRAT DOSSIERS (à créer en Studio) :
+    --   ReplicatedStorage.LuckyBlocks.Tier_N contient :
+    --     • un modèle "Lucky Block" (visuel porté/déposé)
+    --     • des sous-dossiers nommés exactement comme les `label` ci-dessous,
+    --       chacun contenant les modèles Brainrot résultat possibles.
+    --   Les BR résultat doivent porter les attributs Rarete + CashParSeconde.
+    --   Si un label n'a pas de sous-dossier → fallback tirage aléatoire tout le tier.
+    -- `devProduct` = clé dans GameConfig.DevProductIds.
+    LuckyBlocks = {
+        {
+            nom        = "Mythic",
+            prix       = 49,
+            devProduct = "LuckyBlockMythic",
+            folder     = "ReplicatedStorage.LuckyBlocks.Tier_1",
+            weights = {
+                { chance = 49.5, label = "50"  },
+                { chance = 30,   label = "30"  },
+                { chance = 18,   label = "18"  },
+                { chance = 2,    label = "2"   },
+                { chance = 0.5,  label = "0.5" },
+            },
+        },
+        {
+            nom        = "Brainrot God",
+            prix       = 149,
+            devProduct = "LuckyBlockGod",
+            folder     = "ReplicatedStorage.LuckyBlocks.Tier_2",
+            weights = {
+                { chance = 49.5, label = "50"  },
+                { chance = 30,   label = "30"  },
+                { chance = 18,   label = "18"  },
+                { chance = 2,    label = "2"   },
+                { chance = 0.5,  label = "0.5" },
+            },
+        },
+        {
+            nom        = "Secret",
+            prix       = 399,
+            devProduct = "LuckyBlockSecret",
+            folder     = "ReplicatedStorage.LuckyBlocks.Tier_3",
+            weights = {
+                { chance = 49.5, label = "50"  },
+                { chance = 30,   label = "30"  },
+                { chance = 18,   label = "18"  },
+                { chance = 2,    label = "2"   },
+                { chance = 0.5,  label = "0.5" },
+            },
+        },
+    },
 }
 
 -- === AUDIO ===
@@ -797,11 +857,11 @@ GameConfig.CaptureConfig = {
 
 -- === CARRY ===
 GameConfig.CarryNiveaux = {
-    [0] = 1,  -- défaut
-    [1] = 2,  -- Lv.1 coins
-    [2] = 3,  -- Lv.2 coins
-    [3] = 4,  -- Lv.3 coins
-    [4] = 5,  -- Lv.4 coins
+    [0] = 2,  -- défaut
+    [1] = 3,  -- Lv.1 coins
+    [2] = 4,  -- Lv.2 coins
+    [3] = 5,  -- Lv.3 coins
+    [4] = 6,  -- Lv.4 coins
     [5] = 8,  -- MAX Game Pass (149 R$)
 }
 
