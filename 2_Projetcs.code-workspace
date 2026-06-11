@@ -1,12 +1,19 @@
 {
   "folders": [
 	{
+		"name": "BrainRotFarm",
 		"path": "games/BrainRotFarm"
 	},
 	{
+		"name": "BrainRotKong",
+		"path": "games/BrainRotKong"
+	},
+	{
+		"name": "LavaTower",
 		"path": "games/LavaTower"
 	},
 	{
+		"name": "shared-lib",
 		"path": "games/shared-lib"
 	}
 ]

@@ -40,6 +40,10 @@ end
 
 -- Timestamp (os.time) du prochain event — lu par GetProchainEvent()
 local prochainEventTimestamp = nil
+-- Type du prochain event, pré-choisi AVANT l'attente — lu par GetProchainEventType().
+-- Permet au client (bannière teaser) d'afficher le vrai nom du prochain event,
+-- sans jamais mentir : nil tant qu'un event est en cours.
+local prochainEventType = nil
 
 local function BoucleAuto()
     local intervalle = Config.EventIntervalleMinutes * 60
@@ -49,10 +53,12 @@ local function BoucleAuto()
     -- Premier event : délai et type lus depuis GameConfig (rétrocompatible si clé absente)
     local premierDelai = (Config.EventFirstSpawnMinutes or 20) * 60
     local premierType  = Config.ForceFirstEventType  -- nil = aléatoire
+    local choixPremier = premierType or types[math.random(1, #types)]
     prochainEventTimestamp = os.time() + premierDelai
+    prochainEventType      = choixPremier
     task.wait(premierDelai)
     prochainEventTimestamp = nil
-    local choixPremier = premierType or types[math.random(1, #types)]
+    prochainEventType      = nil
     if premierType then
         Logger.info("Event", "Premier event forcé : %s", premierType)
     end
@@ -60,7 +66,10 @@ local function BoucleAuto()
     task.wait((Config.EventDureeMinutes * 60) + 5)
 
     while true do
+        -- Type tiré en avance pour l'exposer au client pendant l'attente
+        local choix = types[math.random(1, #types)]
         prochainEventTimestamp = os.time() + intervalle
+        prochainEventType      = choix
         -- Early bird uniquement si l'intervalle est assez long
         if intervalle > earlyBird then
             task.wait(intervalle - earlyBird)
@@ -70,7 +79,7 @@ local function BoucleAuto()
             task.wait(intervalle)
         end
         prochainEventTimestamp = nil
-        local choix = types[math.random(1, #types)]
+        prochainEventType      = nil
         DemarrerEvent(choix)
         -- Attendre la durée de l'event avant d'en lancer un nouveau
         local dureeEvent = (Config.EventsVisuels and Config.EventsVisuels[choix] and Config.EventsVisuels[choix].duree)
@@ -113,6 +122,12 @@ end
 function EventManager.GetProchainEvent()
     if not prochainEventTimestamp then return 0 end
     return math.max(0, prochainEventTimestamp - os.time())
+end
+
+-- Type du prochain event automatique (ex. "MeteorDrop"), ou nil si event en cours
+-- ou non encore déterminé. Permet au client d'afficher le vrai nom à venir.
+function EventManager.GetProchainEventType()
+    return prochainEventType
 end
 
 return EventManager

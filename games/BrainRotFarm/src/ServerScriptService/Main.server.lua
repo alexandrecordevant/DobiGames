@@ -1366,6 +1366,9 @@ GetTimerData.OnServerInvoke = function(_player)
         eventActif        = eventInfo.actif,
         eventNom          = eventInfo.nom,
         eventTempsRestant = eventInfo.actif and eventInfo.tempsRestant or prochainEv,
+        -- Type du prochain event (nil si event en cours) → bannière teaser client
+        eventProchainNom  = (not eventInfo.actif)
+            and EventManager.GetProchainEventType and EventManager.GetProchainEventType() or nil,
         prochainSpecial   = meilleur or { type = "MYTHIC", secondes = -1 },
     }
 end

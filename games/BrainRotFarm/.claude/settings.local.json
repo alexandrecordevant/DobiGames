@@ -82,7 +82,21 @@
       "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3             = Color3\\\\.fromRGB\\(220, 220, 220\\)/_dsTextLbl.TextColor3             = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
       "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3 = Color3\\\\.fromRGB\\(220, 110, 15\\)/_dsTextLbl.TextColor3 = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
       "Bash(sed -i 's/_dsTextLbl\\\\.TextColor3 = Color3\\\\.fromRGB\\(220, 220, 220\\)/_dsTextLbl.TextColor3 = Color3.fromRGB\\(255, 255, 255\\)/' src/StarterPlayer/StarterPlayerScripts/FlowerPotHUD.client.lua)",
-      "Bash(python3)"
+      "Bash(python3)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\\\\src\" -Recurse)",
+      "PowerShell(head -100)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(ls BrainRotKong)",
+      "Bash(ls BrainRotFarm/src/ServerStorage)",
+      "Bash(ls BrainRotFarm/src/ReplicatedStorage)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit --amend -m 'fix\\(bale\\): mouvement fluide multi-joueurs \\(anim client deterministe\\)' -m 'Les bales etaient animees cote serveur par stepping CFrame de parts ancrees. Roblox ne lisse pas les parts ancrees cote client \\(snap a frequence throttlee quand il y a plusieurs joueurs\\) -> clignotement / teleportation. *)",
+      "Bash(command -v luau-analyze luau lua selene)",
+      "Bash(git check-ignore *)",
+      "Bash(git commit -m 'feat\\(kong\\): duplique BrainRotFarm vers BrainRotKong \\(full reskin\\) *)",
+      "Bash(git commit -m 'feat\\(luckyblock\\): intégration Lucky Block \\(achat DevProduct → carry → dépôt → ouverture\\) *)",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(curl -s -X POST \"https://users.roblox.com/v1/usernames/users\" -H \"Content-Type: application/json\" -d \"{\\\\\"usernames\\\\\":[\\\\\"DobiDobanes\\\\\"],\\\\\"excludeBannedUsers\\\\\":false}\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

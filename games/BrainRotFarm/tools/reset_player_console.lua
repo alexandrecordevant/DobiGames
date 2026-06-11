@@ -10,7 +10,7 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 
-local USER_ID = 10621969326         -- ← changer ici si besoin
+local USER_ID = 10617271110         -- DobiDobaNes (compte téléphone) — ← changer ici si besoin
 local DS_KEY  = "player_" .. USER_ID
 
 local function buildDefaultData()

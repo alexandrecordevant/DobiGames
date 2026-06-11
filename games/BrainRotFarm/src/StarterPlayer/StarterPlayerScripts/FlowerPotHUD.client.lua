@@ -55,6 +55,10 @@ screenGui.Name           = "FlowerPotHUD"
 screenGui.ResetOnSpawn   = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.IgnoreGuiInset = true
+-- Modal daily seed + bouton seed : doivent rester AU-DESSUS des bannières d'info
+-- (onboarding=30, teaser=6) pour que la rangée "Day 1" reste cliquable, notamment
+-- en paysage mobile où l'espace vertical est réduit.
+screenGui.DisplayOrder   = 32
 screenGui.Parent         = playerGui
 
 -- Fond sombre semi-transparent (modal)
