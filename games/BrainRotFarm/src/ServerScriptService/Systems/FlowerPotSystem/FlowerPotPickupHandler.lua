@@ -79,6 +79,20 @@ local function supprimerPrompt(instance)
     if prompt then pcall(function() prompt:Destroy() end) end
 end
 
+-- Active/désactive le prompt "Status" du pot pendant la fenêtre de récolte.
+-- Sur mobile Roblox n'affiche qu'un bouton à la fois : tant que le mutant mûr est
+-- posé, "Status" (portée 12, au centre du pot) volerait le bouton à "Harvest".
+-- On le coupe le temps de la récolte ; il est recréé/réactivé par InitialiserPots
+-- (rebuild complet) au moment du onHarvest.
+local function setStatusPromptEnabled(potModel, enabled)
+    if not potModel then return end
+    for _, d in ipairs(potModel:GetDescendants()) do
+        if d:IsA("ProximityPrompt") and d.ActionText == "Status" then
+            pcall(function() d.Enabled = enabled end)
+        end
+    end
+end
+
 -- ============================================================
 -- Setup — configure le ProximityPrompt sur le BR Mutant tombé
 -- ============================================================
@@ -130,12 +144,17 @@ function FlowerPotPickupHandler.Setup(clone, potModel, player, config)
     prompt.ActionText            = "Harvest"
     prompt.ObjectText            = string.format("%s BR Mutant %s (×%d)",
         emoji, elementType, multiplier)
-    prompt.HoldDuration          = 0.3   -- Mobile-compatible (court hold)
+    prompt.HoldDuration          = 0     -- Tap simple : récolte immédiate (mobile-friendly)
     prompt.MaxActivationDistance = 6
     prompt.RequiresLineOfSight   = false
     prompt.KeyboardKeyCode       = Enum.KeyCode.E
+    -- Garantit qu'un seul prompt s'affiche : "Harvest" prime sur "Status" du pot
+    prompt.Exclusivity           = Enum.ProximityPromptExclusivity.OneGlobally
     prompt.Enabled               = true
     prompt.Parent                = promptParent
+
+    -- Couper le prompt "Status" du pot tant que le mutant mûr est récoltable
+    setStatusPromptEnabled(potModel, false)
 
     Logger.debug("Pickup", "Prompt 'Récolter' créé | %s %s ×%d | Pot: %s", emoji, elementType, multiplier, potModel.Name)
 

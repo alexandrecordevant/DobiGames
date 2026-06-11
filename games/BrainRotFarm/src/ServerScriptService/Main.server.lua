@@ -381,6 +381,9 @@ InitialiserPots = function(player, baseIndex, playerData, onlyPotIndex)
             promptInfos.HoldDuration          = 0
             promptInfos.MaxActivationDistance = 12
             promptInfos.RequiresLineOfSight   = false
+            -- Un seul prompt affiché à la fois (évite que "Status" vole le bouton
+            -- tactile au prompt "Harvest" quand le mutant est mûr sur le pot)
+            promptInfos.Exclusivity           = Enum.ProximityPromptExclusivity.OneGlobally
             promptInfos.Parent                = potPart
 
             -- Envoyer les données au client pour la BillboardGui 3D
