@@ -61,7 +61,8 @@
                 "OnboardingArrow": { "$path": "src/StarterPlayer/StarterPlayerScripts/OnboardingArrow.client.lua" },
                 "TimerHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/TimerHUD.client.lua" },
                 "NextEventTeaser": { "$path": "src/StarterPlayer/StarterPlayerScripts/NextEventTeaser.client.lua" },
-                "BaleClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/BaleClient.client.lua" }
+                "BaleClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/BaleClient.client.lua" },
+                "FreeLuckyBlockHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/FreeLuckyBlockHUD.client.lua" }
             }
         }
     }
