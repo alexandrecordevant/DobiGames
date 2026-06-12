@@ -67,7 +67,7 @@ GameConfig.CoutUpgradeMultiplier  = 2.5
 GameConfig.PrestigeMultiplier     = 2.0
 
 -- === EVENTS AUTOMATIQUES ===
-GameConfig.EventFirstSpawnMinutes  = 6    -- délai avant le premier event (minutes)
+GameConfig.EventFirstSpawnMinutes  = 4    -- délai avant le premier event (minutes)
 GameConfig.ForceFirstEventType     = "MeteorDrop"  -- type forcé pour le premier event (nil = aléatoire)
 GameConfig.EventIntervalleMinutes  = 12   -- intervalle entre events (minutes)
 GameConfig.EventDureeMinutes       = 5

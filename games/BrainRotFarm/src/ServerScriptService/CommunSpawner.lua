@@ -61,8 +61,8 @@ end
 -- ============================================================
 local CONFIG = {
 	MYTHIC = {
-		intervalleSecondes   = 8 * 60,
-		compteurVisibleAvant = 3 * 60,
+		intervalleSecondes   = 3 * 60,
+		compteurVisibleAvant = 1 * 60,
 		valeur               = 300,
 		despawnSecondes      = 60,
 		couleur              = Color3.fromRGB(148, 0, 211),
@@ -71,8 +71,8 @@ local CONFIG = {
 		dossier              = "MYTHIC",
 	},
 	SECRET = {
-		intervalleSecondes   = 20 * 60,
-		compteurVisibleAvant = 5 * 60,
+		intervalleSecondes   = 8 * 60,
+		compteurVisibleAvant = 4 * 60,
 		valeur               = 1000,
 		despawnSecondes      = 90,
 		couleur              = Color3.fromRGB(255, 30, 30),
