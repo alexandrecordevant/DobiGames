@@ -118,6 +118,7 @@ local IndexDemander          = CreerRemoteEvent("IndexDemander")
 local IndexRecevoir          = CreerRemoteEvent("IndexRecevoir")
 local DemandeLuckyBlock      = CreerRemoteEvent("DemandeLuckyBlock")  -- client → serveur : achat Lucky Block (tierIndex)
 local LuckyBlockOpened       = CreerRemoteEvent("LuckyBlockOpened")   -- LuckyBlockSystem → client : sons/VFX ouverture
+local FreeLuckyBlock         = CreerRemoteEvent("FreeLuckyBlock")     -- serveur → client : Lucky Block gratuit (popup + compteur de session)
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -2089,6 +2090,46 @@ if LuckyBlockSystem then
         end
         game:GetService("MarketplaceService"):PromptProductPurchase(player, pid)
     end)
+
+    -- ── Lucky Block GRATUIT offert après N minutes de session (récompense d'engagement) ──
+    -- Le client (FreeLuckyBlockHUD) affiche un popup d'accueil + un compteur bas-droite.
+    -- À l'échéance, on dépose directement le Lucky Block (Tier 1 / Mythic) dans le carry.
+    local FREE_LB_DELAI = 15 * 60   -- secondes avant l'offre
+    local FREE_LB_TIER  = 1         -- Mythic
+
+    -- Tente l'octroi ; si le sac est plein, réessaie périodiquement (offre garantie)
+    local function offrirFreeLuckyBlock(player, essais)
+        if not player.Parent then return end
+        if CarrySystem.EstPlein(player) then
+            if essais < 20 then
+                task.delay(15, function() offrirFreeLuckyBlock(player, essais + 1) end)
+            else
+                Logger.warn("LuckyBlock", "%s sac plein : Lucky Block gratuit abandonné après retries", player.Name)
+            end
+            return
+        end
+        if grantLuckyBlock(player, FREE_LB_TIER) then
+            FreeLuckyBlock:FireClient(player, "granted", FREE_LB_TIER)
+            Logger.info("LuckyBlock", "%s Lucky Block GRATUIT offert (session %d min)", player.Name, FREE_LB_DELAI // 60)
+        end
+    end
+
+    -- Arme le timer pour une session : compteur client + octroi différé
+    local function armerFreeLuckyBlock(player)
+        local deadline = os.time() + FREE_LB_DELAI
+        task.delay(FREE_LB_DELAI, function() offrirFreeLuckyBlock(player, 0) end)
+        -- Léger délai pour laisser le script client se connecter avant le "start"
+        task.delay(3, function()
+            if player.Parent then
+                FreeLuckyBlock:FireClient(player, "start", math.max(0, deadline - os.time()))
+            end
+        end)
+    end
+
+    Players.PlayerAdded:Connect(armerFreeLuckyBlock)
+    for _, pl in ipairs(Players:GetPlayers()) do
+        task.spawn(armerFreeLuckyBlock, pl)
+    end
 end
 
 Logger.info("Main", "Serveur démarré · %s", os.date("%d/%m/%Y %H:%M"))
