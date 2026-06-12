@@ -685,7 +685,7 @@ GameConfig.FlowerPotConfig = {
 
     -- Config des drops de graines sur les arbres
     arbresDropConfig = {
-        intervalleSecondes = 1800,  -- 30 min entre chaque graine
+        intervalleSecondes = 900,   -- 15 min entre chaque graine
         chanceMYTHIC       = 70,    -- 70% MYTHIC
         chanceSECRET       = 30,    -- 30% SECRET
         timeoutSecondes    = 600,   -- 10 min avant reset si non collectée

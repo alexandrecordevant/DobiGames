@@ -96,7 +96,8 @@
       "Bash(git commit -m 'feat\\(kong\\): duplique BrainRotFarm vers BrainRotKong \\(full reskin\\) *)",
       "Bash(git commit -m 'feat\\(luckyblock\\): intégration Lucky Block \\(achat DevProduct → carry → dépôt → ouverture\\) *)",
       "Bash(echo \"=== exit: $? ===\")",
-      "Bash(curl -s -X POST \"https://users.roblox.com/v1/usernames/users\" -H \"Content-Type: application/json\" -d \"{\\\\\"usernames\\\\\":[\\\\\"DobiDobanes\\\\\"],\\\\\"excludeBannedUsers\\\\\":false}\")"
+      "Bash(curl -s -X POST \"https://users.roblox.com/v1/usernames/users\" -H \"Content-Type: application/json\" -d \"{\\\\\"usernames\\\\\":[\\\\\"DobiDobanes\\\\\"],\\\\\"excludeBannedUsers\\\\\":false}\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\Developpement\\\\DobiGames\\\\games\\\\BrainRotFarm\" -Recurse -Depth 2)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Admin\\Documents\\Developpement\\DobiGames\\games\\shared-lib"

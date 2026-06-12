@@ -24,7 +24,11 @@ local BaleMotion = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChil
 -- CONFIG
 -- ═══════════════════════════════════════
 
-local KILL_MARGIN = 5       -- studs ajoutés au rayon pour la zone de mort
+-- Marge ajoutée au rayon de la bale pour la zone de mort. Le contact réel a lieu
+-- quand le CENTRE du perso est à ~(rayon bale + demi-largeur perso ≈ 2) du centre
+-- de la bale. Au-delà (l'ancien +5) on tue 3-5 studs AVANT que la bale touche le
+-- joueur → "je me fais écraser sans toucher la bale". On colle donc au contact réel.
+local KILL_MARGIN = 2       -- studs ajoutés au rayon (≈ demi-largeur du perso)
 local KILL_HZ     = 0.05    -- intervalle de la boucle de détection (~20 Hz)
 
 -- ═══════════════════════════════════════
