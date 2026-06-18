@@ -48,6 +48,9 @@ local function DefaultData()
             dernieresClaim = 0,
             graineDispo    = true,
         },
+        -- Barre d'évolution de la base (3 jauges) — voir BaseProgressSystem
+        grainesSemaine = 0,   -- graines quotidiennes récupérées dans la semaine en cours (0→7)
+        paliersClaims  = {},  -- { [cle<palier>] = true } — paliers déjà récompensés (anti-double-grant)
         -- Index des Brainrots decouverts (par categorie)
         indexObtenu = {},
         -- Codes promo utilisés
@@ -89,6 +92,9 @@ function DataStoreManager.Load(player)
     end
     if not data.carryPortes    then data.carryPortes    = {} end
     if not data.RedeemedCodes  then data.RedeemedCodes  = {} end
+    -- Migration barre d'évolution de la base
+    if data.grainesSemaine == nil then data.grainesSemaine = 0 end
+    if not data.paliersClaims       then data.paliersClaims  = {} end
     if data.hasFirstDeposit        == nil then data.hasFirstDeposit        = false end
     if data.hasCompletedOnboarding == nil then data.hasCompletedOnboarding = false end
 

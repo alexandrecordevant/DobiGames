@@ -53,6 +53,7 @@ local PREFIXES = {
     Code        = "[CODE]",
     Sound       = "[SOUND]",
     Onboard     = "[ONBOARD]",
+    BaseProgress = "[BASE-PROGRESS]",
 }
 
 -- Appeler une seule fois au boot du jeu

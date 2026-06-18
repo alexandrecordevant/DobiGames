@@ -592,6 +592,42 @@ GameConfig.ProgressionConfig = {
     baseSurTotalGagne = true,
 }
 
+-- === BARRE D'ÉVOLUTION DE LA BASE (3 jauges) ===
+-- Lu par BaseProgressSystem (serveur) + BaseProgressHUD (client).
+-- 3 axes de complétion affichés en une carte (3 barres empilées) :
+--   1) base    — niveau d'Amélioration de Base (data.rebirthLevel / 30, cf. AmelioConfig)
+--   2) seeds   — graines quotidiennes récupérées cette semaine (grainesSemaine / 7)
+--   3) mutants — mutants flowerpot découverts (indexObtenu.MUTANTS / total existant)
+-- Récompenses uniquement sur GROS PALIERS RARES. Cadeaux plafonnés tier Mythic (1),
+-- sauf le 100 % collection (God = 2). Reward.type : "luckyblock" (tier) | "coins" (montant).
+GameConfig.BaseProgressConfig = {
+
+    -- Jauge "base" = Amélioration de Base (data.rebirthLevel / 30, cf. AmelioConfig)
+
+    -- Graines quotidiennes par cycle hebdomadaire (jauge "seeds")
+    seedsParSemaine = 7,
+
+    -- Paliers récompensés (rares). axe ∈ {base, seeds, mutants}
+    --   seuilPct = fraction 0–1 de la jauge | seuilVal = valeur absolue (cur)
+    --   recurring = true → ré-armé quand la jauge retombe sous son max (cas hebdo des graines)
+    paliers = {
+        { key="base100",   axe="base",    seuilPct=1.0,  reward={ type="luckyblock", tier=1 },
+          label="🔧 Base fully upgraded!", desc="Every base upgrade maxed out — here's a Mythic Lucky Block!" },
+
+        { key="seedsWeek", axe="seeds",   seuilVal=7,    reward={ type="luckyblock", tier=1 }, recurring=true,
+          label="🌱 Full week of seeds!", desc="You claimed all 7 daily seeds this week — Mythic Lucky Block earned!" },
+
+        { key="mut25",     axe="mutants", seuilPct=0.25, reward={ type="coins", montant=50000 },
+          label="🌈 25% mutants collected!", desc="Mutant collection at 25% — +50K coins!" },
+
+        { key="mut50",     axe="mutants", seuilPct=0.50, reward={ type="luckyblock", tier=1 },
+          label="🌈 50% mutants collected!", desc="Mutant collection at 50% — Mythic Lucky Block!" },
+
+        { key="mut100",    axe="mutants", seuilPct=1.0,  reward={ type="luckyblock", tier=2 },
+          label="🌈 ALL mutants collected!", desc="Full mutant collection complete — Brainrot God Lucky Block!" },
+    },
+}
+
 -- === FLOWER POT SYSTEM ===
 -- Lu par FlowerPotSystem (Common) — pots MYTHIC/SECRET + BR Mutant + Daily Seed
 GameConfig.FlowerPotConfig = {

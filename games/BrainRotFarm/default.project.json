@@ -62,7 +62,8 @@
                 "TimerHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/TimerHUD.client.lua" },
                 "NextEventTeaser": { "$path": "src/StarterPlayer/StarterPlayerScripts/NextEventTeaser.client.lua" },
                 "BaleClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/BaleClient.client.lua" },
-                "FreeLuckyBlockHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/FreeLuckyBlockHUD.client.lua" }
+                "FreeLuckyBlockHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/FreeLuckyBlockHUD.client.lua" },
+                "BaseProgressHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/BaseProgressHUD.client.lua" }
             }
         }
     }

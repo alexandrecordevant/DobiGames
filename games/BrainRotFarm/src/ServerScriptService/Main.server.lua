@@ -45,6 +45,7 @@ if not _abOk then EventAdminAbuse = nil end  -- DEBUG TEMP
 local BRPreviewsBuilder  = require(ServerScriptService.BRPreviewsBuilder)
 local IndexSystem        = require(ServerScriptService.IndexSystem)
 local CodeRedeemSystem   = require(ServerScriptService.Systems.CodeRedeemSystem)
+local BaseProgressSystem = require(ServerScriptService.BaseProgressSystem)
 
 local _fuseOk, FuseSystem = pcall(require, ServerScriptService.SharedLib.Server.FuseSystem.FuseSystem)
 if not _fuseOk then
@@ -54,6 +55,14 @@ else
     Logger.info("Main", "[FuseSystem] Module chargé ✓")
 end
 
+
+-- Barre d'évolution : total de mutants flowerpot existants = (#MYTHIC + #SECRET) × types
+do
+    local brainrots = game:GetService("ServerStorage"):FindFirstChild("Brainrots")
+    local total = BaseProgressSystem.CalculerTotalMutants(brainrots)
+    BaseProgressSystem.SetTotalMutants(total)
+    Logger.info("BaseProgress", "Total mutants flowerpot collectionnables = %d", total)
+end
 
 -- Chargement différé d'EventVisuals (dépendance circulaire au boot)
 local _EventVisualsMain = nil
@@ -119,6 +128,7 @@ local IndexRecevoir          = CreerRemoteEvent("IndexRecevoir")
 local DemandeLuckyBlock      = CreerRemoteEvent("DemandeLuckyBlock")  -- client → serveur : achat Lucky Block (tierIndex)
 local LuckyBlockOpened       = CreerRemoteEvent("LuckyBlockOpened")   -- LuckyBlockSystem → client : sons/VFX ouverture
 local FreeLuckyBlock         = CreerRemoteEvent("FreeLuckyBlock")     -- serveur → client : Lucky Block gratuit (popup + compteur de session)
+local BaseProgressMilestone  = CreerRemoteEvent("BaseProgressMilestone")  -- serveur → client : palier d'évolution franchi (popup célébration)
 
 -- Functions (requêtes avec réponse)
 local GetPlayerData      = CreerRemoteFunction("GetPlayerData")
@@ -146,11 +156,16 @@ end
 
 -- Envoie le HUD avec les coins réels (données + coins en attente dans les slots)
 local function EnvoyerHUD(player, data)
+    -- Barre d'évolution : détecter/accorder les paliers AVANT de composer le HUD
+    -- (un éventuel cadeau coins/jauge se reflète immédiatement dans le push)
+    BaseProgressSystem.CheckAndGrant(player, data)
+
     local extraCoins = IncomeSystem.GetCoinsEnAttente(player) or 0
     local coinsAffiches = (data.coins or 0) + extraCoins
     local hudData = {}
     for k, v in pairs(data) do hudData[k] = v end
     hudData.coins = coinsAffiches
+    hudData.baseProgress = BaseProgressSystem.Compute(data)  -- 3 jauges pour BaseProgressHUD
     UpdateHUD:FireClient(player, hudData)
 end
 
@@ -872,6 +887,8 @@ local function OnPlayerAdded(player)
                     0x44BB66
                 )
             end)
+            -- Rafraîchit la barre d'évolution (jauge base) + vérifie les paliers
+            EnvoyerHUD(p, d)
         end
         AmelioSystem.Init(player, data, baseIndex)
 
@@ -1245,6 +1262,14 @@ ClaimDailySeed.OnServerEvent:Connect(function(player)
     data.dailySeed.dernieresClaim = os.time()
     data.dailySeed.jourActuel     = (jourActuel % 7) + 1  -- cycle 1 → 7 → 1
 
+    -- Jauge hebdo des graines (0→7) pour la barre d'évolution de la base.
+    -- Atteint 7 après le claim du jour 7 (palier hebdo), puis repart à 1 la semaine suivante.
+    if (data.grainesSemaine or 0) >= (Config.BaseProgressConfig.seedsParSemaine or 7) then
+        data.grainesSemaine = 1
+    else
+        data.grainesSemaine = (data.grainesSemaine or 0) + 1
+    end
+
     local msgGraines = quantite > 1
         and ("🌱 Daily Seed ×" .. quantite .. " " .. rarity .. " received! (Seed Doubler 🔑) — Day " .. jourActuel .. "/7")
         or  ("🌱 Daily Seed " .. rarity .. " received! (Day " .. jourActuel .. "/7)")
@@ -1394,6 +1419,9 @@ IndexSystem.Init(IndexDemander, IndexRecevoir)
 -- Hook DropSystem → IndexSystem (détection nouveaux BR déposés)
 DropSystem.OnSpotChange = function(player)
     IndexSystem.OnSpotChange(player)
+    -- Rafraîchit la jauge mutants + vérifie les paliers d'évolution
+    local data = GetData(player)
+    if data then EnvoyerHUD(player, data) end
 end
 
 -- Hook premier dépôt BR (onboarding) : +100 coins one-time + notif client
@@ -2062,6 +2090,19 @@ if LuckyBlockSystem then
         Logger.info("LuckyBlock", "%s achat Lucky Block tier %d → carry", player.Name, tierIndex)
         NotifEvent:FireClient(player, "INFO", "Lucky Block received — place it on a slot to open!")
         return true
+    end
+
+    -- Barre d'évolution : brancher les récompenses de paliers sur le grant Lucky Block
+    BaseProgressSystem.GrantLuckyBlock = function(pl, tier)
+        return grantLuckyBlock(pl, tier)
+    end
+    BaseProgressSystem.Celebrer = function(pl, palier)
+        BaseProgressMilestone:FireClient(pl, {
+            label  = palier.label,
+            desc   = palier.desc,
+            axe    = palier.axe,
+            reward = palier.reward,
+        })
     end
 
     -- Enregistrer un handler ProcessReceipt par tier configuré (DevProduct → grant)
