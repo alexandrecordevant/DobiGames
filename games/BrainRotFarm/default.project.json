@@ -59,11 +59,10 @@
                 "CodeRedeemGUI": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemGUI.client.lua" },
                 "CodeRedeemAnimations": { "$path": "src/StarterPlayer/StarterPlayerScripts/CodeRedeemAnimations.lua" },
                 "OnboardingArrow": { "$path": "src/StarterPlayer/StarterPlayerScripts/OnboardingArrow.client.lua" },
-                "TimerHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/TimerHUD.client.lua" },
+                "RightDock": { "$path": "src/StarterPlayer/StarterPlayerScripts/RightDock.client.lua" },
                 "NextEventTeaser": { "$path": "src/StarterPlayer/StarterPlayerScripts/NextEventTeaser.client.lua" },
                 "BaleClient": { "$path": "src/StarterPlayer/StarterPlayerScripts/BaleClient.client.lua" },
-                "FreeLuckyBlockHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/FreeLuckyBlockHUD.client.lua" },
-                "BaseProgressHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/BaseProgressHUD.client.lua" }
+                "FreeLuckyBlockHUD": { "$path": "src/StarterPlayer/StarterPlayerScripts/FreeLuckyBlockHUD.client.lua" }
             }
         }
     }

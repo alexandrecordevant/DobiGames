@@ -1,9 +1,10 @@
 -- StarterPlayerScripts/FreeLuckyBlockHUD.client.lua
 -- Lucky Block GRATUIT offert après N minutes de session (récompense d'engagement).
 -- Piloté par le serveur via le RemoteEvent "FreeLuckyBlock" :
---   • "start"   (secondesRestantes) → popup d'accueil + compteur bas-droite qui décompte
---   • "granted" (tier)              → popup final + retrait du compteur
--- Le serveur reste seul juge de l'octroi (anti-triche) : le compteur n'est qu'un visuel.
+--   • "start"   (secondesRestantes) → popup d'accueil
+--   • "granted" (tier)              → popup final
+-- Le compteur bas-droite est désormais affiché par RightDock (dock unifié) ;
+-- ce script ne gère plus que les popups d'accueil et de récompense.
 
 local Players      = game:GetService("Players")
 local RS           = game:GetService("ReplicatedStorage")
@@ -17,15 +18,6 @@ local FreeLuckyBlock = RS:WaitForChild("FreeLuckyBlock")
 
 local MODAL_NAME = "FreeLuckyBlock"
 local GOLD       = Color3.fromRGB(255, 215, 60)
-
--- ============================================================
--- Format temps M:SS
--- ============================================================
-local function formatTemps(s)
-    if not s or s < 0 then s = 0 end
-    s = math.floor(s)
-    return string.format("%d:%02d", math.floor(s / 60), s % 60)
-end
 
 -- ============================================================
 -- Popup centré (overlay + carte + bouton OK)
@@ -123,101 +115,16 @@ local function afficherPopup(titre, corps)
 end
 
 -- ============================================================
--- Compteur bas-droite (au-dessus du TimerHUD)
--- ============================================================
-local compteurSg  = nil
-local compteurVal = nil
-local deadline    = nil   -- os.time() de fin
-
-local function creerCompteur()
-    if compteurSg then return end
-    local sg = Instance.new("ScreenGui")
-    sg.Name           = "FreeLuckyBlockTimer"
-    sg.ResetOnSpawn   = false
-    sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    sg.IgnoreGuiInset = true
-    sg.DisplayOrder   = 6
-    sg.Parent         = playerGui
-
-    local frame = Instance.new("Frame", sg)
-    frame.AnchorPoint            = Vector2.new(1, 1)
-    frame.Size                   = UDim2.new(0, 210, 0, 34)
-    frame.Position               = UDim2.new(1, -8, 1, -172)  -- juste au-dessus du TimerHUD (bottom -100, haut 66)
-    frame.BackgroundColor3       = Color3.fromRGB(12, 12, 12)
-    frame.BackgroundTransparency = 0.22
-    frame.BorderSizePixel        = 0
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-    local fstroke = Instance.new("UIStroke", frame)
-    fstroke.Color     = GOLD
-    fstroke.Thickness = 1.5
-
-    local pad = Instance.new("UIPadding", frame)
-    pad.PaddingLeft  = UDim.new(0, 9)
-    pad.PaddingRight = UDim.new(0, 9)
-
-    local lbl = Instance.new("TextLabel", frame)
-    lbl.Size                   = UDim2.new(0.66, 0, 1, 0)
-    lbl.BackgroundTransparency = 1
-    lbl.Font                   = Enum.Font.GothamBold
-    lbl.TextSize               = 13
-    lbl.TextXAlignment         = Enum.TextXAlignment.Left
-    lbl.TextColor3             = GOLD
-    lbl.Text                   = "🎁 FREE LUCKY BLOCK"
-
-    local val = Instance.new("TextLabel", frame)
-    val.Size                   = UDim2.new(0.34, 0, 1, 0)
-    val.Position               = UDim2.new(0.66, 0, 0, 0)
-    val.BackgroundTransparency = 1
-    val.Font                   = Enum.Font.GothamBold
-    val.TextSize               = 14
-    val.TextXAlignment         = Enum.TextXAlignment.Right
-    val.TextColor3             = Color3.fromRGB(255, 255, 255)
-    val.Text                   = "--:--"
-
-    compteurSg  = sg
-    compteurVal = val
-end
-
-local function retirerCompteur()
-    if compteurSg then
-        compteurSg:Destroy()
-        compteurSg  = nil
-        compteurVal = nil
-    end
-    deadline = nil
-end
-
--- Boucle d'affichage du compteur (1 Hz)
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if compteurVal and deadline then
-            local restant = deadline - os.time()
-            if restant > 0 then
-                compteurVal.Text       = formatTemps(restant)
-                compteurVal.TextColor3 = Color3.fromRGB(255, 255, 255)
-            else
-                compteurVal.Text       = "SOON! 🎁"
-                compteurVal.TextColor3 = GOLD
-            end
-        end
-    end
-end)
-
--- ============================================================
--- Réception serveur
+-- Réception serveur (popups uniquement — le compteur vit dans RightDock)
 -- ============================================================
 FreeLuckyBlock.OnClientEvent:Connect(function(action, valeur)
     if action == "start" then
-        deadline = os.time() + (tonumber(valeur) or 0)
-        creerCompteur()
         afficherPopup(
             "🎁 FREE LUCKY BLOCK",
             "Stay in game for <b>15 minutes</b> and a <b>Mythic Lucky Block</b> is yours — for free!\n\n" ..
             "⏳ Watch the timer at the <b>bottom-right</b> of your screen."
         )
     elseif action == "granted" then
-        retirerCompteur()
         afficherPopup(
             "🎉 LUCKY BLOCK UNLOCKED!",
             "Your <b>free Mythic Lucky Block</b> is in your bag! 🎒\n\n" ..

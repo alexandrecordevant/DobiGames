@@ -593,7 +593,7 @@ GameConfig.ProgressionConfig = {
 }
 
 -- === BARRE D'ÉVOLUTION DE LA BASE (3 jauges) ===
--- Lu par BaseProgressSystem (serveur) + BaseProgressHUD (client).
+-- Lu par BaseProgressSystem (serveur) + RightDock (client).
 -- 3 axes de complétion affichés en une carte (3 barres empilées) :
 --   1) base    — niveau d'Amélioration de Base (data.rebirthLevel / 30, cf. AmelioConfig)
 --   2) seeds   — graines quotidiennes récupérées cette semaine (grainesSemaine / 7)

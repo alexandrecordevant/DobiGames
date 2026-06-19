@@ -165,7 +165,7 @@ local function EnvoyerHUD(player, data)
     local hudData = {}
     for k, v in pairs(data) do hudData[k] = v end
     hudData.coins = coinsAffiches
-    hudData.baseProgress = BaseProgressSystem.Compute(data)  -- 3 jauges pour BaseProgressHUD
+    hudData.baseProgress = BaseProgressSystem.Compute(data)  -- 3 jauges pour RightDock
     UpdateHUD:FireClient(player, hudData)
 end
 
@@ -1363,7 +1363,7 @@ GetSeedInfo.OnServerInvoke = function(player)
     }
 end
 
--- RemoteFunction : timers affichés dans le widget HUD bottom-right (TimerHUD)
+-- RemoteFunction : timers affichés dans le dock bottom-right (RightDock)
 -- CommunSpawner est requis en bas du fichier (ligne ~1480) → require() en inline
 -- (le module est déjà chargé à ce stade, require() renvoie l'instance cached)
 GetTimerData.OnServerInvoke = function(_player)

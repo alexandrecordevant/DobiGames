@@ -6,7 +6,7 @@
 --   • bascule sur "LIVE" pendant l'event actif.
 -- Clignotement fluo intense les 60 premières secondes (capter l'attention dès
 -- l'accueil), puis pulsation douce persistante (pas de fatigue visuelle).
--- Le widget discret TimerHUD (bas-droite) reste la vue détaillée permanente.
+-- Le dock discret RightDock (bas-droite) reste la vue détaillée permanente.
 
 local Players      = game:GetService("Players")
 local RS           = game:GetService("ReplicatedStorage")
@@ -132,7 +132,7 @@ task.delay(60, function() relancerBlink(false) end)
 
 -- ============================================================
 -- Fondu de sortie : la bannière a fait son job (anticiper + vivre le 1er event)
--- → on fond et on détruit. Le TimerHUD discret (bas-droite) prend le relais.
+-- → on fond et on détruit. Le RightDock discret (bas-droite) prend le relais.
 -- ============================================================
 local function fondreEtDetruire()
     if blinkTween then blinkTween:Cancel() end
